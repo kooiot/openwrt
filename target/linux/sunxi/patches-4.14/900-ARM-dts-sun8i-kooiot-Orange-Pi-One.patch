@@ -1,0 +1,34 @@
+--- a/arch/arm/boot/dts/sun8i-h3-orangepi-one.dts
+--- b/arch/arm/boot/dts/sun8i-h3-orangepi-one.dts
+@@ -84,7 +84,7 @@
+
+ 		sw4 {
+ 			label = "sw4";
+-			linux,code = <BTN_0>;
++			linux,code = <KEY_RESTART>;
+ 			gpios = <&r_pio 0 3 GPIO_ACTIVE_LOW>;
+ 		};
+ 	};
+@@ -156,19 +156,19 @@
+ &uart1 {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&uart1_pins>;
+-	status = "disabled";
++	status = "okay";
+ };
+ 
+ &uart2 {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&uart2_pins>;
+-	status = "disabled";
++	status = "okay";
+ };
+ 
+ &uart3 {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&uart3_pins>;
+-	status = "disabled";
++	status = "okay";
+ };
+ 
+ &usb_otg {
