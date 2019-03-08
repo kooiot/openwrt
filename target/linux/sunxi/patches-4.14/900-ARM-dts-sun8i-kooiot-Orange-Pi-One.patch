@@ -1,10 +1,14 @@
 --- a/arch/arm/boot/dts/sun8i-h3-orangepi-one.dts
---- b/arch/arm/boot/dts/sun8i-h3-orangepi-one.dts
-@@ -84,7 +84,7 @@
-
- 		sw4 {
- 			label = "sw4";
++++ b/arch/arm/boot/dts/sun8i-h3-orangepi-one.dts
+@@ -82,9 +82,9 @@
+ 		pinctrl-names = "default";
+ 		pinctrl-0 = <&sw_r_opc>;
+ 
+-		sw4 {
+-			label = "sw4";
 -			linux,code = <BTN_0>;
++		reset {
++			label = "reset";
 +			linux,code = <KEY_RESTART>;
  			gpios = <&r_pio 0 3 GPIO_ACTIVE_LOW>;
  		};
