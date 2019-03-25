@@ -1,6 +1,6 @@
 --- a/arch/arm/boot/dts/sun8i-h3-nanopi-neo.dts
 +++ a/arch/arm/boot/dts/sun8i-h3-nanopi-neo.dts
-@@ -53,3 +53,52 @@
+@@ -53,3 +53,69 @@
  	allwinner,leds-active-low;
  	status = "okay";
  };
@@ -38,6 +38,38 @@
 +};
 +
 +&reg_usb0_vbus {
++	gpio = <&r_pio 0 2 GPIO_ACTIVE_HIGH>; /* PL2 */
++	status = "okay";
++};
++
++&usb_otg {
++	dr_mode = "otg";
++	status = "okay";
++};
++
++&usbphy {
++	usb0_id_det-gpios = <&pio 6 12 GPIO_ACTIVE_HIGH>; /* PG12 */
++	usb0_vbus-supply = <&reg_usb0_vbus>;
++	/* VBUS on USB host ports are always on */
++	status = "okay";
++};
++
++&mmc2 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&mmc2_8bit_pins>;
++	vmmc-supply = <&reg_vcc3v3>;
++	bus-width = <8>;
++	non-removable;
++	cap-mmc-hw-reset;
++	status = "okay";
++};
++
++&mmc2_8bit_pins {
++	/* Increase drive strength for DDR modes */
++	drive-strength = <40>;
++	/* eMMC is missing pull-ups */
++	bias-pull-up;
++};
 +	gpio = <&r_pio 0 2 GPIO_ACTIVE_HIGH>; /* PL2 */
 +	status = "okay";
 +};
