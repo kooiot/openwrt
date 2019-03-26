@@ -174,6 +174,12 @@ define U-Boot/orangepi_2
   BUILD_DEVICES:=sun8i-h3-orangepi-2
 endef
 
+define U-Boot/tlink_x1
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=U-Boot for TLink X1 (H3)
+  BUILD_DEVICES:=sun8i-h3-tlink-x1
+endef
+
 define U-Boot/pangolin
   BUILD_SUBTARGET:=cortexa7
   NAME:=Theobroma A31-yQ7 devboard

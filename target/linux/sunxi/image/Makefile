@@ -29,14 +29,25 @@ define Build/sunxi-sdcard
 	rm -f $@.boot
 endef
 
+define Build/sysupgrade-emmc
+	rm -f $@.recovery
+	mkfs.fat -C $@.recovery 3070
+
+	./gen_sunxi_emmc_img.sh $@ \
+		$(IMAGE_KERNEL) \
+		$@.recovery \
+		$(IMAGE_ROOTFS)
+endef
+
 # why \x00\x00\x00\x00 for zImage-initramfs
 define Device/Default
   PROFILES := Default
   DEVICE_VARS := SUNXI_DTS SUNXI_UBOOT
   KERNEL_NAME := zImage
   KERNEL := kernel-bin | uImage none
-  IMAGES := sdcard.img.gz
+  IMAGES := sdcard.img.gz sysupgrade.bin
   IMAGE/sdcard.img.gz := sunxi-sdcard | append-metadata | gzip
+  IMAGE/sysupgrade.bin := append-kernel | append-rootfs | pad-rootfs | append-metadata
 endef
 
 include cortex-a7.mk

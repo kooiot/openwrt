@@ -178,6 +178,18 @@ endef
 TARGET_DEVICES += sun8i-h3-orangepi-2
 
 
+define Device/sun8i-h3-tlink-x1
+  DEVICE_TITLE:=KooIoT TLink X1
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
+	 kmod-usb-net kmod-usb-net-rtl8152 \
+	 kmod-leds-gpio kmod-ledtrig-heartbeat
+  SUPPORTED_DEVICES:=kooiot,tlink-x1
+  SUNXI_DTS:=sun8i-h3-tlink-x1
+endef
+
+TARGET_DEVICES += sun8i-h3-tlink-x1
+
+
 define Device/sun7i-a20-pcduino3
   DEVICE_TITLE:=LinkSprite pcDuino3
   DEVICE_PACKAGES:=kmod-sun4i-emac kmod-rtc-sunxi kmod-ata-core kmod-ata-sunxi kmod-rtl8xxxu rtl8188eu-firmware
