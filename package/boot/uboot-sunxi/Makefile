@@ -241,6 +241,7 @@ UBOOT_TARGETS := \
 	nanopi_m1_plus \
 	nanopi_neo \
 	nanopi_neo_plus2 \
+	tlink_x1 \
 	orangepi_r1 \
 	orangepi_pc \
 	orangepi_one \

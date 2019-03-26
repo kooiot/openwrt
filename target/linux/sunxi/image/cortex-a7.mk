@@ -182,7 +182,8 @@ define Device/sun8i-h3-tlink-x1
   DEVICE_TITLE:=KooIoT TLink X1
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
 	 kmod-usb-net kmod-usb-net-rtl8152 \
-	 kmod-leds-gpio kmod-ledtrig-heartbeat
+	 kmod-leds-gpio kmod-ledtrig-heartbeat \
+	 kmod-rtc-rx8010
   SUPPORTED_DEVICES:=kooiot,tlink-x1
   SUNXI_DTS:=sun8i-h3-tlink-x1
 endef
