@@ -14,7 +14,7 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
 +CONFIG_MACH_SUN8I_H3=y
-+CONFIG_DRAM_CLK=408
++CONFIG_DRAM_CLK=576
 +CONFIG_DRAM_ZQ=3881979
 +CONFIG_DRAM_ODT_EN=y
 +CONFIG_MMC_SUNXI_SLOT_EXTRA=2
@@ -33,7 +33,7 @@
 +CONFIG_SYS_USB_EVENT_POLL_VIA_INT_QUEUE=y
 --- /dev/null
 +++ b/arch/arm/dts/sun8i-h3-tlink-x1.dts
-@@ -0,0 +1,59 @@
+@@ -0,0 +1,71 @@
 +/*
 + * Copyright (C) 2019 Dirk Chang <dirk@kooiot.com>
 + *
@@ -92,4 +92,16 @@
 +	phy1: ethernet-phy@1 {
 +		reg = <1>;
 +	};
++};
++
++&usbphy {
++	status = "disabled";
++};
++
++&ohci3 {
++	status = "disabled";
++};
++
++&ehci3 {
++	status = "disabled";
 +};

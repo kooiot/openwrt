@@ -29,16 +29,6 @@ define Build/sunxi-sdcard
 	rm -f $@.boot
 endef
 
-define Build/sysupgrade-emmc
-	rm -f $@.recovery
-	mkfs.fat -C $@.recovery 3070
-
-	./gen_sunxi_emmc_img.sh $@ \
-		$(IMAGE_KERNEL) \
-		$@.recovery \
-		$(IMAGE_ROOTFS)
-endef
-
 # why \x00\x00\x00\x00 for zImage-initramfs
 define Device/Default
   PROFILES := Default
