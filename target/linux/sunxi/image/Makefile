@@ -29,6 +29,14 @@ define Build/sunxi-sdcard
 	rm -f $@.boot
 endef
 
+define Build/sunxi-copy-uboot
+	cp -f $(STAGING_DIR_IMAGE)/$(DEVICE_NAME)-u-boot-with-spl.bin $@
+endef
+
+define Build/sunxi-copy-rootfs
+	cp -f $(IMAGE_ROOTFS) $@
+endef
+
 # why \x00\x00\x00\x00 for zImage-initramfs
 define Device/Default
   PROFILES := Default

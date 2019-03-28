@@ -186,6 +186,9 @@ define Device/sun8i-h3-tlink-x1
 	 kmod-rtc-rx8010
   SUPPORTED_DEVICES:=kooiot,tlink-x1
   SUNXI_DTS:=sun8i-h3-tlink-x1
+  IMAGES+=u-boot-with-spl.bin root.fs
+  IMAGE/u-boot-with-spl.bin:=sunxi-copy-uboot
+  IMAGE/root.fs:=sunxi-copy-rootfs
 endef
 
 TARGET_DEVICES += sun8i-h3-tlink-x1
