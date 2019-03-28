@@ -38,10 +38,12 @@ if [ ! -f ${BOOT_DIR}/u-boot-with-spl.bin ]; then
     exit 1
 fi
 
-if [ ! -f ${BOOT_DIR}/root.fs ]; then
-    echo "Error: root.fs not found."
+if [ ! -f ${BOOT_DIR}/rootfs.size ]; then
+    echo "Error: rootfs.size not found."
     exit 1
 fi
+ROOTFS_SIZE=`cat ${BOOT_DIR}/rootfs.size`
+ROOTFS_SIZE=$(( (${ROOTFS_SIZE} + 511) / 512 ))
 
 
 umount ${EMMC_DISK}* > /dev/null 2>&1
@@ -89,7 +91,7 @@ echo "ROOTFS: "$srootfs" - "$erootfs
 echo "DATAFS: "$sdatafs" - "$edatafs
 
 echo "  Creating eMMC partitions"
-echo -e "n\np\n1\n$sbootfs\n$ebootfs\nn\np\n2\n$srootfs\n$erootfs\nn\np\n3\n$sdatafs\n$edatafs\nt\n1\n83\nt\n2\n83\nt\n4\n83\nw" | fdisk ${EMMC_DISK} > /dev/null 2>&1
+echo -e "n\np\n1\n$sbootfs\n$ebootfs\nn\np\n2\n$srootfs\n$erootfs\nn\np\n3\n$sdatafs\n$edatafs\nt\n1\nb\nt\n2\n83\nt\n3\n83\nw" | fdisk ${EMMC_DISK} > /dev/null 2>&1
 echo $?
 echo "  OK."
 sync
@@ -180,7 +182,7 @@ echo "Copying file system to EMMC ..."
 echo ""
 
 #-----------------------------------------------------------------------------------------
-dd if=${BOOT_DIR}/root.fs of=${EMMC_DISK}p3 bs=1M
+dd if=/dev/mmcblk0p2 of=${EMMC_DISK}p2 bs=512 count=${ROOTFS_SIZE}
 #-----------------------------------------------------------------------------------------
 sync
 

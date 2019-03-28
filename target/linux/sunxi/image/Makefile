@@ -20,6 +20,12 @@ define Build/sunxi-sdcard
 	mcopy -i $@.boot $(STAGING_DIR_IMAGE)/$(DEVICE_NAME)-boot.scr ::boot.scr
 	mcopy -i $@.boot $(DTS_DIR)/$(SUNXI_DTS).dtb ::dtb
 	mcopy -i $@.boot $(IMAGE_KERNEL) ::uImage
+	mcopy -i $@.boot $(STAGING_DIR_IMAGE)/$(DEVICE_NAME)-u-boot-with-spl.bin ::u-boot-with-spl.bin
+
+	echo $$(stat -c%s $(IMAGE_ROOTFS)) > $@.rootfs.size
+	mcopy -i $@.boot $@.rootfs.size ::rootfs.size
+	rm -f $@.rootfs.size
+
 	./gen_sunxi_sdcard_img.sh $@ \
 		$@.boot \
 		$(IMAGE_ROOTFS) \
