@@ -186,9 +186,6 @@ define Device/sun8i-h3-tlink-x1
 	 kmod-rtc-rx8010
   SUPPORTED_DEVICES:=kooiot,tlink-x1
   SUNXI_DTS:=sun8i-h3-tlink-x1
-  IMAGES+=u-boot-with-spl.bin root.fs
-  IMAGE/u-boot-with-spl.bin:=sunxi-copy-uboot
-  IMAGE/root.fs:=sunxi-copy-rootfs
 endef
 
 TARGET_DEVICES += sun8i-h3-tlink-x1
@@ -199,12 +196,9 @@ define Device/sun8i-h3-tlink-r1
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
 	 kmod-usb-net kmod-usb-net-rtl8152 \
 	 kmod-leds-gpio kmod-ledtrig-heartbeat \
-	 kmod-rtc-rx8010
+	 kmod-rtc-hym8563 kmod-usb-net-asix
   SUPPORTED_DEVICES:=kooiot,tlink-r1
   SUNXI_DTS:=sun8i-h3-tlink-r1
-  IMAGES+=u-boot-with-spl.bin root.fs
-  IMAGE/u-boot-with-spl.bin:=sunxi-copy-uboot
-  IMAGE/root.fs:=sunxi-copy-rootfs
 endef
 
 TARGET_DEVICES += sun8i-h3-tlink-r1

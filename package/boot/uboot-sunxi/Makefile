@@ -184,7 +184,6 @@ define U-Boot/tlink_r1
   BUILD_SUBTARGET:=cortexa7
   NAME:=U-Boot for TLink R1 (H3)
   BUILD_DEVICES:=sun8i-h3-tlink-r1
-  UENV:=tlink-r1
 endef
 
 define U-Boot/pangolin
@@ -249,6 +248,7 @@ UBOOT_TARGETS := \
 	nanopi_neo \
 	nanopi_neo_plus2 \
 	tlink_x1 \
+	tlink_r1 \
 	orangepi_r1 \
 	orangepi_pc \
 	orangepi_one \
