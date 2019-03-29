@@ -1,16 +1,39 @@
---- a/arch/arm/boot/dts/Makefile
-+++ b/arch/arm/boot/dts/Makefile
-@@ -931,6 +931,7 @@
- 	sun8i-h3-orangepi-pc-plus.dtb \
+--- a/arch/arm/dts/Makefile
++++ b/arch/arm/dts/Makefile
+@@ -329,6 +329,7 @@
  	sun8i-h3-orangepi-plus.dtb \
  	sun8i-h3-orangepi-plus2e.dtb \
-+	sun8i-h3-tlink-x1.dtb \
- 	sun8i-r16-bananapi-m2m.dtb \
- 	sun8i-r16-parrot.dtb \
- 	sun8i-v3s-licheepi-zero.dtb \
+	sun8i-h3-tlink-x1.dtb \
++	sun8i-h3-tlink-r1.dtb \
+ 	sun8i-h3-nanopi-m1.dtb \
+ 	sun8i-h3-nanopi-m1-plus.dtb \
+ 	sun8i-h3-nanopi-neo.dtb \
 --- /dev/null
-+++ b/arch/arm/boot/dts/sun8i-h3-tlink-x1.dts
-@@ -0,0 +1,188 @@
++++ b/configs/tlink_r1_defconfig
+@@ -0,0 +1,20 @@
++CONFIG_ARM=y
++CONFIG_ARCH_SUNXI=y
++CONFIG_MACH_SUN8I_H3=y
++CONFIG_DRAM_CLK=576
++CONFIG_DRAM_ZQ=3881979
++CONFIG_DRAM_ODT_EN=y
++CONFIG_MMC_SUNXI_SLOT_EXTRA=2
++CONFIG_DEFAULT_DEVICE_TREE="sun8i-h3-tlink-r1"
++# CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
++CONFIG_SPL=y
++# CONFIG_SPL_I2C_SUPPORT is not set
++# CONFIG_CMD_FLASH is not set
++# CONFIG_CMD_FPGA is not set
++# CONFIG_SPL_DOS_PARTITION is not set
++# CONFIG_SPL_ISO_PARTITION is not set
++# CONFIG_SPL_EFI_PARTITION is not set
++# CONFIG_SPL_SPI_SUNXI is not set
++CONFIG_SUN8I_EMAC=y
++CONFIG_USB_EHCI_HCD=y
++CONFIG_SYS_USB_EVENT_POLL_VIA_INT_QUEUE=y
+--- /dev/null
++++ b/arch/arm/dts/sun8i-h3-tlink-r1.dts
+@@ -0,0 +1,88 @@
 +/*
 + * Copyright (C) 2019 Dirk Chang <dirk@kooiot.com>
 + *
@@ -19,12 +42,12 @@
 + * licensing only applies to this file, and not this project as a
 + * whole.
 + *
-+ *  a) This file is free software; you can redistribute it and/or
++ *  a) This library is free software; you can redistribute it and/or
 + *     modify it under the terms of the GNU General Public License as
 + *     published by the Free Software Foundation; either version 2 of the
 + *     License, or (at your option) any later version.
 + *
-+ *     This file is distributed in the hope that it will be useful,
++ *     This library is distributed in the hope that it will be useful,
 + *     but WITHOUT ANY WARRANTY; without even the implied warranty of
 + *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 + *     GNU General Public License for more details.
@@ -56,64 +79,19 @@
 +#include "sun8i-h3-nanopi.dtsi"
 +
 +/ {
-+	model = "KooIoT TLink X1";
-+	compatible = "kooiot,tlink-x1", "allwinner,sun8i-h3";
++	model = "KooIoT TLink R1";
++	compatible = "kooiot,tlink-r1", "allwinner,sun8i-h3";
 +};
 +
 +&emac {
-+	phy-handle = <&int_mii_phy>;
++	phy = <&phy1>;
 +	phy-mode = "mii";
++	allwinner,use-internal-phy;
 +	allwinner,leds-active-low;
 +	status = "okay";
-+};
-+
-+&ehci0 {
-+	status = "okay";
-+};
-+
-+&ehci1 {
-+	status = "okay";
-+};
-+
-+&ehci2 {
-+	status = "okay";
-+};
-+
-+&ehci3 {
-+	status = "okay";
-+};
-+
-+&ohci0 {
-+	status = "okay";
-+};
-+
-+&ohci1 {
-+	status = "okay";
-+};
-+
-+&ohci2 {
-+	status = "okay";
-+};
-+
-+&ohci3 {
-+	status = "okay";
-+};
-+
-+&reg_usb0_vbus {
-+	gpio = <&r_pio 0 2 GPIO_ACTIVE_HIGH>; /* PL2 */
-+	status = "okay";
-+};
-+
-+&usb_otg {
-+	dr_mode = "otg";
-+	status = "okay";
-+};
-+
-+&usbphy {
-+	usb0_id_det-gpios = <&pio 6 12 GPIO_ACTIVE_HIGH>; /* PG12 */
-+	usb0_vbus-supply = <&reg_usb0_vbus>;
-+	/* VBUS on USB host ports are always on */
-+	status = "okay";
++	phy1: ethernet-phy@1 {
++		reg = <1>;
++	};
 +};
 +
 +&mmc2 {
@@ -128,74 +106,19 @@
 +
 +&mmc2_8bit_pins {
 +	/* Increase drive strength for DDR modes */
-+	drive-strength = <40>;
++	allwinner,drive = <SUN4I_PINCTRL_40_MA>;
 +	/* eMMC is missing pull-ups */
-+	bias-pull-up;
-+};
-+
-+&ehci0 {
-+	status = "okay";
-+};
-+
-+&ehci1 {
-+	status = "okay";
-+};
-+
-+&ehci2 {
-+	status = "okay";
-+};
-+
-+&ehci3 {
-+	status = "okay";
-+};
-+
-+&ohci0 {
-+	status = "okay";
-+};
-+
-+&ohci1 {
-+	status = "okay";
-+};
-+
-+&ohci2 {
-+	status = "okay";
-+};
-+
-+&ohci3 {
-+	status = "okay";
-+};
-+
-+&reg_usb0_vbus {
-+	gpio = <&r_pio 0 2 GPIO_ACTIVE_HIGH>; /* PL2 */
-+	status = "okay";
-+};
-+
-+&usb_otg {
-+	dr_mode = "otg";
-+	status = "okay";
++	allwinner,pull = <SUN4I_PINCTRL_PULL_UP>;
 +};
 +
 +&usbphy {
-+	usb0_id_det-gpios = <&pio 6 12 GPIO_ACTIVE_HIGH>; /* PG12 */
-+	usb0_vbus-supply = <&reg_usb0_vbus>;
-+	/* VBUS on USB host ports are always on */
-+	status = "okay";
++	status = "disabled";
 +};
 +
-+&uart1 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&uart1_pins>;
-+	status = "okay";
++&ohci3 {
++	status = "disabled";
 +};
 +
-+&uart2 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&uart2_pins>;
-+	status = "okay";
-+};
-+
-+&uart3 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&uart3_pins>;
-+	status = "okay";
++&ehci3 {
++	status = "disabled";
 +};

@@ -180,6 +180,13 @@ define U-Boot/tlink_x1
   BUILD_DEVICES:=sun8i-h3-tlink-x1
 endef
 
+define U-Boot/tlink_r1
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=U-Boot for TLink R1 (H3)
+  BUILD_DEVICES:=sun8i-h3-tlink-r1
+  UENV:=tlink-r1
+endef
+
 define U-Boot/pangolin
   BUILD_SUBTARGET:=cortexa7
   NAME:=Theobroma A31-yQ7 devboard

@@ -1,16 +1,16 @@
 --- a/arch/arm/boot/dts/Makefile
 +++ b/arch/arm/boot/dts/Makefile
-@@ -931,6 +931,7 @@
- 	sun8i-h3-orangepi-pc-plus.dtb \
+@@ -932,6 +932,7 @@
  	sun8i-h3-orangepi-plus.dtb \
  	sun8i-h3-orangepi-plus2e.dtb \
-+	sun8i-h3-tlink-x1.dtb \
+	sun8i-h3-tlink-x1.dtb \
++	sun8i-h3-tlink-r1.dtb \
  	sun8i-r16-bananapi-m2m.dtb \
  	sun8i-r16-parrot.dtb \
  	sun8i-v3s-licheepi-zero.dtb \
 --- /dev/null
-+++ b/arch/arm/boot/dts/sun8i-h3-tlink-x1.dts
-@@ -0,0 +1,188 @@
++++ b/arch/arm/boot/dts/sun8i-h3-tlink-r1.dts
+@@ -0,0 +1,196 @@
 +/*
 + * Copyright (C) 2019 Dirk Chang <dirk@kooiot.com>
 + *
@@ -56,8 +56,16 @@
 +#include "sun8i-h3-nanopi.dtsi"
 +
 +/ {
-+	model = "KooIoT TLink X1";
-+	compatible = "kooiot,tlink-x1", "allwinner,sun8i-h3";
++	model = "KooIoT TLink R1";
++	compatible = "kooiot,tlink-r1", "allwinner,sun8i-h3";
++
++	aliases {
++		serial1 = &uart1;
++	};
++
++	chosen {
++		stdout-path = "serial1:115200n8";
++	};
 +};
 +
 +&emac {
