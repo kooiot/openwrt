@@ -1,0 +1,60 @@
+#!/bin/sh
+
+. /lib/functions/uci-defaults.sh
+
+
+uci_mount_data_disk() {
+	board_config_update
+
+	local folder="$1"
+	local partdev="$2"
+
+	json_select_object fstab
+
+	json_select_object "data_disk"
+	json_add_string target "$folder"
+	json_add_string device "$partdev"
+	json_add_string fstype ext4
+	json_add_string options fw
+	json_add_int enabled_fsck 1
+	json_add_int enabled 1
+
+	json_select ..
+
+	json_select ..
+
+	board_config_flush
+}
+
+part_data_disk() {
+	. /lib/upgrade/common.sh
+
+	local diskdev partdev diff
+
+	export_bootdevice && export_partdevice diskdev -2 || {
+		echo "Unable to determine boot device"
+		return 1
+	}
+
+	export_bootdevice && export_partdevice partdev 1 || {
+		echo -e "n\n\n\n1048576\n\nt\n\n83\nw" | fdisk /dev/${diskdev} > /dev/null 2>&1
+		partx -a - "/dev/${diskdev}"
+
+		export_bootdevice && export_partdevice partdev 1 || {
+			echo "Unable to determine data disk partition"
+			return 1
+		}
+		mkfs.ext4 -L data /dev/${partdev}
+	}
+
+	#uci_mount_data_disk "/root" partdev
+}
+
+case "$(board_name)" in
+"kooiot,tlink-x1"|\
+"kooiot,tlink-r1")
+	part_data_disk
+	;;
+esac
+
+exit 0
