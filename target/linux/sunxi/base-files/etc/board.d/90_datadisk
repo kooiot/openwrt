@@ -31,7 +31,7 @@ part_data_disk() {
 	local diskdev partdev diff
 
 	export_bootdevice && export_partdevice diskdev -2 || {
-		echo "Unable to determine boot device"
+		echo "Unable to determine boot device" > /dev/console
 		return 1
 	}
 
@@ -40,7 +40,7 @@ part_data_disk() {
 		partx -a "/dev/${diskdev}"
 
 		export_bootdevice && export_partdevice partdev 1 || {
-			echo "Unable to determine data disk partition"
+			echo "Unable to determine data disk partition" > /dev/console
 			return 1
 		}
 		mkfs.ext4 -L data /dev/${partdev}

@@ -3,7 +3,7 @@
 export_tlink_efuse_mac() {
 	local var="$1"
 	local offset="$2"
-	local nvmem_file=/sys/devices/platform/soc/1c14000.eeprom/sunxi-sid0/nvmem
+	local nvmem_file="/sys/devices/platform/soc/1c14000.eeprom/sunxi-sid0/nvmem"
 	local mac_val oem nv1 mac_base
 
 	[ -z "$var" -o -z "$offset" ] && return -1
