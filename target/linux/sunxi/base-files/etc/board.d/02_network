@@ -7,6 +7,22 @@
 
 board_config_update
 
+tlink_set_mac() {
+	. /lib/functions/tlink.sh
+	local eth_name="$1"
+	local eth_offset="$2"
+	local mac
+
+	export_tlink_efuse_mac mac ${eth_offset} || {
+		echo "Unable to load MAC from cpu efuse"
+		return 1
+	}
+	
+	ucidef_set_interface_macaddr $eth_name $mac
+
+	return 0
+}
+
 case "$(board_name)" in
 "olimex,a20-olinuxino-micro")
 	ucidef_set_interface_lan 'wlan0'
@@ -17,6 +33,11 @@ case "$(board_name)" in
 	;;
 "xunlong,orangepi-r1")
 	ucidef_set_interfaces_lan_wan "eth0" "eth1"
+	;;
+"kooiot,tlink-x1"|\
+"kooiot,tlink-r1")
+	ucidef_set_interface_lan "eth0"
+	tlink_set_mac "eth0" 0
 	;;
 *)
 	ucidef_set_interface_lan 'eth0'

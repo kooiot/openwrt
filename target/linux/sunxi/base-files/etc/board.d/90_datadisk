@@ -2,28 +2,27 @@
 
 . /lib/functions/uci-defaults.sh
 
+board_config_update
 
 uci_mount_data_disk() {
-	board_config_update
 
 	local folder="$1"
 	local partdev="$2"
 
 	json_select_object fstab
 
-	json_select_object "data_disk"
+	json_add_object "data_disk"
 	json_add_string target "$folder"
 	json_add_string device "$partdev"
 	json_add_string fstype ext4
 	json_add_string options fw
 	json_add_int enabled_fsck 1
 	json_add_int enabled 1
+	json_close_object
 
 	json_select ..
 
 	json_select ..
-
-	board_config_flush
 }
 
 part_data_disk() {
@@ -38,7 +37,7 @@ part_data_disk() {
 
 	export_bootdevice && export_partdevice partdev 1 || {
 		echo -e "n\n\n\n1048576\n\nt\n\n83\nw" | fdisk /dev/${diskdev} > /dev/null 2>&1
-		partx -a - "/dev/${diskdev}"
+		partx -a "/dev/${diskdev}"
 
 		export_bootdevice && export_partdevice partdev 1 || {
 			echo "Unable to determine data disk partition"
@@ -47,7 +46,7 @@ part_data_disk() {
 		mkfs.ext4 -L data /dev/${partdev}
 	}
 
-	#uci_mount_data_disk "/root" partdev
+	# uci_mount_data_disk "/root" partdev
 }
 
 case "$(board_name)" in
@@ -56,5 +55,7 @@ case "$(board_name)" in
 	part_data_disk
 	;;
 esac
+
+board_config_flush
 
 exit 0
