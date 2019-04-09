@@ -1,14 +1,44 @@
 --- a/arch/arm/boot/dts/sunxi-h3-h5.dtsi
 --- b/arch/arm/boot/dts/sunxi-h3-h5.dtsi
-@@ -391,6 +391,11 @@
+@@ -391,6 +391,31 @@
  			clocks = <&osc24M>;
  		};
  
 +		sid: eeprom@01c14000 {
 +			compatible = "allwinner,sun8i-h3-sid";
 +			reg = <0x01c14000 0x100>;
++
++			/* Data cells */
++			oem_program: prog@10 {
++				reg = <0x10 0x4>;
++			};
++			sid_nv1: nv1@14 {
++				reg = <0x14 0x4>;
++			};
++			sid_nv2: nv2@14 {
++				reg = <0x14 0x8>;
++			};
++			rsakey_hash: rsa@20 {
++				reg = <0x20 0x14>;
++			};
++			thermal_calibration: calib@34 {
++				reg = <0x34 0x8>;
++			};
++			device_sn: sn@d4 {
++				reg = <0xd4 0x18>;
++			};
 +		};
 +
  		emac: ethernet@1c30000 {
  			compatible = "allwinner,sun8i-h3-emac";
  			syscon = <&syscon>;
+@@ -435,6 +435,8 @@
+ 			reset-names = "stmmaceth";
+ 			clocks = <&ccu CLK_BUS_EMAC>;
+ 			clock-names = "stmmaceth";
++			nvmem-cells = <&sid_nv1>;
++			nvmem-cell-names = "nv_mac";
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+ 			status = "disabled";
+

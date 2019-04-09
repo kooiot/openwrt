@@ -1,0 +1,54 @@
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+@@ -34,6 +34,7 @@
+ #include <linux/if_ether.h>
+ #include <linux/crc32.h>
+ #include <linux/mii.h>
++#include <linux/nvmem-consumer.h>
+ #include <linux/if.h>
+ #include <linux/if_vlan.h>
+ #include <linux/dma-mapping.h>
+@@ -2123,6 +2124,34 @@
+ 	return ret;
+ }
+ 
++
++void eth_hw_addr_nvmem_sun8i(struct device* device, struct net_device *dev)
++{
++	struct nvmem_cell *cell;
++	ssize_t cell_size;
++	u64 *cell_data;
++	int cell_mac;
++
++	cell = devm_nvmem_cell_get(device, "nv_mac");
++	if (IS_ERR(cell)) {
++		netdev_info(dev, "Cannot load MAC address from nvmem, using random MAC address.\n");
++		return eth_hw_addr_random(dev);
++	} else {
++		netdev_info(dev, "Using the MAC address from nvmem.\n");
++		cell_data = (u64 *)nvmem_cell_read(cell, &cell_size);
++		devm_nvmem_cell_put(device, cell);
++
++		cell_mac = be32_to_cpu(cell_data[0] & GENMASK(31, 0));
++		dev->addr_assign_type = NET_ADDR_RANDOM;
++		dev->dev_addr[0] = 0x1E;
++		dev->dev_addr[1] = 0x4B;
++		dev->dev_addr[2] = (cell_mac >> 24) & 0xFF;
++		dev->dev_addr[3] = (cell_mac >> 16) & 0xFF;
++		dev->dev_addr[4] = (cell_mac >> 8) & 0xFF;
++		dev->dev_addr[5] = cell_mac & 0xFF;
++	}
++}
++
+ /**
+  * stmmac_check_ether_addr - check if the MAC addr is valid
+  * @priv: driver private structure
+@@ -2136,7 +2166,7 @@
+ 		priv->hw->mac->get_umac_addr(priv->hw,
+ 					     priv->dev->dev_addr, 0);
+ 		if (!is_valid_ether_addr(priv->dev->dev_addr))
+-			eth_hw_addr_random(priv->dev);
++			eth_hw_addr_nvmem_sun8i(priv->device, priv->dev);
+ 		netdev_info(priv->dev, "device MAC address %pM\n",
+ 			    priv->dev->dev_addr);
+ 	}
