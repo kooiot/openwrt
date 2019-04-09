@@ -28,7 +28,7 @@
 +				reg = <0xd4 0x18>;
 +			};
 +			ethaddr: ethaddr@ec {
-+				reg = <0xec, 0x6>;
++				reg = <0xec 0x6>;
 +			};
 +		};
 +
