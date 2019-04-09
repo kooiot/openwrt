@@ -1,6 +1,6 @@
 --- a/arch/arm/boot/dts/sunxi-h3-h5.dtsi
 --- b/arch/arm/boot/dts/sunxi-h3-h5.dtsi
-@@ -391,6 +391,31 @@
+@@ -391,6 +391,34 @@
  			clocks = <&osc24M>;
  		};
  
@@ -24,20 +24,23 @@
 +			thermal_calibration: calib@34 {
 +				reg = <0x34 0x8>;
 +			};
-+			device_sn: sn@d4 {
++			device_sn: device_sn@d4 {
 +				reg = <0xd4 0x18>;
++			};
++			ethaddr: ethaddr@ec {
++				reg = <0xec, 0x6>;
 +			};
 +		};
 +
  		emac: ethernet@1c30000 {
  			compatible = "allwinner,sun8i-h3-emac";
  			syscon = <&syscon>;
-@@ -435,6 +435,8 @@
+@@ -435,6 +462,8 @@
  			reset-names = "stmmaceth";
  			clocks = <&ccu CLK_BUS_EMAC>;
  			clock-names = "stmmaceth";
-+			nvmem-cells = <&sid_nv1>;
-+			nvmem-cell-names = "nv_mac";
++			nvmem-cells = <&ethaddr &sid_nv1>;
++			nvmem-cell-names = "mac-address nv_mac";
  			#address-cells = <1>;
  			#size-cells = <0>;
  			status = "disabled";
