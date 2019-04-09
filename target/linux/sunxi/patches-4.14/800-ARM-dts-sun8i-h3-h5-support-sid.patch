@@ -1,6 +1,6 @@
 --- a/arch/arm/boot/dts/sunxi-h3-h5.dtsi
 --- b/arch/arm/boot/dts/sunxi-h3-h5.dtsi
-@@ -391,6 +391,34 @@
+@@ -391,6 +391,28 @@
  			clocks = <&osc24M>;
  		};
  
@@ -9,17 +9,14 @@
 +			reg = <0x01c14000 0x100>;
 +
 +			/* Data cells */
-+			oem_program: prog@10 {
-+				reg = <0x10 0x4>;
++			chipid: chipid@00 {
++				reg = <0x00 0x10>;
 +			};
-+			sid_nv1: nv1@14 {
++			mac_nv1: mac_nv1@14 {
 +				reg = <0x14 0x4>;
 +			};
-+			sid_nv2: nv2@14 {
++			mac_nv2: mac_nv2@14 {
 +				reg = <0x14 0x8>;
-+			};
-+			rsakey_hash: rsa@20 {
-+				reg = <0x20 0x14>;
 +			};
 +			thermal_calibration: calib@34 {
 +				reg = <0x34 0x8>;
@@ -27,20 +24,17 @@
 +			device_sn: device_sn@d4 {
 +				reg = <0xd4 0x18>;
 +			};
-+			ethaddr: ethaddr@ec {
-+				reg = <0xec 0x6>;
-+			};
 +		};
 +
  		emac: ethernet@1c30000 {
  			compatible = "allwinner,sun8i-h3-emac";
  			syscon = <&syscon>;
-@@ -435,6 +462,8 @@
+@@ -435,6 +456,8 @@
  			reset-names = "stmmaceth";
  			clocks = <&ccu CLK_BUS_EMAC>;
  			clock-names = "stmmaceth";
-+			nvmem-cells = <&ethaddr &sid_nv1>;
-+			nvmem-cell-names = "mac-address nv_mac";
++			nvmem-cells = <&chipid>;
++			nvmem-cell-names = "chipid";
  			#address-cells = <1>;
  			#size-cells = <0>;
  			status = "disabled";
