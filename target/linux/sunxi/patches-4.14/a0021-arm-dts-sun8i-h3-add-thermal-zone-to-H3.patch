@@ -20,7 +20,7 @@ index 5907b54b6e1d..d2c85be8a2d0 100644
  	};
  
 +	thermal-zones {
-+		cpu-thermal {
++		cpu_thermal: cpu-thermal {
 +			/* milliseconds */
 +			polling-delay-passive = <250>;
 +			polling-delay = <1000>;
