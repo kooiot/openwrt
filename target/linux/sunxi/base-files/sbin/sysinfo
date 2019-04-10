@@ -1,0 +1,261 @@
+#! /bin/sh
+#################################################### -*- shell-script -*- ######
+# File name    : show-sysinfo
+# Create Date  : 2015-09(September)-28 Monday  02:58:21 (+0000,UTC)
+# Author       : ZhengYi <yzheng@techyauld.com>
+#
+# License      :
+#     Copyright(C) 2014, 2015
+#     Copyright(C) Techyauld Inc.
+#                  All rights reserved
+#
+#--------1---------2---------3---------4---------5---------6---------7---------8
+target=""
+
+. /lib/functions.sh
+
+case "$(board_name)" in
+"kooiot,tlink-x1"|\
+"kooiot,tlink-r1")
+    fm_version=1.00
+	;;
+*)
+    fm_version=0.00
+	;;
+esac
+
+show_help(){
+    cat <<EOF
+sysinfo  [-h] <sw|psn|temp|hw|module|mac|all>
+
+    -h          This help information
+    sw          Software information
+    hw          Hardware information
+    temp        CPU temperature
+    frq         CPU frequency
+    psn         Product serial number
+    module      The 2G or 4G module
+    mac         The current MAC addresses
+    all         All
+EOF
+}
+
+parse_cmdline(){
+    while getopts h  opt
+    do
+        case $opt in
+            h)
+                show_help
+                exit 0
+                ;;
+        esac
+    done
+
+    shift $(($OPTIND - 1))
+
+    if [ $# -eq 0 ]; then
+        target="all"
+    else
+        case $1 in
+            sw)
+                target="software";
+                ;;
+            temp)
+                target="temp";
+                ;;
+            frq)
+                target="frq";
+                ;;
+            hw)
+                target="hardware";
+                ;;
+            module)
+                target="module";
+                ;;
+            mac)
+                target="mac"
+                ;;
+            psn)
+                target="psn"
+                ;;
+            all)
+                target="all"
+                ;;
+            *)
+                echo "[ERROR] Un-recognized target \"$1\"" >&2
+                exit 1
+                ;;
+        esac
+    fi
+}
+
+time_unix_to_human(){
+    local  unix_time=$(( $1 ))
+
+    echo "$(date '+%Y-%m-%d %H:%M:%S(%z)' -d @${unix_time}) (${unix_time} secs since epoch)"
+}
+
+dt_parse_int_be(){
+    local sysfs_file=$1
+    local val=0
+
+    # big endian
+    for x in $(hexdump -v  -e'/ 1 "0x%02x "' ${sysfs_file});
+    do
+        val=$(( ($val << 8) + $x ))
+    done
+
+    echo $val
+}
+
+dump_software_info(){ # software info
+    local openwrt_distrib="unknown"
+    local kernel_version=$(uname -a)
+
+    if [ -r /etc/openwrt_release ]; then
+        openwrt_distrib=$(sed 's/^DISTRIB_DESCRIPTION=//g; t; /^.*$/d' /etc/openwrt_release 2> /dev/null);
+    fi
+
+    cat <<EOF
+Software information:
+  Firmware Version:  $fm_version
+  Kernel Version:    ${kernel_version}
+  OpenWRT Version:    ${openwrt_distrib}
+
+EOF
+}
+
+dump_thermal_info(){
+    local readonly cpu_thermal_zone=/sys/class/thermal/thermal_zone0
+
+    cat <<EOF
+CPU temperature(degreeC X 1000):
+  current:      $(cat ${cpu_thermal_zone}/temp)
+  passive:      $(cat ${sysfs_dir_hwinfo}/trip_point_0_temp)
+  critical:     $(cat ${sysfs_dir_hwinfo}/trip_point_3_temp)
+
+EOF
+}
+
+dump_cpu_frq_info(){
+    local readonly cpu_freq_policy0=/sys/devices/system/cpu/cpufreq/policy0/
+
+    cat <<EOF
+CPU frequency(hz):
+  current:  $(cat ${cpu_freq_policy0}/cpuinfo_cur_freq)
+  min:      $(cat ${cpu_freq_policy0}/cpuinfo_min_freq)
+  max:      $(cat ${cpu_freq_policy0}/cpuinfo_max_freq)
+
+EOF
+}
+
+dump_hardware_info(){
+    local readonly sysfs_dir_cpuinfo="/sys/firmware/devicetree/base/cpus/cpu@0/compatible"
+    local readonly sysfs_emmc_serial="/sys/class/block/mmcblk1/device/serial"
+
+    cpu_hardware=$(sed 's/^Hardware[ \t]*:\ //g; t; /^.*$/d' /proc/cpuinfo 2> /dev/null)
+	device_sn=$(dd if=/dev/mmcblk1 bs=1 count=8 skip=410112 2>/dev/null | hexdump -v -n 32 -e '/1 "%02x"' 2>/dev/null)
+
+    cat <<EOF
+Hardware information:
+  Board:        $(board_name)
+  Device SN:    ${device_sn}
+  Modle:        $(cat /tmp/sysinfo/model)
+  CPU Type:     $(cat ${sysfs_dir_cpuinfo})
+  eMMC Serial:  $(cat ${sysfs_emmc_serial} 2>/dev/null)
+EOF
+
+    for i in /sys/class/net/eth*;
+    do
+        if [ -f ${i}/address ]; then
+            echo "  MAC eth${i##/sys/class/net/eth}:     $(cat ${i}/address)"
+        fi
+        echo ""
+    done    
+}
+
+dump_psn_info(){
+	device_sn=$(dd if=/dev/mmcblk1 bs=1 count=8 skip=410112 2>/dev/null | hexdump -v -n 32 -e '/1 "%02x"' 2>/dev/null)
+    cat <<EOF
+  PSN:          ${device_sn}
+EOF
+}
+
+dump_module_info(){
+    local module_model=""
+    local module_type=""
+
+    if [ -c "/dev/ttyUSB0" ];then
+        module_type="4G module"
+        case "$board" in
+            *Q2040) module_model="ME909s-821" ;;
+            *tgw303x) module_model="SIM7600CE" ;;
+        esac
+    else
+        module_type="2G module"
+        case "$board" in
+            *Q2040) module_model="ERROR" ;;
+            *tgw303x) module_model="SIM800C" ;;
+        esac
+    fi
+    module_sim=`cat /etc/ppp/imsi.txt 2>/dev/null`
+    cat <<EOF
+2G/4G module info:
+  Type:     ${module_type}
+  Modle:    ${module_model}
+  SimCard:  $module_sim
+
+EOF
+}
+
+dump_netdev_mac(){
+    for i in /sys/class/net/eth*;
+    do
+        if [ -f ${i}/address ]; then
+            echo "MAC eth${i##/sys/class/net/eth}:"
+            echo "  $(cat ${i}/address)"
+        fi
+        echo ""
+    done
+}
+
+show_sysinfo(){
+    local tgt=$1
+
+    case $tgt in
+        "software")
+            dump_software_info
+            ;;
+        "temp")
+            dump_thermal_info
+            ;;
+        "frq")
+            dump_cpu_frq_info
+            ;;
+        "hardware")
+            dump_hardware_info
+            ;;
+        "module")
+            dump_module_info
+            ;;
+        "mac")
+            dump_netdev_mac
+            ;;
+        "psn")
+            dump_psn_info
+            ;;
+        "all")
+            dump_software_info
+            dump_hardware_info
+            dump_module_info
+            dump_thermal_info
+            dump_cpu_frq_info
+            ;;
+    esac
+}
+
+parse_cmdline  $@
+show_sysinfo   $target
+
+################################################################################
+#---------------------------- The End of This File -----------------------------

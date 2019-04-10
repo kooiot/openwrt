@@ -18,7 +18,7 @@ diff --git a/arch/arm/boot/dts/sunxi-h3-h5.dtsi b/arch/arm/boot/dts/sunxi-h3-h5.
 index fc6131315c47..8fde0f6c16e4 100644
 --- a/arch/arm/boot/dts/sunxi-h3-h5.dtsi
 +++ b/arch/arm/boot/dts/sunxi-h3-h5.dtsi
-@@ -488,6 +488,17 @@
+@@ -488,6 +488,15 @@
  			};
  		};
  
@@ -28,8 +28,6 @@ index fc6131315c47..8fde0f6c16e4 100644
 +			clocks = <&ccu CLK_BUS_THS>, <&ccu CLK_THS>;
 +			clock-names = "bus", "mod";
 +			resets = <&ccu RST_BUS_THS>;
-+			nvmem-cells = <&thermal_calibration>;
-+			nvmem-cell-names = "calibration";
 +			#io-channel-cells = <0>;
 +		};
 +

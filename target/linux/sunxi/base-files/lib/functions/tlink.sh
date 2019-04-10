@@ -29,6 +29,44 @@ export_tlink_efuse_mac() {
 	return 0
 }
 
+gpio_out()
+{
+	local gpio_pin
+	local value
+
+	gpio_pin="$1"
+	value="$2"
+
+	local gpio_path="/sys/class/gpio/gpio${gpio_pin}"
+	# export GPIO pin for access
+	[ -d "$gpio_path" ] || {
+		echo "$gpio_pin" >/sys/class/gpio/export
+		# we need to wait a bit until the GPIO appears
+		[ -d "$gpio_path" ] || sleep 1
+		echo out >"$gpio_path/direction"
+	}
+	# write 0 or 1 to the "value" field
+	{ [ "$value" = "0" ] && echo "0" || echo "1"; } >"$gpio_path/value"
+}
+
+gpio_in()
+{
+	local gpio_pin
+
+	gpio_pin="$1"
+
+	local gpio_path="/sys/class/gpio/gpio${gpio_pin}"
+	# export GPIO pin for access
+	[ -d "$gpio_path" ] || {
+		echo "$gpio_pin" >/sys/class/gpio/export
+		# we need to wait a bit until the GPIO appears
+		[ -d "$gpio_path" ] || sleep 1
+		echo in >"$gpio_path/direction"
+	}
+	# read the "value" field
+	return $(cat $gpio_path/value)
+}
+
 #test() {
 #	local mac
 #	read_tlink_efuse_mac mac 1
