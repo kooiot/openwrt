@@ -4,7 +4,6 @@
 #
 
 . /lib/functions/uci-defaults.sh
-. /lib/functions/tlink.sh
 
 board_config_update
 
@@ -35,8 +34,7 @@ case "$(board_name)" in
 	;;
 "kooiot,tlink-x1"|\
 "kooiot,tlink-r1")
-	ucidef_set_interface_lan "eth0"
-	tlink_set_mac "lan" 0
+	ucidef_set_interface_lan_wan "eth0" "eth1"
 	;;
 *)
 	ucidef_set_interface_lan 'eth0'
