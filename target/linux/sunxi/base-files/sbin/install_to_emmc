@@ -16,9 +16,10 @@ echo ""
 ROOTFS_FORMAT=${1}
 
 EMMC_DISK="/dev/mmcblk1"
-EMMC_FIRST_SECTOR=96
-EMMC_BOOTFS_SIZE=$((40 * 1024 * 1024))
+EMMC_FIRST_SECTOR=2048
+EMMC_BOOTFS_SIZE=$((20 * 1024 * 1024))
 EMMC_ROOTFS_SIZE=$((256 * 1024 * 1024))
+EMMC_DATA_FIRST_SECTOR=$(( 512 * 1024 * 1024))
 
 BOOT_DIR="/tmp/boot"
 BOOTFS_DIR="/tmp/_boot"
@@ -79,11 +80,11 @@ sleep 1
 
 echo "Partitioning EMMC ..."
 
-sbootfs=$(( $EMMC_FIRST_SECTOR * 512 ))
+sbootfs=$(( $EMMC_FIRST_SECTOR ))
 ebootfs=$(( $EMMC_BOOTFS_SIZE / 512 + $sbootfs - 1 ))
 srootfs=$(( $ebootfs + 1 ))
 erootfs=$(( $EMMC_ROOTFS_SIZE / 512 + $srootfs -1 ))
-sdatafs=$(( $erootfs + 1 ))
+sdatafs=$(( $EMMC_DATA_FIRST_SECTOR ))
 edatafs=""
 
 echo "BOOTFS: "$sbootfs" - "$ebootfs
