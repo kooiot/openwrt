@@ -91,6 +91,7 @@ CONFIG_DEFAULT_kmod-ledtrig-heartbeat=y
 CONFIG_DEFAULT_kmod-rtc-rx8010=y
 CONFIG_DEFAULT_kmod-rtc-sunxi=y
 CONFIG_DEFAULT_kmod-usb-net=y
+CONFIG_DEFAULT_kmod-usb-net-asix=y
 CONFIG_DEFAULT_kmod-usb-net-rtl8152=y
 CONFIG_DEFAULT_libc=y
 CONFIG_DEFAULT_libgcc=y

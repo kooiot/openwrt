@@ -43,6 +43,23 @@ endef
 $(eval $(call KernelPackage,net-rtl8192su))
 
 
+define KernelPackage/net-rtl8723be
+  SUBMENU:=$(WIRELESS_MENU)
+  TITLE:=RTL8723BE PCI(e) WIFI chips
+  DEPENDS:=@USB_SUPPORT +@DRIVER_WEXT_SUPPORT +kmod-usb-core +rtl8723be-firmware
+  KCONFIG:=CONFIG_RTL8273BE
+  FILES:=$(LINUX_DIR)/drivers/net/wireless/realtek/rtlwifi/rtl8723be.ko
+  AUTOLOAD:=$(call AutoProbe,net-rtl8723be)
+endef
+
+define KernelPackage/net-rtl8723be/description
+ Kernel modules for RealTek RTL8723BE 802.11n
+ PCIe wireless network adapters support.
+endef
+
+$(eval $(call KernelPackage,net-rtl8723be))
+
+
 define KernelPackage/owl-loader
   SUBMENU:=$(WIRELESS_MENU)
   TITLE:=Owl loader for initializing Atheros PCI(e) Wifi chips
