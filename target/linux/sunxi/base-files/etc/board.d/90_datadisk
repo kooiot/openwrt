@@ -36,17 +36,19 @@ part_data_disk() {
 	}
 
 	export_bootdevice && export_partdevice partdev 1 || {
-		echo -e "n\n\n\n1048576\n\nt\n\n83\nw" | fdisk /dev/${diskdev} > /dev/null 2>&1
-		partx -a "/dev/${diskdev}"
+		echo "Unable to determine data partition" > /dev/console
 
-		export_bootdevice && export_partdevice partdev 1 || {
-			echo "Unable to determine data disk partition" > /dev/console
-			return 1
-		}
-		mkfs.ext4 -L data /dev/${partdev}
+		#echo -e "n\n\n\n1048576\n\nt\n\n83\nw" | fdisk /dev/${diskdev} > /dev/null 2>&1
+		#partx -a "/dev/${diskdev}"
+
+		#export_bootdevice && export_partdevice partdev 1 || {
+		#	echo "Unable to determine data disk partition" > /dev/console
+		#	return 1
+		#}
+		#mkfs.ext4 -L data /dev/${partdev}
 	}
 
-	# uci_mount_data_disk "/root" partdev
+	uci_mount_data_disk "/root" partdev
 }
 
 case "$(board_name)" in

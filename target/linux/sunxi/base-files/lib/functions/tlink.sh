@@ -67,6 +67,17 @@ gpio_in()
 	return $(cat $gpio_path/value)
 }
 
+device_sn()
+{
+	[ -e /tmp/sysinfo/device_sn ] && cat /tmp/sysinfo/device_sn || echo "UNKNOWN_DEVICE_SN"
+}
+
+ioe_cloud()
+{
+	[ -e /tmp/sysinfo/cloud ] && cat /tmp/sysinfo/cloud || echo "cloud.kooiot.com"
+}
+
+
 #test() {
 #	local mac
 #	read_tlink_efuse_mac mac 1
