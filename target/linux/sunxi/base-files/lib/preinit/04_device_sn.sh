@@ -3,8 +3,8 @@ do_device_sn_generic() {
 	if [ -b "$mmc_disk" -o -f "$mmc_disk" ]; then
 
 		device_sn=$(dd if=/dev/mmcblk1 \
-			bs=1 count=8 skip=410112 2>/dev/null | \
-			hexdump -v -n 32 -e '/1 "%02x"' 2>/dev/null)
+			bs=1 count=16 skip=410112 2>/dev/null | \
+			hexdump -v -e '/1 "%c"' 2>/dev/null)
 
 		mkdir -p /tmp/sysinfo
 		[ -e /tmp/sysinfo/device_sn ] || \
