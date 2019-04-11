@@ -29,8 +29,7 @@ export_tlink_efuse_mac() {
 	return 0
 }
 
-gpio_out()
-{
+gpio_out() {
 	local gpio_pin
 	local value
 
@@ -49,8 +48,7 @@ gpio_out()
 	{ [ "$value" = "0" ] && echo "0" || echo "1"; } >"$gpio_path/value"
 }
 
-gpio_in()
-{
+gpio_in() {
 	local gpio_pin
 
 	gpio_pin="$1"
@@ -67,14 +65,26 @@ gpio_in()
 	return $(cat $gpio_path/value)
 }
 
-product_sn()
-{
+product_sn() {
 	[ -e /tmp/sysinfo/product_sn ] && cat /tmp/sysinfo/product_sn || echo "UNKNOWN_DEVICE_SN"
 }
 
-ioe_cloud()
-{
+ioe_cloud() {
 	[ -e /tmp/sysinfo/cloud ] && cat /tmp/sysinfo/cloud || echo "cloud.kooiot.com"
+}
+
+avoid_empty_passwd() {
+	if ( grep -qs '^root::' /etc/shadow && \
+		 [ -z "$FAILSAFE" ] )
+	then
+		local default_pw='root:$1$pMlMRXYW$H06ycPKhVzpVfSsy2zc1P0:17997'
+		sed -i "s/^root::0:/${default_pw}/g" /etc/shadow
+cat << EOF
+=== WARNING! =====================================
+The default root password created on this device!
+--------------------------------------------------
+EOF
+	fi
 }
 
 
