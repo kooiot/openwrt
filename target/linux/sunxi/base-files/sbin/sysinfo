@@ -114,7 +114,7 @@ dump_software_info(){ # software info
     local kernel_version=$(uname -a)
 
     if [ -r /etc/openwrt_release ]; then
-        openwrt_distrib=$(sed 's/^DISTRIB_DESCRIPTION=//g; t; /^.*$/d' /etc/openwrt_release 2> /dev/null);
+        openwrt_distrib=$(sed -nE 's/^LEDE_RELEASE="([^"]+)".*/\1/p' /etc/os-release 2> /dev/null)
     fi
 
     cat <<EOF
@@ -170,8 +170,8 @@ EOF
         if [ -f ${i}/address ]; then
             echo "  MAC eth${i##/sys/class/net/eth}:     $(cat ${i}/address)"
         fi
-        echo ""
     done    
+    echo ""
 }
 
 dump_psn_info(){
@@ -205,11 +205,10 @@ dump_netdev_mac(){
     for i in /sys/class/net/eth*;
     do
         if [ -f ${i}/address ]; then
-            echo "MAC eth${i##/sys/class/net/eth}:"
-            echo "  $(cat ${i}/address)"
+            echo "MAC eth${i##/sys/class/net/eth}:    $(cat ${i}/address)"
         fi
     done
-    echo ""
+	echo ""
 }
 
 show_sysinfo(){
