@@ -1,22 +1,15 @@
 #! /bin/sh
-#################################################### -*- shell-script -*- ######
-# File name    : show-sysinfo
-# Create Date  : 2015-09(September)-28 Monday  02:58:21 (+0000,UTC)
-# Author       : ZhengYi <yzheng@techyauld.com>
 #
-# License      :
-#     Copyright(C) 2014, 2015
-#     Copyright(C) Techyauld Inc.
-#                  All rights reserved
-#
-#--------1---------2---------3---------4---------5---------6---------7---------8
+# File name    : sysinfo
+# Author       : Dirk Chang <dirk@kooiot.com>
+
 target=""
 
 . /lib/functions.sh
 . /lib/functions/tlink.sh
 
 case "$(board_name)" in
-"kooiot,tlink-x1"|\
+"kooiot,tlink-x1" | \
 "kooiot,tlink-r1")
     fm_version=1.00
 	;;
@@ -27,14 +20,14 @@ esac
 
 show_help(){
     cat <<EOF
-sysinfo  [-h] <sw|psn|temp|hw|module|mac|all>
+sysinfo  [-h] <sw|sn|temp|hw|module|mac|all>
 
     -h          This help information
     sw          Software information
     hw          Hardware information
     temp        CPU temperature
     frq         CPU frequency
-    psn         Product serial number
+    sn          Product serial number
     module      The 2G or 4G module
     mac         The current MAC addresses
     all         All
@@ -79,6 +72,9 @@ parse_cmdline(){
             psn)
                 target="psn"
                 ;;
+            sn)
+                target="sn"
+                ;;
             all)
                 target="all"
                 ;;
@@ -101,7 +97,7 @@ dt_parse_int_be(){
     local val=0
 
     # big endian
-    for x in $(hexdump -v  -e'/ 1 "0x%02x "' ${sysfs_file});
+    for x in $(hexecho -v  -e'/ 1 "0x%02x "' ${sysfs_file});
     do
         val=$(( ($val << 8) + $x ))
     done
@@ -109,7 +105,7 @@ dt_parse_int_be(){
     echo $val
 }
 
-dump_software_info(){ # software info
+show_software_info(){ # software info
     local openwrt_distrib="unknown"
     local kernel_version=$(uname -a)
 
@@ -121,36 +117,38 @@ dump_software_info(){ # software info
 Software information:
   Firmware Version:  $fm_version
   Kernel Version:    ${kernel_version}
-  OpenWRT Version:    ${openwrt_distrib}
+  OpenWRT Version:   ${openwrt_distrib}
 
 EOF
 }
 
-dump_thermal_info(){
+show_thermal_info(){
     local readonly cpu_thermal_zone=/sys/class/thermal/thermal_zone0
 
     cat <<EOF
-CPU temperature(degreeC X 1000):
-  current:      $(cat ${cpu_thermal_zone}/temp)
-  passive:      $(cat ${cpu_thermal_zone}/trip_point_0_temp)
-  critical:     $(cat ${cpu_thermal_zone}/trip_point_3_temp)
+CPU temperature( °C X 1000 ):
+  current:	$(cat ${cpu_thermal_zone}/temp)
+  $(cat ${cpu_thermal_zone}/trip_point_0_type):	$(cat ${cpu_thermal_zone}/trip_point_0_temp)
+  $(cat ${cpu_thermal_zone}/trip_point_1_type):	$(cat ${cpu_thermal_zone}/trip_point_1_temp)
+  $(cat ${cpu_thermal_zone}/trip_point_2_type):	$(cat ${cpu_thermal_zone}/trip_point_2_temp)
+  $(cat ${cpu_thermal_zone}/trip_point_3_type):	$(cat ${cpu_thermal_zone}/trip_point_3_temp)
 
 EOF
 }
 
-dump_cpu_frq_info(){
+show_cpu_frq_info(){
     local readonly cpu_freq_policy0=/sys/devices/system/cpu/cpufreq/policy0/
 
     cat <<EOF
-CPU frequency(hz):
-  current:  $(cat ${cpu_freq_policy0}/cpuinfo_cur_freq)
-  min:      $(cat ${cpu_freq_policy0}/cpuinfo_min_freq)
-  max:      $(cat ${cpu_freq_policy0}/cpuinfo_max_freq)
+CPU frequency(Hz):
+  Current:  $(cat ${cpu_freq_policy0}/cpuinfo_cur_freq)
+  Min:      $(cat ${cpu_freq_policy0}/cpuinfo_min_freq)
+  Max:      $(cat ${cpu_freq_policy0}/cpuinfo_max_freq)
 
 EOF
 }
 
-dump_hardware_info(){
+show_hardware_info(){
     local readonly sysfs_dir_cpuinfo="/sys/firmware/devicetree/base/cpus/cpu@0/compatible"
     local readonly sysfs_emmc_serial="/sys/class/block/mmcblk1/device/serial"
 
@@ -159,7 +157,7 @@ dump_hardware_info(){
     cat <<EOF
 Hardware information:
   Board:        $(board_name)
-  Device SN:    $(device_sn)
+  SN:           $(device_sn)
   Modle:        $(cat /tmp/sysinfo/model)
   CPU Type:     $(cat ${sysfs_dir_cpuinfo})
   eMMC Serial:  $(cat ${sysfs_emmc_serial} 2>/dev/null)
@@ -174,13 +172,13 @@ EOF
     echo ""
 }
 
-dump_psn_info(){
+show_sn_info(){
     cat <<EOF
-  PSN:          $(device_sn)
+  SN:          $(device_sn)
 EOF
 }
 
-dump_module_info(){
+show_module_info(){
     local module_model="UNKNOWN"
     local module_type="UNKNOWN"
 
@@ -196,12 +194,12 @@ dump_module_info(){
 2G/4G module info:
   Type:     ${module_type}
   Modle:    ${module_model}
-  SimCard:  $module_sim
+  IMEI:     $module_sim
 
 EOF
 }
 
-dump_netdev_mac(){
+show_netdev_mac(){
     for i in /sys/class/net/eth*;
     do
         if [ -f ${i}/address ]; then
@@ -216,32 +214,33 @@ show_sysinfo(){
 
     case $tgt in
         "software")
-            dump_software_info
+            show_software_info
             ;;
         "temp")
-            dump_thermal_info
+            show_thermal_info
             ;;
         "frq")
-            dump_cpu_frq_info
+            show_cpu_frq_info
             ;;
         "hardware")
-            dump_hardware_info
+            show_hardware_info
             ;;
         "module")
-            dump_module_info
+            show_module_info
             ;;
         "mac")
-            dump_netdev_mac
+            show_netdev_mac
             ;;
-        "psn")
-            dump_psn_info
+        "psn" | \
+        "sn")
+            show_sn_info
             ;;
         "all")
-            dump_software_info
-            dump_hardware_info
-            dump_module_info
-            dump_thermal_info
-            dump_cpu_frq_info
+            show_software_info
+            show_hardware_info
+            show_module_info
+            show_thermal_info
+            show_cpu_frq_info
             ;;
     esac
 }
@@ -249,5 +248,3 @@ show_sysinfo(){
 parse_cmdline  $@
 show_sysinfo   $target
 
-################################################################################
-#---------------------------- The End of This File -----------------------------
