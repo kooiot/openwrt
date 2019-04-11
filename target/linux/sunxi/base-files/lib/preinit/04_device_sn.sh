@@ -1,4 +1,4 @@
-do_device_sn_generic() {
+do_device_sn_kooiot() {
 	mmc_disk="/dev/mmcblk1"
 	if [ -b "$mmc_disk" -o -f "$mmc_disk" ]; then
 
@@ -13,6 +13,18 @@ do_device_sn_generic() {
 		[ -e /tmp/sysinfo/cloud] || \
 			echo "cloud.thingsroot.com" > /tmp/sysinfo/cloud
 	fi
+}
+
+do_device_sn_generic() {
+	. /lib/functions.sh
+
+	case "$(board_name)" in
+	"kooiot,tlink-x1"|\
+	"kooiot,tlink-r1")
+		do_device_sn_kooiot
+		;;
+	esac
+
 }
 
 boot_hook_add preinit_main do_device_sn_generic

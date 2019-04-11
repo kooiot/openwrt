@@ -25,6 +25,25 @@ platform_check_image() {
 	fi
 }
 
+platform_kooiot_pre_upgrade() {
+	case "$(rootfs_type)" in
+		"overlay")
+			echo "Erasing overlay....."
+			umount /overlay
+			dd if=/dev/zero of=/dev/loop0 bs=1M count=1
+			;;
+	esac
+}
+
+platform_pre_upgrade() {
+	case "$(board_name)" in
+	"kooiot,tlink-x1"|\
+	"kooiot,tlink-r1")
+		platform_kooiot_pre_upgrade
+		;;
+	esac
+}
+
 platform_copy_config() {
 	local partdev
 
