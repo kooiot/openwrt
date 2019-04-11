@@ -67,9 +67,9 @@ gpio_in()
 	return $(cat $gpio_path/value)
 }
 
-device_sn()
+product_sn()
 {
-	[ -e /tmp/sysinfo/device_sn ] && cat /tmp/sysinfo/device_sn || echo "UNKNOWN_DEVICE_SN"
+	[ -e /tmp/sysinfo/product_sn ] && cat /tmp/sysinfo/product_sn || echo "UNKNOWN_DEVICE_SN"
 }
 
 ioe_cloud()

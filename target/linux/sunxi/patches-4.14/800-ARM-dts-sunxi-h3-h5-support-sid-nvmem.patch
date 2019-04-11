@@ -21,7 +21,7 @@
 +			thermal_calibration: calib@34 {
 +				reg = <0x34 0x8>;
 +			};
-+			device_sn: device_sn@d4 {
++			product_sn: product_sn@d4 {
 +				reg = <0xd4 0x18>;
 +			};
 +		};
