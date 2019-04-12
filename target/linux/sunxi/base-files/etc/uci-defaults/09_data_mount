@@ -1,0 +1,58 @@
+#!/bin/sh
+#
+# Copyright (C) 2010 OpenWrt.org
+#
+# This is free software, licensed under the GNU General Public License v2.
+# See /LICENSE for more information.
+#
+
+#
+# This script sets system defaults for the hardware on firstboot
+#
+
+. /lib/functions.sh
+
+tlink_default() {
+	# data partition mount
+	rule_name=$(uci add fs mount) 
+	uci batch <<EOF
+set fstab.$rule_name.enabled='1'
+set fstab.$rule_name.target='root'
+set fstab.$rule_name.device='/dev/mmcblk1p3'
+set fstab.$rule_name.fstype='ext4'
+set fstab.$rule_name.options='fw,async'
+set fstab.$rule_name.enabled_fsck='1'
+EOF
+	uci commit fstab
+
+	# set ttylogin (for ttyS0, default will promote console with password)
+	# set system.@system[0].ttylogin='1'
+	# uci commit system
+}
+
+xxx() {
+
+# add mac address from U-Boot partition to lan and wan devices
+	MTD=`grep -e 'u-boot' /proc/mtd`
+	MTD=`echo ${MTD} | sed 's/[a-z]*\([0-9]*\):.*/\1/'`
+	[ -n "${MTD}" ] && {
+		MACADDR=`dd if=/dev/mtdblock${MTD} bs=1 skip=262048 count=6 2>/dev/null | hexdump -e '1/1 "%02x"'`
+		MACADDR2=$(( 0x${MACADDR} + 1))
+		MACADDR2=`printf "%012x" ${MACADDR2}`
+
+		MACADDR=`echo ${MACADDR} | sed 's/\(..\)/\1:/g' | sed 's/:$//'`
+		MACADDR2=`echo ${MACADDR2} | sed 's/\(..\)/\1:/g' | sed 's/:$//'`
+
+		uci set network.eth0.macaddr=${MACADDR}
+		uci set network.lan.macaddr=${MACADDR}
+		uci set network.wan.macaddr=${MACADDR2}
+		uci commit network
+	}
+}
+
+case "$(board_name)" in
+ "kooiot,tlink_x1"|\
+ "kooiot,tlink_r1")
+	tlink_default
+	;;
+esac
