@@ -1,3 +1,16 @@
+tlink_get_type_magic() {
+	get_image "$@" | dd bs=1 count=8 skip=8245 2>/dev/null | hexdump -v -n 8 -e '/1 "%c"'
+}
+
+tlink_check_image() {
+	local typemagic="$(tlink_get_type_magic "$1")"
+	[ "kooiot,${typemagic}" != "$(board_name)" ] && {
+		echo "Invalid image, bad type: $typemagic"
+		return 1
+	}
+	return 0
+}
+
 platform_check_image() {
 	local diskdev partdev diff
 
@@ -23,6 +36,17 @@ platform_check_image() {
 		ask_bool 0 "Abort" && exit 1
 		return 0
 	fi
+
+	case "$(board_name)" in
+	"kooiot,tlink-x1"|\
+	"kooiot,tlink-r1")
+		tlink_check_image "$1" && return 0
+		return 1
+		;;
+	*)
+		return 0
+		;;
+	esac
 }
 
 platform_kooiot_pre_upgrade() {

@@ -12,18 +12,26 @@
 
 . /lib/functions.sh
 
-tlink_default() {
-	# data partition mount
+tlink_mount_data() {
 	rule_name=$(uci add fstab mount)
 	uci batch <<EOF
-set fstab.$rule_name.enabled='1'
-set fstab.$rule_name.target='root'
+set fstab.$rule_name.target='/mnt/data'
 set fstab.$rule_name.device='/dev/mmcblk1p3'
 set fstab.$rule_name.fstype='ext4'
-set fstab.$rule_name.options='fw,async'
+set fstab.$rule_name.options='rw,async'
+set fstab.$rule_name.enabled='1'
 set fstab.$rule_name.enabled_fsck='1'
 EOF
 	uci commit fstab
+}
+
+tlink_default() {
+	# data partition mount
+	if ( grep -qs '/mnt/data' /etc/config/fstab || \
+		tlink_mount_data )
+	then
+		echo "Data mount added"
+	fi
 
 	# set ttylogin (for ttyS0, default will promote console with password)
 	# set system.@system[0].ttylogin='1'
