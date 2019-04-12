@@ -1,7 +1,4 @@
 #! /bin/sh
-#
-# File name    : sysinfo
-# Author       : Dirk Chang <dirk@kooiot.com>
 
 target=""
 
@@ -51,55 +48,22 @@ parse_cmdline(){
         target="all"
     else
         case $1 in
-            sw)
-                target="software";
-                ;;
-            temp)
-                target="temp";
-                ;;
-            frq)
-                target="frq";
-                ;;
-            hw)
-                target="hardware";
-                ;;
-            module)
-                target="module";
-                ;;
-            mac)
-                target="mac"
-                ;;
-            psn)
-                target="psn"
-                ;;
-            all)
-                target="all"
+            sw | \
+            hw | \
+            temp | \
+            frq | \
+            module | \
+            mac | \
+            psn | \
+			all)
+                target=$1
                 ;;
             *)
-                echo "[ERROR] Un-recognized target \"$1\"" >&2
+                show_help
                 exit 1
                 ;;
         esac
     fi
-}
-
-time_unix_to_human(){
-    local  unix_time=$(( $1 ))
-
-    echo "$(date '+%Y-%m-%d %H:%M:%S(%z)' -d @${unix_time}) (${unix_time} secs since epoch)"
-}
-
-dt_parse_int_be(){
-    local sysfs_file=$1
-    local val=0
-
-    # big endian
-    for x in $(hexecho -v  -e'/ 1 "0x%02x "' ${sysfs_file});
-    do
-        val=$(( ($val << 8) + $x ))
-    done
-
-    echo $val
 }
 
 show_software_info(){ # software info
@@ -210,7 +174,7 @@ show_sysinfo(){
     local tgt=$1
 
     case $tgt in
-        "software")
+        "sw")
             show_software_info
             ;;
         "temp")
@@ -219,7 +183,7 @@ show_sysinfo(){
         "frq")
             show_cpu_frq_info
             ;;
-        "hardware")
+        "hw")
             show_hardware_info
             ;;
         "module")

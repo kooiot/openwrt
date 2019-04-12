@@ -19,7 +19,7 @@ EMMC_DISK="/dev/mmcblk1"
 EMMC_FIRST_SECTOR=2048
 EMMC_BOOTFS_SIZE=$((20 * 1024 * 1024))
 EMMC_ROOTFS_SIZE=$((256 * 1024 * 1024))
-EMMC_DATA_FIRST_SECTOR=$(( 512 * 1024 * 1024))
+EMMC_DATA_FIRST_SECTOR=$(( 1024 * 1024 ))
 
 BOOT_DIR="/tmp/boot"
 BOOTFS_DIR="/tmp/_boot"
@@ -69,7 +69,7 @@ sleep 1
 echo "Creating new filesystem on EMMC ..."
 echo -e "o\nw" | fdisk ${EMMC_DISK} > /dev/null 2>&1
 sync
-echo "  New filesystem created on $EMMC_DISK."
+echo "  New filesystem created on $EMMC_DISK"
 sleep 1
 partx -s ${EMMC_DISK} > /dev/null 2>&1
 if [ $? -ne 0 ]; then
@@ -82,7 +82,7 @@ echo "Partitioning EMMC ..."
 
 sbootfs=$(( $EMMC_FIRST_SECTOR ))
 ebootfs=$(( $EMMC_BOOTFS_SIZE / 512 + $sbootfs - 1 ))
-srootfs=$(( $ebootfs + 1 ))
+srootfs=$(( $ebootfs + 1 + 2048 ))
 erootfs=$(( $EMMC_ROOTFS_SIZE / 512 + $srootfs -1 ))
 sdatafs=$(( $EMMC_DATA_FIRST_SECTOR ))
 edatafs=""
@@ -92,7 +92,7 @@ echo "ROOTFS: "$srootfs" - "$erootfs
 echo "DATAFS: "$sdatafs" - "$edatafs
 
 echo "  Creating eMMC partitions"
-echo -e "n\np\n1\n$sbootfs\n$ebootfs\nn\np\n2\n$srootfs\n$erootfs\nn\np\n3\n$sdatafs\n$edatafs\nt\n1\nb\nt\n2\n83\nt\n3\n83\nw" | fdisk ${EMMC_DISK} > /dev/null 2>&1
+echo -e "n\np\n1\n$sbootfs\n$ebootfs\nn\np\n2\n$srootfs\n$erootfs\nn\np\n3\n$sdatafs\n$edatafs\nt\n1\n83\nt\n2\n83\nt\n3\n83\nw" | fdisk ${EMMC_DISK} > /dev/null 2>&1
 echo $?
 echo "  OK."
 sync
@@ -104,13 +104,13 @@ if [ $? -ne 0 ]; then
 fi
 sleep 1
 
-echo "Formating boot(fat) partition ..."
+echo "Formating boot(ext4) partition ..."
 dd if=/dev/zero of=${EMMC_DISK}p1 bs=1M count=1 oflag=direct > /dev/null 2>&1
 sync
 sleep 1
-mkfs.vfat -n boot ${EMMC_DISK}p1 > /dev/null 2>&1
+mkfs.ext4 -L boot ${EMMC_DISK}p1 > /dev/null 2>&1
 if [ $? -ne 0 ]; then
-	echo "  ERROR formating boot(fat) partition."
+	echo "  ERROR formating boot(ext4) partition."
     exit 1
 fi
 echo "  boot(ext4) partition formated."
@@ -169,7 +169,7 @@ cp -pf ${BOOT_DIR}/dtb ${BOOTFS_DIR}/
 
 # UMOUNT
 if ! umount $BOOTFS_DIR; then
-  echo "ERROR unmounting fat partition."
+  echo "ERROR unmounting boot partition."
   exit 1
 fi
 rm -rf $BOOTFS_DIR/* > /dev/null 2>&1
