@@ -14,7 +14,7 @@
 
 tlink_default() {
 	# data partition mount
-	rule_name=$(uci add fs mount) 
+	rule_name=$(uci add fstab mount)
 	uci batch <<EOF
 set fstab.$rule_name.enabled='1'
 set fstab.$rule_name.target='root'
@@ -51,8 +51,8 @@ xxx() {
 }
 
 case "$(board_name)" in
- "kooiot,tlink_x1"|\
- "kooiot,tlink_r1")
+"kooiot,tlink-x1"|\
+"kooiot,tlink-r1")
 	tlink_default
 	;;
 esac
