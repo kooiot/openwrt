@@ -20,6 +20,9 @@ define Build/sunxi-sdcard
 	cp -i $(DTS_DIR)/$(SUNXI_DTS).dtb $@.bootfs/dtb
 	cp -i $(IMAGE_KERNEL) $@.bootfs/uImage
 
+	echo $$(stat -c%s $(IMAGE_ROOTFS)) > $@.rootfs.size
+	cp -i $@.rootfs.size $@.bootfs/rootfs.size
+
 	$(STAGING_DIR_HOST)/bin/make_ext4fs \
 		-l $(BOOTFS_SIZE) -b $(CONFIG_TARGET_EXT4_BLOCKSIZE) \
 		$(if $(CONFIG_TARGET_EXT4_RESERVED_PCT),-m $(CONFIG_TARGET_EXT4_RESERVED_PCT)) \
