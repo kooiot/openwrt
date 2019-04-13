@@ -25,6 +25,13 @@ EOF
 	uci commit fstab
 }
 
+tlink_add_qmi_interface() {
+	uci set network.4g_wan='interface'
+	uci set network.4g_wan.proto='qmi'
+	uci set network.4g_wan.device='/dev/cdc-wdm0'
+	uci commit network
+}
+
 tlink_default() {
 	# data partition mount
 	if ( grep -qs '/mnt/data' /etc/config/fstab || \
@@ -32,6 +39,9 @@ tlink_default() {
 	then
 		echo "Data mount added"
 	fi
+
+	# QMI interface
+	tlink_add_qmi_interface
 
 	# set ttylogin (for ttyS0, default will promote console with password)
 	# set system.@system[0].ttylogin='1'
