@@ -108,13 +108,13 @@
 +		pinctrl-0 = <&leds_npi>, <&leds_r_npi>;
 +
 +		status {
-+			label = "nanopi:blue:status";
++			label = "booiot:blue:status";
 +			gpios = <&pio 0 10 GPIO_ACTIVE_HIGH>;
 +			linux,default-trigger = "heartbeat";
 +		};
 +
 +		pwr {
-+			label = "nanopi:green:pwr";
++			label = "kooiot:green:pwr";
 +			gpios = <&r_pio 0 10 GPIO_ACTIVE_HIGH>;
 +			default-state = "on";
 +		};

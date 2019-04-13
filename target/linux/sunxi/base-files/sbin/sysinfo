@@ -118,7 +118,7 @@ show_hardware_info(){
     cat <<EOF
 Hardware information:
   Board:        $(board_name)
-  PSN:           $(product_sn)
+  PSN:          $(product_sn)
   Modle:        $(cat /tmp/sysinfo/model)
   CPU Type:     $(cat ${sysfs_dir_cpuinfo})
   eMMC Serial:  $(cat ${sysfs_emmc_serial} 2>/dev/null)
