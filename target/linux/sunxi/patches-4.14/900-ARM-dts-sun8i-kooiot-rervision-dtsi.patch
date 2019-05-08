@@ -122,8 +122,8 @@
 +			gpios = <&pio 0 19 GPIO_ACTIVE_HIGH>;
 +			default-state = "off";
 +		};
-+		pppd {
-+			label = "kooiot:green:pppd";
++		modem {
++			label = "kooiot:green:modem";
 +			gpios = <&pio 0 18 GPIO_ACTIVE_HIGH>;
 +			default-state = "off";
 +		};
