@@ -10,7 +10,7 @@
  	sun8i-v3s-licheepi-zero.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-h3-tlink-r1.dts
-@@ -0,0 +1,195 @@
+@@ -0,0 +1,204 @@
 +/*
 + * Copyright (C) 2019 Dirk Chang <dirk@kooiot.com>
 + *
@@ -65,6 +65,15 @@
 +		serial2 = &uart0;
 +		serial3 = &uart3;
 +	};
++};
++
++&i2c0 {
++    status = "okay";
++    hym8563: hym8563@51 {
++        compatible = "haoyu,hym8563";
++        reg = <0x51>;
++        status = "okay";
++    };
 +};
 +
 +&emac {
