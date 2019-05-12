@@ -114,22 +114,22 @@
 +		};
 +		bs {
 +			label = "kooiot:green:bs";
-+			gpios = <&pio 0 17 GPIO_ACTIVE_HIGH>;
++			gpios = <&pio 0 19 GPIO_ACTIVE_HIGH>;
 +			default-state = "off";
 +		};
 +		gs {
 +			label = "kooiot:green:gs";
-+			gpios = <&pio 0 19 GPIO_ACTIVE_HIGH>;
++			gpios = <&pio 0 17 GPIO_ACTIVE_HIGH>;
 +			default-state = "off";
 +		};
 +		modem {
 +			label = "kooiot:green:modem";
-+			gpios = <&pio 0 18 GPIO_ACTIVE_HIGH>;
++			gpios = <&pio 0 21 GPIO_ACTIVE_HIGH>;
 +			default-state = "off";
 +		};
 +		cloud {
 +			label = "kooiot:green:cloud";
-+			gpios = <&pio 0 21 GPIO_ACTIVE_HIGH>;
++			gpios = <&pio 0 18 GPIO_ACTIVE_HIGH>;
 +			default-state = "off";
 +		};
 +
