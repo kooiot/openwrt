@@ -1,6 +1,14 @@
 --- a/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c
 +++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c
-@@ -366,15 +366,37 @@
+@@ -26,6 +26,7 @@
+ #include <linux/of_device.h>
+ #include <linux/of_mdio.h>
+ #include <linux/nvmem-consumer.h>
++#include <linux/crc32.h>
+
+ #include "stmmac.h"
+ #include "stmmac_platform.h"
+@@ -366,15 +367,80 @@
  {
  	struct nvmem_cell *cell;
  	size_t cell_size;
@@ -36,7 +44,63 @@
 +		mac = cell_data;
 +	}
 +
++	return mac;
++}
++
++/**
++ * Generate mac address from chipid as what u-boot does
++ */
++static void *stmmac_get_nvmem_sun8i_chipid(struct device* dev)
++{
++	struct nvmem_cell *cell;
++	ssize_t cell_size;
++	u32 *chipid;
++	char *mac;
++
++	cell = nvmem_cell_get(dev, "chipid");
++	if (IS_ERR(cell))
++		return;
++
++	chipid = (u32 *)nvmem_cell_read(cell, &cell_size);
++	nvmem_cell_put(cell);
++
++	if (cell_size < 16) {
++		kfree(chipid);
++		return;
++	}
++
++	dev_info(dev, "Using the MAC address generated from nvmem[chipid].\n");
++	chipid[3] = crc32_be(0, (unsigned char *)&chipid[1], 12);
++	mac = kzalloc(ETH_ALEN, GFP_KERNEL);
++
++	/* Ensure the NIC specific bytes of the mac are not all 0 */
++	if ((chipid[3] & 0xffffff) == 0)
++		chipid[3] |= 0x800000;
++
++	/* Non OUI / registered MAC address */
++	mac[0] = (1 << 4) | 0x02;
++	mac[1] = (chipid[0] >>  0) & 0xff;
++	mac[2] = (chipid[3] >> 24) & 0xff;
++	mac[3] = (chipid[3] >> 16) & 0xff;
++	mac[4] = (chipid[3] >>  8) & 0xff;
++	mac[5] = (chipid[3] >>  0) & 0xff;
++
++	kfree(chipid);
++
  	return mac;
  }
  
+@@ -407,6 +473,13 @@
+	if (mac_addr && is_valid_ether_addr(mac_addr))
+		*mac = mac_addr;
 
++	/* Using chipid to generate MAC */
++	/* if (!is_valid_ether_addr(*mac)) {
++		mac_addr = stmmac_get_nvmem_sun8i_chipid(&pdev->dev);
++		if (mac_addr && is_valid_ether_addr(mac_addr))
++			*mac = mac_addr;
++	} */
++
+	plat->interface = of_get_phy_mode(np);
+
+	/* Get max speed of operation from device tree */
