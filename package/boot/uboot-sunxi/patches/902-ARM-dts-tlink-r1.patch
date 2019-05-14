@@ -33,7 +33,7 @@
 +CONFIG_SYS_USB_EVENT_POLL_VIA_INT_QUEUE=y
 --- /dev/null
 +++ b/arch/arm/dts/sun8i-h3-tlink-r1.dts
-@@ -0,0 +1,88 @@
+@@ -0,0 +1,77 @@
 +/*
 + * Copyright (C) 2019 Dirk Chang <dirk@kooiot.com>
 + *
@@ -76,49 +76,38 @@
 + *     OTHER DEALINGS IN THE SOFTWARE.
 + */
 +
-+#include "sun8i-h3-nanopi.dtsi"
++#include "sun8i-h3-rervision.dtsi"
 +
 +/ {
 +	model = "KooIoT TLink R1";
 +	compatible = "kooiot,tlink-r1", "allwinner,sun8i-h3";
-+};
 +
-+&emac {
-+	phy = <&phy1>;
-+	phy-mode = "mii";
-+	allwinner,use-internal-phy;
-+	allwinner,leds-active-low;
-+	status = "okay";
-+	phy1: ethernet-phy@1 {
-+		reg = <1>;
++	leds {
++		compatible = "gpio-leds";
++		pinctrl-names = "default";
++		pinctrl-0 = <&r_leds_rer>;
++
++		pwr {
++			label = "kooiot:green:pwr";
++			gpios = <&r_pio 0 10 GPIO_ACTIVE_HIGH>;
++			default-state = "on";
++		};
 +	};
 +};
 +
-+&mmc2 {
++&r_pio {
++	r_leds_rer: led_pins@0 {
++		pins = "PL10";
++		functions = "gpio_out";
++	}
++};
++
++&mmc0 {
++	bus-width = <4>;
++	cd-gpios = <&pio 5 6 GPIO_ACTIVE_HIGH>;
++	cd-inverted;
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&mmc2_8bit_pins>;
-+	vmmc-supply = <&reg_vcc3v3>;
-+	bus-width = <8>;
-+	non-removable;
-+	cap-mmc-hw-reset;
++	pinctrl-0 = <&mmc0_pins_a>, <&mmc0_cd_pin>;
 +	status = "okay";
-+};
-+
-+&mmc2_8bit_pins {
-+	/* Increase drive strength for DDR modes */
-+	allwinner,drive = <SUN4I_PINCTRL_40_MA>;
-+	/* eMMC is missing pull-ups */
-+	allwinner,pull = <SUN4I_PINCTRL_PULL_UP>;
-+};
-+
-+&usbphy {
-+	status = "disabled";
-+};
-+
-+&ohci3 {
-+	status = "disabled";
-+};
-+
-+&ehci3 {
-+	status = "disabled";
++	vmmc-supply = <&reg_vcc3v3>;
 +};
