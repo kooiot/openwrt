@@ -11,19 +11,32 @@ export_tlink_efuse_mac() {
 
 	sid=$( hexdump -v -n 24 -e '/1 "%02x"' ${nvmem_file} )
 
-	oem="${sid:32:8}"
-	oem=$((0x$oem))
+	chip0="${sid:6:2}"
+	chip0=$((0x${offset}2${chip0}))
 
-	nv1="${sid:40:8}"
-	nv1=$((0x${nv1}))
+	chip3="${sid:24:8}"
+	chip3=$((0x${chip3}))
 
-	mac_base=${nv1}
-	if [ $mac_base -eq 0 ]; then
-		mac_base=${oem}
+	if [ $chip3 -eq 0 ]; then
+		chip3=$((0x800000))
 	fi
 
-	mac_val=$(printf '%08x' $(( ${mac_base} + ${offset} )))
-	mac_val="1E:4B:${mac_val:0:2}:${mac_val:2:2}:${mac_val:4:2}:${mac_val:6:2}"
+#	oem="${sid:32:8}"
+#	oem=$((0x$oem))
+#	nv1="${sid:40:8}"
+#	nv1=$((0x${nv1}))
+
+#	mac_base=${nv1}
+#	if [ $mac_base -eq 0 ]; then
+#		mac_base=${oem}
+#	fi
+
+#	mac_val=$(printf '%08x' $(( ${mac_base} + ${offset} )))
+#	mac_val="1E:4B:${mac_val:0:2}:${mac_val:2:2}:${mac_val:4:2}:${mac_val:6:2}"
+
+	mac1=$(printf '%04x' ${chip0})
+	mac2=$(printf '%08x' ${chip3})
+	mac_val="${mac1:0:2}:${mac1:2:2}:${mac2:0:2}:${mac2:2:2}:${mac2:4:2}:${mac2:6:2}"
 
 	export "$var=${mac_val}"
 	return 0

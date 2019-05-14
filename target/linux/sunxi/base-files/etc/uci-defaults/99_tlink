@@ -11,6 +11,7 @@
 #
 
 . /lib/functions.sh
+. /lib/functions/tlink.sh
 
 tlink_mount_data() {
 	rule_name=$(uci add fstab mount)
@@ -32,6 +33,21 @@ tlink_add_qmi_interface() {
 	uci commit network
 }
 
+# WAN is eth1 which is usb-eth has not unique MAC
+tlink_set_wan_mac() {
+	local MACADDR
+
+	export_tlink_efuse_mac MACADDR 2 || {
+		return
+	}
+
+	uci set network.wan.macaddr=${MACADDR}
+	uci set network.wan6.macaddr=${MACADDR}
+	uci commit network
+
+	return
+}
+
 tlink_default() {
 	# data partition mount
 	if ( grep -qs '/mnt/data' /etc/config/fstab || \
@@ -42,6 +58,9 @@ tlink_default() {
 
 	# QMI interface
 	tlink_add_qmi_interface
+
+	# ETH MAC for usb-eth
+	tlink_set_wan_mac
 
 	# set ttylogin (for ttyS0, default will promote console with password)
 	# set system.@system[0].ttylogin='1'

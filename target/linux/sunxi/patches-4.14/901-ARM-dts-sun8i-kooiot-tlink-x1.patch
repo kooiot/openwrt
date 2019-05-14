@@ -62,12 +62,17 @@
 +	leds {
 +		compatible = "gpio-leds";
 +		pinctrl-names = "default";
-+		pinctrl-0 = <&leds_rer>, <&pwr_rer>;
++		pinctrl-0 = <&leds_rer>, <&pwr_rer>, <&r_pwr_rer>;
 +
 +		status {
 +			label = "kooiot:green:status";
 +			gpios = <&pio 0 6 GPIO_ACTIVE_HIGH>;
 +			linux,default-trigger = "heartbeat";
++		};
++		pwr {
++			label = "kooiot:blue:pwr"; /* not connected */
++			gpios = <&r_pio 0 10 GPIO_ACTIVE_LOW>;
++			default-state = "on";
 +		};
 +		bs {
 +			label = "kooiot:green:bs";
@@ -136,6 +141,13 @@
 +	};
 +	pwr_rer: led_pins@0 {
 +		pins = "PA8", "PA9", "PA20";
++		function = "gpio_out";
++	};
++};
++
++&r_pio {
++	r_pwr_rer: led_pins@0 {
++		pins = "PL10";
 +		function = "gpio_out";
 +	};
 +};
