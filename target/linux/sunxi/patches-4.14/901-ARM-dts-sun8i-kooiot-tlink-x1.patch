@@ -69,8 +69,8 @@
 +			gpios = <&pio 0 6 GPIO_ACTIVE_HIGH>;
 +			linux,default-trigger = "heartbeat";
 +		};
-+		pwr {
-+			label = "kooiot:blue:pwr"; /* not connected */
++		power {
++			label = "kooiot:blue:power"; /* not connected */
 +			gpios = <&r_pio 0 10 GPIO_ACTIVE_LOW>;
 +			default-state = "on";
 +		};

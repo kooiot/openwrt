@@ -71,8 +71,8 @@
 +		pinctrl-names = "default";
 +		pinctrl-0 = <&r_pwr_rer>;
 +
-+		pwr {
-+			label = "kooiot:blue:pwr";
++		power {
++			label = "kooiot:blue:power";
 +			gpios = <&r_pio 0 10 GPIO_ACTIVE_LOW>;
 +			default-state = "on";
 +		};
