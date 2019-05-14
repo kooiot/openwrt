@@ -99,7 +99,7 @@
 +	r_leds_rer: led_pins@0 {
 +		pins = "PL10";
 +		functions = "gpio_out";
-+	}
++	};
 +};
 +
 +&mmc0 {

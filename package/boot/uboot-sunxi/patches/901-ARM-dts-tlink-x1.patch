@@ -116,7 +116,7 @@
 +	keys_rer: key_pins@0 {
 +		pins = "PA10";
 +		functions = "gpio_out";
-+	}
++	};
 +};
 +
 +&mmc0 {

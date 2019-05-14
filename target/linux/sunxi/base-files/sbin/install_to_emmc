@@ -34,8 +34,8 @@ if [ ! -d ${BOOT_DIR} ]; then
 	mount /dev/mmcblk0p1 ${BOOT_DIR}
 fi
 
-if [ ! -f ${BOOT_DIR}/u-boot-with-spl.bin ]; then
-    echo "Error: u-boot-with-spl.bin not found."
+if [ ! -f ${BOOT_DIR}/u-boot-sunxi-with-spl.bin ]; then
+    echo "Error: u-boot-sunxi-with-spl.bin not found."
     exit 1
 fi
 
@@ -130,7 +130,7 @@ echo "  linux partition formated."
 #************************************************************************
 echo ""
 echo "Instaling u-boot to EMMC ..."
-dd if=${BOOT_DIR}/u-boot-with-spl.bin of=${EMMC_DISK} bs=1k seek=8 > /dev/null 2>&1
+dd if=${BOOT_DIR}/u-boot-sunxi-with-spl.bin of=${EMMC_DISK} bs=1k seek=8 > /dev/null 2>&1
 if [ $? -ne 0 ]; then
     echo "ERROR installing u-boot."
     exit 1
