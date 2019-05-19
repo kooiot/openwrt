@@ -10,7 +10,7 @@
  	sun8i-v3s-licheepi-zero.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-h3-tlink-x1.dts
-@@ -0,0 +1,206 @@
+@@ -0,0 +1,225 @@
 +/*
 + * Copyright (C) 2019 Dirk Chang <dirk@kooiot.com>
 + *
@@ -62,7 +62,7 @@
 +	leds {
 +		compatible = "gpio-leds";
 +		pinctrl-names = "default";
-+		pinctrl-0 = <&leds_rer>, <&pwr_rer>, <&r_pwr_rer>;
++		pinctrl-0 = <&leds_rer>, <&r_pwr_rer>;
 +
 +		status {
 +			label = "kooiot:green:status";
@@ -94,22 +94,6 @@
 +			gpios = <&pio 0 18 GPIO_ACTIVE_HIGH>;
 +			default-state = "off";
 +		};
-+
-+		eth_reset {
-+			label = "kooiot:red:eth_reset";
-+			gpios = <&pio 0 20 GPIO_ACTIVE_HIGH>;
-+			default-state = "off";
-+		};
-+		pcie_reset {
-+			label = "kooiot:red:pcie_reset";
-+			gpios = <&pio 0 9 GPIO_ACTIVE_HIGH>;
-+			default-state = "off";
-+		};
-+		pcie_pwr {
-+			label = "kooiot:blue:pcie_pwr";
-+			gpios = <&pio 0 8 GPIO_ACTIVE_LOW>;
-+			default-state = "on";
-+		};
 +	};
 +
 +	gpio_keys {
@@ -126,6 +110,29 @@
 +			label = "dc_pwr";
 +			linux,code = <BTN_0>;
 +			gpios = <&pio 0 7 GPIO_ACTIVE_LOW>;
++		};
++	};
++
++	gpio_export {
++		compatible = "gpio-export";
++		#size-cells = <0>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&pwr_rer>;
++
++		eth1_reset {
++			gpio-export,name = "eth1_reset";
++			gpio-export,output=<0>;
++			gpios = <&pio 0 20 GPIO_ACTIVE_HIGH>;
++		};
++		pcie_reset {
++			gpio-export,name = "pcie_reset";
++			gpio-export,output=<0>;
++			gpios = <&pio 0 9 GPIO_ACTIVE_HIGH>;
++		};
++		pcie_power {
++			gpio-export,name = "pcie_power";
++			gpio-export,output=<0>;
++			gpios = <&pio 0 8 GPIO_ACTIVE_LOW>;
 +		};
 +	};
 +};
@@ -219,7 +226,7 @@
 +};
 +
 +&ohci1 {
-+	status = "okay";
++	status = "disabled";
 +};
 +
 +&ohci2 {
@@ -227,5 +234,5 @@
 +};
 +
 +&ohci3 {
-+	status = "okay";
++	status = "disabled";
 +};
