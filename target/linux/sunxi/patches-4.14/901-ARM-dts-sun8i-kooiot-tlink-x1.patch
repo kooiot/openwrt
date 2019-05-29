@@ -146,7 +146,7 @@
 +		pins = "PA7", "PA10";
 +		function = "gpio_in";
 +	};
-+	pwr_rer: led_pins@0 {
++	pwr_rer: gpio_pins@0 {
 +		pins = "PA8", "PA9", "PA20";
 +		function = "gpio_out";
 +	};
