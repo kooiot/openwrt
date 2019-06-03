@@ -156,7 +156,7 @@ show_module_info(){
 2G/4G module info:
   Type:     ${module_type}
   Modle:    ${module_model}
-  SIM:     ${module_sim}
+  SIM:      ${module_sim}
   IMEI:     ${module_imei}
 
 EOF
