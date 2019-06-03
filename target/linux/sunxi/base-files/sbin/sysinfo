@@ -140,22 +140,31 @@ EOF
 }
 
 show_module_info(){
-    local module_model="UNKNOWN"
     local module_type="UNKNOWN"
+    local module_model="UNKNOWN"
+    local module_imei="UNKNOWN"
 
-    if [ -c "/dev/ttyUSB0" ];then
-        module_type="4G module"
-        case "$board" in
-            *Q2040) module_model="ME909s-821" ;;
-            *tgw303x) module_model="SIM7600CE" ;;
-        esac
-    fi
-    module_sim=`cat /etc/ppp/imsi.txt 2>/dev/null`
+	if [ -f "/tmp/sysinfo/4g_module" ]; then
+		# TODO:
+		module_type="4G"
+		module_model=$(cat /tmp/sysinfo/4g_module_model 2>/dev/null)
+		module_imei=$(cat /tmp/sysinfo/4g_module_imei 2>/dev/null)
+	else
+		if [ -c "/dev/cdc-wdm0" ]; then
+			module_type="4G"
+			module_model=$(lsusb | sed -e 's/.*ID [a-f0-9]\+:[a-f0-9]\+ \(.*\)/\1/g' | grep modem)
+			module_imei=$(uqmi -d /dev/cdc-wdm0 --get-imei | sed 's/\"//g')
+			echo 4G > /tmp/sysinfo/4g_module
+			echo $module_model > /tmp/sysinfo/4g_module_model
+			echo $module_imei > /tmp/sysinfo/4g_module_imei
+		fi
+	fi
+
     cat <<EOF
 2G/4G module info:
   Type:     ${module_type}
   Modle:    ${module_model}
-  IMEI:     $module_sim
+  IMEI:     ${module_imei}
 
 EOF
 }
