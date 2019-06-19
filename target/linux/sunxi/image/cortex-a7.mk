@@ -185,7 +185,7 @@ define Device/sun8i-h3-tlink-x1
 	 kmod-leds-gpio kmod-ledtrig-heartbeat \
 	 kmod-ledtrig-netdev kmod-ledtrig-gpio \
 	 kmod-rtc-rx8010 kmod-usb-net-asix \
-	 fdisk
+	 kmod-eeprom-at24 fdisk
   SUPPORTED_DEVICES:=kooiot,tlink-x1
   SUNXI_DTS:=sun8i-h3-tlink-x1
 endef

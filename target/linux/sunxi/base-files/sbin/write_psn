@@ -45,16 +45,34 @@ fi
 echo ""
 #----------------------------------------------------------
 
-echo ${psn} | dd of=/dev/mmcblk1 count=16 bs=1 seek=410112
-echo ${psn} | dd of=/dev/mmcblk1 count=16 bs=1 seek=410128
 
-product_sn=$(dd if=/dev/mmcblk1 \
-	bs=1 count=16 skip=410112 2>/dev/null | \
-	hexdump -v -e '/1 "%c"' 2>/dev/null)
+NVMEM_PATH="/sys/devices/platform/soc/1c2ac00.i2c/i2c-0/0-0050/0-00500/nvmem"
 
-product_sn_dp=$(dd if=/dev/mmcblk1 \
-	bs=1 count=16 skip=410128 2>/dev/null | \
-	hexdump -v -e '/1 "%c"' 2>/dev/null)
+if [ ! -f ${NVMEM_PATH} ]; then
+    echo "EEPROM not found! Product SN will be writen to EMMC!!!"
+
+	echo ${psn} | dd of=/dev/mmcblk1 count=16 bs=1 seek=410112
+	echo ${psn} | dd of=/dev/mmcblk1 count=16 bs=1 seek=410128
+
+	product_sn=$(dd if=/dev/mmcblk1 \
+		bs=1 count=16 skip=410112 2>/dev/null | \
+		hexdump -v -e '/1 "%c"' 2>/dev/null)
+
+	product_sn_dp=$(dd if=/dev/mmcblk1 \
+		bs=1 count=16 skip=410128 2>/dev/null | \
+		hexdump -v -e '/1 "%c"' 2>/dev/null)
+else
+	echo ${psn} | dd of=${NVMEM_PATH} count=16 bs=1 seek=0
+	echo ${psn} | dd of=${NVMEM_PATH} count=16 bs=1 seek=16
+
+	product_sn=$(dd if=${NVMEM_PATH} \
+		bs=1 count=16 skip=0 2>/dev/null | \
+		hexdump -v -e '/1 "%c"' 2>/dev/null)
+
+	product_sn_dp=$(dd if=${NVMEM_PATH} \
+		bs=1 count=16 skip=16 2>/dev/null | \
+		hexdump -v -e '/1 "%c"' 2>/dev/null)
+fi
 
 if [ "${product_sn}"x = "${product_sn_dp}"x ]; then
 	echo "Loaded PSN: ${product_sn}"
