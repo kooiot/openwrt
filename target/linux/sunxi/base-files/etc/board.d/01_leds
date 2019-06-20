@@ -1,0 +1,29 @@
+#!/bin/sh
+
+. /lib/functions/uci-defaults.sh
+
+set_usb_led() {
+	ucidef_set_led_usbdev "usb" "USB" "${1}" "${2:-1-1}"
+}
+
+set_wifi_led() {
+	ucidef_set_led_netdev "wifi_led" "wifi" "${1}" "${2:-wlan0}"
+}
+
+
+board=$(board_name)
+boardname="${board##*,}"
+
+board_config_update
+
+case $board in
+kooiot,tlink-x1|\
+kooiot,tlink-r1)
+	ucidef_set_led_default "power" "power" "kooiot:blue:power" "1"
+	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "wwan0"
+	;;
+esac
+
+board_config_flush
+
+exit 0

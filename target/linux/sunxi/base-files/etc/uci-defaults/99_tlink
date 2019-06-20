@@ -1,0 +1,95 @@
+#!/bin/sh
+#
+# Copyright (C) 2010 OpenWrt.org
+#
+# This is free software, licensed under the GNU General Public License v2.
+# See /LICENSE for more information.
+#
+
+#
+# This script sets system defaults for the hardware on firstboot
+#
+
+. /lib/functions.sh
+. /lib/functions/tlink.sh
+
+tlink_mount_data() {
+	rule_name=$(uci add fstab mount)
+	uci batch <<EOF
+set fstab.$rule_name.target='/mnt/data'
+set fstab.$rule_name.device='/dev/mmcblk1p3'
+set fstab.$rule_name.fstype='ext4'
+set fstab.$rule_name.options='rw,async'
+set fstab.$rule_name.enabled='1'
+set fstab.$rule_name.enabled_fsck='1'
+EOF
+	uci commit fstab
+}
+
+tlink_add_qmi_interface() {
+	uci set network.4g_wan='interface'
+	uci set network.4g_wan.proto='qmi'
+	uci set network.4g_wan.device='/dev/cdc-wdm0'
+	uci commit network
+}
+
+# WAN is eth1 which is usb-eth has not unique MAC
+tlink_set_wan_mac() {
+	local MACADDR
+
+	export_tlink_efuse_mac MACADDR 2 || {
+		return
+	}
+
+	uci set network.wan.macaddr=${MACADDR}
+	uci set network.wan6.macaddr=${MACADDR}
+	uci commit network
+
+	return
+}
+
+tlink_default() {
+	# data partition mount
+	if ( grep -qs '/mnt/data' /etc/config/fstab || \
+		tlink_mount_data )
+	then
+		echo "Data mount added"
+	fi
+
+	# QMI interface
+	tlink_add_qmi_interface
+
+	# ETH MAC for usb-eth
+	tlink_set_wan_mac
+
+	# set ttylogin (for ttyS0, default will promote console with password)
+	# set system.@system[0].ttylogin='1'
+	# uci commit system
+}
+
+xxx() {
+
+# add mac address from U-Boot partition to lan and wan devices
+	MTD=`grep -e 'u-boot' /proc/mtd`
+	MTD=`echo ${MTD} | sed 's/[a-z]*\([0-9]*\):.*/\1/'`
+	[ -n "${MTD}" ] && {
+		MACADDR=`dd if=/dev/mtdblock${MTD} bs=1 skip=262048 count=6 2>/dev/null | hexdump -e '1/1 "%02x"'`
+		MACADDR2=$(( 0x${MACADDR} + 1))
+		MACADDR2=`printf "%012x" ${MACADDR2}`
+
+		MACADDR=`echo ${MACADDR} | sed 's/\(..\)/\1:/g' | sed 's/:$//'`
+		MACADDR2=`echo ${MACADDR2} | sed 's/\(..\)/\1:/g' | sed 's/:$//'`
+
+		uci set network.eth0.macaddr=${MACADDR}
+		uci set network.lan.macaddr=${MACADDR}
+		uci set network.wan.macaddr=${MACADDR2}
+		uci commit network
+	}
+}
+
+case "$(board_name)" in
+"kooiot,tlink-x1"|\
+"kooiot,tlink-r1")
+	tlink_default
+	;;
+esac

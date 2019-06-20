@@ -174,7 +174,7 @@ define KernelPackage/eeprom-at24
   KCONFIG:=CONFIG_EEPROM_AT24
   DEPENDS:=+kmod-i2c-core +kmod-nvmem +LINUX_4_19:kmod-regmap-i2c
   FILES:=$(LINUX_DIR)/drivers/misc/eeprom/at24.ko
-  AUTOLOAD:=$(call AutoProbe,at24)
+  AUTOLOAD:=$(call AutoLoad,50,at24,1)
 endef
 
 define KernelPackage/eeprom-at24/description
@@ -632,6 +632,41 @@ define KernelPackage/rtc-rs5c372a/description
 endef
 
 $(eval $(call KernelPackage,rtc-rs5c372a))
+
+define KernelPackage/rtc-rx8010
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=Epson RX8010SJ
+  DEFAULT:=m if ALL_KMODS && RTC_SUPPORT
+  DEPENDS:=+kmod-i2c-core
+  KCONFIG:=CONFIG_RTC_DRV_RX8010 \
+	CONFIG_RTC_CLASS=y
+  FILES:=$(LINUX_DIR)/drivers/rtc/rtc-rx8010.ko
+  AUTOLOAD:=$(call AutoLoad,50,rtc-rx8010,1)
+endef
+
+define KernelPackage/rtc-rx8010/description
+ Kernel module for Epson RX8010SJ RTC chip
+endef
+
+$(eval $(call KernelPackage,rtc-rx8010))
+
+
+define KernelPackage/rtc-hym8563
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=Haoyu Microelectronics HYM8563
+  DEFAULT:=m if ALL_KMODS && RTC_SUPPORT
+  DEPENDS:=+kmod-i2c-core
+  KCONFIG:=CONFIG_RTC_DRV_HYM8563 \
+	CONFIG_RTC_CLASS=y
+  FILES:=$(LINUX_DIR)/drivers/rtc/rtc-hym8563.ko
+  AUTOLOAD:=$(call AutoLoad,50,rtc-hym8563,1)
+endef
+
+define KernelPackage/rtc-hym8563/description
+ Kernel module for Haoyu Microelectronics HYM8563 RTC chip
+endef
+
+$(eval $(call KernelPackage,rtc-hym8563))
 
 
 define KernelPackage/mtdtests

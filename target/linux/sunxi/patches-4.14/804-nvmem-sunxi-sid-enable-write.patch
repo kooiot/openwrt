@@ -1,0 +1,162 @@
+--- a/drivers/nvmem/sunxi_sid.c
++++ b/drivers/nvmem/sunxi_sid.c
+@@ -28,12 +28,20 @@
+ 
+ /* Registers and special values for doing register-based SID readout on H3 */
+ #define SUN8I_SID_PRCTL		0x40
++#define SUN8I_SID_PRKEY		0x50
+ #define SUN8I_SID_RDKEY		0x60
+ 
+ #define SUN8I_SID_OFFSET_MASK	0x1FF
+ #define SUN8I_SID_OFFSET_SHIFT	16
+ #define SUN8I_SID_OP_LOCK	(0xAC << 8)
++#define SUN8I_SID_OP_MASK	0xFF
++#define SUN8I_SID_OP_SHIFT 8
+ #define SUN8I_SID_READ		BIT(1)
++#define SUN8I_SID_WRITE		BIT(0)
++#define SUN8I_SID_OP_ALL	0x3
++#define SUN8I_WRITE_WORD_SIZE	4
++
++static DEFINE_MUTEX(sunxi_sid_mutex);
+ 
+ static struct nvmem_config econfig = {
+ 	.name = "sunxi-sid",
+@@ -47,6 +55,7 @@
+ 	u32	value_offset;
+ 	u32	size;
+ 	bool	need_register_readout;
++	bool	enable_reigster_writeout;
+ };
+ 
+ struct sunxi_sid {
+@@ -79,9 +88,13 @@
+ 	/* Offset the read operation to the real position of SID */
+ 	offset += sid->value_offset;
+ 
++	mutex_lock(&sunxi_sid_mutex);
++
+ 	while (bytes--)
+ 		*buf++ = sunxi_sid_read_byte(sid, offset++);
+ 
++	mutex_unlock(&sunxi_sid_mutex);
++
+ 	return 0;
+ }
+ 
+@@ -140,15 +153,96 @@
+ 	u8 *buf = val;
+ 	int ret;
+ 
++	mutex_lock(&sunxi_sid_mutex);
++
+ 	while (bytes--) {
+ 		ret = sun8i_sid_read_byte_by_reg(sid, offset++, buf++);
+-		if (ret)
++		if (ret) {
++			mutex_unlock(&sunxi_sid_mutex);
+ 			return ret;
++		}
++	}
++
++	mutex_unlock(&sunxi_sid_mutex);
++	return 0;
++}
++
++static int sun8i_sid_register_writeout(const struct sunxi_sid *sid,
++		const unsigned int offset, 
++		u32 value)
++{
++	u32 reg_val;
++	int ret;
++
++	dev_info(econfig.dev,
++		"Write request\t offset: %X\t value: %X write_flag:%ld\n",
++		offset, value, SUN8I_SID_WRITE);
++
++	writel(value, sid->base + SUN8I_SID_PRKEY);
++
++	/*
++	reg_val = (offset & SUN8I_SID_OFFSET_MASK)
++		  << SUN8I_SID_OFFSET_SHIFT;
++	reg_val |= SUN8I_SID_OP_LOCK | SUN8I_SID_WRITE;
++	writel(reg_val, sid->base + SUN8I_SID_PRCTL);
++
++	ret = readl_poll_timeout(sid->base + SUN8I_SID_PRCTL, reg_val,
++				 !(reg_val & SUN8I_SID_WRITE), 100, 250000);
++	if (ret)
++		return ret;
++
++	writel(0, sid->base + SUN8I_SID_PRCTL);
++	*/
++
++	reg_val = readl(sid->base + SUN8I_SID_PRCTL);
++	reg_val &= ~((SUN8I_SID_OFFSET_MASK << SUN8I_SID_OFFSET_SHIFT) | SUN8I_SID_OP_ALL);
++	reg_val |= offset << SUN8I_SID_OFFSET_SHIFT;
++	writel(reg_val, sid->base + SUN8I_SID_PRCTL);
++
++	reg_val &= ~((SUN8I_SID_OP_MASK << SUN8I_SID_OP_SHIFT) | SUN8I_SID_OP_ALL);
++	reg_val |= SUN8I_SID_OP_LOCK | SUN8I_SID_WRITE;
++	writel(reg_val, sid->base + SUN8I_SID_PRCTL);
++
++	ret = readl_poll_timeout(sid->base + SUN8I_SID_PRCTL, reg_val,
++				 !(reg_val & SUN8I_SID_WRITE), 100, 250000);
++	if (ret) {
++		dev_info(econfig.dev,
++			"Write request write flag timeout: %d\n", ret);
++		return ret;
+ 	}
+ 
++	reg_val &= ~((SUN8I_SID_OFFSET_MASK << SUN8I_SID_OFFSET_SHIFT) 
++			| (SUN8I_SID_OP_MASK << SUN8I_SID_OP_SHIFT) 
++			| SUN8I_SID_OP_ALL);
++	writel(reg_val, sid->base + SUN8I_SID_PRCTL);
++
+ 	return 0;
+ }
+ 
++static int sun8i_sid_write_by_reg(void *context,
++			 unsigned int reg, void *_val, size_t bytes)
++{
++	struct sunxi_sid *sid = context;
++	u32 *val = _val;
++	int ret;
++
++	/* allow only writing one complete word at a time */
++	if ((bytes != SUN8I_WRITE_WORD_SIZE) || (reg % SUN8I_WRITE_WORD_SIZE)) {
++		dev_err(econfig.dev,
++			"Invalid write request\t bytes: %d\t offset: %X\n",
++			bytes, reg);
++		return -EINVAL;
++	}
++
++	mutex_lock(&sunxi_sid_mutex);
++
++	ret = sun8i_sid_register_writeout(sid, reg & ~0x03, *val);
++
++	mutex_unlock(&sunxi_sid_mutex);
++
++	return ret;
++}
++
+ static int sunxi_sid_probe(struct platform_device *pdev)
+ {
+ 	struct device *dev = &pdev->dev;
+@@ -181,6 +275,10 @@
+ 		econfig.reg_read = sun8i_sid_read_by_reg;
+ 	else
+ 		econfig.reg_read = sunxi_sid_read;
++	if (cfg->enable_reigster_writeout) {
++		econfig.reg_write = sun8i_sid_write_by_reg;
++		econfig.read_only = false;
++	}
+ 	econfig.priv = sid;
+ 	nvmem = nvmem_register( &econfig);
+ 	if (IS_ERR(nvmem))
+@@ -213,6 +311,7 @@
+ 	.value_offset = 0x200,
+ 	.size = 0x100,
+ 	.need_register_readout = true,
++	.enable_reigster_writeout = true,
+ };
+ 
+ static const struct sunxi_sid_cfg sun50i_a64_cfg = {
