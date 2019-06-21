@@ -1,0 +1,30 @@
+--- a/drivers/sysreset/sysreset-uclass.c
++++ b/drivers/sysreset/sysreset-uclass.c
+@@ -103,6 +103,7 @@
+ /**
+  * reset_cpu() - calls sysreset_walk(SYSRESET_WARM)
+  */
++#ifndef CONFIG_ARCH_SUNXI
+ void reset_cpu(ulong addr)
+ {
+ 	sysreset_walk_halt(SYSRESET_WARM);
+@@ -117,6 +118,7 @@
+ 
+ 	return 0;
+ }
++#endif
+ 
+ static int sysreset_post_bind(struct udevice *dev)
+ {
+--- a/arch/arm/lib/Makefile
++++ b/arch/arm/lib/Makefile
+@@ -59,6 +59,9 @@
+ ifndef CONFIG_SYSRESET
+ obj-y	+= reset.o
+ endif
++ifdef CONFIG_ARCH_SUNXI
++obj-y	+= reset.o
++endif
+ 
+ obj-y	+= cache.o
+ obj-$(CONFIG_SYS_ARM_CACHE_CP15)	+= cache-cp15.o

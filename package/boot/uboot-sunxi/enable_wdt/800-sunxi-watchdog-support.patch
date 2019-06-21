@@ -1,0 +1,336 @@
+--- a/drivers/watchdog/Makefile
++++ a/drivers/watchdog/Makefile
+@@ -27,3 +27,4 @@
+ obj-$(CONFIG_MPC8xx_WATCHDOG) += mpc8xx_wdt.o
+ obj-$(CONFIG_WDT_MT7621) += mt7621_wdt.o
+ obj-$(CONFIG_WDT_MTK) += mtk_wdt.o
++obj-$(CONFIG_WDT_SUNXI) += sunxi_wdt.o
+--- a/drivers/watchdog/Kconfig
++++ b/drivers/watchdog/Kconfig
+@@ -157,4 +157,11 @@
+ 	help
+ 	   Select this to enable mpc8xx watchdog timer
+ 
++config WDT_SUNXI
++	bool "Sunxi AllWinner watchdog timer support"
++	depends on WDT
++	imply WATCHDOG
++	help
++	   Select this to enable watchdog timer on Sunxi AllWinner Chips
++
+ endmenu
+--- a/board/sunxi/board.c
++++ b/board/sunxi/board.c
+@@ -13,6 +13,8 @@
+ #include <common.h>
+ #include <dm.h>
+ #include <mmc.h>
++#include <watchdog.h>
++#include <wdt.h>
+ #include <axp_pmic.h>
+ #include <generic-phy.h>
+ #include <phy-sun4i-usb.h>
+@@ -80,6 +82,22 @@
+ 
+ DECLARE_GLOBAL_DATA_PTR;
+ 
++#if !defined(CONFIG_SPL_BUILD) && defined(CONFIG_WDT)
++static struct udevice *watchdog_dev;
++#endif
++
++#if !defined(CONFIG_SPL_BUILD) && defined(CONFIG_BOARD_EARLY_INIT_F)
++int board_early_init_f(void)
++{
++# if defined(CONFIG_WDT)
++	/* bss is not cleared at time when watchdog_reset() is called */
++	watchdog_dev = NULL;
++# endif
++
++	return 0;
++}
++#endif
++
+ void i2c_init_board(void)
+ {
+ #ifdef CONFIG_I2C0_ENABLE
+@@ -203,6 +221,19 @@
+ 
+ 	gd->bd->bi_boot_params = (PHYS_SDRAM_0 + 0x100);
+ 
++#if !defined(CONFIG_SPL_BUILD) && defined(CONFIG_WDT)
++	if (uclass_get_device_by_seq(UCLASS_WDT, 0, &watchdog_dev)) {
++		debug("Watchdog: Not found by seq!\n");
++		if (uclass_get_device(UCLASS_WDT, 0, &watchdog_dev)) {
++			puts("Watchdog: Not found!\n");
++			return 0;
++		}
++	}
++
++	wdt_start(watchdog_dev, 0, 0);
++	puts("Watchdog: Started\n");
++# endif
++
+ #ifndef CONFIG_ARM64
+ 	asm volatile("mrc p15, 0, %0, c0, c1, 1" : "=r"(id_pfr1));
+ 	debug("id_pfr1: 0x%08x\n", id_pfr1);
+@@ -885,3 +916,25 @@
+ 	return strcmp(name, cmp_str);
+ }
+ #endif
++
++#if defined(CONFIG_WDT)
++/* Called by macro WATCHDOG_RESET */
++void watchdog_reset(void)
++{
++# if !defined(CONFIG_SPL_BUILD)
++	static ulong next_reset;
++	ulong now;
++
++	if (!watchdog_dev)
++		return;
++
++	now = timer_get_us();
++
++	/* Do not reset the watchdog too often */
++	if (now > next_reset) {
++		wdt_reset(watchdog_dev);
++		next_reset = now + 1000;
++	}
++# endif
++}
++#endif
+--- /dev/null
++++ b/drivers/watchdog/sunxi_wdt.c
+@@ -0,0 +1,232 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * SunXi AllWinner Watchdog Driver
++ *
++ * Dirk Chang <dirk@kooiot.com>
++ */
++
++#include <common.h>
++#include <dm.h>
++#include <wdt.h>
++#include <linux/io.h>
++
++#define WDT_MAX_TIMEOUT         16
++#define WDT_MIN_TIMEOUT         1
++#define WDT_TIMEOUT_MASK        0x0F
++
++#define WDT_CTRL_RELOAD         ((1 << 0) | (0x0a57 << 1))
++#define WDT_MODE_EN             (1 << 0)
++
++/*
++ * This structure stores the register offsets for different variants
++ * of Allwinner's watchdog hardware.
++ */
++struct watchdog_regs {
++	u8 wdt_ctrl;
++	u8 wdt_cfg;
++	u8 wdt_mode;
++	u8 wdt_timeout_shift;
++	u8 wdt_reset_mask;
++	u8 wdt_reset_val;
++};
++
++struct sunxi_wdt_platdata {
++	void __iomem *wdt_base;
++	const struct watchdog_regs *wdt_regs;
++};
++
++/*
++ * wdt_timeout_map maps the watchdog timer interval value in seconds to
++ * the value of the register WDT_MODE at bits .wdt_timeout_shift ~ +3
++ *
++ * [timeout seconds] = register value
++ *
++ */
++
++static const int wdt_timeout_map[] = {
++	[1] = 0x1,  /* 1s  */
++	[2] = 0x2,  /* 2s  */
++	[3] = 0x3,  /* 3s  */
++	[4] = 0x4,  /* 4s  */
++	[5] = 0x5,  /* 5s  */
++	[6] = 0x6,  /* 6s  */
++	[8] = 0x7,  /* 8s  */
++	[10] = 0x8, /* 10s */
++	[12] = 0x9, /* 12s */
++	[14] = 0xA, /* 14s */
++	[16] = 0xB, /* 16s */
++};
++
++
++static int sunxi_wdt_reset(struct udevice *wdt_dev)
++{
++	struct sunxi_wdt_platdata *sunxi_wdt = dev_get_platdata(wdt_dev);
++	void __iomem *wdt_base = sunxi_wdt->wdt_base;
++	const struct watchdog_regs *regs = sunxi_wdt->wdt_regs;
++	u32 val;
++
++	/* Set system reset function */
++	val = readl(wdt_base + regs->wdt_cfg);
++	val &= ~(regs->wdt_reset_mask);
++	val |= regs->wdt_reset_val;
++	writel(val, wdt_base + regs->wdt_cfg);
++
++	/* Set lowest timeout and enable watchdog */
++	val = readl(wdt_base + regs->wdt_mode);
++	val &= ~(WDT_TIMEOUT_MASK << regs->wdt_timeout_shift);
++	val |= WDT_MODE_EN;
++	writel(val, wdt_base + regs->wdt_mode);
++
++	/*
++	 * Restart the watchdog. The default (and lowest) interval
++	 * value for the watchdog is 0.5s.
++	 */
++	writel(WDT_CTRL_RELOAD, wdt_base + regs->wdt_ctrl);
++
++	while (1) {
++		mdelay(5);
++		val = readl(wdt_base + regs->wdt_mode);
++		val |= WDT_MODE_EN;
++		writel(val, wdt_base + regs->wdt_mode);
++	}
++	return 0;
++}
++
++static int sunxi_wdt_ping(struct udevice *wdt_dev)
++{
++	struct sunxi_wdt_platdata *sunxi_wdt = dev_get_platdata(wdt_dev);
++	void __iomem *wdt_base = sunxi_wdt->wdt_base;
++	const struct watchdog_regs *regs = sunxi_wdt->wdt_regs;
++
++	writel(WDT_CTRL_RELOAD, wdt_base + regs->wdt_ctrl);
++
++	return 0;
++}
++
++static int sunxi_wdt_set_timeout(struct udevice *wdt_dev,
++		unsigned int timeout)
++{
++	struct sunxi_wdt_platdata *sunxi_wdt = dev_get_platdata(wdt_dev);
++	void __iomem *wdt_base = sunxi_wdt->wdt_base;
++	const struct watchdog_regs *regs = sunxi_wdt->wdt_regs;
++	u32 reg;
++
++	if (wdt_timeout_map[timeout] == 0)
++		timeout++;
++
++	reg = readl(wdt_base + regs->wdt_mode);
++	reg &= ~(WDT_TIMEOUT_MASK << regs->wdt_timeout_shift);
++	reg |= wdt_timeout_map[timeout] << regs->wdt_timeout_shift;
++	writel(reg, wdt_base + regs->wdt_mode);
++
++	sunxi_wdt_ping(wdt_dev);
++
++	return 0;
++}
++
++static int sunxi_wdt_stop(struct udevice *wdt_dev)
++{
++	struct sunxi_wdt_platdata *sunxi_wdt = dev_get_platdata(wdt_dev);
++	void __iomem *wdt_base = sunxi_wdt->wdt_base;
++	const struct watchdog_regs *regs = sunxi_wdt->wdt_regs;
++
++	writel(0, wdt_base + regs->wdt_mode);
++
++	return 0;
++}
++
++static int sunxi_wdt_start(struct udevice *wdt_dev, u64 timeout_ms, ulong flags)
++{
++	u32 reg;
++	struct sunxi_wdt_platdata *sunxi_wdt = dev_get_platdata(wdt_dev);
++	void __iomem *wdt_base = sunxi_wdt->wdt_base;
++	const struct watchdog_regs *regs = sunxi_wdt->wdt_regs;
++	int ret;
++	int timeout = timeout_ms / 1000;
++	timeout = timeout > WDT_MAX_TIMEOUT ? WDT_MAX_TIMEOUT : timeout;
++	timeout = timeout < WDT_MIN_TIMEOUT ? WDT_MIN_TIMEOUT : timeout;
++
++	ret = sunxi_wdt_set_timeout(wdt_dev, timeout);
++	if (ret < 0)
++		return ret;
++
++	/* Set system reset function */
++	reg = readl(wdt_base + regs->wdt_cfg);
++	reg &= ~(regs->wdt_reset_mask);
++	reg |= regs->wdt_reset_val;
++	writel(reg, wdt_base + regs->wdt_cfg);
++
++	/* Enable watchdog */
++	reg = readl(wdt_base + regs->wdt_mode);
++	reg |= WDT_MODE_EN;
++	writel(reg, wdt_base + regs->wdt_mode);
++
++	return 0;
++}
++
++static const struct wdt_ops sunxi_wdt_ops = {
++	.start		= sunxi_wdt_start,
++	.stop		= sunxi_wdt_stop,
++	.reset		= sunxi_wdt_reset,
++};
++
++static const struct watchdog_regs sun4i_wdt_reg = {
++	.wdt_ctrl = 0x00,
++	.wdt_cfg = 0x04,
++	.wdt_mode = 0x04,
++	.wdt_timeout_shift = 3,
++	.wdt_reset_mask = 0x02,
++	.wdt_reset_val = 0x02,
++};
++
++static const struct watchdog_regs sun6i_wdt_reg = {
++	.wdt_ctrl = 0x10,
++	.wdt_cfg = 0x14,
++	.wdt_mode = 0x18,
++	.wdt_timeout_shift = 4,
++	.wdt_reset_mask = 0x03,
++	.wdt_reset_val = 0x01,
++};
++
++static const struct udevice_id sunxi_wdt_dt_ids[] = {
++	{ .compatible = "allwinner,sun4i-a10-wdt", .data = (ulong)&sun4i_wdt_reg },
++	{ .compatible = "allwinner,sun6i-a31-wdt", .data = (ulong)&sun6i_wdt_reg },
++	{ /* sentinel */ }
++};
++
++static int sunxi_wdt_probe(struct udevice *dev)
++{
++	debug("%s: Probing wdt%u\n", __func__, dev->seq);
++
++	sunxi_wdt_stop(dev);
++
++	return 0;
++}
++
++static int sunxi_wdt_ofdata_to_platdata(struct udevice *dev)
++{
++	struct sunxi_wdt_platdata *platdata = dev_get_platdata(dev);
++	fdt_addr_t addr;
++
++	platdata->wdt_regs = (struct watchdog_regs *)dev_read_addr(dev);
++	if (IS_ERR(platdata->wdt_regs))
++		return PTR_ERR(platdata->wdt_regs);
++
++	addr = dev_read_addr_index(dev, 0);
++	platdata->wdt_base = (void __iomem *)addr;
++
++	debug("%s: iomem_base %lu\n", __func__, (ulong)platdata->wdt_base);
++
++	return 0;
++}
++
++U_BOOT_DRIVER(xlnx_wdt) = {
++	.name = "sunxi_wdt",
++	.id = UCLASS_WDT,
++	.of_match = sunxi_wdt_dt_ids,
++	.probe = sunxi_wdt_probe,
++	.platdata_auto_alloc_size = sizeof(struct sunxi_wdt_platdata),
++	.ofdata_to_platdata = sunxi_wdt_ofdata_to_platdata,
++	.ops = &sunxi_wdt_ops,
++};
++
