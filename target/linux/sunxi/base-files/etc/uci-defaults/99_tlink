@@ -30,6 +30,7 @@ tlink_add_qmi_interface() {
 	uci set network.4g_wan='interface'
 	uci set network.4g_wan.proto='qmi'
 	uci set network.4g_wan.device='/dev/cdc-wdm0'
+	uci set network.4g_wan.metric='10'
 	uci commit network
 }
 
