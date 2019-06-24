@@ -1,0 +1,45 @@
+--- a/dev.c
++++ b/dev.c
+@@ -349,13 +349,22 @@
+ 	} __packed msgbuf;
+ 	struct ustream *us = &qmi->sf.stream;
+ 	int fd;
++	struct flock fl;
+ 
+ 	uloop_init();
+ 
++	fl.l_type = F_WRLCK;
++	fl.l_whence = SEEK_SET;
++	fl.l_start = 0;
++	fl.l_len = 0;
++	fl.l_pid = getpid();
++
+ 	fd = open(path, O_RDWR | O_EXCL | O_NONBLOCK | O_NOCTTY);
+ 	if (fd < 0)
+ 		return -1;
+ 
++	fcntl(fd, F_SETLKW, &fl);
++
+ 	us->notify_read = qmi_notify_read;
+ 	ustream_fd_init(&qmi->sf, fd);
+ 	INIT_LIST_HEAD(&qmi->req);
+@@ -368,9 +377,19 @@
+ void qmi_device_close(struct qmi_dev *qmi)
+ {
+ 	struct qmi_request *req;
++	struct flock fl;
++
++	fl.l_type = F_UNLCK;
++	fl.l_whence = SEEK_SET;
++	fl.l_start = 0;
++	fl.l_len = 0;
++	fl.l_pid = getpid();
++
+ 
+ 	qmi_close_all_services(qmi);
+ 	ustream_free(&qmi->sf.stream);
++
++	fcntl(qmi->sf.fd.fd, F_SETLK, &fl);
+ 	close(qmi->sf.fd.fd);
+ 
+ 	while (!list_empty(&qmi->req)) {
