@@ -34,7 +34,8 @@ export_tlink_efuse_mac() {
 #	mac_val=$(printf '%08x' $(( ${mac_base} + ${offset} )))
 #	mac_val="1E:4B:${mac_val:0:2}:${mac_val:2:2}:${mac_val:4:2}:${mac_val:6:2}"
 
-	mac1=$(printf '%04x' ${chip0})
+#	mac1=$(printf '%04x' ${chip0})
+	mac1="B0C9"
 	mac2=$(printf '%08x' ${chip3})
 	mac_val="${mac1:0:2}:${mac1:2:2}:${mac2:0:2}:${mac2:2:2}:${mac2:4:2}:${mac2:6:2}"
 

@@ -40,8 +40,8 @@
 +		chipid[3] |= 0x800000;
 +
 +	/* Non OUI / registered MAC address */
-+	ndev->dev_addr[0] = (1 << 4) | 0x02;
-+	ndev->dev_addr[1] = (chipid[0] >>  0) & 0xff;
++	ndev->dev_addr[0] = 0xB0;
++	ndev->dev_addr[1] = 0xC9;
 +	ndev->dev_addr[2] = (chipid[3] >> 24) & 0xff;
 +	ndev->dev_addr[3] = (chipid[3] >> 16) & 0xff;
 +	ndev->dev_addr[4] = (chipid[3] >>  8) & 0xff;
