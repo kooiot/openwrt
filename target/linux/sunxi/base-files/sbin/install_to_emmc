@@ -13,7 +13,7 @@ echo "Installing Linux system to emmc"
 echo -e "===============================\033[37m"
 echo ""
 
-ROOTFS_FORMAT=${1}
+FORCE_INSTALL=${1}
 
 EMMC_DISK="/dev/mmcblk1"
 EMMC_FIRST_SECTOR=2048
@@ -48,17 +48,22 @@ ROOTFS_SIZE=$(( (${ROOTFS_SIZE} + 511) / 512 ))
 
 
 umount ${EMMC_DISK}* > /dev/null 2>&1
-#----------------------------------------------------------
-echo ""
-echo -n "WARNING: EMMC WILL BE ERASED !, Continue (y/N)?  "
-read -n 1 ANSWER
 
-if [ ! "${ANSWER}" = "y" ] ; then
-    echo "."
-    echo "Canceled.."
-    exit 0
+#----------------------------------------------------------
+if [ "-f" = "$FORCE_INSTALL" ]; then
+	echo "Force install to eMMC"
+else
+	echo ""
+	echo -n "WARNING: EMMC WILL BE ERASED !, Continue (y/N)?  "
+	read -n 1 ANSWER
+
+	if [ ! "${ANSWER}" = "y" ] ; then
+		echo "."
+		echo "Canceled.."
+		exit 0
+	fi
+	echo ""
 fi
-echo ""
 #----------------------------------------------------------
 
 echo "Erasing EMMC ..."

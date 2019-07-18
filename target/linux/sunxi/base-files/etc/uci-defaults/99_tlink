@@ -49,7 +49,53 @@ tlink_set_wan_mac() {
 	return
 }
 
+tlink_check_boot() {
+	mkdir -p /tmp/boot_p1
+	mount /dev/mmcblk0p1 /tmp/boot_p1
+	if [ -f /tmp/boot_p1/u-boot-sunxi-with-spl.bin ]; then
+		umount /tmp/boot_p1
+		return 0
+	fi
+	umount /tmp/boot_p1
+	return 1
+}
+
+tlink_auto_start_install() {
+	echo "sleep 3" > /sbin/boot_sd_install
+	echo "install_to_emmc -f" >> /sbin/boot_sd_install
+	echo "if [ \$? -ne 0 ]; then" >> /sbin/boot_sd_install
+	echo "    echo \"Failed to install firmware to eMMC\"" >> /sbin/boot_sd_install
+	echo "else" >> /sbin/boot_sd_install
+	echo "    echo \"Install firmware to eMMC is done!!\"" >> /sbin/boot_sd_install
+	echo "    echo \"System halt now!!\"" >> /sbin/boot_sd_install
+	echo "    sync" >> /sbin/boot_sd_install
+	echo "    halt" >> /sbin/boot_sd_install
+	echo "fi" >> /sbin/boot_sd_install
+	chmod a+x /sbin/boot_sd_install
+
+	echo "boot_sd_install > /dev/console 2>&1  &" > /etc/rc.local
+	echo "exit 0" >> /etc/rc.local
+
+	sync
+	
+	echo "This is an BOOT SD!!!!" > /dev/console
+	echo "You need to restart device mannually!!" > /dev/console
+}
+
 tlink_default() {
+	local partdev
+
+	. /lib/upgrade/common.sh
+
+	if export_bootdevice && export_partdevice partdev 0; then
+		if [ "$partdev" = "mmcblk0" ]; then
+			if tlink_check_boot; then
+				tlink_auto_start_install
+				return
+			fi
+		fi
+	fi
+
 	# data partition mount
 	if ( grep -qs '/mnt/data' /etc/config/fstab || \
 		tlink_mount_data )
