@@ -277,7 +277,7 @@ static int ag71xx_rings_init(struct ag71xx *ag)
 		return -ENOMEM;
 
 	tx->descs_cpu = dma_alloc_coherent(&ag->pdev->dev, ring_size * AG71XX_DESC_SIZE,
-					   &tx->descs_dma, GFP_ATOMIC);
+					   &tx->descs_dma, GFP_KERNEL);
 	if (!tx->descs_cpu) {
 		kfree(tx->buf);
 		tx->buf = NULL;
@@ -763,10 +763,6 @@ static int ag71xx_hw_enable(struct ag71xx *ag)
 
 static void ag71xx_hw_disable(struct ag71xx *ag)
 {
-	unsigned long flags;
-
-	spin_lock_irqsave(&ag->lock, flags);
-
 	netif_stop_queue(ag->dev);
 
 	ag71xx_hw_stop(ag);
@@ -774,8 +770,6 @@ static void ag71xx_hw_disable(struct ag71xx *ag)
 
 	napi_disable(&ag->napi);
 	del_timer_sync(&ag->oom_timer);
-
-	spin_unlock_irqrestore(&ag->lock, flags);
 
 	ag71xx_rings_cleanup(ag);
 }
