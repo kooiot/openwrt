@@ -227,7 +227,7 @@ $(eval $(foreach S,$(NAND_BLOCKSIZE),$(call Image/mkfs/jffs2-nand/template,$(S))
 
 define Image/mkfs/squashfs
 	$(STAGING_DIR_HOST)/bin/mksquashfs4 $(call mkfs_target_dir,$(1)) $@ \
-		-nopad -noappend -root-owned \
+		-noappend -root-owned \
 		-comp $(SQUASHFSCOMP) $(SQUASHFSOPT) \
 		-processors 1
 endef
@@ -385,6 +385,8 @@ define Device/Init
   FILESYSTEMS := $(TARGET_FILESYSTEMS)
 
   UBOOT_PATH :=  $(STAGING_DIR_IMAGE)/uboot-$(1)
+
+  DEFAULT :=
 endef
 
 DEFAULT_DEVICE_VARS := \
@@ -561,6 +563,7 @@ Target-Profile-Name: $(DEVICE_TITLE)
 Target-Profile-Packages: $(DEVICE_PACKAGES)
 Target-Profile-hasImageMetadata: $(if $(foreach image,$(IMAGES),$(findstring append-metadata,$(IMAGE/$(image)))),1,0)
 Target-Profile-SupportedDevices: $(SUPPORTED_DEVICES)
+$(if $(DEFAULT),Target-Profile-Default: $(DEFAULT))
 Target-Profile-Description:
 $(DEVICE_DESCRIPTION)
 @@
