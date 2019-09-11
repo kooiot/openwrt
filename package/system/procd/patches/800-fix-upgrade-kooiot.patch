@@ -1,0 +1,10 @@
+--- a/system.c
++++ b/system.c
+@@ -429,6 +429,7 @@
+ 
+ 	blob_buf_init(&b, 0);
+ 	while ((len = read(fds[0], buf, sizeof(buf)))) {
++		fprintf(stderr, "%s\n", buf);
+ 		jsobj = json_tokener_parse_ex(tok, buf, len);
+ 
+ 		if (json_tokener_get_error(tok) == json_tokener_success)
