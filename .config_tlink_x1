@@ -225,7 +225,8 @@ CONFIG_KERNEL_PROC_VMCORE=y
 CONFIG_KERNEL_CRASH_DUMP=y
 # CONFIG_USE_RFKILL is not set
 # CONFIG_USE_SPARSE is not set
-# CONFIG_KERNEL_DEVTMPFS is not set
+CONFIG_KERNEL_DEVTMPFS=y
+# CONFIG_KERNEL_DEVTMPFS_MOUNT is not set
 CONFIG_KERNEL_KEYS=y
 # CONFIG_KERNEL_PERSISTENT_KEYRINGS is not set
 # CONFIG_KERNEL_BIG_KEYS is not set
@@ -236,15 +237,19 @@ CONFIG_KERNEL_FREEZER=y
 CONFIG_KERNEL_CGROUP_FREEZER=y
 CONFIG_KERNEL_CGROUP_DEVICE=y
 CONFIG_KERNEL_CGROUP_PIDS=y
-# CONFIG_KERNEL_CPUSETS is not set
-# CONFIG_KERNEL_CGROUP_CPUACCT is not set
+CONFIG_KERNEL_CPUSETS=y
+# CONFIG_KERNEL_PROC_PID_CPUSET is not set
+CONFIG_KERNEL_CGROUP_CPUACCT=y
 # CONFIG_KERNEL_RESOURCE_COUNTERS is not set
 CONFIG_KERNEL_MM_OWNER=y
 CONFIG_KERNEL_MEMCG=y
 # CONFIG_KERNEL_MEMCG_SWAP is not set
-# CONFIG_KERNEL_MEMCG_KMEM is not set
+CONFIG_KERNEL_MEMCG_KMEM=y
 # CONFIG_KERNEL_CGROUP_PERF is not set
-# CONFIG_KERNEL_CGROUP_SCHED is not set
+CONFIG_KERNEL_CGROUP_SCHED=y
+CONFIG_KERNEL_FAIR_GROUP_SCHED=y
+# CONFIG_KERNEL_CFS_BANDWIDTH is not set
+CONFIG_KERNEL_RT_GROUP_SCHED=y
 CONFIG_KERNEL_BLK_CGROUP=y
 # CONFIG_KERNEL_CFQ_GROUP_IOSCHED is not set
 # CONFIG_KERNEL_BLK_DEV_THROTTLING is not set
@@ -2143,7 +2148,7 @@ CONFIG_PACKAGE_kmod-gpio-button-hotplug=y
 # CONFIG_PACKAGE_kmod-gpio-nxp-74hc164 is not set
 # CONFIG_PACKAGE_kmod-gpio-pca953x is not set
 # CONFIG_PACKAGE_kmod-gpio-pcf857x is not set
-# CONFIG_PACKAGE_kmod-ikconfig is not set
+CONFIG_PACKAGE_kmod-ikconfig=y
 # CONFIG_PACKAGE_kmod-it87-wdt is not set
 # CONFIG_PACKAGE_kmod-itco-wdt is not set
 # CONFIG_PACKAGE_kmod-lp is not set
@@ -2394,6 +2399,7 @@ CONFIG_PACKAGE_kmod-zd1211rw=m
 #
 CONFIG_PACKAGE_aws_iot_greengrass=y
 CONFIG_PACKAGE_factory_tlink=m
+CONFIG_PACKAGE_focas_ubus=m
 CONFIG_PACKAGE_freeioe=y
 # CONFIG_PACKAGE_kooiot is not set
 CONFIG_PACKAGE_skynet=y
@@ -2832,6 +2838,8 @@ CONFIG_PACKAGE_lua=y
 # CONFIG_PACKAGE_python3-incremental-src is not set
 # CONFIG_PACKAGE_python3-influxdb is not set
 # CONFIG_PACKAGE_python3-influxdb-src is not set
+# CONFIG_PACKAGE_python3-intelhex is not set
+# CONFIG_PACKAGE_python3-intelhex-src is not set
 # CONFIG_PACKAGE_python3-itsdangerous is not set
 # CONFIG_PACKAGE_python3-jdcal is not set
 # CONFIG_PACKAGE_python3-jdcal-src is not set
@@ -4268,6 +4276,7 @@ CONFIG_PACKAGE_libjson-c=y
 CONFIG_PACKAGE_liblua=y
 CONFIG_PACKAGE_liblucihttp=y
 CONFIG_PACKAGE_liblucihttp-lua=y
+# CONFIG_PACKAGE_liblxc is not set
 CONFIG_PACKAGE_liblzo=y
 # CONFIG_PACKAGE_libmad is not set
 # CONFIG_PACKAGE_libmagic is not set
@@ -4482,6 +4491,7 @@ CONFIG_PACKAGE_musl-fts=y
 # CONFIG_PACKAGE_re2 is not set
 CONFIG_RE2_SHARED=y
 # CONFIG_RE2_STATIC is not set
+# CONFIG_PACKAGE_rpcd-mod-lxc is not set
 # CONFIG_PACKAGE_rpcd-mod-rad2-enc is not set
 CONFIG_PACKAGE_rpcd-mod-rrdns=y
 # CONFIG_PACKAGE_rxtx is not set
@@ -4842,7 +4852,12 @@ CONFIG_PACKAGE_luci-i18n-wireguard-zh-cn=y
 # CONFIG_PACKAGE_mailsend is not set
 # CONFIG_PACKAGE_mailsend-nossl is not set
 # CONFIG_PACKAGE_msmtp is not set
+# CONFIG_PACKAGE_msmtp-mta is not set
 # CONFIG_PACKAGE_msmtp-nossl is not set
+# CONFIG_PACKAGE_msmtp-queue is not set
+# CONFIG_PACKAGE_msmtpq-ng is not set
+# CONFIG_PACKAGE_msmtpq-ng-mta is not set
+# CONFIG_PACKAGE_msmtpq-ng-mta-smtpd is not set
 # CONFIG_PACKAGE_mutt is not set
 # CONFIG_PACKAGE_nail is not set
 # CONFIG_PACKAGE_opendkim is not set
@@ -5838,6 +5853,7 @@ CONFIG_PACKAGE_wwanleds=y
 # BigClown
 #
 # CONFIG_PACKAGE_bigclown-control-tool is not set
+# CONFIG_PACKAGE_bigclown-firmware-tool is not set
 # CONFIG_PACKAGE_bigclown-gateway is not set
 # CONFIG_PACKAGE_bigclown-mqtt2influxdb is not set
 
@@ -6168,8 +6184,48 @@ CONFIG_PACKAGE_libjson-script=y
 # CONFIG_PACKAGE_lrzsz is not set
 # CONFIG_PACKAGE_lscpu is not set
 # CONFIG_PACKAGE_lsof is not set
-# CONFIG_PACKAGE_lxc is not set
+CONFIG_PACKAGE_lxc=y
+
+#
+# Configuration
+#
+CONFIG_LXC_KERNEL_OPTIONS=y
+# CONFIG_LXC_BUSYBOX_OPTIONS is not set
+CONFIG_LXC_SECCOMP=y
+# CONFIG_LXC_NETWORKING is not set
+# CONFIG_PACKAGE_lxc-attach is not set
+# CONFIG_PACKAGE_lxc-auto is not set
+# CONFIG_PACKAGE_lxc-autostart is not set
+# CONFIG_PACKAGE_lxc-cgroup is not set
+# CONFIG_PACKAGE_lxc-checkconfig is not set
+# CONFIG_PACKAGE_lxc-common is not set
+# CONFIG_PACKAGE_lxc-config is not set
+# CONFIG_PACKAGE_lxc-configs is not set
+# CONFIG_PACKAGE_lxc-console is not set
+# CONFIG_PACKAGE_lxc-copy is not set
+# CONFIG_PACKAGE_lxc-create is not set
+# CONFIG_PACKAGE_lxc-destroy is not set
+# CONFIG_PACKAGE_lxc-device is not set
+# CONFIG_PACKAGE_lxc-execute is not set
+# CONFIG_PACKAGE_lxc-freeze is not set
+# CONFIG_PACKAGE_lxc-hooks is not set
+# CONFIG_PACKAGE_lxc-info is not set
+# CONFIG_PACKAGE_lxc-init is not set
+# CONFIG_PACKAGE_lxc-ls is not set
+# CONFIG_PACKAGE_lxc-lua is not set
+# CONFIG_PACKAGE_lxc-monitor is not set
+# CONFIG_PACKAGE_lxc-monitord is not set
+# CONFIG_PACKAGE_lxc-snapshot is not set
+# CONFIG_PACKAGE_lxc-start is not set
+# CONFIG_PACKAGE_lxc-stop is not set
+# CONFIG_PACKAGE_lxc-templates is not set
+# CONFIG_PACKAGE_lxc-top is not set
+# CONFIG_PACKAGE_lxc-unfreeze is not set
 # CONFIG_PACKAGE_lxc-unprivileged is not set
+# CONFIG_PACKAGE_lxc-unshare is not set
+# CONFIG_PACKAGE_lxc-user-nic is not set
+# CONFIG_PACKAGE_lxc-usernsexec is not set
+# CONFIG_PACKAGE_lxc-wait is not set
 # CONFIG_PACKAGE_maccalc is not set
 # CONFIG_PACKAGE_macchanger is not set
 # CONFIG_PACKAGE_mbedtls-util is not set
