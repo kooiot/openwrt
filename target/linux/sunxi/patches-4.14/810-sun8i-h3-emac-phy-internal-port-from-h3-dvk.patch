@@ -1,0 +1,302 @@
+--- a/drivers/net/ethernet/stmicro/stmmac/common.h	2019-10-08 00:55:23.000000000 +0800
++++ b/drivers/net/ethernet/stmicro/stmmac/common.h	2019-10-21 12:09:44.879176081 +0800
+@@ -504,6 +504,10 @@
+ 			   u32 queue);
+ 	/* Dump MAC registers */
+ 	void (*dump_regs)(struct mac_device_info *hw, u32 *reg_space);
++	/* Dump Hacks registers */
++	//void (*dump_hacks)(struct net_device *dev, struct mac_device_info *hw);
++	/* Ethtool reset operation */
++	void (*ethtool_reset)(struct net_device *dev, u32 *flags);
+ 	/* Handle extra events on specific interrupts hw dependent */
+ 	int (*host_irq_status)(struct mac_device_info *hw,
+ 			       struct stmmac_extra_stats *x);
+--- a/drivers/net/ethernet/stmicro/stmmac/descs.h	2019-10-08 00:55:23.000000000 +0800
++++ b/drivers/net/ethernet/stmicro/stmmac/descs.h	2019-10-21 11:56:09.499181731 +0800
+@@ -133,7 +133,7 @@
+ #define	ETDES1_BUFFER2_SIZE_SHIFT	16
+ 
+ /* Extended Receive descriptor definitions */
+-#define	ERDES4_IP_PAYLOAD_TYPE_MASK	GENMASK(2, 6)
++#define	ERDES4_IP_PAYLOAD_TYPE_MASK	GENMASK(6, 2)
+ #define	ERDES4_IP_HDR_ERR		BIT(3)
+ #define	ERDES4_IP_PAYLOAD_ERR		BIT(4)
+ #define	ERDES4_IP_CSUM_BYPASSED		BIT(5)
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c	2019-10-21 12:04:20.446544933 +0800
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c	2019-10-21 12:18:01.518256212 +0800
+@@ -950,6 +950,27 @@
+ 		return PTR_ERR(phydev);
+ 	}
+ 
++	if (priv->plat->has_sun8i)
++	{
++		//EPHY Initial
++		phy_write(phydev, 0x1f , 0x0100); /* switch to page 1        */
++		phy_write(phydev, 0x12 , 0x4824); /* Disable APS             */
++		phy_write(phydev, 0x1f , 0x0200); /* switchto page 2         */
++		phy_write(phydev, 0x18 , 0x0000); /* PHYAFE TRX optimization */
++		phy_write(phydev, 0x1f , 0x0600); /* switchto page 6         */
++		phy_write(phydev, 0x14 , 0x708F); /* PHYAFE TX optimization  */
++		phy_write(phydev, 0x19 , 0x0000);
++		phy_write(phydev, 0x13 , 0xf000); /* PHYAFE RX optimization  */
++		phy_write(phydev, 0x15 , 0x1530);
++		phy_write(phydev, 0x1f , 0x0800); /* switch to page 8         */
++		phy_write(phydev, 0x18 , 0x00bc); /* PHYAFE TRX optimization */
++		//disable iEEE
++		phy_write(phydev, 0x1f , 0x0100); /* switchto page 1 */
++		/* reg 0x17 bit3,set 0 to disable iEEE */
++		phy_write(phydev, 0x17 , phy_read(phydev, 0x17) & (~(1<<3)));
++		phy_write(phydev, 0x1f , 0x0000); /* switch to page 0 */
++	}
++
+ 	/* Stop Advertising 1000BASE Capability if interface is not GMII */
+ 	if ((interface == PHY_INTERFACE_MODE_MII) ||
+ 	    (interface == PHY_INTERFACE_MODE_RMII) ||
+@@ -2762,6 +2783,7 @@
+ static int stmmac_release(struct net_device *dev)
+ {
+ 	struct stmmac_priv *priv = netdev_priv(dev);
++	int value = 0;
+ 
+ 	if (priv->eee_enabled)
+ 		del_timer_sync(&priv->eee_ctrl_timer);
+@@ -2769,6 +2791,11 @@
+ 	/* Stop and disconnect the PHY */
+ 	if (dev->phydev) {
+ 		phy_stop(dev->phydev);
++		// DIRK:
++		if (priv->plat->has_sun8i) {
++			value = phy_read(dev->phydev, MII_BMCR);
++			phy_write(dev->phydev, MII_BMCR, (value | BMCR_PDOWN));
++		}
+ 		phy_disconnect(dev->phydev);
+ 	}
+ 
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_mdio.c	2019-10-08 00:55:23.000000000 +0800
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_mdio.c	2019-10-21 12:20:09.520111506 +0800
+@@ -189,6 +189,9 @@
+ 	 */
+ 	if (!priv->plat->has_gmac4)
+ 		writel(0, priv->ioaddr + mii_address);
++
++	if (priv->plat->has_sun8i)
++		writel((4 << 2), priv->ioaddr + mii_address);
+ #endif
+ 	return 0;
+ }
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_ethtool.c	2019-10-08 00:55:23.000000000 +0800
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_ethtool.c	2019-10-21 12:09:32.150998336 +0800
+@@ -444,6 +444,7 @@
+ 
+ 	priv->hw->mac->dump_regs(priv->hw, reg_space);
+ 	priv->hw->dma->dump_regs(priv->ioaddr, reg_space);
++	//priv->hw->mac->dump_hacks(dev, priv->hw);
+ 	/* Copy DMA registers to where ethtool expects them */
+ 	memcpy(&reg_space[ETHTOOL_DMA_OFFSET], &reg_space[DMA_BUS_MODE / 4],
+ 	       NUM_DWMAC1000_DMA_REGS * 4);
+@@ -858,6 +859,16 @@
+ 	return ret;
+ }
+ 
++static int stammc_ethtool_reset(struct net_device *dev, u32 *flags)
++{
++	struct stmmac_priv *priv = netdev_priv(dev);
++
++	if (priv->hw->mac->ethtool_reset)
++		priv->hw->mac->ethtool_reset(dev, flags);
++
++	return 0;
++}
++
+ static const struct ethtool_ops stmmac_ethtool_ops = {
+ 	.begin = stmmac_check_if_running,
+ 	.get_drvinfo = stmmac_ethtool_getdrvinfo,
+@@ -867,6 +878,7 @@
+ 	.get_regs_len = stmmac_ethtool_get_regs_len,
+ 	.get_link = ethtool_op_get_link,
+ 	.nway_reset = phy_ethtool_nway_reset,
++	.reset = stammc_ethtool_reset,
+ 	.get_pauseparam = stmmac_get_pauseparam,
+ 	.set_pauseparam = stmmac_set_pauseparam,
+ 	.get_ethtool_stats = stmmac_get_ethtool_stats,
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c	2019-10-21 12:04:20.410544394 +0800
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c	2019-10-21 12:10:32.187838858 +0800
+@@ -17,6 +17,7 @@
+ #include <linux/clk.h>
+ #include <linux/io.h>
+ #include <linux/iopoll.h>
++#include <linux/mii.h>
+ #include <linux/mdio-mux.h>
+ #include <linux/mfd/syscon.h>
+ #include <linux/module.h>
+@@ -145,7 +146,7 @@
+ 
+ /* Used in RX_CTL1*/
+ #define EMAC_RX_MD              BIT(1)
+-#define EMAC_RX_TH_MASK		GENMASK(4, 5)
++#define EMAC_RX_TH_MASK		GENMASK(5, 4)
+ #define EMAC_RX_TH_32		0
+ #define EMAC_RX_TH_64		(0x1 << 4)
+ #define EMAC_RX_TH_96		(0x2 << 4)
+@@ -156,7 +157,7 @@
+ /* Used in TX_CTL1*/
+ #define EMAC_TX_MD              BIT(1)
+ #define EMAC_TX_NEXT_FRM        BIT(2)
+-#define EMAC_TX_TH_MASK		GENMASK(8, 10)
++#define EMAC_TX_TH_MASK		GENMASK(10, 8)
+ #define EMAC_TX_TH_64		0
+ #define EMAC_TX_TH_128		(0x1 << 8)
+ #define EMAC_TX_TH_192		(0x2 << 8)
+@@ -260,6 +261,8 @@
+ 		if (i == 0x32 || i == 0x3C)
+ 			continue;
+ 		reg_space[i / 4] = readl(ioaddr + i);
++
++		pr_err("%s: %X = %08X\n", __func__, i, reg_space[i / 4]);
+ 	}
+ }
+ 
+@@ -277,7 +280,108 @@
+ 		if (i == 0x32 || i == 0x3C)
+ 			continue;
+ 		reg_space[i / 4] = readl(ioaddr + i);
++
++		pr_err("%s: %X = %08X\n", __func__, i, reg_space[i / 4]);
++	}
++}
++
++/*
++static void sun8i_dwmac_dump_mac_hacks(struct net_device *dev, struct mac_device_info *hw)
++{
++	u32 reg;
++	int i, value;
++
++	struct stmmac_priv *priv;
++	struct sunxi_priv_data *gmac;
++	void __iomem *ioaddr = hw->pcsr;
++	struct mii_bus *bus;
++
++	priv = netdev_priv(dev);
++	gmac = priv->plat->bsp_priv;
++	bus = priv->mii;
++
++	regmap_read(gmac->regmap, SYSCON_EMAC_REG, &reg);
++	dev_err(priv->device, "%s: SYSCON_EMAC_REG %x\n", __func__, reg);
++
++	dev_err(priv->device, "%s: Dumps MII Data!\n", __func__);
++
++	for (i = 0; i <= 0x1c; i++ ) {
++		if (i == 0x07 || i == 0x08)
++			continue;
++		if (i == 0x10 || i == 0x11)
++			continue;
++		value = bus->read(bus, 1, i);
++		pr_err("%s: %X = %08X\n", __func__, i, value);
++	}
++
++	value = reset_control_status(gmac->rst_ephy);
++	dev_err(priv->device, "%s: EPHY reset status: %08X\n", __func__, value);
++}
++*/
++
++static int sun8i_dwmac_reset(struct stmmac_priv *priv);
++static int sun8i_dwmac_unpower_internal_phy(struct sunxi_priv_data *gmac);
++static int sun8i_dwmac_power_internal_phy(struct stmmac_priv *priv);
++static void sun8i_dwmac_ethtool_reset(struct net_device *dev, u32 *flags)
++{
++	struct stmmac_priv *priv = netdev_priv(dev);
++	struct sunxi_priv_data *gmac = priv->plat->bsp_priv;
++	void __iomem *ioaddr = priv->hw->pcsr;
++	int fgs = *flags;
++	int ret;
++
++	dev_err(priv->device, "%s: Now reset the hardware! flags: %08X %08X\n", __func__, fgs, ETH_RESET_PHY);
++
++	if (fgs & ETH_RESET_PHY)
++	{
++		dev_err(priv->device, "%s: Reset PHY!\n", __func__);
++		sun8i_dwmac_unpower_internal_phy(gmac);
++		sun8i_dwmac_power_internal_phy(priv);
++		fgs ^= ETH_RESET_PHY;
+ 	}
++
++	if (fgs & (1 << 8))
++	{
++		dev_err(priv->device, "%s: Reset ephy_clk!\n", __func__);
++		clk_disable_unprepare(gmac->ephy_clk);
++
++		ret = clk_prepare_enable(gmac->ephy_clk);
++		if (ret) {
++			dev_err(priv->device, "Cannot enable internal PHY\n");
++		}
++		fgs ^= (1 << 8);
++	}
++
++	if (fgs & (1 << 9))
++	{
++		dev_err(priv->device, "%s: Reset rst_ephy!\n", __func__);
++		reset_control_assert(gmac->rst_ephy);
++
++		ret = reset_control_deassert(gmac->rst_ephy);
++		if (ret) {
++			dev_err(priv->device, "Cannot deassert internal phy\n");
++			clk_disable_unprepare(gmac->ephy_clk);
++		}
++
++		fgs ^= (1 << 9);
++	}
++
++	if (fgs & ETH_RESET_MAC)
++	{
++		dev_err(priv->device, "%s: Reset MAC!\n", __func__);
++		sun8i_dwmac_reset(priv);
++		fgs ^= ETH_RESET_MAC;
++	}
++
++	if (fgs & ETH_RESET_DMA)
++	{
++		dev_err(priv->device, "%s: Reset DMA!\n", __func__);
++		sun8i_dwmac_dma_reset(ioaddr);
++		fgs ^= ETH_RESET_DMA;
++	}
++	*flags = fgs;
++
++	dev_err(priv->device, "%s: Reset the hardware is done!\n", __func__);
+ }
+ 
+ static void sun8i_dwmac_enable_dma_irq(void __iomem *ioaddr, u32 chan)
+@@ -745,7 +849,11 @@
+ 	bool need_power_ephy = false;
+ 
+ 	if (current_child ^ desired_child) {
+-		regmap_read(gmac->regmap, SYSCON_EMAC_REG, &reg);
++		ret = regmap_read(gmac->regmap, SYSCON_EMAC_REG, &reg);
++		if (ret) {
++			dev_err(priv->device, "Fail to read from regmap filed.\n");
++			return ret;
++		}
+ 		switch (desired_child) {
+ 		case DWMAC_SUN8I_MDIO_MUX_INTERNAL_ID:
+ 			dev_info(priv->device, "Switch mux to internal PHY");
+@@ -801,7 +909,11 @@
+ 	int ret;
+ 	u32 reg, val;
+ 
+-	regmap_read(gmac->regmap, SYSCON_EMAC_REG, &val);
++	ret = regmap_read(gmac->regmap, SYSCON_EMAC_REG, &val);
++	if (ret) {
++		dev_err(priv->device, "Fail to read from regmap filed.\n");
++		return ret;
++	}
+ 	reg = gmac->variant->default_syscon_value;
+ 	if (reg != val)
+ 		dev_warn(priv->device,
+@@ -921,6 +1033,8 @@
+ 	.core_init = sun8i_dwmac_core_init,
+ 	.set_mac = sun8i_dwmac_set_mac,
+ 	.dump_regs = sun8i_dwmac_dump_mac_regs,
++	//.dump_hacks = sun8i_dwmac_dump_mac_hacks,
++	.ethtool_reset = sun8i_dwmac_ethtool_reset,
+ 	.rx_ipc = sun8i_dwmac_rx_ipc_enable,
+ 	.set_filter = sun8i_dwmac_set_filter,
+ 	.flow_ctrl = sun8i_dwmac_flow_ctrl,

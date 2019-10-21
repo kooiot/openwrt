@@ -82,7 +82,7 @@ tlink_auto_start_install() {
 	echo "You need to restart device mannually!!" > /dev/console
 }
 
-tlink_default() {
+tlink_sd_default () {
 	local partdev
 
 	. /lib/upgrade/common.sh
@@ -95,6 +95,10 @@ tlink_default() {
 			fi
 		fi
 	fi
+}
+
+tlink_default() {
+	# tlink_sd_default
 
 	# data partition mount
 	if ( grep -qs '/mnt/data' /etc/config/fstab || \

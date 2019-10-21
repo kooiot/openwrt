@@ -10,7 +10,7 @@
  	sun8i-v3s-licheepi-zero.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-h3-tlink-x1.dts
-@@ -0,0 +1,231 @@
+@@ -0,0 +1,224 @@
 +/*
 + * Copyright (C) 2019 Dirk Chang <dirk@kooiot.com>
 + *
@@ -199,13 +199,6 @@
 +
 +&usb_otg {
 +	dr_mode = "otg";
-+	status = "okay";
-+};
-+
-+&usbphy {
-+	usb0_id_det-gpios = <&r_pio 0 7 GPIO_ACTIVE_HIGH>; /* PL7 */
-+	usb0_vbus-supply = <&reg_usb0_vbus>;
-+	/* VBUS on USB host ports are always on */
 +	status = "okay";
 +};
 +
