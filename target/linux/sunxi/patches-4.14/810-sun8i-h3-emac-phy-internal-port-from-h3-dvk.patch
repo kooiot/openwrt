@@ -24,12 +24,13 @@
  #define	ERDES4_IP_CSUM_BYPASSED		BIT(5)
 --- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c	2019-10-21 12:04:20.446544933 +0800
 +++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c	2019-10-21 12:18:01.518256212 +0800
-@@ -950,6 +950,27 @@
+@@ -950,6 +950,29 @@
  		return PTR_ERR(phydev);
  	}
  
 +	if (priv->plat->has_sun8i)
 +	{
++		netdev_info(priv->dev, "%s: H3 phy hacks begin\n", __func__);
 +		//EPHY Initial
 +		phy_write(phydev, 0x1f , 0x0100); /* switch to page 1        */
 +		phy_write(phydev, 0x12 , 0x4824); /* Disable APS             */
@@ -47,6 +48,7 @@
 +		/* reg 0x17 bit3,set 0 to disable iEEE */
 +		phy_write(phydev, 0x17 , phy_read(phydev, 0x17) & (~(1<<3)));
 +		phy_write(phydev, 0x1f , 0x0000); /* switch to page 0 */
++		netdev_info(priv->dev, "%s: H3 phy hacks end\n", __func__);
 +	}
 +
  	/* Stop Advertising 1000BASE Capability if interface is not GMII */
