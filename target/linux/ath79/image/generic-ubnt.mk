@@ -116,7 +116,7 @@ TARGET_DEVICES += ubnt_nanostation-m
 define Device/ubnt_nanostation-m-xw
   $(Device/ubnt-xw)
   DEVICE_TITLE := Ubiquiti Nanostation M (XW)
-  SUPPORTED_DEVICES += nano-m-xw
+  SUPPORTED_DEVICES += nanostation-m-xw
 endef
 TARGET_DEVICES += ubnt_nanostation-m-xw
 
@@ -173,7 +173,7 @@ endef
 define Device/ubnt_unifiac-lite
   $(Device/ubnt_unifiac)
   DEVICE_TITLE := Ubiquiti UniFi AC-Lite
-  SUPPORTED_DEVICES += ubnt-unifiac-lite
+  SUPPORTED_DEVICES += unifiac-lite
 endef
 TARGET_DEVICES += ubnt_unifiac-lite
 
