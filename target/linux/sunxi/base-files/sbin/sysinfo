@@ -149,7 +149,7 @@ show_module_info(){
 		module_type=$(3ginfo_get 'mode')
 		module_model=$(3ginfo_get 'device')
 		module_sim=$(3ginfo_get 'ccid')
-		module_imei=$(3ginfo_get 'imei')
+		module_imei=$(3ginfo_get 'cgsn')
 	fi
 
     cat <<EOF
