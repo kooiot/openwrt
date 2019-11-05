@@ -8,7 +8,7 @@ target=""
 case "$(board_name)" in
 "kooiot,tlink-x1" | \
 "kooiot,tlink-r1")
-    fm_version=1.00
+    fm_version=$(cat /etc/build_version)
 	;;
 *)
     fm_version=0.00
