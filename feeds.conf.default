@@ -1,5 +1,5 @@
-src-git packages https://git.openwrt.org/feed/packages.git^3f3c613ac5bbbd74eac636c3cb1c5cdcf0cbfbe8
-src-git luci https://github.com/kooiot/luci^55250c97dee133ae5040e1f2e78a307b4b535dc9
-src-git routing https://git.openwrt.org/feed/routing.git^8d5ee29f088e9dfaa49dc74573edb1919f14dbf4
-src-git telephony https://git.openwrt.org/feed/telephony.git^821bcb7c58a24ea65f022ad2221ba68143533157
+src-git packages https://git.openwrt.org/feed/packages.git^1ec76dd7ca647f76a75c4f88b3b70d154221e7e9
+src-git luci https://github.com/kooiot/luci^9cd632344b58672c62c8c77e4e4389281a3aaa23
+src-git routing https://git.openwrt.org/feed/routing.git^839ea37939ad1c6cbb4ac543962bbb66be4a2a3f
+src-git telephony https://git.openwrt.org/feed/telephony.git^6f95d6ab3f359ee2ce81c20522700937424d1591
 src-link kooiot /home/cch/mycode/packages_ex
