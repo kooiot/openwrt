@@ -45,6 +45,9 @@ tlink_add_4g_wan() {
 
 	uci set 3ginfo.@3ginfo[0].device='/dev/ttyUSB1'
 	uci commit 3ginfo
+
+	uci set system.led_modem.dev='3g-4g_wan'
+	uci commit system
 }
 
 # WAN is eth1 which is usb-eth has not unique MAC
