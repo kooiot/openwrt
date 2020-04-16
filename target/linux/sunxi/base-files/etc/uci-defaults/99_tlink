@@ -34,6 +34,19 @@ tlink_add_qmi_interface() {
 	uci commit network
 }
 
+tlink_add_4g_wan() {
+	uci set network.4g_wan='interface'
+	uci set network.4g_wan.service='umts'
+	uci set network.4g_wan.proto='3g'
+	uci set network.4g_wan.device='/dev/ttyUSB2'
+	uci set network.4g_wan.ipv6='auto'
+	uci set network.4g_wan.metric='10'
+	uci commit network
+
+	uci set 3ginfo.@3ginfo[0].device='/dev/ttyUSB1'
+	uci commit 3ginfo
+}
+
 # WAN is eth1 which is usb-eth has not unique MAC
 tlink_set_wan_mac() {
 	local MACADDR
@@ -107,8 +120,12 @@ tlink_default() {
 		echo "Data mount added"
 	fi
 
-	# QMI interface
-	tlink_add_qmi_interface
+	if [ -f /dev/cdc-wdm0 ]; then
+		# QMI interface
+		tlink_add_qmi_interface
+	else
+		tlink_add_4g_wan
+	fi
 
 	# ETH MAC for usb-eth
 	tlink_set_wan_mac
