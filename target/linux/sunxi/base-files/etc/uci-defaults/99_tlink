@@ -120,12 +120,14 @@ tlink_default() {
 		echo "Data mount added"
 	fi
 
-	if [ -f /dev/cdc-wdm0 ]; then
+	[ -f /dev/cdc-wdm0 ] && {
 		# QMI interface
+		echo "QMI module found!!!" > /dev/console
 		tlink_add_qmi_interface
-	else
+	} || {
+		echo "QMI module not found!!!" > /dev/console
 		tlink_add_4g_wan
-	fi
+	}
 
 	# ETH MAC for usb-eth
 	tlink_set_wan_mac
