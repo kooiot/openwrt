@@ -124,7 +124,7 @@ tlink_default() {
 		echo "Data mount added"
 	fi
 
-	[ -f /dev/cdc-wdm0 ] && {
+	[ -e /dev/cdc-wdm0 ] && {
 		# QMI interface
 		echo "QMI module found!!!" > /dev/console
 		tlink_add_qmi_interface
