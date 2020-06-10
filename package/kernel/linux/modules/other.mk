@@ -750,6 +750,42 @@ endef
 $(eval $(call KernelPackage,rtc-s35390a))
 
 
+define KernelPackage/rtc-rx8010
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=Epson RX8010SJ
+  DEFAULT:=m if ALL_KMODS && RTC_SUPPORT
+  DEPENDS:=+kmod-i2c-core
+  KCONFIG:=CONFIG_RTC_DRV_RX8010 \
+	CONFIG_RTC_CLASS=y
+  FILES:=$(LINUX_DIR)/drivers/rtc/rtc-rx8010.ko
+  AUTOLOAD:=$(call AutoLoad,50,rtc-rx8010,1)
+endef
+
+define KernelPackage/rtc-rx8010/description
+ Kernel module for Epson RX8010SJ RTC chip
+endef
+
+$(eval $(call KernelPackage,rtc-rx8010))
+
+
+define KernelPackage/rtc-hym8563
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=Haoyu Microelectronics HYM8563
+  DEFAULT:=m if ALL_KMODS && RTC_SUPPORT
+  DEPENDS:=+kmod-i2c-core
+  KCONFIG:=CONFIG_RTC_DRV_HYM8563 \
+	CONFIG_RTC_CLASS=y
+  FILES:=$(LINUX_DIR)/drivers/rtc/rtc-hym8563.ko
+  AUTOLOAD:=$(call AutoLoad,50,rtc-hym8563,1)
+endef
+
+define KernelPackage/rtc-hym8563/description
+ Kernel module for Haoyu Microelectronics HYM8563 RTC chip
+endef
+
+$(eval $(call KernelPackage,rtc-hym8563))
+
+
 define KernelPackage/mtdtests
   SUBMENU:=$(OTHER_MENU)
   TITLE:=MTD subsystem tests

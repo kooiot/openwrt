@@ -1,0 +1,197 @@
+--- a/arch/arm/boot/dts/Makefile
++++ b/arch/arm/boot/dts/Makefile
+@@ -1118,6 +1118,7 @@
+ 	sun8i-h3-orangepi-plus2e.dtb \
+ 	sun8i-h3-orangepi-zero-plus2.dtb \
+ 	sun8i-h3-rervision-dvk.dtb \
++	sun8i-h3-tlink-x1.dtb \
+ 	sun8i-r16-bananapi-m2m.dtb \
+ 	sun8i-r16-nintendo-nes-classic.dtb \
+ 	sun8i-r16-nintendo-super-nes-classic.dtb \
+--- /dev/null
++++ b/arch/arm/boot/dts/sun8i-h3-tlink-x1.dts
+@@ -0,0 +1,184 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++/*
++ * Copyright (C) 2019-2020 Dirk Chang <dirk@kooiot.com>
++ */
++
++/dts-v1/;
++#include "sun8i-h3-rervision.dtsi"
++
++/ {
++	model = "KooIoT TLink X1";
++	compatible = "kooiot,tlink-x1", "allwinner,sun8i-h3";
++
++	leds {
++		compatible = "gpio-leds";
++		pinctrl-names = "default";
++		pinctrl-0 = <&leds_rer>, <&r_pwr_rer>;
++
++		status {
++			label = "kooiot:green:status";
++			gpios = <&pio 0 6 GPIO_ACTIVE_HIGH>;
++			linux,default-trigger = "heartbeat";
++		};
++		power {
++			label = "kooiot:blue:power"; /* not connected */
++			gpios = <&r_pio 0 10 GPIO_ACTIVE_LOW>;
++			default-state = "on";
++		};
++		bs {
++			label = "kooiot:green:bs";
++			gpios = <&pio 0 19 GPIO_ACTIVE_HIGH>;
++			default-state = "off";
++		};
++		gs {
++			label = "kooiot:green:gs";
++			gpios = <&pio 0 17 GPIO_ACTIVE_HIGH>;
++			default-state = "off";
++		};
++		modem {
++			label = "kooiot:green:modem";
++			gpios = <&pio 0 21 GPIO_ACTIVE_HIGH>;
++			default-state = "off";
++		};
++		cloud {
++			label = "kooiot:green:cloud";
++			gpios = <&pio 0 18 GPIO_ACTIVE_HIGH>;
++			default-state = "off";
++		};
++	};
++
++	gpio_keys {
++		compatible = "gpio-keys";
++		pinctrl-names = "default";
++		pinctrl-0 = <&keys_rer>;
++
++		reset {
++			label = "reset";
++			linux,code = <KEY_RESTART>;
++			gpios = <&pio 0 10 GPIO_ACTIVE_LOW>;
++		};
++	};
++
++	gpio_export {
++		compatible = "gpio-export";
++		#size-cells = <0>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&pwr_rer>;
++
++		eth1_reset {
++			gpio-export,name = "eth1_reset";
++			gpio-export,output=<0>;
++			gpios = <&pio 0 20 GPIO_ACTIVE_HIGH>;
++		};
++		pcie_reset {
++			gpio-export,name = "pcie_reset";
++			gpio-export,output=<0>;
++			gpios = <&pio 0 9 GPIO_ACTIVE_HIGH>;
++		};
++		pcie_power {
++			gpio-export,name = "pcie_power";
++			gpio-export,output=<0>;
++			gpios = <&pio 0 8 GPIO_ACTIVE_LOW>;
++		};
++		sbat_power {
++			gpio-export,name = "sbat_power";
++			gpios = <&pio 0 7 GPIO_ACTIVE_HIGH>;
++		};
++	};
++};
++
++&pio {
++	leds_rer: led_pins@0 {
++		pins = "PA6", "PA17", "PA18", "PA19", "PA21";
++		function = "gpio_out";
++	};
++	keys_rer: key_pins@0 {
++		pins = "PA10";
++		function = "gpio_in";
++	};
++	pwr_rer: gpio_pins@0 {
++		pins = "PA7", "PA8", "PA9", "PA20";
++		function = "gpio_out";
++	};
++};
++
++&r_pio {
++	r_pwr_rer: led_pins@0 {
++		pins = "PL10";
++		function = "gpio_out";
++	};
++};
++
++&uart1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&uart1_pins>;
++	status = "okay";
++};
++
++&uart2 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&uart2_pins>;
++	status = "okay";
++};
++
++&uart3 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&uart3_pins>;
++	status = "okay";
++};
++
++&i2c0 {
++    status = "okay";
++    rx8010: rx8010@32 {
++        compatible = "epson,rx8010";
++        reg = <0x32>;
++        status = "okay";
++    };
++    at24c02: eeprom@50 {
++        compatible = "atmel,24c02";
++        reg = <0x50>;
++        pagesize = <16>;
++        status = "okay";
++    };
++};
++
++&reg_usb0_vbus {
++	gpio = <&r_pio 0 2 GPIO_ACTIVE_HIGH>; /* PL2 */
++	status = "okay";
++};
++
++&usb_otg {
++	dr_mode = "otg";
++	status = "okay";
++};
++
++&mmc0 {
++	bus-width = <4>;
++	cd-gpios = <&pio 5 6 GPIO_ACTIVE_HIGH>; /* PF6 */
++	status = "okay";
++	vmmc-supply = <&reg_vcc3v3>;
++};
++
++&ehci1 {
++	status = "okay";
++};
++
++&ehci2 {
++	status = "okay";
++};
++
++&ehci3 {
++	status = "okay";
++};
++
++&ohci1 {
++	status = "disabled";
++};
++
++&ohci2 {
++	status = "okay";
++};
++
++&ohci3 {
++	status = "disabled";
++};
