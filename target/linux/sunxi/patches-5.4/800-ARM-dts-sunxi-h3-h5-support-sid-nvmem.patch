@@ -1,0 +1,52 @@
+--- a/arch/arm/boot/dts/sunxi-h3-h5.dtsi
+--- b/arch/arm/boot/dts/sunxi-h3-h5.dtsi
+@@ -227,11 +227,6 @@
+ 			#size-cells = <0>;
+ 		};
+ 
+-		sid: eeprom@1c14000 {
+-			/* compatible is in per SoC .dtsi file */
+-			reg = <0x1c14000 0x400>;
+-		};
+-
+ 		usb_otg: usb@1c19000 {
+ 			compatible = "allwinner,sun8i-h3-musb";
+ 			reg = <0x01c19000 0x400>;
+@@ -497,6 +497,28 @@
+ 			clocks = <&osc24M>;
+ 		};
+ 
++		sid: eeprom@01c14000 {
++			compatible = "allwinner,sun8i-h3-sid";
++			reg = <0x01c14000 0x100>;
++
++			/* Data cells */
++			chipid: chipid@00 {
++				reg = <0x00 0x10>;
++			};
++			mac_nv1: mac_nv1@14 {
++				reg = <0x14 0x4>;
++			};
++			mac_nv2: mac_nv2@14 {
++				reg = <0x14 0x8>;
++			};
++			thermal_calibration: calib@34 {
++				reg = <0x34 0x8>;
++			};
++			product_sn: product_sn@d4 {
++				reg = <0xd4 0x18>;
++			};
++		};
++
+ 		emac: ethernet@1c30000 {
+ 			compatible = "allwinner,sun8i-h3-emac";
+ 			syscon = <&syscon>;
+@@ -507,6 +529,8 @@
+ 			reset-names = "stmmaceth";
+ 			clocks = <&ccu CLK_BUS_EMAC>;
+ 			clock-names = "stmmaceth";
++			nvmem-cells = <&chipid>;
++			nvmem-cell-names = "chipid";
+ 			status = "disabled";
+
+			mdio: mdio {

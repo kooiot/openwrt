@@ -1,0 +1,50 @@
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c	2019-10-21 12:04:20.446544933 +0800
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c	2019-10-21 12:18:01.518256212 +0800
+@@ -1032,6 +1032,29 @@
+		}
+ 
+ 		ret = phylink_connect_phy(priv->phylink, phydev);
++	
++		if (priv->plat->has_sun8i)
++		{
++			netdev_info(priv->dev, "%s: H3 phy hacks begin\n", __func__);
++			//EPHY Initial
++			phy_write(phydev, 0x1f , 0x0100); /* switch to page 1        */
++			phy_write(phydev, 0x12 , 0x4824); /* Disable APS             */
++			phy_write(phydev, 0x1f , 0x0200); /* switchto page 2         */
++			phy_write(phydev, 0x18 , 0x0000); /* PHYAFE TRX optimization */
++			phy_write(phydev, 0x1f , 0x0600); /* switchto page 6         */
++			phy_write(phydev, 0x14 , 0x708F); /* PHYAFE TX optimization  */
++			phy_write(phydev, 0x19 , 0x0000);
++			phy_write(phydev, 0x13 , 0xf000); /* PHYAFE RX optimization  */
++			phy_write(phydev, 0x15 , 0x1530);
++			phy_write(phydev, 0x1f , 0x0800); /* switch to page 8         */
++			phy_write(phydev, 0x18 , 0x00bc); /* PHYAFE TRX optimization */
++			//disable iEEE
++			phy_write(phydev, 0x1f , 0x0100); /* switchto page 1 */
++			/* reg 0x17 bit3,set 0 to disable iEEE */
++			phy_write(phydev, 0x17 , phy_read(phydev, 0x17) & (~(1<<3)));
++			phy_write(phydev, 0x1f , 0x0000); /* switch to page 0 */
++			netdev_info(priv->dev, "%s: H3 phy hacks end\n", __func__);
++		}
+ 	}
+ 
+ 	return ret;
+@@ -2842,12 +2865,17 @@
+ {
+ 	struct stmmac_priv *priv = netdev_priv(dev);
+ 	u32 chan;
++	int value = 0;
+ 
+ 	if (priv->eee_enabled)
+ 		del_timer_sync(&priv->eee_ctrl_timer);
+ 
+ 	/* Stop and disconnect the PHY */
+ 	phylink_stop(priv->phylink);
++	if (priv->plat->has_sun8i) {
++		value = phy_read(dev->phydev, MII_BMCR);
++		phy_write(dev->phydev, MII_BMCR, (value | BMCR_PDOWN));
++	}
+ 	phylink_disconnect_phy(priv->phylink);
+ 
+ 	stmmac_stop_all_queues(priv);

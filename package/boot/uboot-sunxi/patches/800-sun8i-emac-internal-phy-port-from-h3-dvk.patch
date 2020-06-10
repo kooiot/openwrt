@@ -1,0 +1,33 @@
+--- a/drivers/net/sun8i_emac.c	2019-01-15 06:02:36.000000000 +0800
++++ b/drivers/net/sun8i_emac.c	2019-10-18 19:29:43.159788582 +0800
+@@ -811,6 +811,30 @@
+ 	sun8i_mdio_init(dev->name, dev);
+ 	priv->bus = miiphy_get_dev_by_name(dev->name);
+ 
++	if (priv->use_internal_phy)
++	{
++		printf("%s: H3 phy hacks begin\n", __func__);
++		sun8i_mdio_write(priv->bus, priv->phyaddr, MDIO_DEVAD_NONE, 0x1f, 0x013d);
++		sun8i_mdio_write(priv->bus, priv->phyaddr, MDIO_DEVAD_NONE, 0x10, 0x3ffe);
++		sun8i_mdio_write(priv->bus, priv->phyaddr, MDIO_DEVAD_NONE, 0x1f, 0x063d);
++		sun8i_mdio_write(priv->bus, priv->phyaddr, MDIO_DEVAD_NONE, 0x13, 0x8000);
++		sun8i_mdio_write(priv->bus, priv->phyaddr, MDIO_DEVAD_NONE, 0x1f, 0x023d);
++		sun8i_mdio_write(priv->bus, priv->phyaddr, MDIO_DEVAD_NONE, 0x18, 0x1000);
++		sun8i_mdio_write(priv->bus, priv->phyaddr, MDIO_DEVAD_NONE, 0x1f, 0x063d);
++		sun8i_mdio_write(priv->bus, priv->phyaddr, MDIO_DEVAD_NONE, 0x15, 0x132c);
++		sun8i_mdio_write(priv->bus, priv->phyaddr, MDIO_DEVAD_NONE, 0x1f, 0x013d);
++		sun8i_mdio_write(priv->bus, priv->phyaddr, MDIO_DEVAD_NONE, 0x13, 0xd602);
++		sun8i_mdio_write(priv->bus, priv->phyaddr, MDIO_DEVAD_NONE, 0x17, 0x003b);
++		sun8i_mdio_write(priv->bus, priv->phyaddr, MDIO_DEVAD_NONE, 0x1f, 0x063d);
++		sun8i_mdio_write(priv->bus, priv->phyaddr, MDIO_DEVAD_NONE, 0x14, 0x7088);
++		sun8i_mdio_write(priv->bus, priv->phyaddr, MDIO_DEVAD_NONE, 0x1f, 0x033d);
++		sun8i_mdio_write(priv->bus, priv->phyaddr, MDIO_DEVAD_NONE, 0x11, 0x8530);
++		sun8i_mdio_write(priv->bus, priv->phyaddr, MDIO_DEVAD_NONE, 0x1f, 0x003d);
++		//phy_val = sun8i_mdio_read(priv->bus, priv->phyaddr, MDIO_DEVAD_NONE, 0x3c);
++		//sun8i_mdio_write(priv->bus, priv->phyaddr, MDIO_DEVAD_NONE, 0x3c, phy_val & 0x02);
++		printf("%s: H3 phy hacks end\n", __func__);
++	}
++
+ 	return sun8i_phy_init(priv, dev);
+ }
+ 
