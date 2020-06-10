@@ -1,0 +1,169 @@
+#!/bin/sh
+#
+# Copyright (C) 2010 OpenWrt.org
+#
+# This is free software, licensed under the GNU General Public License v2.
+# See /LICENSE for more information.
+#
+
+#
+# This script sets system defaults for the hardware on firstboot
+#
+
+. /lib/functions.sh
+. /lib/functions/tlink.sh
+
+tlink_mount_data() {
+	rule_name=$(uci add fstab mount)
+	uci batch <<EOF
+set fstab.$rule_name.target='/mnt/data'
+set fstab.$rule_name.device='/dev/mmcblk1p3'
+set fstab.$rule_name.fstype='ext4'
+set fstab.$rule_name.options='rw,async'
+set fstab.$rule_name.enabled='1'
+set fstab.$rule_name.enabled_fsck='1'
+EOF
+	uci commit fstab
+}
+
+tlink_add_qmi_interface() {
+	uci set network.4g_wan='interface'
+	uci set network.4g_wan.proto='qmi'
+	uci set network.4g_wan.device='/dev/cdc-wdm0'
+	uci set network.4g_wan.metric='10'
+	uci commit network
+}
+
+tlink_add_4g_wan() {
+	uci set network.4g_wan='interface'
+	uci set network.4g_wan.service='umts'
+	uci set network.4g_wan.proto='3g'
+	uci set network.4g_wan.device='/dev/ttyUSB2'
+	uci set network.4g_wan.ipv6='auto'
+	uci set network.4g_wan.apn='3gnet'
+	uci set network.4g_wan.metric='10'
+	uci commit network
+
+	uci set 3ginfo.@3ginfo[0].device='/dev/ttyUSB1'
+	uci commit 3ginfo
+
+	uci set system.led_modem.dev='3g-4g_wan'
+	uci commit system
+}
+
+# WAN is eth1 which is usb-eth has not unique MAC
+tlink_set_wan_mac() {
+	local MACADDR
+
+	export_tlink_efuse_mac MACADDR 2 || {
+		return
+	}
+
+	uci set network.wan.macaddr=${MACADDR}
+	uci set network.wan6.macaddr=${MACADDR}
+	uci commit network
+
+	return
+}
+
+tlink_check_boot() {
+	mkdir -p /tmp/boot_p1
+	mount /dev/mmcblk0p1 /tmp/boot_p1
+	if [ -f /tmp/boot_p1/u-boot-sunxi-with-spl.bin ]; then
+		umount /tmp/boot_p1
+		return 0
+	fi
+	umount /tmp/boot_p1
+	return 1
+}
+
+tlink_auto_start_install() {
+	echo "sleep 3" > /sbin/boot_sd_install
+	echo "install_to_emmc -f" >> /sbin/boot_sd_install
+	echo "if [ \$? -ne 0 ]; then" >> /sbin/boot_sd_install
+	echo "    echo \"Failed to install firmware to eMMC\"" >> /sbin/boot_sd_install
+	echo "else" >> /sbin/boot_sd_install
+	echo "    echo \"Install firmware to eMMC is done!!\"" >> /sbin/boot_sd_install
+	echo "    echo \"System halt now!!\"" >> /sbin/boot_sd_install
+	echo "    sync" >> /sbin/boot_sd_install
+	echo "    halt" >> /sbin/boot_sd_install
+	echo "fi" >> /sbin/boot_sd_install
+	chmod a+x /sbin/boot_sd_install
+
+	echo "boot_sd_install > /dev/console 2>&1  &" > /etc/rc.local
+	echo "exit 0" >> /etc/rc.local
+
+	sync
+	
+	echo "This is an BOOT SD!!!!" > /dev/console
+	echo "You need to restart device mannually!!" > /dev/console
+}
+
+tlink_sd_default () {
+	local partdev
+
+	. /lib/upgrade/common.sh
+
+	if export_bootdevice && export_partdevice partdev 0; then
+		if [ "$partdev" = "mmcblk0" ]; then
+			if tlink_check_boot; then
+				tlink_auto_start_install
+				return
+			fi
+		fi
+	fi
+}
+
+tlink_default() {
+	# tlink_sd_default
+
+	# data partition mount
+	if ( grep -qs '/mnt/data' /etc/config/fstab || \
+		tlink_mount_data )
+	then
+		echo "Data mount added"
+	fi
+
+	[ -e /dev/cdc-wdm0 ] && {
+		# QMI interface
+		echo "QMI module found!!!" > /dev/console
+		tlink_add_qmi_interface
+	} || {
+		echo "QMI module not found!!!" > /dev/console
+		tlink_add_4g_wan
+	}
+
+	# ETH MAC for usb-eth
+	tlink_set_wan_mac
+
+	# set ttylogin (for ttyS0, default will promote console with password)
+	# set system.@system[0].ttylogin='1'
+	# uci commit system
+}
+
+xxx() {
+
+# add mac address from U-Boot partition to lan and wan devices
+	MTD=`grep -e 'u-boot' /proc/mtd`
+	MTD=`echo ${MTD} | sed 's/[a-z]*\([0-9]*\):.*/\1/'`
+	[ -n "${MTD}" ] && {
+		MACADDR=`dd if=/dev/mtdblock${MTD} bs=1 skip=262048 count=6 2>/dev/null | hexdump -e '1/1 "%02x"'`
+		MACADDR2=$(( 0x${MACADDR} + 1))
+		MACADDR2=`printf "%012x" ${MACADDR2}`
+
+		MACADDR=`echo ${MACADDR} | sed 's/\(..\)/\1:/g' | sed 's/:$//'`
+		MACADDR2=`echo ${MACADDR2} | sed 's/\(..\)/\1:/g' | sed 's/:$//'`
+
+		uci set network.eth0.macaddr=${MACADDR}
+		uci set network.lan.macaddr=${MACADDR}
+		uci set network.wan.macaddr=${MACADDR2}
+		uci commit network
+	}
+}
+
+case "$(board_name)" in
+"kooiot,tlink-x1"|\
+"kooiot,tlink-r1")
+	tlink_default
+	;;
+esac

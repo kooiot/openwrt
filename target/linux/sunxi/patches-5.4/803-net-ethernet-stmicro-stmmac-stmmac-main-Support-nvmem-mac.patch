@@ -1,0 +1,93 @@
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+@@ -24,6 +24,8 @@
+ #include <linux/if_ether.h>
+ #include <linux/crc32.h>
+ #include <linux/mii.h>
++#include <linux/nvmem-consumer.h>
++#include <linux/crc32.h>
+ #include <linux/if.h>
+ #include <linux/if_vlan.h>
+ #include <linux/dma-mapping.h>
+@@ -2153,6 +2155,72 @@
+ }
+ 
+ /**
++ * Generate mac address from chipid as what u-boot does
++ */
++static void eth_hw_addr_nvmem_sun8i_chipid(struct device* dev, struct net_device* ndev)
++{
++	struct nvmem_cell *cell;
++	ssize_t cell_size;
++	u32 *chipid;
++
++	cell = devm_nvmem_cell_get(dev, "chipid");
++	if (IS_ERR(cell))
++		return;
++
++	chipid = (u32 *)nvmem_cell_read(cell, &cell_size);
++	devm_nvmem_cell_put(dev, cell);
++	if (cell_size < 16) {
++		kfree(chipid);
++		return;
++	}
++
++	dev_info(dev, "Using the MAC address generated from nvmem[chipid].\n");
++	chipid[3] = crc32_be(0, (unsigned char *)&chipid[1], 12);
++
++	/* Ensure the NIC specific bytes of the mac are not all 0 */
++	if ((chipid[3] & 0xffffff) == 0)
++		chipid[3] |= 0x800000;
++
++	/* Non OUI / registered MAC address */
++	ndev->dev_addr[0] = 0xB0;
++	ndev->dev_addr[1] = 0xC9;
++	ndev->dev_addr[2] = (chipid[3] >> 24) & 0xff;
++	ndev->dev_addr[3] = (chipid[3] >> 16) & 0xff;
++	ndev->dev_addr[4] = (chipid[3] >>  8) & 0xff;
++	ndev->dev_addr[5] = (chipid[3] >>  0) & 0xff;
++
++	kfree(chipid);
++}
++
++static void eth_hw_addr_nvmem_sun8i(struct device* dev, struct net_device *ndev)
++{
++	struct nvmem_cell *cell;
++	ssize_t cell_size;
++	u64 *cell_data;
++	int cell_mac;
++
++	cell = devm_nvmem_cell_get(dev, "mac_nv1");
++	if (IS_ERR(cell)) {
++		netdev_info(ndev, "Cannot load mac_nv1 from nvmem, using random MAC address.\n");
++		return;
++	}
++	netdev_info(ndev, "Using the MAC address from nvmem[mac_nv1].\n");
++	cell_data = (u64 *)nvmem_cell_read(cell, &cell_size);
++	devm_nvmem_cell_put(dev, cell);
++
++	cell_mac = be32_to_cpu(cell_data[0] & GENMASK(31, 0));
++	ndev->addr_assign_type = NET_ADDR_RANDOM;
++	ndev->dev_addr[0] = 0x1E;
++	ndev->dev_addr[1] = 0x4B;
++	ndev->dev_addr[2] = (cell_mac >> 24) & 0xFF;
++	ndev->dev_addr[3] = (cell_mac >> 16) & 0xFF;
++	ndev->dev_addr[4] = (cell_mac >> 8) & 0xFF;
++	ndev->dev_addr[5] = cell_mac & 0xFF;
++
++	kfree(cell_data);
++}
++
++/**
+  * stmmac_check_ether_addr - check if the MAC addr is valid
+  * @priv: driver private structure
+  * Description:
+@@ -2164,7 +2232,7 @@
+ 	if (!is_valid_ether_addr(priv->dev->dev_addr)) {
+ 		stmmac_get_umac_addr(priv, priv->hw, priv->dev->dev_addr, 0);
+ 		if (!is_valid_ether_addr(priv->dev->dev_addr))
+-			eth_hw_addr_random(priv->dev);
++			eth_hw_addr_nvmem_sun8i_chipid(priv->device, priv->dev);
+ 		dev_info(priv->device, "device MAC address %pM\n",
+ 			 priv->dev->dev_addr);
+ 	}

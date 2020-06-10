@@ -226,6 +226,18 @@ define U-Boot/orangepi_2
   BUILD_DEVICES:=xunlong_orangepi-2
 endef
 
+define U-Boot/tlink_x1
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=U-Boot for TLink X1 (H3)
+  BUILD_DEVICES:=kooiot_tlink-x1
+endef
+
+define U-Boot/tlink_r1
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=U-Boot for TLink R1 (H3)
+  BUILD_DEVICES:=kooiot_tlink-r1
+endef
+
 define U-Boot/pangolin
   BUILD_SUBTARGET:=cortexa7
   NAME:=Theobroma A31-yQ7 devboard
@@ -330,6 +342,8 @@ UBOOT_TARGETS := \
 	nanopi_neo \
 	nanopi_neo_air \
 	nanopi_neo_plus2 \
+	tlink_x1 \
+	tlink_r1 \
 	nanopi_neo2 \
 	nanopi_r1 \
 	orangepi_zero \

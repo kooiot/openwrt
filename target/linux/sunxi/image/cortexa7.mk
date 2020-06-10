@@ -215,5 +215,31 @@ define Device/xunlong_orangepi-2
   DEVICE_MODEL := Orange Pi 2
   DEVICE_PACKAGES:=kmod-rtc-sunxi
   SOC := sun8i-h3
-endef
+ endef
 TARGET_DEVICES += xunlong_orangepi-2
+
+define Device/kooiot_tlink-x1
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := TLink X1
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
+	 kmod-usb-net kmod-usb-net-rtl8152 \
+	 kmod-leds-gpio kmod-ledtrig-heartbeat \
+	 kmod-ledtrig-netdev kmod-ledtrig-gpio \
+	 kmod-rtc-rx8010 kmod-usb-net-asix \
+	 kmod-eeprom-at24 fdisk
+  SOC := sun8i-h3
+endef
+TARGET_DEVICES += kooiot_tlink-x1
+
+define Device/kooiot_tlink-r1
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := TLink R1
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
+	 kmod-usb-net kmod-usb-net-rtl8152 \
+	 kmod-leds-gpio kmod-ledtrig-heartbeat \
+	 kmod-ledtrig-netdev kmod-ledtrig-gpio \
+	 kmod-rtc-hym8563 kmod-usb-net-asix \
+	 kmod-net-rtl8723be fdisk
+  SOC := sun8i-h3
+endef
+TARGET_DEVICES += kooiot_tlink-r1
