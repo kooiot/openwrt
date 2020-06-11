@@ -12,13 +12,28 @@
  		usb_otg: usb@1c19000 {
  			compatible = "allwinner,sun8i-h3-musb";
  			reg = <0x01c19000 0x400>;
-@@ -497,6 +497,28 @@
+@@ -430,6 +430,12 @@
+				bias-pull-up;
+			};
+
++			mmc0_cd_pin: mmc0_cd_pin@0 {
++				 pins = "PF6";
++				 function = "gpio_in";
++				 bias-pull-up;
++			};
++
+			mmc1_pins: mmc1-pins {
+				pins = "PG0", "PG1", "PG2", "PG3",
+				       "PG4", "PG5";
+@@ -497,6 +497,30 @@
  			clocks = <&osc24M>;
  		};
  
 +		sid: eeprom@01c14000 {
 +			compatible = "allwinner,sun8i-h3-sid";
 +			reg = <0x01c14000 0x100>;
++			#address-cells = <1>;
++			#size-cells = <0>;
 +
 +			/* Data cells */
 +			chipid: chipid@00 {
@@ -41,7 +56,7 @@
  		emac: ethernet@1c30000 {
  			compatible = "allwinner,sun8i-h3-emac";
  			syscon = <&syscon>;
-@@ -507,6 +529,8 @@
+@@ -507,6 +531,8 @@
  			reset-names = "stmmaceth";
  			clocks = <&ccu CLK_BUS_EMAC>;
  			clock-names = "stmmaceth";
