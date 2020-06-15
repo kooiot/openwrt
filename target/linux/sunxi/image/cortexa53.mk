@@ -14,6 +14,11 @@ define Device/sun50i-h5
   $(Device/sun50i)
 endef
 
+define Device/sun50i-h6
+  SOC := sun50i-h6
+  $(Device/sun50i)
+endef
+
 define Device/sun50i-a64
   SOC := sun50i-a64
   $(Device/sun50i)
@@ -90,3 +95,10 @@ define Device/xunlong_orangepi-zero-plus
   $(Device/sun50i-h5)
 endef
 TARGET_DEVICES += xunlong_orangepi-zero-plus
+
+define Device/kooiot_tlink-x2
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := TLink X2
+  $(Device/sun50i-h6)
+endef
+TARGET_DEVICES += kooiot_tlink-x2
