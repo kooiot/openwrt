@@ -220,14 +220,6 @@ define U-Boot/tlink_r1
   BUILD_DEVICES:=kooiot_tlink-r1
 endef
 
-define U-Boot/tlink_x2
-  BUILD_SUBTARGET:=cortexa53
-  NAME:=U-Boot for TLink X2 (H6)
-  BUILD_DEVICES:=kooiot_tlink-x2
-  DEPENDS:=+PACKAGE_u-boot-tlink_x2:arm-trusted-firmware-sunxi
-  UENV:=a64
-endef
-
 define U-Boot/pangolin
   BUILD_SUBTARGET:=cortexa7
   NAME:=Theobroma A31-yQ7 devboard
@@ -287,6 +279,14 @@ define U-Boot/orangepi_pc2
   BUILD_DEVICES:=xunlong_orangepi-pc2
   DEPENDS:=+PACKAGE_u-boot-orangepi_pc2:arm-trusted-firmware-sunxi
   UENV:=a64
+endef
+
+define U-Boot/tlink_x2
+  BUILD_SUBTARGET:=cortexa53
+  NAME:=U-Boot for TLink X2 (H6)
+  BUILD_DEVICES:=kooiot_tlink-x2
+  DEPENDS:=+PACKAGE_u-boot-tlink_x2:arm-trusted-firmware-sunxi
+  UENV:=h6
 endef
 
 define U-Boot/Bananapi_M2_Ultra
