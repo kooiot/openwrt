@@ -1,36 +1,15 @@
++++ a/arch/arm64/boot/dts/allwinner/Makefile
++++ b/arch/arm64/boot/dts/allwinner/Makefile
+@@ -25,5 +25,6 @@
+ dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-orangepi-3.dtb
+ dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-orangepi-lite2.dtb
+ dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-orangepi-one-plus.dtb
++dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-tlink-x2.dtb
+ dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-pine-h64.dtb
+ dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-tanix-tx6.dtb
 --- /dev/null
-+++ b/configs/tlink_x2_defconfig
-@@ -0,0 +1,17 @@
-+CONFIG_ARM=y
-+CONFIG_ARCH_SUNXI=y
-+CONFIG_SPL=y
-+CONFIG_MACH_SUN50I_H6=y
-+CONFIG_SUNXI_DRAM_H6_LPDDR3=y
-+CONFIG_MMC0_CD_PIN="PF6"
-+CONFIG_MMC_SUNXI_SLOT_EXTRA=2
-+CONFIG_USB3_VBUS_PIN="PL5"
-+# CONFIG_PSCI_RESET is not set
-+# CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
-+CONFIG_DEFAULT_DEVICE_TREE="sun50i-h6-tlink-x2"
-+CONFIG_USB_EHCI_HCD=y
-+CONFIG_USB_OHCI_HCD=y
-+CONFIG_SPL_SPI_SUNXI=y
-+CONFIG_LOGLEVEL=9
-+CONFIG_SPL_LOGLEVEL=9
-+CONFIG_TPL_LOGLEVEL=9
---- a/arch/arm/dts/Makefile
-+++ b/arch/arm/dts/Makefile
-@@ -563,6 +563,7 @@
- 	sun50i-h6-beelink-gs1.dtb \
- 	sun50i-h6-orangepi-lite2.dtb \
- 	sun50i-h6-orangepi-one-plus.dtb \
-+	sun50i-h6-tlink-x2.dtb \
- 	sun50i-h6-pine-h64.dtb
- dtb-$(CONFIG_MACH_SUN50I) += \
- 	sun50i-a64-amarula-relic.dtb \
---- /dev/null
-+++ b/arch/arm/dts/sun50i-h6-tlink-x2.dts
-@@ -0,0 +1,277 @@
++++ b/arch/arm64/boot/dts/allwinner/sun50i-h6-tlink-x2.dts
+@@ -0,0 +1,284 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +/*
 + * Copyright (c) 2017 Icenowy Zheng <icenowy@aosc.io>
@@ -43,7 +22,7 @@
 +#include <dt-bindings/gpio/gpio.h>
 +
 +/ {
-+	model = "ThingsLink X2";
++	model = "TLink X2";
 +	compatible = "kooiot,tlink-x2", "allwinner,sun50i-h6";
 +
 +	aliases {
@@ -66,21 +45,27 @@
 +		};
 +	};
 +
++	power_en {
++		status = "okay";
++		compatible = "power_en";
++		hub_rst = <&pio 7 2 GPIO_ACTIVE_HIGH>;
++	};
++
 +	leds {
 +		compatible = "gpio-leds";
 +
 +		heartbeat {
-+			label = "kooiot:green:heartbeat";
++			label = "pine-h64:green:heartbeat";
 +			gpios = <&r_pio 0 4 GPIO_ACTIVE_HIGH>; /* PL4 */
 +		};
 +
 +		link {
-+			label = "kooiot:white:link";
++			label = "pine-h64:white:link";
 +			gpios = <&r_pio 0 3 GPIO_ACTIVE_HIGH>; /* PL3 */
 +		};
 +
 +		status {
-+			label = "kooiot:blue:status";
++			label = "pine-h64:blue:status";
 +			gpios = <&r_pio 0 7 GPIO_ACTIVE_HIGH>; /* PL7 */
 +		};
 +	};
@@ -94,6 +79,10 @@
 +		gpio = <&r_pio 0 5 GPIO_ACTIVE_HIGH>;
 +		enable-active-high;
 +	};
++};
++
++&cpu0 {
++	cpu-supply = <&reg_dcdca>;
 +};
 +
 +&emac {
@@ -187,6 +176,7 @@
 +			};
 +
 +			reg_aldo2: aldo2 {
++				regulator-always-on;
 +				regulator-min-microvolt = <3300000>;
 +				regulator-max-microvolt = <3300000>;
 +				regulator-name = "vcc-ac200";
@@ -278,14 +268,10 @@
 +			};
 +		};
 +	};
++};
 +
-+	pcf8563: rtc@51 {
-+		compatible = "nxp,pcf8563";
-+		reg = <0x51>;
-+		interrupt-parent = <&r_intc>;
-+		interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
-+		#clock-cells = <0>;
-+	};
++&r_ir {
++	status = "okay";
 +};
 +
 +&r_pio {

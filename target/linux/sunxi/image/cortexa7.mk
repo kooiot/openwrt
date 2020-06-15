@@ -220,7 +220,7 @@ TARGET_DEVICES += xunlong_orangepi-2
 
 define Device/kooiot_tlink-x1
   DEVICE_VENDOR := KooIoT
-  DEVICE_MODEL := TLink X1
+  DEVICE_MODEL := ThingsLink X1
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
 	 kmod-usb-net kmod-usb-net-rtl8152 \
 	 kmod-leds-gpio kmod-ledtrig-heartbeat \
@@ -233,7 +233,7 @@ TARGET_DEVICES += kooiot_tlink-x1
 
 define Device/kooiot_tlink-r1
   DEVICE_VENDOR := KooIoT
-  DEVICE_MODEL := TLink R1
+  DEVICE_MODEL := ThingsLink R1
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
 	 kmod-usb-net kmod-usb-net-rtl8152 \
 	 kmod-leds-gpio kmod-ledtrig-heartbeat \
