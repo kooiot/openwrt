@@ -29,7 +29,7 @@ define U-Boot/a64-olinuxino
   BUILD_SUBTARGET:=cortexa53
   NAME:=Olimex A64-OLinuXino
   BUILD_DEVICES:=olimex_a64-olinuxino
-  DEPENDS:=+PACKAGE_u-boot-olimex_a64-olinuxino:arm-trusted-firmware-sunxi
+  DEPENDS:=+PACKAGE_u-boot-olimex_a64-olinuxino:arm-trusted-firmware-sunxi-a64
   UENV:=a64
 endef
 
@@ -37,7 +37,7 @@ define U-Boot/a64-olinuxino-emmc
   BUILD_SUBTARGET:=cortexa53
   NAME:=Olimex A64-OLinuXino eMMC
   BUILD_DEVICES:=olimex_a64-olinuxino-emmc
-  DEPENDS:=+PACKAGE_u-boot-olimex_a64-olinuxino-emmc:arm-trusted-firmware-sunxi
+  DEPENDS:=+PACKAGE_u-boot-olimex_a64-olinuxino-emmc:arm-trusted-firmware-sunxi-a64
   UENV:=a64
 endef
 
@@ -228,13 +228,13 @@ endef
 
 define U-Boot/tlink_x1
   BUILD_SUBTARGET:=cortexa7
-  NAME:=U-Boot for TLink X1 (H3)
+  NAME:=ThingsLink X1
   BUILD_DEVICES:=kooiot_tlink-x1
 endef
 
 define U-Boot/tlink_r1
   BUILD_SUBTARGET:=cortexa7
-  NAME:=U-Boot for TLink R1 (H3)
+  NAME:=ThingsLink R1
   BUILD_DEVICES:=kooiot_tlink-r1
 endef
 
@@ -256,7 +256,7 @@ define U-Boot/nanopi_neo_plus2
   BUILD_SUBTARGET:=cortexa53
   NAME:=NanoPi NEO Plus2 (H5)
   BUILD_DEVICES:=friendlyarm_nanopi-neo-plus2
-  DEPENDS:=+PACKAGE_u-boot-nanopi_neo_plus2:arm-trusted-firmware-sunxi
+  DEPENDS:=+PACKAGE_u-boot-nanopi_neo_plus2:arm-trusted-firmware-sunxi-a64
   UENV:=a64
 endef
 
@@ -264,7 +264,7 @@ define U-Boot/nanopi_neo2
   BUILD_SUBTARGET:=cortexa53
   NAME:=NanoPi NEO2 (H5)
   BUILD_DEVICES:=friendlyarm_nanopi-neo2
-  DEPENDS:=+PACKAGE_u-boot-nanopi_neo2:arm-trusted-firmware-sunxi
+  DEPENDS:=+PACKAGE_u-boot-nanopi_neo2:arm-trusted-firmware-sunxi-a64
   UENV:=a64
 endef
 
@@ -272,7 +272,7 @@ define U-Boot/pine64_plus
   BUILD_SUBTARGET:=cortexa53
   NAME:=Pine64 Plus A64
   BUILD_DEVICES:=pine64_pine64-plus
-  DEPENDS:=+PACKAGE_u-boot-pine64_plus:arm-trusted-firmware-sunxi
+  DEPENDS:=+PACKAGE_u-boot-pine64_plus:arm-trusted-firmware-sunxi-a64
   UENV:=a64
 endef
 
@@ -286,7 +286,7 @@ define U-Boot/sopine_baseboard
   BUILD_SUBTARGET:=cortexa53
   NAME:=Sopine Baseboard
   BUILD_DEVICES:=pine64_sopine-baseboard
-  DEPENDS:=+PACKAGE_u-boot-sopine_baseboard:arm-trusted-firmware-sunxi
+  DEPENDS:=+PACKAGE_u-boot-sopine_baseboard:arm-trusted-firmware-sunxi-a64
   UENV:=a64
 endef
 
@@ -295,7 +295,7 @@ define U-Boot/orangepi_zero_plus
   BUILD_SUBTARGET:=cortexa53
   NAME:=Xunlong Orange Pi Zero Plus
   BUILD_DEVICES:=xunlong_orangepi-zero-plus
-  DEPENDS:=+PACKAGE_u-boot-orangepi_zero_plus:arm-trusted-firmware-sunxi
+  DEPENDS:=+PACKAGE_u-boot-orangepi_zero_plus:arm-trusted-firmware-sunxi-a64
   UENV:=a64
 endef
 
@@ -303,15 +303,15 @@ define U-Boot/orangepi_pc2
   BUILD_SUBTARGET:=cortexa53
   NAME:=Xunlong Orange Pi PC2
   BUILD_DEVICES:=xunlong_orangepi-pc2
-  DEPENDS:=+PACKAGE_u-boot-orangepi_pc2:arm-trusted-firmware-sunxi
+  DEPENDS:=+PACKAGE_u-boot-orangepi_pc2:arm-trusted-firmware-sunxi-a64
   UENV:=a64
 endef
 
 define U-Boot/tlink_x2
   BUILD_SUBTARGET:=cortexa53
-  NAME:=U-Boot for TLink X2 (H6)
+  NAME:=ThingsLink X2
   BUILD_DEVICES:=kooiot_tlink-x2
-  DEPENDS:=+PACKAGE_u-boot-tlink_x2:arm-trusted-firmware-sunxi
+  DEPENDS:=+PACKAGE_u-boot-tlink_x2:arm-trusted-firmware-sunxi-h6
   UENV:=h6
 endef
 

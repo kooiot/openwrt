@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/configs/tlink_x2_defconfig
-@@ -0,0 +1,16 @@
+@@ -0,0 +1,17 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
 +CONFIG_SPL=y
@@ -14,6 +14,7 @@
 +CONFIG_DEFAULT_DEVICE_TREE="sun50i-h6-tlink-x2"
 +CONFIG_USB_EHCI_HCD=y
 +CONFIG_USB_OHCI_HCD=y
++CONFIG_SPL_SPI_SUNXI=y
 +CONFIG_LOGLEVEL=9
 +CONFIG_SPL_LOGLEVEL=9
 +CONFIG_TPL_LOGLEVEL=9
