@@ -98,7 +98,7 @@ TARGET_DEVICES += xunlong_orangepi-zero-plus
 
 define Device/kooiot_tlink-x2
   DEVICE_VENDOR := KooIoT
-  DEVICE_MODEL := TLink X2
+  DEVICE_MODEL := ThingsLink X2
   $(Device/sun50i-h6)
 endef
 TARGET_DEVICES += kooiot_tlink-x2

@@ -22,7 +22,7 @@
 +#include <dt-bindings/gpio/gpio.h>
 +
 +/ {
-+	model = "TLink X2";
++	model = "ThingsLink X2";
 +	compatible = "kooiot,tlink-x2", "allwinner,sun50i-h6";
 +
 +	aliases {
