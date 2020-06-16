@@ -39,6 +39,7 @@ platform_check_image() {
 
 	case "$(board_name)" in
 	"kooiot,tlink-x1"|\
+	"kooiot,tlink-x2"|\
 	"kooiot,tlink-r1")
 		tlink_check_image "$1" && return 0
 		return 1
@@ -62,6 +63,7 @@ platform_kooiot_pre_upgrade() {
 platform_pre_upgrade() {
 	case "$(board_name)" in
 	"kooiot,tlink-x1"|\
+	"kooiot,tlink-x2"|\
 	"kooiot,tlink-r1")
 		platform_kooiot_pre_upgrade
 		;;
