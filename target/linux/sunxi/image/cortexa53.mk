@@ -93,6 +93,13 @@ TARGET_DEVICES += xunlong_orangepi-zero-plus
 define Device/kooiot_tlink-x2
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink X2
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
+	 kmod-usb-net kmod-usb-net-rtl8152 \
+	 kmod-leds-gpio kmod-ledtrig-heartbeat \
+	 kmod-ledtrig-netdev kmod-ledtrig-gpio \
+	 kmod-rtc-pcf8563 kmod-usb-net-asix \
+	 kmod-rtl8723bs rtl8723-firmware \
+	 kmod-eeprom-at24 fdisk
   $(Device/sun50i-h6)
 endef
 TARGET_DEVICES += kooiot_tlink-x2
