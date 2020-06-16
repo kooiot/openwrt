@@ -29,7 +29,7 @@
  	sun50i-a64-amarula-relic.dtb \
 --- /dev/null
 +++ b/arch/arm/dts/sun50i-h6-tlink-x2.dts
-@@ -0,0 +1,245 @@
+@@ -0,0 +1,250 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +/*
 + * Copyright (c) 2020 Dirk Chang <dirk@kooiot.com>
@@ -52,6 +52,17 @@
 +
 +	chosen {
 +		stdout-path = "serial0:115200n8";
++	};
++
++	connector {
++		compatible = "hdmi-connector";
++		type = "a";
++
++		port {
++			hdmi_con_in: endpoint {
++				remote-endpoint = <&hdmi_out_con>;
++			};
++		};
 +	};
 +
 +	leds {
@@ -106,12 +117,14 @@
 +	status = "okay";
 +};
 +
-+&ehci0 {
++&hdmi {
 +	status = "okay";
 +};
 +
-+&ehci3 {
-+	status = "okay";
++&hdmi_out {
++	hdmi_out_con: endpoint {
++		remote-endpoint = <&hdmi_con_in>;
++	};
 +};
 +
 +&mmc0 {
@@ -127,14 +140,6 @@
 +	non-removable;
 +	cap-mmc-hw-reset;
 +	bus-width = <8>;
-+	status = "okay";
-+};
-+
-+&ohci0 {
-+	status = "okay";
-+};
-+
-+&ohci3 {
 +	status = "okay";
 +};
 +
