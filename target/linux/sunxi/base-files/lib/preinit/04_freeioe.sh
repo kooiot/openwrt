@@ -64,6 +64,7 @@ do_kooiot_freeioe_generic() {
 
 	case "$(board_name)" in
 	"kooiot,tlink-x1"|\
+	"kooiot,tlink-x2"|\
 	"kooiot,tlink-r1")
 		do_product_sn_kooiot
 		;;

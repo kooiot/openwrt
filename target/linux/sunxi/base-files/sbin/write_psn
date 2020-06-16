@@ -7,10 +7,11 @@ psn=$1
 
 case "$(board_name)" in
 "kooiot,tlink-x1" | \
+"kooiot,tlink-x2" | \
 "kooiot,tlink-r1")
 	;;
 *)
-	echo "This only support TLink devices"
+	echo "This only support ThingsLink devices"
 	exit 1
 	;;
 esac
