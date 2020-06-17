@@ -17,37 +17,31 @@ diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h6.dtsi b/arch/arm64/boot/dts/
 index f3ca411..b3d8da4 100644
 --- a/arch/arm64/boot/dts/allwinner/sun50i-h6.dtsi
 +++ b/arch/arm64/boot/dts/allwinner/sun50i-h6.dtsi
-@@ -233,6 +233,44 @@
- 			status = "disabled";
- 		};
- 
-+		usb3: usb@5200000 {
-+			compatible = "allwinner,sun50i-h6-dwc3";
-+			#address-cells = <1>;
-+			#size-cells = <1>;
-+			ranges;
-+			clocks = <&ccu CLK_BUS_XHCI>;
-+			clock-names = "bus";
+@@ -524,6 +524,38 @@
+			#phy-cells = <1>;
+		};
+
++		dwc3: dwc3@5200000 {
++			compatible = "snps,dwc3";
++			reg = <0x05200000 0x10000>;
++			interrupts = <GIC_SPI 26 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&ccu CLK_BUS_XHCI>,
++				 <&ccu CLK_BUS_XHCI>,
++				 <&rtc 0>;
++			clock-names = "ref", "bus_early", "suspend";
 +			resets = <&ccu RST_BUS_XHCI>;
-+			reset-names = "bus";
++			/*
++			 * The datasheet of the chip doesn't declare the
++			 * peripheral function, and there's no boards known
++			 * to have a USB Type-B port routed to the port.
++			 * In addition, no one has tested the peripheral
++			 * function yet.
++			 * So set the dr_mode to "host" in the DTSI file.
++			 */
++			dr_mode = "host";
++			phys = <&usb3phy>;
++			phy-names = "usb3-phy";
 +			status = "disabled";
-+
-+			dwc3: dwc3 {
-+				compatible = "snps,dwc3";
-+				reg = <0x5200000 0x10000>;
-+				interrupts = <GIC_SPI 26 IRQ_TYPE_LEVEL_HIGH>;
-+				/*
-+				 * According to Wink from Allwinner, the
-+				 * USB3 port on H6 is not capable of OTG;
-+				 * the datasheet doesn't mention OTG at all
-+				 * either, so the dr_mode is default to
-+				 * "host" here.
-+				 */
-+				dr_mode = "host";
-+				phys = <&usb3phy>;
-+				phy-names = "usb3-phy";
-+				status = "disabled";
-+			};
 +		};
 +
 +		usb3phy: phy@5210000 {
@@ -59,9 +53,9 @@ index f3ca411..b3d8da4 100644
 +			status = "disabled";
 +		};
 +
- 		r_ccu: clock@7010000 {
- 			compatible = "allwinner,sun50i-h6-r-ccu";
- 			reg = <0x07010000 0x400>;
+		ehci0: usb@5101000 {
+			compatible = "allwinner,sun50i-h6-ehci", "generic-ehci";
+			reg = <0x05101000 0x100>;
 -- 
 2.7.4
 
