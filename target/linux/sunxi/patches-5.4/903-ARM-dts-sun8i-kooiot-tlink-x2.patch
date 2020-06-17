@@ -9,7 +9,7 @@
  dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-tanix-tx6.dtb
 --- /dev/null
 +++ b/arch/arm64/boot/dts/allwinner/sun50i-h6-tlink-x2.dts
-@@ -0,0 +1,339 @@
+@@ -0,0 +1,353 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +/*
 + * Copyright (c) 2020 Dirk Chang <dirk@kooiot.com>
@@ -45,10 +45,17 @@
 +		};
 +	};
 +
-+	power_en {
-+		status = "okay";
-+		compatible = "power_en";
-+		hub_rst = <&pio 7 2 GPIO_ACTIVE_HIGH>; /* PH2 */
++	gpio_export {
++		compatible = "gpio-export";
++		#size-cells = <0>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&pwr_pins>;
++
++		hub_reset {
++			gpio-export,name = "hub_reset";
++			gpio-export,output=<0>;
++			gpios = <&pio 7 2 GPIO_ACTIVE_HIGH>; /* PH2 */
++		};
 +	};
 +
 +	wifi_pwrseq: wifi_pwrseq {
@@ -86,6 +93,13 @@
 +		startup-delay-us = <100000>;
 +		gpio = <&r_pio 0 5 GPIO_ACTIVE_HIGH>;
 +		enable-active-high;
++	};
++};
++
++&pio {
++	pwr_pins: gpio_pins@0 {
++		pins = "PH2";
++		function = "gpio_out";
 +	};
 +};
 +
