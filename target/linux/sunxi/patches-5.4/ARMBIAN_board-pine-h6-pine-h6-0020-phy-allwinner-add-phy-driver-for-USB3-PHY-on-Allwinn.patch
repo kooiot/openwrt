@@ -86,7 +86,8 @@ new file mode 100644
 index 0000000..000a3e0
 --- /dev/null
 +++ b/drivers/phy/allwinner/phy-sun50i-usb3.c
-@@ -0,0 +1,195 @@
+@@ -0,0 +1,191 @@
++// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Allwinner sun50i(H6) USB 3.0 phy driver
 + *
@@ -99,8 +100,6 @@ index 0000000..000a3e0
 + * Based on code from Allwinner BSP, which is:
 + *
 + * Copyright (c) 2010-2015 Allwinner Technology Co., Ltd.
-+ *
-+ * SPDX-License-Identifier: GPL-2.0+
 + */
 +
 +#include <linux/clk.h>
@@ -108,7 +107,6 @@ index 0000000..000a3e0
 +#include <linux/io.h>
 +#include <linux/module.h>
 +#include <linux/phy/phy.h>
-+#include <linux/usb/of.h>
 +#include <linux/platform_device.h>
 +#include <linux/reset.h>
 +
@@ -140,7 +138,7 @@ index 0000000..000a3e0
 +#define SUNXI_LOS_BIAS(n)		((n) << 3)
 +#define SUNXI_LOS_BIAS_MASK		GENMASK(5, 3)
 +#define SUNXI_TXVBOOSTLVL(n)		((n) << 0)
-+#define SUNXI_TXVBOOSTLVL_MASK		GENMASK(0, 2)
++#define SUNXI_TXVBOOSTLVL_MASK		GENMASK(2, 0)
 +
 +struct sun50i_usb3_phy {
 +	struct phy *phy;
@@ -192,20 +190,16 @@ index 0000000..000a3e0
 +
 +	ret = clk_prepare_enable(phy->clk);
 +	if (ret)
-+		goto err_clk;
++		return ret;
 +
 +	ret = reset_control_deassert(phy->reset);
-+	if (ret)
-+		goto err_reset;
++	if (ret) {
++		clk_disable_unprepare(phy->clk);
++		return ret;
++	}
 +
 +	sun50i_usb3_phy_open(phy);
 +	return 0;
-+
-+err_reset:
-+	clk_disable_unprepare(phy->clk);
-+
-+err_clk:
-+	return ret;
 +}
 +
 +static int sun50i_usb3_phy_exit(struct phy *_phy)
@@ -237,7 +231,8 @@ index 0000000..000a3e0
 +
 +	phy->clk = devm_clk_get(dev, NULL);
 +	if (IS_ERR(phy->clk)) {
-+		dev_err(dev, "failed to get phy clock\n");
++		if (PTR_ERR(phy->clk) != -EPROBE_DEFER)
++			dev_err(dev, "failed to get phy clock\n");
 +		return PTR_ERR(phy->clk);
 +	}
 +
@@ -279,9 +274,7 @@ index 0000000..000a3e0
 +};
 +module_platform_driver(sun50i_usb3_phy_driver);
 +
-+MODULE_DESCRIPTION("Allwinner sun50i USB 3.0 phy driver");
++MODULE_DESCRIPTION("Allwinner H6 USB 3.0 phy driver");
 +MODULE_AUTHOR("Icenowy Zheng <icenowy@aosc.io>");
 +MODULE_LICENSE("GPL");
--- 
-2.7.4
-
++
