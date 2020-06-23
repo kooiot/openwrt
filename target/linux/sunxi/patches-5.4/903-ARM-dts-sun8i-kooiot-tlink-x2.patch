@@ -9,7 +9,7 @@
  dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-tanix-tx6.dtb
 --- /dev/null
 +++ b/arch/arm64/boot/dts/allwinner/sun50i-h6-tlink-x2.dts
-@@ -0,0 +1,353 @@
+@@ -0,0 +1,352 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +/*
 + * Copyright (c) 2020 Dirk Chang <dirk@kooiot.com>
@@ -47,9 +47,6 @@
 +
 +	gpio_export {
 +		compatible = "gpio-export";
-+		#size-cells = <0>;
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&pwr_pins>;
 +
 +		hub_reset {
 +			gpio-export,name = "hub_reset";
@@ -70,17 +67,17 @@
 +		compatible = "gpio-leds";
 +
 +		heartbeat {
-+			label = "pine-h64:green:heartbeat";
++			label = "kooio:green:heartbeat";
 +			gpios = <&r_pio 0 4 GPIO_ACTIVE_HIGH>; /* PL4 */
 +		};
 +
 +		link {
-+			label = "pine-h64:white:link";
++			label = "kooiot:white:link";
 +			gpios = <&r_pio 0 3 GPIO_ACTIVE_HIGH>; /* PL3 */
 +		};
 +
 +		status {
-+			label = "pine-h64:blue:status";
++			label = "kooiot:blue:status";
 +			gpios = <&r_pio 0 7 GPIO_ACTIVE_HIGH>; /* PL7 */
 +		};
 +	};
@@ -91,7 +88,7 @@
 +		regulator-min-microvolt = <5000000>;
 +		regulator-max-microvolt = <5000000>;
 +		startup-delay-us = <100000>;
-+		gpio = <&r_pio 0 5 GPIO_ACTIVE_HIGH>;
++		gpio = <&r_pio 0 5 GPIO_ACTIVE_HIGH>; /* PL5 */
 +		enable-active-high;
 +	};
 +};
@@ -360,6 +357,5 @@
 +};
 +
 +&usb3phy {
-+	phy-supply = <&reg_usb_vbus>;
 +	status = "okay";
 +};
