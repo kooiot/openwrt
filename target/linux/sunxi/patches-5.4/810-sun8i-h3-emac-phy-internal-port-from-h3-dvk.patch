@@ -1,6 +1,6 @@
 --- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c	2019-10-21 12:04:20.446544933 +0800
 +++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c	2019-10-21 12:18:01.518256212 +0800
-@@ -1032,6 +1032,29 @@
+@@ -1033,6 +1033,29 @@
 		}
  
  		ret = phylink_connect_phy(priv->phylink, phydev);
@@ -30,7 +30,7 @@
  	}
  
  	return ret;
-@@ -2842,12 +2865,17 @@
+@@ -2843,12 +2866,17 @@
  {
  	struct stmmac_priv *priv = netdev_priv(dev);
  	u32 chan;
