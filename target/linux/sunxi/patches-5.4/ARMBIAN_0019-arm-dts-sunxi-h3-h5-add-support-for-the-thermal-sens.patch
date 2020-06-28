@@ -18,7 +18,7 @@ diff --git a/arch/arm/boot/dts/sunxi-h3-h5.dtsi b/arch/arm/boot/dts/sunxi-h3-h5.
 index fc6131315c47..8fde0f6c16e4 100644
 --- a/arch/arm/boot/dts/sunxi-h3-h5.dtsi
 +++ b/arch/arm/boot/dts/sunxi-h3-h5.dtsi
-@@ -489,6 +489,15 @@
+@@ -490,6 +490,15 @@
  			};
  		};
  
