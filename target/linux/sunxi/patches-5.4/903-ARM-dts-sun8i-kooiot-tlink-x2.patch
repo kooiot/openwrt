@@ -9,7 +9,7 @@
  dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-tanix-tx6.dtb
 --- /dev/null
 +++ b/arch/arm64/boot/dts/allwinner/sun50i-h6-tlink-x2.dts
-@@ -0,0 +1,349 @@
+@@ -0,0 +1,362 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +/*
 + * Copyright (c) 2020 Dirk Chang <dirk@kooiot.com>
@@ -104,22 +104,35 @@
 +	cpu-supply = <&reg_dcdca>;
 +};
 +
++&ac200_ephy {
++	status = "okay";
++};
++
++&ac200_pwm_clk {
++	status = "okay";
++};
++
 +&emac {
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&ext_rgmii_pins>;
-+	phy-mode = "rgmii";
-+	phy-handle = <&ext_rgmii_phy>;
-+	phy-supply = <&reg_aldo2>;
-+	allwinner,rx-delay-ps = <200>;
-+	allwinner,tx-delay-ps = <200>;
++	pinctrl-0 = <&ext_rmii_pins>;
++	phy-mode = "rmii";
++	phy-handle = <&ext_rmii_phy>;
++	status = "okay";
++};
++
++&i2c3 {
 +	status = "okay";
 +};
 +
 +&mdio {
-+	ext_rgmii_phy: ethernet-phy@1 {
++	ext_rmii_phy: ethernet-phy@1 {
 +		compatible = "ethernet-phy-ieee802.3-c22";
 +		reg = <1>;
 +	};
++};
++
++&pwm {
++	status = "okay";
 +};
 +
 +&de {

@@ -15,7 +15,7 @@ diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h5.dtsi b/arch/arm64/boot/dts/
 index ee12490203b8..849c3d8a50bb 100644
 --- a/arch/arm64/boot/dts/allwinner/sun50i-h5.dtsi
 +++ b/arch/arm64/boot/dts/allwinner/sun50i-h5.dtsi
-@@ -81,6 +81,22 @@
+@@ -90,6 +90,22 @@
  		method = "smc";
  	};
  
