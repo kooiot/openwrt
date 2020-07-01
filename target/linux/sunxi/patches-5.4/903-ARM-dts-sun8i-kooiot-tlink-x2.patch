@@ -1,4 +1,13 @@
-+++ a/arch/arm64/boot/dts/allwinner/Makefile
+--- a/arch/arm64/boot/dts/allwinner/sun50i-h6.dtsi
++++ b/arch/arm64/boot/dts/allwinner/sun50i-h6.dtsi
+@@ -563,6 +563,7 @@
+ 
+ 			mdio: mdio {
+ 				compatible = "snps,dwmac-mdio";
++				snps,reset-delay-us = <100000>;
+ 				#address-cells = <1>;
+ 				#size-cells = <0>;
+ 			};+++ a/arch/arm64/boot/dts/allwinner/Makefile
 +++ b/arch/arm64/boot/dts/allwinner/Makefile
 @@ -25,5 +25,6 @@
  dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-orangepi-3.dtb
@@ -9,7 +18,7 @@
  dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-tanix-tx6.dtb
 --- /dev/null
 +++ b/arch/arm64/boot/dts/allwinner/sun50i-h6-tlink-x2.dts
-@@ -0,0 +1,362 @@
+@@ -0,0 +1,363 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +/*
 + * Copyright (c) 2020 Dirk Chang <dirk@kooiot.com>
@@ -117,6 +126,7 @@
 +	pinctrl-0 = <&ext_rmii_pins>;
 +	phy-mode = "rmii";
 +	phy-handle = <&ext_rmii_phy>;
++	phy-supply = <&reg_aldo2>;
 +	status = "okay";
 +};
 +
