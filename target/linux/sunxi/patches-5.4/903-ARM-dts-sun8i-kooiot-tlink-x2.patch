@@ -18,7 +18,7 @@
  dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-tanix-tx6.dtb
 --- /dev/null
 +++ b/arch/arm64/boot/dts/allwinner/sun50i-h6-tlink-x2.dts
-@@ -0,0 +1,363 @@
+@@ -0,0 +1,362 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +/*
 + * Copyright (c) 2020 Dirk Chang <dirk@kooiot.com>
@@ -179,16 +179,15 @@
 +};
 +
 +&mmc1 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&mmc1_pins>;
 +	vmmc-supply = <&reg_cldo2>;
-+	vqmmc-supply = <&reg_bldo2>;
++	vqmmc-supply = <&reg_bldo3>;
 +	mmc-pwrseq = <&wifi_pwrseq>;
 +	bus-width = <4>;
 +	non-removable;
 +	status = "okay";
 +
-+	rtl8723cs: sdio_wifi@1 {
++	ap6212: sdio_wifi@1 {
++		compatible = "brcm,bcm4329-fmac";
 +		reg = <1>;
 +		interrupt-parent = <&r_pio>;
 +		interrupts = <1 0 IRQ_TYPE_LEVEL_LOW>; /* PM0 */
