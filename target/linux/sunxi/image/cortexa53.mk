@@ -104,7 +104,7 @@ define Device/kooiot_tlink-x2
 	 kmod-leds-gpio kmod-ledtrig-heartbeat \
 	 kmod-ledtrig-netdev kmod-ledtrig-gpio \
 	 kmod-rtc-pcf8563 kmod-usb-net-asix \
-	 kmod-cfg80211 \
+	 kmod-cfg80211 brcmfmac-fireware \
 	 kmod-brcmfmac brcmfmac-firmware-4329-sdio \
 	 kmod-eeprom-at24 fdisk
   $(Device/sun50i-h6)
