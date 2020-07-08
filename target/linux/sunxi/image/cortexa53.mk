@@ -98,8 +98,8 @@ define Device/kooiot_tlink-x2
 	 kmod-leds-gpio kmod-ledtrig-heartbeat \
 	 kmod-ledtrig-netdev kmod-ledtrig-gpio \
 	 kmod-rtc-pcf8563 kmod-usb-net-asix \
-	 kmod-cfg80211 brcmfmac-fireware \
-	 kmod-brcmfmac brcmfmac-firmware-4329-sdio \
+	 kmod-brcmfmac cypress-firmware-43430-sdio \
+	 cypress-nvram-43430-sdio-tlink-x2 wpad-basic \
 	 kmod-eeprom-at24 fdisk
   $(Device/sun50i-h6)
 endef

@@ -70,6 +70,15 @@ define Package/brcmfmac-firmware-43430-sdio-rpi-zero-w/install
 endef
 $(eval $(call BuildPackage,brcmfmac-firmware-43430-sdio-rpi-zero-w))
 
+Package/brcmfmac-firmware-43430-sdio-tlink-x2 = $(call Package/firmware-default,NVRAM config file for the Ampak AP6212 43430 WiFi/BT module)
+define Package/brcmfmac-firmware-43430-sdio-tlink-x2/install
+	$(INSTALL_DIR) $(1)/lib/firmware/brcm
+	$(INSTALL_DATA) \
+		$(PKG_BUILD_DIR)/brcm/brcmfmac43430-sdio.AP6212.txt \
+		$(1)/lib/firmware/brcm/brcmfmac43430-sdio.kooiot,tlink-x2.txt
+endef
+$(eval $(call BuildPackage,brcmfmac-firmware-43430-sdio-tlink-x2))
+
 Package/brcmfmac-firmware-43430a0-sdio = $(call Package/firmware-default,Broadcom BCM43430a0 FullMac SDIO firmware)
 define Package/brcmfmac-firmware-43430a0-sdio/install
 	$(INSTALL_DIR) $(1)/lib/firmware/brcm

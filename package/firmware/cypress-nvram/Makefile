@@ -9,12 +9,12 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=cypress-nvram
 PKG_SOURCE_DATE:=2019-09-03
-PKG_SOURCE_VERSION:=e7b78df22f2a0c5f56abb7b5880661611de35e5f
+PKG_SOURCE_VERSION:=e5b14b03ecdb230ffc27a934fc30c28c3b141de3
 PKG_MIRROR_HASH:=1cb20a749696852be0a512d51961365dd9c031362af0af1a2b9f5a3fb894885f
 PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL:=https://github.com/openwrt/cypress-nvram.git
+PKG_SOURCE_URL:=https://github.com/kooiot/cypress-nvram.git
 
 PKG_MAINTAINER:=Álvaro Fernández Rojas <noltari@gmail.com>
 
@@ -61,6 +61,21 @@ define Package/cypress-nvram-43430-sdio-rpi-zero-w/install
 endef
 
 $(eval $(call BuildPackage,cypress-nvram-43430-sdio-rpi-zero-w))
+
+# Cypress 43430 SDIO ThingsLink X2 NVRAM
+define Package/cypress-nvram-43430-sdio-tlink-x2
+  $(Package/cypress-nvram-default)
+  TITLE:=CYW43430 NVRAM for ThingsLink X2
+endef
+
+define Package/cypress-nvram-43430-sdio-tlink-x2/install
+	$(INSTALL_DIR) $(1)/lib/firmware/brcm
+	$(INSTALL_DATA) \
+		$(PKG_BUILD_DIR)/brcmfmac43430-sdio.AP6212.txt \
+		$(1)/lib/firmware/brcm/brcmfmac43430-sdio.kooiot,tlink-x2.txt
+endef
+
+$(eval $(call BuildPackage,cypress-nvram-43430-sdio-tlink-x2))
 
 # Cypress 43455 SDIO Raspberry Pi 3B+ NVRAM
 define Package/cypress-nvram-43455-sdio-rpi-3b-plus
