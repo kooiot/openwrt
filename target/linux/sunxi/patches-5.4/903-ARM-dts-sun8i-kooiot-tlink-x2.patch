@@ -1,13 +1,4 @@
---- a/arch/arm64/boot/dts/allwinner/sun50i-h6.dtsi
-+++ b/arch/arm64/boot/dts/allwinner/sun50i-h6.dtsi
-@@ -563,6 +563,7 @@
- 
- 			mdio: mdio {
- 				compatible = "snps,dwmac-mdio";
-+				snps,reset-delay-us = <100000>;
- 				#address-cells = <1>;
- 				#size-cells = <0>;
- 			};+++ a/arch/arm64/boot/dts/allwinner/Makefile
+--- a/arch/arm64/boot/dts/allwinner/Makefile
 +++ b/arch/arm64/boot/dts/allwinner/Makefile
 @@ -25,5 +25,6 @@
  dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-orangepi-3.dtb
@@ -18,7 +9,7 @@
  dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-tanix-tx6.dtb
 --- /dev/null
 +++ b/arch/arm64/boot/dts/allwinner/sun50i-h6-tlink-x2.dts
-@@ -0,0 +1,362 @@
+@@ -0,0 +1,363 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +/*
 + * Copyright (c) 2020 Dirk Chang <dirk@kooiot.com>
@@ -37,6 +28,9 @@
 +	aliases {
 +		ethernet0 = &emac;
 +		serial0 = &uart0;
++		mmc0 = &mmc0;
++		mmc1 = &mmc2;
++		mmc2 = &mmc1;
 +	};
 +
 +	chosen {
@@ -66,8 +60,6 @@
 +
 +	wifi_pwrseq: wifi_pwrseq {
 +		compatible = "mmc-pwrseq-simple";
-+		clocks = <&rtc 1>;
-+		clock-names = "ext_clock";
 +		reset-gpios = <&r_pio 1 3 GPIO_ACTIVE_LOW>; /* PM3 */
 +		post-power-on-delay-ms = <200>;
 +	};
@@ -182,8 +174,8 @@
 +	vmmc-supply = <&reg_cldo2>;
 +	vqmmc-supply = <&reg_bldo3>;
 +	mmc-pwrseq = <&wifi_pwrseq>;
-+	bus-width = <4>;
 +	non-removable;
++	bus-width = <4>;
 +	status = "okay";
 +
 +	ap6212: sdio_wifi@1 {
