@@ -58,7 +58,7 @@
 +		};
 +
 +		pcie_power {
-+			gpio-export,name = "hub_reset";
++			gpio-export,name = "pcie_power";
 +			gpio-export,output=<0>;		/* disable by default as the board will be reboot when enable this power by default */
 +			gpios = <&r_pio 0 7 GPIO_ACTIVE_HIGH>; /* PL7 */
 +		};
