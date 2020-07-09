@@ -9,7 +9,7 @@
  dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-tanix-tx6.dtb
 --- /dev/null
 +++ b/arch/arm64/boot/dts/allwinner/sun50i-h6-tlink-x2.dts
-@@ -0,0 +1,363 @@
+@@ -0,0 +1,365 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +/*
 + * Copyright (c) 2020 Dirk Chang <dirk@kooiot.com>
@@ -56,6 +56,12 @@
 +			gpio-export,output=<0>;
 +			gpios = <&pio 7 2 GPIO_ACTIVE_LOW>; /* PH2 */
 +		};
++
++		pcie_power {
++			gpio-export,name = "hub_reset";
++			gpio-export,output=<0>;		/* disable by default as the board will be reboot when enable this power by default */
++			gpios = <&r_pio 0 7 GPIO_ACTIVE_HIGH>; /* PL7 */
++		};
 +	};
 +
 +	wifi_pwrseq: wifi_pwrseq {
@@ -72,14 +78,10 @@
 +			gpios = <&r_pio 0 4 GPIO_ACTIVE_HIGH>; /* PL4 */
 +		};
 +
-+		link {
-+			label = "kooiot:white:link";
-+			gpios = <&r_pio 0 3 GPIO_ACTIVE_HIGH>; /* PL3 */
-+		};
-+
 +		status {
-+			label = "kooiot:blue:status";
-+			gpios = <&r_pio 0 7 GPIO_ACTIVE_HIGH>; /* PL7 */
++			label = "kooiot:red:power";
++			gpios = <&r_pio 0 3 GPIO_ACTIVE_HIGH>; /* PL3 */
++			linux,default-trigger = "heartbeat";
 +		};
 +	};
 +
