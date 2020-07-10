@@ -111,7 +111,6 @@ CONFIG_DEFAULT_uclient-fetch=y
 CONFIG_DEFAULT_urandom-seed=y
 CONFIG_DEFAULT_urngd=y
 CONFIG_DEFAULT_wpad-basic=y
-CONFIG_HAS_TESTING_KERNEL=y
 CONFIG_HAS_FPU=y
 CONFIG_AUDIO_SUPPORT=y
 CONFIG_GPIO_SUPPORT=y
@@ -174,7 +173,6 @@ CONFIG_SIGNATURE_CHECK=y
 #
 # General build options
 #
-# CONFIG_TESTING_KERNEL is not set
 CONFIG_DISPLAY_SUPPORT=y
 # CONFIG_BUILD_PATENTED is not set
 # CONFIG_BUILD_NLS is not set
@@ -1835,6 +1833,7 @@ CONFIG_PACKAGE_kmod-ata-sunxi=y
 # CONFIG_PACKAGE_kmod-dax is not set
 # CONFIG_PACKAGE_kmod-dm is not set
 # CONFIG_PACKAGE_kmod-dm-raid is not set
+# CONFIG_PACKAGE_kmod-iscsi-initiator is not set
 # CONFIG_PACKAGE_kmod-loop is not set
 # CONFIG_PACKAGE_kmod-md-mod is not set
 # CONFIG_PACKAGE_kmod-nbd is not set
@@ -2594,11 +2593,11 @@ CONFIG_PACKAGE_kmod-zd1211rw=m
 # KooIoT
 #
 # CONFIG_PACKAGE_aws_iot_greengrass is not set
-# CONFIG_PACKAGE_factory_tlink is not set
+CONFIG_PACKAGE_factory_tlink=m
 # CONFIG_PACKAGE_focas_ubus is not set
-# CONFIG_PACKAGE_freeioe is not set
+CONFIG_PACKAGE_freeioe=y
 # CONFIG_PACKAGE_kooiot is not set
-# CONFIG_PACKAGE_skynet is not set
+CONFIG_PACKAGE_skynet=y
 # CONFIG_PACKAGE_symlink is not set
 CONFIG_SYMLINK_PROJECT_NONE=y
 # CONFIG_SYMLINK_PROJECT_SYMGRID is not set
@@ -4515,8 +4514,6 @@ CONFIG_POSTFIX_SQLITE=y
 CONFIG_POSTFIX_PCRE=y
 # CONFIG_POSTFIX_EAI is not set
 # end of Select postfix build options
-
-# CONFIG_PACKAGE_ssmtp is not set
 # end of Mail
 
 #
