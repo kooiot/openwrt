@@ -347,7 +347,7 @@ diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h6.dtsi b/arch/arm64/boot/dts/
 index e8bed58e7246..c1abd805cfdc 100644
 --- a/arch/arm64/boot/dts/allwinner/sun50i-h6.dtsi
 +++ b/arch/arm64/boot/dts/allwinner/sun50i-h6.dtsi
-@@ -231,6 +231,16 @@
+@@ -241,6 +241,16 @@
  			status = "disabled";
  		};
  
