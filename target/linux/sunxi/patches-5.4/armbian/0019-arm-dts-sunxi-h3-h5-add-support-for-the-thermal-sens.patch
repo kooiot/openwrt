@@ -22,7 +22,7 @@ index fc6131315c47..8fde0f6c16e4 100644
  			};
  		};
  
-+		ths: thermal-sensor@01c25000 {
++		ths: thermal-sensor@1c25000 {
 +			reg = <0x01c25000 0x100>;
 +			interrupts = <GIC_SPI 31 IRQ_TYPE_LEVEL_HIGH>;
 +			clocks = <&ccu CLK_BUS_THS>, <&ccu CLK_THS>;

@@ -20,7 +20,7 @@ diff --git a/drivers/mfd/Kconfig b/drivers/mfd/Kconfig
 diff --git a/drivers/mfd/Makefile b/drivers/mfd/Makefile
 --- a/drivers/mfd/Makefile
 +++ b/drivers/mfd/Makefile
-@@ -142,6 +142,7 @@  obj-$(CONFIG_MFD_DA9052_SPI)	+= da9052-spi.o
+@@ -141,6 +141,7 @@  obj-$(CONFIG_MFD_DA9052_SPI)	+= da9052-spi.o
  obj-$(CONFIG_MFD_DA9052_I2C)	+= da9052-i2c.o
  
  obj-$(CONFIG_MFD_AC100)		+= ac100.o
@@ -437,7 +437,7 @@ diff --git a/include/linux/mfd/ac200.h b/include/linux/mfd/ac200.h
 diff --git a/drivers/net/phy/Kconfig b/drivers/net/phy/Kconfig
 --- a/drivers/net/phy/Kconfig
 +++ b/drivers/net/phy/Kconfig
-@@ -288,6 +288,13 @@  config ADIN_PHY
+@@ -349,6 +349,13 @@  config ADIN_PHY
  	  - ADIN1300 - Robust,Industrial, Low Latency 10/100/1000 Gigabit
  	    Ethernet PHY
  
@@ -454,7 +454,7 @@ diff --git a/drivers/net/phy/Kconfig b/drivers/net/phy/Kconfig
 diff --git a/drivers/net/phy/Makefile b/drivers/net/phy/Makefile
 --- a/drivers/net/phy/Makefile
 +++ b/drivers/net/phy/Makefile
-@@ -53,6 +53,7 @@  obj-$(CONFIG_SFP)		+= sfp.o
+@@ -62,6 +62,7 @@  obj-$(CONFIG_SFP)		+= sfp.o
  sfp-obj-$(CONFIG_SFP)		+= sfp-bus.o
  obj-y				+= $(sfp-obj-y) $(sfp-obj-m)
  
