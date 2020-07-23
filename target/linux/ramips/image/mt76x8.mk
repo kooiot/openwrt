@@ -666,6 +666,32 @@ define Device/widora_neo-32m
 endef
 TARGET_DEVICES += widora_neo-32m
 
+define Device/kooiot_tlink-c1-16m
+  IMAGE_SIZE := 16064k
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink C1
+  DEVICE_VARIANT := 16M
+  DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
+	kmod-gpio-button-hotplug \
+	kmod-leds-gpio kmod-ledtrig-heartbeat \
+	kmod-ledtrig-netdev kmod-ledtrig-gpio \
+	kmod-rtc-rx8010 kmod-usb-net-asix \
+	kmod-usb-net-qmi-wwan kmode-usb-net-serial-option \
+	uqmi fdisk
+  SUPPORTED_DEVICES += tlink-c1-16m
+endef
+TARGET_DEVICES += kooiot_tlink-c1-16m
+
+define Device/kooiot_tlink-c1-32m
+  IMAGE_SIZE := 32448k
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink C1
+  DEVICE_VARIANT := 32M
+  DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci
+  SUPPORTED_DEVICES += tlink-c1-32m
+endef
+TARGET_DEVICES += kooiot_tlink-c1-32m
+
 define Device/wiznet_wizfi630s
   IMAGE_SIZE := 32448k
   DEVICE_VENDOR := WIZnet
