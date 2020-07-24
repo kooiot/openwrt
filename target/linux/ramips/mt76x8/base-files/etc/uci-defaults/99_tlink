@@ -1,0 +1,66 @@
+#!/bin/sh
+#
+# Copyright (C) 2010 OpenWrt.org
+#
+# This is free software, licensed under the GNU General Public License v2.
+# See /LICENSE for more information.
+#
+
+#
+# This script sets system defaults for the hardware on firstboot
+#
+
+. /lib/functions.sh
+. /lib/functions/tlink.sh
+
+tlink_add_qmi_interface() {
+	uci set network.4g_wan='interface'
+	uci set network.4g_wan.proto='qmi'
+	uci set network.4g_wan.device='/dev/cdc-wdm0'
+	uci set network.4g_wan.metric='10'
+	uci commit network
+}
+
+tlink_add_4g_wan() {
+	uci set network.4g_wan='interface'
+	uci set network.4g_wan.service='umts'
+	uci set network.4g_wan.proto='3g'
+	uci set network.4g_wan.device='/dev/ttyUSB2'
+	uci set network.4g_wan.ipv6='auto'
+	uci set network.4g_wan.apn='3gnet'
+	uci set network.4g_wan.metric='10'
+	uci commit network
+
+	uci set 3ginfo.@3ginfo[0].device='/dev/ttyUSB1'
+	uci commit 3ginfo
+
+	uci set system.led_modem.dev='3g-4g_wan'
+	uci commit system
+}
+
+tlink_default() {
+	# 4G Module initial setup
+	[ -e /dev/cdc-wdm0 ] && {
+		# QMI interface
+		echo "QMI module found!!!" > /dev/console
+		tlink_add_qmi_interface
+	} || {
+		echo "QMI module not found!!!" > /dev/console
+		tlink_add_4g_wan
+	}
+
+	# ETH MAC for usb-eth
+	tlink_set_wan_mac
+
+	# set ttylogin (for ttyS0, default will promote console with password)
+	# set system.@system[0].ttylogin='1'
+	# uci commit system
+}
+
+case "$(board_name)" in
+"kooiot,tlink-c1"|\
+"kooiot,tlink-c1-16m"|\
+"kooiot,tlink-c1-32mt ")
+	tlink_default
+	;;
+esac
