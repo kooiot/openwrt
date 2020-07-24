@@ -18,8 +18,8 @@ do_product_sn_kooiot_nvmem() {
 				echo "UNKNOWN" > /tmp/sysinfo/product_sn
 		fi
 
-		[ -e /tmp/sysinfo/cloud] || \
-			echo "cloud.thingsroot.com" > /tmp/sysinfo/cloud
+		[ -e /tmp/sysinfo/cloud ] || \
+			echo "ioe.thingsroot.com" > /tmp/sysinfo/cloud
 
 	fi
 }
@@ -45,8 +45,8 @@ do_product_sn_kooiot_emmc() {
 				echo "UNKNOWN" > /tmp/sysinfo/product_sn
 		fi
 
-		[ -e /tmp/sysinfo/cloud] || \
-			echo "cloud.thingsroot.com" > /tmp/sysinfo/cloud
+		[ -e /tmp/sysinfo/cloud ] || \
+			echo "ioe.thingsroot.com" > /tmp/sysinfo/cloud
 	fi
 }
 
@@ -59,7 +59,7 @@ do_product_sn_kooiot() {
 	fi
 }
 
-do_kooiot_freeioe_generic() {
+do_kooiot_tlink_generic() {
 	. /lib/functions.sh
 
 	case "$(board_name)" in
@@ -71,4 +71,4 @@ do_kooiot_freeioe_generic() {
 
 }
 
-boot_hook_add preinit_main do_kooiot_freeioe_generic
+boot_hook_add preinit_main do_kooiot_tlink_generic
