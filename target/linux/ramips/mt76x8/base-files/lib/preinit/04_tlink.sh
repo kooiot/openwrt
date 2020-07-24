@@ -1,3 +1,5 @@
+#!/bin/sh
+
 do_product_sn_kooiot_nvmem() {
 	NVMEM_PATH="/sys/devices/platform/soc/1c2ac00.i2c/i2c-0/0-0050/0-00500/nvmem"
 	if [ -b "${NVMEM_PATH}" -o -f "${NVMEM_PATH}" ]; then
@@ -25,14 +27,19 @@ do_product_sn_kooiot_nvmem() {
 }
 
 do_product_sn_kooiot_emmc() {
-	mmc_disk="/dev/mmcblk1"
-	if [ -b "$mmc_disk" -o -f "$mmc_disk" ]; then
+	local spi_part="/dev/unknown"
+	local offset=65504		#0xFFE0
+	local offset_dp=65520	#0xFFF0
 
-		product_sn=$(dd if=/dev/mmcblk1 \
-			bs=1 count=16 skip=410112 2>/dev/null | \
+	spi_part=$(find_mtd_part "u-boot-env")
+
+	if [ -b "${spi_part}" -o -f "${spi_part}" ]; then
+
+		product_sn=$(dd if=${spi_part} \
+			bs=1 count=16 skip=${offset} 2>/dev/null | \
 			hexdump -v -e '/1 "%c"' 2>/dev/null)
-		product_sn_dp=$(dd if=/dev/mmcblk1 \
-			bs=1 count=16 skip=410128 2>/dev/null | \
+		product_sn_dp=$(dd if=${spi_part} \
+			bs=1 count=16 skip=${offset_dp} 2>/dev/null | \
 			hexdump -v -e '/1 "%c"' 2>/dev/null)
 
 		mkdir -p /tmp/sysinfo
@@ -63,9 +70,9 @@ do_kooiot_tlink_generic() {
 	. /lib/functions.sh
 
 	case "$(board_name)" in
-	"kooiot,tlink-x1"|\
-	"kooiot,tlink-x2"|\
-	"kooiot,tlink-r1")
+	"kooiot,tlink-c1"|\
+	"kooiot,tlink-c1-16m"|\
+	"kooiot,tlink-c1-32m")
 		do_product_sn_kooiot
 		;;
 	esac
