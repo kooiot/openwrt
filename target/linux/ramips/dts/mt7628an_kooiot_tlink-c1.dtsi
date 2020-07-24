@@ -71,7 +71,6 @@
 
 &ethernet {
 	mtd-mac-address = <&factory 0x04>;
-	mtd-mac-address-increment = <(-1)>;
 };
 
 &wmac {

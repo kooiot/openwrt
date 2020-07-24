@@ -6,9 +6,12 @@ target=""
 . /lib/functions/tlink.sh
 
 case "$(board_name)" in
-"kooiot,tlink-x1" | \
-"kooiot,tlink-x2" | \
-"kooiot,tlink-r1")
+"kooiot,tlink-c1" | \
+"kooiot,tlink-c1-16m" | \
+"kooiot,tlink-c1-32m")
+	cpu_freq_cur="580000000"
+	cpu_freq_min="580000000"
+	cpu_freq_max="580000000"
     fm_version=$(cat /etc/build_version)
 	;;
 *)
@@ -87,6 +90,8 @@ EOF
 show_thermal_info(){
     local readonly cpu_thermal_zone=/sys/class/thermal/thermal_zone0
 
+	[ ! -d ${cpu_thermal_zone} ] && return 0
+
     cat <<EOF
 CPU temperature( °C X 1000 ):
   current:	$(cat ${cpu_thermal_zone}/temp)
@@ -99,13 +104,11 @@ EOF
 }
 
 show_cpu_frq_info(){
-    local readonly cpu_freq_policy0=/sys/devices/system/cpu/cpufreq/policy0/
-
     cat <<EOF
 CPU frequency(Hz):
-  Current:  $(cat ${cpu_freq_policy0}/cpuinfo_cur_freq)
-  Min:      $(cat ${cpu_freq_policy0}/cpuinfo_min_freq)
-  Max:      $(cat ${cpu_freq_policy0}/cpuinfo_max_freq)
+  Current:  ${cpu_freq_cur}
+  Min:      ${cpu_freq_min}
+  Max:      ${cpu_freq_max}
 
 EOF
 }
@@ -122,7 +125,6 @@ Hardware information:
   PSN:          $(product_sn)
   Modle:        $(cat /tmp/sysinfo/model)
   CPU Type:     $(cat ${sysfs_dir_cpuinfo})
-  eMMC Serial:  $(cat ${sysfs_emmc_serial} 2>/dev/null)
 EOF
 
     for i in /sys/class/net/eth*;

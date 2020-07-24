@@ -1,0 +1,96 @@
+#!/bin/sh
+
+psn=$1
+
+. /lib/functions.sh
+. /lib/functions/tlink.sh
+
+case "$(board_name)" in
+"kooiot,tlink-c1" | \
+"kooiot,tlink-c1-16m" | \
+"kooiot,tlink-c1-32m")
+	;;
+*)
+	echo "This only support ThingsLink devices"
+	exit 1
+	;;
+esac
+
+show_help(){
+    cat <<EOF
+${0} <psn>
+EOF
+}
+
+if [ $# -eq 0 ]; then
+	show_help()
+	exit 1
+fi
+
+if [ ${#psn} -ne 16 ]; then
+	echo "Product Serial Number must be 16 characters"
+	exit 2
+fi
+
+echo "PSN: ${psn}"
+#----------------------------------------------------------
+echo ""
+echo -n "WARNING: PRODUCT SERIAL NUMBER REPLACED !, Continue (y/N)?  "
+read -n 1 ANSWER
+
+if [ ! "${ANSWER}" = "y" ] ; then
+    echo "."
+    echo "Canceled.."
+    exit 0
+fi
+echo ""
+#----------------------------------------------------------
+
+
+NVMEM_PATH="/sys/devices/platform/soc/1c2ac00.i2c/i2c-0/0-0050/0-00500/nvmem"
+
+if [ ! -f ${NVMEM_PATH} ]; then
+    echo "Product SN in FACTORY mtd partition!!!"
+
+	spi_part="/dev/unknow"
+	offset=65504		#0xFFE0
+	offset_dp=65520		#0xFFF0
+	
+	spi_part=$(find_mtd_part "u-boot-env")
+
+	echo ${psn} | dd of=${spi_part} count=16 bs=1 seek=${offset}
+	echo ${psn} | dd of=${spi_part} count=16 bs=1 seek=${offset_dp}
+
+	product_sn=$(dd if=${spi_part} \
+		bs=1 count=16 skip=${offset} 2>/dev/null | \
+		hexdump -v -e '/1 "%c"' 2>/dev/null)
+
+	product_sn_dp=$(dd if=${spi_part} \
+		bs=1 count=16 skip=${offset_dp} 2>/dev/null | \
+		hexdump -v -e '/1 "%c"' 2>/dev/null)
+else
+    echo "Product SN in NVMEM!!!"
+	echo ${psn} | dd of=${NVMEM_PATH} count=16 bs=1 seek=0
+	echo ${psn} | dd of=${NVMEM_PATH} count=16 bs=1 seek=16
+
+	product_sn=$(dd if=${NVMEM_PATH} \
+		bs=1 count=16 skip=0 2>/dev/null | \
+		hexdump -v -e '/1 "%c"' 2>/dev/null)
+
+	product_sn_dp=$(dd if=${NVMEM_PATH} \
+		bs=1 count=16 skip=16 2>/dev/null | \
+		hexdump -v -e '/1 "%c"' 2>/dev/null)
+fi
+
+if [ "${product_sn}"x = "${product_sn_dp}"x ]; then
+	echo "Loaded PSN: ${product_sn}"
+
+	echo "Done!"
+
+	exit 0
+else
+	echo "Write failed!!!!"
+	exit 1
+fi
+
+exit 99
