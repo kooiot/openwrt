@@ -762,7 +762,7 @@ define Device/kooiot_tlink-c1-16m
 	kmod-leds-gpio kmod-ledtrig-heartbeat \
 	kmod-ledtrig-netdev kmod-ledtrig-gpio \
 	kmod-rtc-rx8010 kmod-usb-net-asix \
-	kmod-usb-net-qmi-wwan kmode-usb-net-serial-option \
+	kmod-usb-net-qmi-wwan kmod-usb-net-serial-option \
 	uqmi fdisk
   SUPPORTED_DEVICES += tlink-c1-16m
 endef
@@ -773,7 +773,13 @@ define Device/kooiot_tlink-c1-32m
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink C1
   DEVICE_VARIANT := 32M
-  DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci
+  DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
+	kmod-gpio-button-hotplug \
+	kmod-leds-gpio kmod-ledtrig-heartbeat \
+	kmod-ledtrig-netdev kmod-ledtrig-gpio \
+	kmod-rtc-rx8010 kmod-usb-net-asix \
+	kmod-usb-net-qmi-wwan kmod-usb-net-serial-option \
+	uqmi fdisk
   SUPPORTED_DEVICES += tlink-c1-32m
 endef
 TARGET_DEVICES += kooiot_tlink-c1-32m
