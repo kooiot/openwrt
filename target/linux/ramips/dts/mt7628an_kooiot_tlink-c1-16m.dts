@@ -1,6 +1,6 @@
 /dts-v1/;
 
-#include "mt7628an_widora_neo.dtsi"
+#include "mt7628an_kooiot_tlink-c1.dtsi"
 
 / {
 	compatible = "kooiot,tlink-c1-16m", "widora,neo", "mediatek,mt7628an-soc";
