@@ -19,10 +19,12 @@
 	leds {
 		compatible = "gpio-leds";
 
+		/* WLED_AN function is not GPIO. So it will not be mapped to leds
 		led_wifi: wifi {
 			label = "kooiot:green:wifi";
 			gpios = <&gpio 44 GPIO_ACTIVE_LOW>;
 		};
+		*/
 
 		led_status: status {
 			label = "kooiot:green:status";

@@ -662,7 +662,13 @@ define Device/widora_neo-32m
   DEVICE_VENDOR := Widora
   DEVICE_MODEL := Widora-NEO
   DEVICE_VARIANT := 32M
-  DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci
+  DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
+	kmod-gpio-button-hotplug kmod-leds-gpio \
+	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
+	kmod-usb-net-qmi-wwan kmod-usb-net-serial-option \
+	kmod-rtc-rx8010 \
+	uqmi fdisk
+  SUPPORTED_DEVICES += widora-neo-32m
 endef
 TARGET_DEVICES += widora_neo-32m
 
