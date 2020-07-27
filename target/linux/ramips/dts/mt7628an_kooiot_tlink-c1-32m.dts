@@ -3,7 +3,7 @@
 #include "mt7628an_kooiot_tlink-c1.dtsi"
 
 / {
-	compatible = "kooiot,tlink-c1-32m", "widora,neo", "mediatek,mt7628an-soc";
+	compatible = "kooiot,tlink-c1-32m", "kooiot,tlink-c1", "mediatek,mt7628an-soc";
 	model = "KooIoT ThingsLink C1 (32M)";
 };
 
