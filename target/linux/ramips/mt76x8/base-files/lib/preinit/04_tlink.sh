@@ -70,6 +70,8 @@ do_kooiot_tlink_generic() {
 	. /lib/functions.sh
 
 	case "$(board_name)" in
+	"widora,neo-16m" | \
+	"widora,neo-32m" | \
 	"kooiot,tlink-c1"|\
 	"kooiot,tlink-c1-16m"|\
 	"kooiot,tlink-c1-32m")
