@@ -797,7 +797,7 @@ define Device/kooiot_tlink-c2-32m
 	kmod-gpio-button-hotplug kmod-leds-gpio \
 	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
 	kmod-usb-net-qmi-wwan kmod-usb-net-serial-option \
-	kmod-rtc-rx8010 \
+	kmod-usb-serial-cp210x kmod-rtc-rx8010 \
 	uqmi fdisk
   SUPPORTED_DEVICES += tlink-c2-32m
 endef
