@@ -28,8 +28,18 @@
 
 		led_status: status {
 			label = "kooiot:green:status";
-			gpios = <&gpio 11 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio 37 GPIO_ACTIVE_LOW>;
 			linux,default-trigger = "heartbeat";
+		};
+
+		bs {
+			label = "kooiot:green:bs";
+			gpios = <&gpio 4 GPIO_ACTIVE_LOW>;
+		};
+
+		gs {
+			label = "kooiot:green:gs";
+			gpios = <&gpio 5 GPIO_ACTIVE_LOW>;
 		};
 	};
 
@@ -50,11 +60,22 @@
 			linux,code = <KEY_RESTART>;
 		};
 	};
+
+	gpio_export {
+		compatible = "gpio-export";
+		#size-cells = <0>;
+
+		pcie_reset {
+			gpio-export,name = "pcie_reset";
+			gpio-export,output = <1>;
+			gpios = <&gpio 11 GPIO_ACTIVE_LOW>;
+		};
+	};
 };
 
 &state_default {
 	gpio {
-		groups = "gpio", "wdt";
+		groups = "gpio", "wdt", "refclk", "i2c";
 		function = "gpio";
 	};
 	wled_an {
