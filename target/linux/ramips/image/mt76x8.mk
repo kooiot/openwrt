@@ -788,6 +788,21 @@ define Device/kooiot_tlink-c1-32m
 endef
 TARGET_DEVICES += kooiot_tlink-c1-32m
 
+define Device/kooiot_tlink-c2-32m
+  IMAGE_SIZE := 32448k
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink C2
+  DEVICE_VARIANT := 32M
+  DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
+	kmod-gpio-button-hotplug kmod-leds-gpio \
+	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
+	kmod-usb-net-qmi-wwan kmod-usb-net-serial-option \
+	kmod-rtc-rx8010 \
+	uqmi fdisk
+  SUPPORTED_DEVICES += tlink-c2-32m
+endef
+TARGET_DEVICES += kooiot_tlink-c2-32m
+
 define Device/wiznet_wizfi630s
   IMAGE_SIZE := 32448k
   DEVICE_VENDOR := WIZnet

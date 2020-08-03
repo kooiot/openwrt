@@ -72,9 +72,12 @@ do_kooiot_tlink_generic() {
 	case "$(board_name)" in
 	"widora,neo-16m" | \
 	"widora,neo-32m" | \
-	"kooiot,tlink-c1"|\
-	"kooiot,tlink-c1-16m"|\
-	"kooiot,tlink-c1-32m")
+	"kooiot,tlink-c1" | \
+	"kooiot,tlink-c1-16m" | \
+	"kooiot,tlink-c1-32m" | \
+	"kooiot,tlink-c2" | \
+	"kooiot,tlink-c2-16m" | \
+	"kooiot,tlink-c2-32m")
 		do_product_sn_kooiot
 		;;
 	esac
