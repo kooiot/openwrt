@@ -49,9 +49,6 @@ tlink_default() {
 		tlink_add_4g_wan
 	}
 
-	# ETH MAC for usb-eth
-	tlink_set_wan_mac
-
 	# set ttylogin (for ttyS0, default will promote console with password)
 	# set system.@system[0].ttylogin='1'
 	# uci commit system
@@ -67,3 +64,5 @@ case "$(board_name)" in
 	tlink_default
 	;;
 esac
+
+exit 0
