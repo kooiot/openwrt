@@ -3,13 +3,9 @@
 CP210_PID="10c4/ea60/100"
 SYMLINK="ttyS3"
 
-echo ${PRODUCT} > /dev/console
-echo ${ACTION} > /dev/console
-
 if [ "${PRODUCT}" = "${CP210_PID}" ]; then
 	if [ "${ACTION}" = "bind" ]; then
 		DEVICE_NAME=$(ls /sys/${DEVPATH} | grep tty)
-		echo ${DEVICE_NAME} > /dev/console
 		if [ -z ${DEVICE_NAME} ]; then
 			logger -t hotplug "Warning DEVICE_NAME is empty"
 			exit
