@@ -41,7 +41,7 @@ product_sn() {
 }
 
 ioe_cloud() {
-	[ -e /tmp/sysinfo/cloud ] && cat /tmp/sysinfo/cloud || echo "cloud.kooiot.com"
+	[ -e /tmp/sysinfo/cloud ] && cat /tmp/sysinfo/cloud || echo "ioe.kooiot.com"
 }
 
 avoid_empty_passwd() {
