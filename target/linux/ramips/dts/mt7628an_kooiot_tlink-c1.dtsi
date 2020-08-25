@@ -57,6 +57,7 @@
 		groups = "gpio", "wdt";
 		function = "gpio";
 	};
+
 	wled_an {
 		groups = "wled_an";
 		function = "wled_an";
