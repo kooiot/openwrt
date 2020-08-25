@@ -26,7 +26,7 @@
  obj-$(CONFIG_GPIO_MXS)			+= gpio-mxs.o
 --- /dev/null
 +++ b/drivers/gpio/gpio-mt7628-misc.c
-@@ -0,0 +1,359 @@
+@@ -0,0 +1,356 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * MT7628 GPIO MISC (netmode switch)

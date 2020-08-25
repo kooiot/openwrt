@@ -30,11 +30,15 @@
 		#size-cells = <0>;
 
 		ralink,nvmem-size = <0x80>;
+		ralink,nvmem-writable;
 		/* Data cells */
-		agpio_nv: agpio-nv@3c {
+		agpio: agpio@3c {
 			reg = <0x3c 0x04>;
 		};
-		mgpio_nv: mgpio-nv@64 {
+		gpio1: gpio1@60 {
+			reg = <0x60 0x04>;
+		};
+		gpio2: gpio2@64 {
 			reg = <0x64 0x04>;
 		};
 	};
