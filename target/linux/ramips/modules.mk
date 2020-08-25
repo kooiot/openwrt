@@ -138,3 +138,18 @@ define KernelPackage/sound-mt7620/description
 endef
 
 $(eval $(call KernelPackage,sound-mt7620))
+
+define KernelPackage/gpio-mt7628-misc
+  SUBMENU:=Other modules
+  TITLE:=MediaTek MT7628 SOC GPIO Misc
+  DEPENDS:=@TARGET_ramips @GPIO_SUPPORT
+  KCONFIG:= CONFIG_GPIO_MT7628_MISC
+  FILES:= $(LINUX_DIR)/drivers/gpio/gpio-mt7628-misc.ko
+  AUTOLOAD:=$(call AutoLoad,gpio-mt7628-misc)
+endef
+
+define KernelPackage/gpio-mt7628-misc/description
+ Kernel modules for enable MediaTek MT7628 SOC GPIO misc support.
+endef
+
+$(eval $(call KernelPackage,gpio-mt7628-misc))

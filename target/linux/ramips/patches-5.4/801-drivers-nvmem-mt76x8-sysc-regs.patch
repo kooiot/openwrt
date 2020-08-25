@@ -1,0 +1,215 @@
+--- a/drivers/nvmem/Kconfig
++++ b/drivers/nvmem/Kconfig
+@@ -151,6 +151,16 @@
+ 	  This driver can also be built as a module. If so, the module
+ 	  will be called nvmem_sunxi_sid.
+ 
++config NVMEM_MT76X8_SYSC
++	tristate "Ralink MT76X8 sysc register r/w support"
++	depends on SOC_MT7620 || SOC_MT7628AN || SOC_MT7688
++	help
++	  This is a driver for the 'sysc' registers on various Ralink MT76X8
++	  devices.
++
++	  This driver can also be built as a module. If so, the module
++	  will be called nvmem_mt76x8_sysc.
++
+ config UNIPHIER_EFUSE
+ 	tristate "UniPhier SoCs eFuse support"
+ 	depends on ARCH_UNIPHIER || COMPILE_TEST
+--- a/drivers/nvmem/Makefile
++++ b/drivers/nvmem/Makefile
+@@ -50,3 +50,5 @@
+ nvmem-sc27xx-efuse-y		:= sc27xx-efuse.o
+ obj-$(CONFIG_NVMEM_ZYNQMP)	+= nvmem_zynqmp_nvmem.o
+ nvmem_zynqmp_nvmem-y		:= zynqmp_nvmem.o
++obj-$(CONFIG_NVMEM_MT76X8_SYSC) += nvmem_mt76x8_sysc.o
++nvmem_mt76x8_sysc-y		:= mt76x8_sysc.o
+--- /dev/null
++++ b/drivers/nvmem/mt76x8_sysc.c
+@@ -0,0 +1,185 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * Ralink MT76X8 sysc registers rw support.
++ *
++ * Copyright (C) 2020 Dirk Chang <dirk@kooiot.com>
++ */
++
++#include <linux/device.h>
++#include <linux/io.h>
++#include <linux/iopoll.h>
++#include <linux/module.h>
++#include <linux/nvmem-provider.h>
++#include <linux/of.h>
++#include <linux/of_device.h>
++#include <linux/platform_device.h>
++#include <linux/slab.h>
++#include <linux/random.h>
++
++#include <asm/mach-ralink/ralink_regs.h>
++
++struct mt76x8_sysc {
++	struct device		*dev;
++};
++
++static DEFINE_MUTEX(mt76x8_sysc_mutex);
++
++static int mt76x8_sysc_register_readout(const struct mt76x8_sysc *sysc,
++				      const unsigned int offset,
++				      u32 *out)
++{
++	*out = rt_sysc_r32(offset);
++
++	return 0;
++}
++
++/*
++ * Read by the registers one by one
++ */
++static int mt76x8_sysc_read_by_reg(void *context, unsigned int offset,
++				 void *val, size_t bytes)
++{
++	struct mt76x8_sysc *sysc = context;
++	u32 word;
++	int ret;
++
++	mutex_lock(&mt76x8_sysc_mutex);
++
++	/* .stride = 4 so offset is guaranteed to be aligned */
++	while (bytes >= 4) {
++		ret = mt76x8_sysc_register_readout(sysc, offset, val);
++		if (ret) {
++			mutex_unlock(&mt76x8_sysc_mutex);
++			return ret;
++		}
++
++		val += 4;
++		offset += 4;
++		bytes -= 4;
++	}
++
++	if (!bytes) {
++		mutex_unlock(&mt76x8_sysc_mutex);
++		return 0;
++	}
++
++	/* Handle any trailing bytes */
++	ret = mt76x8_sysc_register_readout(sysc, offset, &word);
++	if (ret) {
++		mutex_unlock(&mt76x8_sysc_mutex);
++		return ret;
++	}
++
++	mutex_unlock(&mt76x8_sysc_mutex);
++
++	memcpy(val, &word, bytes);
++
++	return 0;
++}
++
++static int mt76x8_sysc_register_writeout(const struct mt76x8_sysc *sysc,
++				      const unsigned int offset,
++				      u32 val)
++{
++	rt_sysc_w32(val, offset);
++
++	return 0;
++}
++
++/*
++ *  by the registers one by one
++ */
++
++static int mt76x8_sysc_write_by_reg(void *context, unsigned int offset,
++				 void *val, size_t bytes)
++{
++	struct mt76x8_sysc *sysc = context;
++	u32 *_val = val;
++	int ret;
++
++	/* allow only writing one complete word at a time */
++	if ((bytes != 4) || (offset % 4)) {
++		dev_err(sysc->dev,
++			"Invalid write request\t bytes: %d\t offset: %X\n",
++			bytes, offset);
++		return -EINVAL;
++	}
++
++	mutex_lock(&mt76x8_sysc_mutex);
++
++	ret = mt76x8_sysc_register_writeout(sysc, offset & ~0x03, *_val);
++
++	mutex_unlock(&mt76x8_sysc_mutex);
++
++	return ret;
++}
++
++static int mt76x8_sysc_probe(struct platform_device *pdev)
++{
++	struct device *dev = &pdev->dev;
++	struct resource *res;
++	struct nvmem_config *nvmem_cfg;
++	struct nvmem_device *nvmem;
++	struct mt76x8_sysc *sysc;
++	u32 size;
++	char *randomness;
++	int rc;
++
++	sysc = devm_kzalloc(dev, sizeof(*sysc), GFP_KERNEL);
++	if (!sysc)
++		return -ENOMEM;
++
++	sysc->dev = dev;
++
++	rc = device_property_read_u32(dev, "ralink,nvmem-size", &size);
++
++	nvmem_cfg = devm_kzalloc(dev, sizeof(*nvmem_cfg), GFP_KERNEL);
++	if (!nvmem_cfg)
++		return -ENOMEM;
++
++	nvmem_cfg->dev = dev;
++	nvmem_cfg->name = "mt76x8-sysc";
++	nvmem_cfg->read_only = true;
++	nvmem_cfg->size = size;
++	nvmem_cfg->word_size = 1;
++	nvmem_cfg->stride = 4;
++	nvmem_cfg->priv = sysc;
++	nvmem_cfg->reg_read = mt76x8_sysc_read_by_reg;
++	nvmem_cfg->reg_write = mt76x8_sysc_write_by_reg;
++
++	nvmem = devm_nvmem_register(dev, nvmem_cfg);
++	if (IS_ERR(nvmem))
++		return PTR_ERR(nvmem);
++
++	randomness = kzalloc(size, GFP_KERNEL);
++	if (!randomness)
++		return -ENOMEM;
++
++	nvmem_cfg->reg_read(sysc, 0, randomness, size);
++	add_device_randomness(randomness, size);
++	kfree(randomness);
++
++	platform_set_drvdata(pdev, nvmem);
++
++	return 0;
++}
++
++static const struct of_device_id mt76x8_sysc_of_match[] = {
++	{ .compatible = "ralink,nvmem-mt7628-sysc", },
++	{ .compatible = "ralink,nvmem-mt7688-sysc", },
++	{},
++};
++MODULE_DEVICE_TABLE(of, mt76x8_sysc_of_match);
++
++static struct platform_driver mt76x8_sysc_driver = {
++	.probe = mt76x8_sysc_probe,
++	.driver = {
++		.name = "nvmem-mt76x8-sysc",
++		.of_match_table = mt76x8_sysc_of_match,
++	},
++};
++module_platform_driver(mt76x8_sysc_driver);
++
++MODULE_AUTHOR("Dirk Chang <dirk@kooiot.com>");
++MODULE_DESCRIPTION("Ralink MT76X8 sysc regiters r/w driver");
++MODULE_LICENSE("GPL");
