@@ -6,13 +6,6 @@
 / {
 	compatible = "widora,neo", "mediatek,mt7628an-soc";
 
-	aliases {
-		led-boot = &led_wifi;
-		led-failsafe = &led_wifi;
-		led-running = &led_wifi;
-		led-upgrade = &led_wifi;
-	};
-
 	chosen {
 		bootargs = "console=ttyS0,115200";
 	};
@@ -37,54 +30,31 @@
 		};
 	};
 
-	wgpio: gpio-wifi {
-		compatible = "mediatek,gpio-wifi";
+	nvmem_sysc: eeprom@10000000 {
+		compatible = "ralink,nvmem-mt7688-sysc";
 		#address-cells = <1>;
 		#size-cells = <0>;
-		gpio-controller;
-		#gpio-cells = <2>;
+
+		ralink,nvmem-size = <0x80>;
+		/* Data cells */
+		agpio_nv: agpio-nv@3c {
+			reg = <0x3c 0x04>;
+		};
+		mgpio_nv: mgpio-nv@64 {
+			reg = <0x64 0x04>;
+		};
 	};
 };
 
 &state_default {
 	gpio {
-		groups = "gpio";
-		function = "gpio";
-	};
-
-	perst {
-		groups = "perst";
-		function = "gpio";
-	};
-
-	refclk {
-		groups = "refclk";
-		function = "gpio";
-	};
-
-	i2s {
-		groups = "i2s";
-		function = "gpio";
-	};
-
-	spis {
-		groups = "spis";
-		function = "gpio";
-	};
-
-	wled_kn {
-		groups = "wled_kn";
+		groups = "gpio", "wdt", "perst", "refclk", "i2s", "spis";
 		function = "gpio";
 	};
 
 	wled_an {
 		groups = "wled_an";
 		function = "wled_an";
-	};
-
-	wdt {
-		groups = "wdt";
-		function = "gpio";
 	};
 };
 
