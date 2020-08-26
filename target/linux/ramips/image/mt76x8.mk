@@ -666,7 +666,7 @@ define Device/widora_neo-32m
 	kmod-gpio-button-hotplug kmod-leds-gpio \
 	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
 	kmod-usb-net-qmi-wwan kmod-usb-net-serial-option \
-	kmod-rtc-rx8010 \
+	kmod-rtc-rx8010 kmod-sdhci-mt7620 \
 	uqmi fdisk
   SUPPORTED_DEVICES += widora-neo-32m
 endef
