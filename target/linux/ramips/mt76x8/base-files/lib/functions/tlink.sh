@@ -36,6 +36,14 @@ gpio_in() {
 	return $(cat $gpio_path/value)
 }
 
+mt76x8_iot_mode() {
+	echo -e -n '\xff\x01\xfe\x00' | dd of=/sys/bus/nvmem/devices/mt76x8-sysc0/nvmem bs=4 seek=15
+}
+
+mt76x8_router_mode() {
+	echo -e -n '\xff\x01\xe0\x00' | dd of=/sys/bus/nvmem/devices/mt76x8-sysc0/nvmem bs=4 seek=15
+}
+
 product_sn() {
 	[ -e /tmp/sysinfo/product_sn ] && cat /tmp/sysinfo/product_sn || echo "UNKNOWN_DEVICE_SN"
 }
