@@ -157,7 +157,7 @@ define KernelPackage/eeprom-at24
   KCONFIG:=CONFIG_EEPROM_AT24
   DEPENDS:=+kmod-i2c-core +kmod-regmap-i2c
   FILES:=$(LINUX_DIR)/drivers/misc/eeprom/at24.ko
-  AUTOLOAD:=$(call AutoProbe,at24)
+  AUTOLOAD:=$(call AutoLoad,50,at24,1)
 endef
 
 define KernelPackage/eeprom-at24/description
