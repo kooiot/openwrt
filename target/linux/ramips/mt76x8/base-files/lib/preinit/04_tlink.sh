@@ -26,7 +26,7 @@ do_product_sn_kooiot_nvmem() {
 	fi
 }
 
-do_product_sn_kooiot_emmc() {
+do_product_sn_kooiot_spi_flash() {
 	local spi_part="/dev/unknown"
 	local offset=65504		#0xFFE0
 	local offset_dp=65520	#0xFFF0
@@ -62,7 +62,7 @@ do_product_sn_kooiot() {
 	if [ -b "${NVMEM_PATH}" -o -f "${NVMEM_PATH}" ]; then
 		do_product_sn_kooiot_nvmem
 	else
-		do_product_sn_kooiot_emmc
+		do_product_sn_kooiot_spi_flash
 	fi
 }
 

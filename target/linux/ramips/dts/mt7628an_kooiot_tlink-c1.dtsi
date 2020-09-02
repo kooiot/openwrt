@@ -50,6 +50,25 @@
 			linux,code = <KEY_RESTART>;
 		};
 	};
+
+	nvmem_sysc: eeprom@10000000 {
+		compatible = "ralink,nvmem-mt7688-sysc";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		ralink,nvmem-size = <0x80>;
+		ralink,nvmem-writable;
+		/* Data cells */
+		agpio: agpio@3c {
+			reg = <0x3c 0x04>;
+		};
+		gpio1: gpio1@60 {
+			reg = <0x60 0x04>;
+		};
+		gpio2: gpio2@64 {
+			reg = <0x64 0x04>;
+		};
+	};
 };
 
 &state_default {
