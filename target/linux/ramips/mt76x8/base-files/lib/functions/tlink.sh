@@ -38,10 +38,12 @@ gpio_in() {
 
 mt76x8_iot_mode() {
 	echo -e -n '\xff\x01\xfe\x00' | dd of=/sys/bus/nvmem/devices/mt76x8-sysc0/nvmem bs=4 seek=15
+	echo -e -n '\x50\x05\x00\x00' | dd of=/sys/bus/nvmem/devices/mt76x8-sysc0/nvmem bs=4 seek=25
 }
 
 mt76x8_router_mode() {
 	echo -e -n '\xff\x01\xe0\x00' | dd of=/sys/bus/nvmem/devices/mt76x8-sysc0/nvmem bs=4 seek=15
+	echo -e -n '\x00\x00\x00\x00' | dd of=/sys/bus/nvmem/devices/mt76x8-sysc0/nvmem bs=4 seek=25
 }
 
 product_sn() {

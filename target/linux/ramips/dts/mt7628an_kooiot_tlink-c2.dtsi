@@ -71,6 +71,25 @@
 			gpios = <&gpio 11 GPIO_ACTIVE_LOW>;
 		};
 	};
+
+	nvmem_sysc: eeprom@10000000 {
+		compatible = "ralink,nvmem-mt7688-sysc";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		ralink,nvmem-size = <0x80>;
+		ralink,nvmem-writable;
+		/* Data cells */
+		agpio: agpio@3c {
+			reg = <0x3c 0x04>;
+		};
+		gpio1: gpio1@60 {
+			reg = <0x60 0x04>;
+		};
+		gpio2: gpio2@64 {
+			reg = <0x64 0x04>;
+		};
+	};
 };
 
 &state_default {
@@ -82,6 +101,31 @@
 	wled_an {
 		groups = "wled_an";
 		function = "wled_an";
+	};
+
+	p0led_an {
+		groups = "p0led_an";
+		function = "p0led_an";
+	};
+
+	p1led_an {
+		groups = "p1led_an";
+		function = "p1led_an";
+	};
+
+	p2led_an {
+		groups = "p2led_an";
+		function = "p2led_an";
+	};
+
+	p3led_an {
+		groups = "p3led_an";
+		function = "p3led_an";
+	};
+
+	p4led_an {
+		groups = "p4led_an";
+		function = "p4led_an";
 	};
 };
 
