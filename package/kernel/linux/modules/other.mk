@@ -636,7 +636,7 @@ define KernelPackage/rtc-pcf8563
   KCONFIG:=CONFIG_RTC_DRV_PCF8563 \
 	CONFIG_RTC_CLASS=y
   FILES:=$(LINUX_DIR)/drivers/rtc/rtc-pcf8563.ko
-  AUTOLOAD:=$(call AutoProbe,rtc-pcf8563)
+  AUTOLOAD:=$(call AutoLoad,50,rtc-pcf8563,1)
 endef
 
 define KernelPackage/rtc-pcf8563/description
