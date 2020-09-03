@@ -55,12 +55,12 @@ tlink_default() {
 }
 
 case "$(board_name)" in
-"kooiot,tlink-c1" | \
 "kooiot,tlink-c1-16m" | \
 "kooiot,tlink-c1-32m" | \
-"kooiot,tlink-c2" | \
 "kooiot,tlink-c2-16m" | \
-"kooiot,tlink-c2-32m" )
+"kooiot,tlink-c2-32m" | \
+"kooiot,tlink-c3-16m" | \
+"kooiot,tlink-c3-32m" )
 	tlink_default
 	;;
 esac

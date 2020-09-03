@@ -761,12 +761,13 @@ TARGET_DEVICES += widora_neo-32m
 define Device/kooiot_tlink-c1-16m
   IMAGE_SIZE := 16064k
   DEVICE_VENDOR := KooIoT
-  DEVICE_MODEL := ThingsLink C1
+  DEVICE_MODEL := ThingsLink C1 (16M)
   DEVICE_VARIANT := 16M
   DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
 	kmod-gpio-button-hotplug kmod-leds-gpio \
 	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
-	kmod-usb-net-qmi-wwan kmod-usb-net-serial-option \
+	kmod-usb-serial kmod-usb-net-serial-option \
+	kmod-usb-net-qmi-wwan kmod-rtc-rx8010 \
 	kmod-rtc-rx8010 \
 	uqmi fdisk
   SUPPORTED_DEVICES += tlink-c1-16m
@@ -776,14 +777,14 @@ TARGET_DEVICES += kooiot_tlink-c1-16m
 define Device/kooiot_tlink-c1-32m
   IMAGE_SIZE := 32448k
   DEVICE_VENDOR := KooIoT
-  DEVICE_MODEL := ThingsLink C1
+  DEVICE_MODEL := ThingsLink C1 (32M)
   DEVICE_VARIANT := 32M
   DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
 	kmod-gpio-button-hotplug kmod-leds-gpio \
 	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
-	kmod-usb-net-qmi-wwan kmod-usb-net-serial-option \
-	kmod-rtc-rx8010 \
-	uqmi fdisk
+	kmod-usb-serial kmod-usb-net-serial-option \
+	kmod-usb-net-qmi-wwan kmod-rtc-rx8010 \
+	uqmi fdisk usbutils
   SUPPORTED_DEVICES += tlink-c1-32m
 endef
 TARGET_DEVICES += kooiot_tlink-c1-32m
@@ -791,17 +792,33 @@ TARGET_DEVICES += kooiot_tlink-c1-32m
 define Device/kooiot_tlink-c2-32m
   IMAGE_SIZE := 32448k
   DEVICE_VENDOR := KooIoT
-  DEVICE_MODEL := ThingsLink C2
+  DEVICE_MODEL := ThingsLink C2 (32M)
   DEVICE_VARIANT := 32M
   DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
 	kmod-gpio-button-hotplug kmod-leds-gpio \
 	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
-	kmod-usb-net-qmi-wwan kmod-usb-net-serial-option \
-	kmod-usb-serial-cp210x kmod-rtc-rx8010 \
-	uqmi fdisk
+	kmod-usb-serial kmod-usb-net-serial-option \
+	kmod-usb-net-qmi-wwan kmod-rtc-rx8010 \
+	kmod-usb-serial-cp210x \
+	uqmi fdisk usbutils
   SUPPORTED_DEVICES += tlink-c2-32m
 endef
 TARGET_DEVICES += kooiot_tlink-c2-32m
+
+define Device/kooiot_tlink-c3-32m
+  IMAGE_SIZE := 32448k
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink C3 (32M)
+  DEVICE_VARIANT := 32M
+  DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
+	kmod-gpio-button-hotplug kmod-leds-gpio \
+	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
+	kmod-usb-serial kmod-usb-net-serial-option \
+	kmod-usb-net-qmi-wwan kmod-rtc-pcf8563 \
+	uqmi fdisk usbutils
+  SUPPORTED_DEVICES += tlink-c3-32m
+endef
+TARGET_DEVICES += kooiot_tlink-c3-32m
 
 define Device/wiznet_wizfi630s
   IMAGE_SIZE := 32448k
