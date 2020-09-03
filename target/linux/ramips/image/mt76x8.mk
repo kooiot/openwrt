@@ -666,7 +666,8 @@ define Device/widora_neo-32m
 	kmod-gpio-button-hotplug kmod-leds-gpio \
 	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
 	kmod-usb-net-qmi-wwan kmod-usb-net-serial-option \
-	kmod-rtc-rx8010 kmod-sdhci-mt7620 \
+	kmod-i2c-mt7628 kmod-rtc-rx8010 \
+	kmod-sdhci-mt7620 \
 	uqmi fdisk
   SUPPORTED_DEVICES += widora-neo-32m
 endef
@@ -681,8 +682,8 @@ define Device/kooiot_tlink-c1-16m
 	kmod-gpio-button-hotplug kmod-leds-gpio \
 	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
 	kmod-usb-serial kmod-usb-net-serial-option \
-	kmod-usb-net-qmi-wwan kmod-rtc-rx8010 \
-	kmod-rtc-rx8010 \
+	kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+	kmod-i2c-mt7628 kmod-rtc-rx8010 \
 	uqmi fdisk
   SUPPORTED_DEVICES += tlink-c1-16m
 endef
@@ -697,7 +698,8 @@ define Device/kooiot_tlink-c1-32m
 	kmod-gpio-button-hotplug kmod-leds-gpio \
 	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
 	kmod-usb-serial kmod-usb-net-serial-option \
-	kmod-usb-net-qmi-wwan kmod-rtc-rx8010 \
+	kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+	kmod-i2c-mt7628 kmod-rtc-rx8010 \
 	uqmi fdisk usbutils
   SUPPORTED_DEVICES += tlink-c1-32m
 endef
@@ -712,8 +714,8 @@ define Device/kooiot_tlink-c2-32m
 	kmod-gpio-button-hotplug kmod-leds-gpio \
 	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
 	kmod-usb-serial kmod-usb-net-serial-option \
-	kmod-usb-net-qmi-wwan kmod-rtc-rx8010 \
-	kmod-usb-serial-cp210x \
+	kmod-usb-serial-qualcomm \
+	kmod-usb-net-qmi-wwan kmod-usb-serial-cp210x \
 	uqmi fdisk usbutils
   SUPPORTED_DEVICES += tlink-c2-32m
 endef
@@ -728,7 +730,8 @@ define Device/kooiot_tlink-c3-32m
 	kmod-gpio-button-hotplug kmod-leds-gpio \
 	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
 	kmod-usb-serial kmod-usb-net-serial-option \
-	kmod-usb-net-qmi-wwan kmod-rtc-pcf8563 \
+	kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+	kmod-i2c-mt7628 kmod-rtc-pcf8563 \
 	uqmi fdisk usbutils
   SUPPORTED_DEVICES += tlink-c3-32m
 endef
