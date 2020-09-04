@@ -66,10 +66,6 @@ do_product_sn_kooiot() {
 	fi
 }
 
-do_system_setup() {
-	mkdir -p /mnt/data
-}
-
 do_kooiot_tlink_generic() {
 	. /lib/functions.sh
 
@@ -82,7 +78,6 @@ do_kooiot_tlink_generic() {
 	"kooiot,tlink-c2-32m" | \
 	"kooiot,tlink-c3-16m" | \
 	"kooiot,tlink-c3-32m")
-		do_system_setup
 		do_product_sn_kooiot
 		;;
 	esac

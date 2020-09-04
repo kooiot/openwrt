@@ -52,6 +52,13 @@ tlink_default() {
 	# set ttylogin (for ttyS0, default will promote console with password)
 	# set system.@system[0].ttylogin='1'
 	# uci commit system
+
+	[ -e /mnt/data ] && {
+		echo "Data directory existed!" > /dev/console
+	} || {
+		echo "Create data directory!" > /dev/console
+		mkdir -p /mnt/data
+	}
 }
 
 case "$(board_name)" in
