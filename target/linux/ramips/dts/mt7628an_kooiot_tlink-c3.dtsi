@@ -158,9 +158,10 @@
 };
 
 &ethernet {
-	mtd-mac-address = <&factory 0x04>;
+	mtd-mac-address = <&factory 0x19c>;
 };
 
 &wmac {
 	status = "okay";
+	mediatek,mtd-eeprom = <&factory 0x8000>;
 };
