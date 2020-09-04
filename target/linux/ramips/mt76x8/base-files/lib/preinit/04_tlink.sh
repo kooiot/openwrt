@@ -66,6 +66,12 @@ do_product_sn_kooiot() {
 	fi
 }
 
+do_system_setup() {
+	if [ ! -e /mnt/data ]; then
+		ln -s /root /mnt/data
+	fi
+}
+
 do_kooiot_tlink_generic() {
 	. /lib/functions.sh
 
