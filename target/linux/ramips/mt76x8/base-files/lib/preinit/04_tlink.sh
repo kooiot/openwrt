@@ -67,9 +67,7 @@ do_product_sn_kooiot() {
 }
 
 do_system_setup() {
-	if [ ! -e /mnt/data ]; then
-		ln -s /root /mnt/data
-	fi
+	mkdir -p /mnt/data
 }
 
 do_kooiot_tlink_generic() {
@@ -84,6 +82,7 @@ do_kooiot_tlink_generic() {
 	"kooiot,tlink-c2-32m" | \
 	"kooiot,tlink-c3-16m" | \
 	"kooiot,tlink-c3-32m")
+		do_system_setup
 		do_product_sn_kooiot
 		;;
 	esac
