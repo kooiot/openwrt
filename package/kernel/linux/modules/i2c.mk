@@ -25,7 +25,7 @@ I2C_CORE_MODULES:= \
   CONFIG_I2C_CHARDEV:drivers/i2c/i2c-dev
 
 define KernelPackage/i2c-core
-  $(call i2c_defaults,$(I2C_CORE_MODULES),51)
+  $(call i2c_defaults,$(I2C_CORE_MODULES),51,1)
   TITLE:=I2C support
 endef
 
