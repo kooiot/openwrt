@@ -769,7 +769,6 @@ define Device/kooiot_tlink-c1-16m
 	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
 	kmod-usb-serial kmod-usb-net-serial-option \
 	kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
-	kmod-i2c-mt7628 kmod-rtc-rx8010 \
 	uqmi fdisk
   SUPPORTED_DEVICES += tlink-c1-16m
 endef
