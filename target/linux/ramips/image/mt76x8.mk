@@ -704,6 +704,22 @@ define Device/kooiot_tlink-c1-32m
 endef
 TARGET_DEVICES += kooiot_tlink-c1-32m
 
+define Device/kooiot_tlink-c2-16m
+  IMAGE_SIZE := 16064k
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink C2 (16M)
+  DEVICE_VARIANT := 16M
+  DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
+	kmod-gpio-button-hotplug kmod-leds-gpio \
+	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
+	kmod-usb-serial kmod-usb-net-serial-option \
+	kmod-usb-serial-qualcomm \
+	kmod-usb-net-qmi-wwan kmod-usb-serial-cp210x \
+	uqmi fdisk usbutils
+  SUPPORTED_DEVICES += tlink-c2-16m
+endef
+TARGET_DEVICES += kooiot_tlink-c2-16m
+
 define Device/kooiot_tlink-c2-32m
   IMAGE_SIZE := 32448k
   DEVICE_VENDOR := KooIoT
