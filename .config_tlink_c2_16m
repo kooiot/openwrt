@@ -1686,7 +1686,11 @@ CONFIG_ZABBIX_POSTGRESQL=y
 # CONFIG_PACKAGE_u-boot-kooiot_tlink_c1_16m is not set
 # CONFIG_PACKAGE_u-boot-kooiot_tlink_c1_32m is not set
 # CONFIG_PACKAGE_u-boot-kooiot_tlink_c2 is not set
+CONFIG_PACKAGE_u-boot-kooiot_tlink_c2_16m=y
 CONFIG_PACKAGE_u-boot-kooiot_tlink_c2_32m=y
+# CONFIG_PACKAGE_u-boot-kooiot_tlink_c3 is not set
+# CONFIG_PACKAGE_u-boot-kooiot_tlink_c3_16m is not set
+# CONFIG_PACKAGE_u-boot-kooiot_tlink_c3_32m is not set
 # CONFIG_PACKAGE_u-boot-ravpower_rp-wd009 is not set
 # CONFIG_PACKAGE_u-boot-widora_neo_32m is not set
 # end of Boot Loaders
