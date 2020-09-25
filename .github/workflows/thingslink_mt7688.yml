@@ -1,6 +1,6 @@
 # This is a basic workflow to help you get started with Actions
 
-name: ThingsLink X1 Firmware Build
+name: ThingsLink MT7688 SOC Firmware Build
 
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
@@ -29,24 +29,58 @@ jobs:
       # Update feeds  
       - name: Feeds Install
         run: ./scripts/feeds install -a
-        
+     
       # Copy configuration
-      - name: X1 Configuration copy
-        run: cp .config_tlink_x1 .config
+      - name: Configuration Copy C1
+        run: cp .config_tlink_c1 .config
 
       # Copy configuration
-      - name: Make Openwrt
+      - name: Make C1 Firmware
         run: make -j8
 
+      # Copy configuration
+      - name: Configuration Copy C2
+        run: cp .config_tlink_c2 .config
+
+      # Copy configuration
+      - name: Make C2 Firmware
+        run: make -j8
+
+      # Copy configuration
+      - name: Configuration Copy C2_16M
+        run: cp .config_tlink_c2_16m .config
+
+      # Copy configuration
+      - name: Make C2_16M Firmware
+        run: make -j8
+
+      # Copy configuration
+      - name: Configuration Copy C3
+        run: cp .config_tlink_c3 .config
+
+      # Copy configuration
+      - name: Make C3 Firmware
+        run: make -j8
+
+      # Copy configuration
+      - name: Configuration Copy Widora BIT5.1
+        run: cp .config_widora_32m .config
+
+      # Copy configuration
+      - name: Make Widora BIT5.1 Firmware
+        run: make -j8
+
+      # Remove unless files
       - name: Cleanup before release files
         run: |
-          rm -rf bin/target/arm_cortex-a7_neon-vfpv4/base
-          rm -rf bin/target/arm_cortex-a7_neon-vfpv4/freifunk
-          rm -rf bin/target/arm_cortex-a7_neon-vfpv4/luci
-          rm -rf bin/target/arm_cortex-a7_neon-vfpv4/packages
-          rm -rf bin/target/arm_cortex-a7_neon-vfpv4/routing
-          rm -rf bin/target/arm_cortex-a7_neon-vfpv4/telephony
-          rm bin/target/sunxi/cortexa7/openwrt-toolchain*
+          rm -rf bin/target/mipsel_24kc/base
+          rm -rf bin/target/mipsel_24kc/freifunk
+          rm -rf bin/target/mipsel_24kc/luci
+          rm -rf bin/target/mipsel_24kc/packages
+          rm -rf bin/target/mipsel_24kc/routing
+          rm -rf bin/target/mipsel_24kc/telephony
+          rm bin/targets/ramips/mt76x8/*initramfs-kernel.bin
+          rm bin/target/ramips/mt76x8/openwrt-toolchain*
 
       - name: Compress files
         run: cd bin && tar czvf ../release.tar.gz * > /dev/null
@@ -73,6 +107,6 @@ jobs:
           # With verbose: true, be verbose.
           verbose: false
           # Set custom tag name.
-          tag_name: ThingLink_X1
+          tag_name: ThingLink_MT7688 
           # If try to update latest release.
           update_latest_release: true
