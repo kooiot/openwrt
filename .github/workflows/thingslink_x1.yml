@@ -24,11 +24,11 @@ jobs:
 
       # Update feeds & install
       - name: Feeds Update
-        run: ./script/feeds update -a
+        run: ./scripts/feeds update -a
         
       # Update feeds  
       - name: Feeds Install
-        run: ./script/feeds install -a
+        run: ./scripts/feeds install -a
         
       # Copy configuration
       - name: X1 Configuration copy
