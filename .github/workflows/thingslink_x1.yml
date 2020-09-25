@@ -1,0 +1,57 @@
+# This is a basic workflow to help you get started with Actions
+
+name: ThingsLink X1 Firmware Build
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+
+      # Update feeds & install
+      - name: Feeds Update
+        run: ./script/feeds update -a
+        
+      # Update feeds  
+      - name: Feeds Install
+        run: ./script/feeds install -a
+        
+      # Copy configuration
+      - name: X1 Configuration copy
+        run: cp .config_tlink_x1 .config
+
+      # Copy configuration
+      - name: Make Openwrt
+        run: make -j8
+        
+      - name: GH Release
+        # You may pin to the exact commit or the version.
+        # uses: softprops/action-gh-release@b7e450da2a4b4cb4bfbae528f788167786cfcedf
+        uses: softprops/action-gh-release@v0.1.5
+        with:
+          name: ThingsLink-X1
+          draft: true
+          files: |
+            bin/targets/sunxi/cortexa7/openwrt-sunxi-cortexa7-kooiot_tlink-x1-squashfs-sdcard.img.gz
+            bin/targets/sunxi/cortexa7/openwrt-sunxi-cortexa7-kooiot_tlink-x1-ext4-sdcard.img.gz
+            bin/targets/sunxi/cortexa7/openwrt-sunxi-cortexa7-kooiot_tlink-x1.manifest
+            bin/targets/sunxi/cortexa7/config.buildinfo
+            bin/targets/sunxi/cortexa7/feeds.buildinfo
+            bin/targets/sunxi/cortexa7/version.buildinfo
+            bin/targets/sunxi/cortexa7/sha256sums
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
