@@ -40,13 +40,13 @@ jobs:
 
       - name: Cleanup before release files
         run: |
-          rm -rf bin/target/arm_cortex-a7_neon-vfpv4/base
-          rm -rf bin/target/arm_cortex-a7_neon-vfpv4/freifunk
-          rm -rf bin/target/arm_cortex-a7_neon-vfpv4/luci
-          rm -rf bin/target/arm_cortex-a7_neon-vfpv4/packages
-          rm -rf bin/target/arm_cortex-a7_neon-vfpv4/routing
-          rm -rf bin/target/arm_cortex-a7_neon-vfpv4/telephony
-          rm bin/target/sunxi/cortexa7/openwrt-toolchain*
+          rm -rf bin/packages/arm_cortex-a7_neon-vfpv4/base
+          rm -rf bin/packages/arm_cortex-a7_neon-vfpv4/freifunk
+          rm -rf bin/packages/arm_cortex-a7_neon-vfpv4/luci
+          rm -rf bin/packages/arm_cortex-a7_neon-vfpv4/packages
+          rm -rf bin/packages/arm_cortex-a7_neon-vfpv4/routing
+          rm -rf bin/packages/arm_cortex-a7_neon-vfpv4/telephony
+          rm -f bin/targets/sunxi/cortexa7/openwrt-toolchain*
 
       - name: Compress files
         run: cd bin && tar czvf ../release.tar.gz * > /dev/null
