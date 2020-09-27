@@ -9,4 +9,4 @@ src-git freifunk https://github.com/freifunk/openwrt-packages.git
 #src-git oldpackages http://git.openwrt.org/packages.git
 #src-link custom /usr/src/openwrt/custom-feed
 
-src-link kooiot /home/cch/mycode/packages_ex
+src-git kooiot https://github.com/kooiot/packages_ex.git
