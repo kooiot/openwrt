@@ -73,14 +73,14 @@ jobs:
       # Remove unless files
       - name: Cleanup before release files
         run: |
-          rm -rf bin/target/mipsel_24kc/base
-          rm -rf bin/target/mipsel_24kc/freifunk
-          rm -rf bin/target/mipsel_24kc/luci
-          rm -rf bin/target/mipsel_24kc/packages
-          rm -rf bin/target/mipsel_24kc/routing
-          rm -rf bin/target/mipsel_24kc/telephony
-          rm bin/targets/ramips/mt76x8/*initramfs-kernel.bin
-          rm bin/target/ramips/mt76x8/openwrt-toolchain*
+          rm -rf bin/packages/mipsel_24kc/base
+          rm -rf bin/packages/mipsel_24kc/freifunk
+          rm -rf bin/packages/mipsel_24kc/luci
+          rm -rf bin/packages/mipsel_24kc/packages
+          rm -rf bin/packages/mipsel_24kc/routing
+          rm -rf bin/packages/mipsel_24kc/telephony
+          rm -f bin/targets/ramips/mt76x8/*initramfs-kernel.bin
+          rm -f bin/targets/ramips/mt76x8/openwrt-toolchain*
 
       - name: Compress files
         run: cd bin && tar czvf ../release.tar.gz * > /dev/null
