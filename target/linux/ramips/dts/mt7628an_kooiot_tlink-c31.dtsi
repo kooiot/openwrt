@@ -1,0 +1,158 @@
+#include "mt7628an.dtsi"
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+
+/ {
+	compatible = "kooiot,tlink-c31", "mediatek,mt7628an-soc";
+
+	aliases {
+		/*
+		led-boot = &led_status;
+		led-failsafe = &led_status;
+		led-upgrade = &led_status;
+		*/
+	};
+
+	chosen {
+		bootargs = "console=ttyS2,115200"; /* fake the console */
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		wifi {
+			label = "kooiot:green:wifi";
+			gpios = <&gpio 11 GPIO_ACTIVE_HIGH>;
+		};
+
+		watchdog {
+			label = "kooiot:green:watchdog";
+			gpios = <&gpio 36 GPIO_ACTIVE_LOW>;
+			linux,default-trigger = "heartbeat";
+		};
+
+		bbs {
+			label = "kooiot:green:bbs";
+			gpios = <&gpio 2 GPIO_ACTIVE_HIGH>;
+		};
+
+		bs {
+			label = "kooiot:green:bs";
+			gpios = <&gpio 44 GPIO_ACTIVE_LOW>;
+		};
+
+		gs {
+			label = "kooiot:green:gs";
+			gpios = <&gpio 37 GPIO_ACTIVE_HIGH>;
+		};
+
+		cloud {
+			label = "kooiot:green:cloud";
+			gpios = <&gpio 0 GPIO_ACTIVE_HIGH>;
+		};
+	};
+
+	keys {
+		compatible = "gpio-keys";
+
+		/*
+		wps {
+			label = "wps";
+			gpios = <&gpio 38 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_WPS_BUTTON>;
+		};
+		*/
+
+		reset {
+			label = "reset";
+			gpios = <&gpio 38 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_RESTART>;
+		};
+	};
+
+	gpio_export {
+		compatible = "gpio-export";
+		#size-cells = <0>;
+
+		pcie_reset {
+			gpio-export,name = "pcie_reset";
+			gpio-export,output = <1>;
+			gpios = <&gpio 3 GPIO_ACTIVE_LOW>; /* this power actually */
+		};
+	};
+
+	nvmem_sysc: eeprom@10000000 {
+		compatible = "ralink,nvmem-mt7688-sysc";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		ralink,nvmem-size = <0x80>;
+		ralink,nvmem-writable;
+		/* Data cells */
+		agpio: agpio@3c {
+			reg = <0x3c 0x04>;
+		};
+		gpio1: gpio1@60 {
+			reg = <0x60 0x04>;
+		};
+		gpio2: gpio2@64 {
+			reg = <0x64 0x04>;
+		};
+	};
+};
+
+&state_default {
+	gpio {
+		groups = "gpio", "wdt", "refclk", "i2s", "perst", "spi cs1", "wled_an";
+		function = "gpio";
+	};
+
+	p0led_an {
+		groups = "p0led_an";
+		function = "p0led_an";
+	};
+
+	p1led_an {
+		groups = "p1led_an";
+		function = "p1led_an";
+	};
+
+	p2led_an {
+		groups = "p2led_an";
+		function = "p2led_an";
+	};
+
+	p3led_an {
+		groups = "p3led_an";
+		function = "p3led_an";
+	};
+
+	p4led_an {
+		groups = "p4led_an";
+		function = "p4led_an";
+	};
+};
+
+&i2c {
+	status = "okay";
+
+	pcf8563: rtc@51 {
+		status = "okay";
+		compatible = "nxp,pcf8563";
+		reg = <0x51>;
+	};
+};
+
+&uart1 {
+	status = "okay";
+};
+
+&ethernet {
+	mtd-mac-address = <&factory 0x19c>;
+};
+
+&wmac {
+	status = "okay";
+	mediatek,mtd-eeprom = <&factory 0x8000>;
+};
