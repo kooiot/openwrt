@@ -25,11 +25,13 @@
 			linux,default-trigger = "heartbeat";
 		};
 
+		/*
 		watchdog {
 			label = "kooiot:green:watchdog";
 			gpios = <&gpio 36 GPIO_ACTIVE_LOW>;
 			linux,default-trigger = "heartbeat";
 		};
+		*/
 
 		bbs {
 			label = "kooiot:green:bbs";
@@ -84,6 +86,15 @@
 			gpio-export,output = <1>;
 			gpios = <&gpio 37 GPIO_ACTIVE_LOW>; /* this power actually */
 		};
+	};
+
+	watchdog {
+		compatible = "linux,wdt-gpio";
+
+		gpios = <&gpio 36 GPIO_ACTIVE_LOW>;
+		hw_algo = "toggle";
+		hw_margin_ms = <1200>;
+		always-running;
 	};
 
 	nvmem_sysc: eeprom@10000000 {
