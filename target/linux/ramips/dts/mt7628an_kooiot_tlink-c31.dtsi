@@ -28,7 +28,8 @@
 
 		watchdog {
 			label = "kooiot:green:watchdog";
-			gpios = <&gpio 36 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio 36 GPIO_ACTIVE_HIGH>;
+			default-state = "on";
 			linux,default-trigger = "heartbeat";
 		};
 
