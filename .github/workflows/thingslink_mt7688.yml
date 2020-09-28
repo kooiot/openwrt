@@ -63,6 +63,14 @@ jobs:
         run: make -j8
 
       # Copy configuration
+      - name: Configuration Copy C31
+        run: cp .config_tlink_c31 .config
+
+      # Copy configuration
+      - name: Make C31 Firmware
+        run: make -j8
+
+      # Copy configuration
       - name: Configuration Copy Widora BIT5.1
         run: cp .config_widora_32m .config
 
