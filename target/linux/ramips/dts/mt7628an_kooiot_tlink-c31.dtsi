@@ -15,7 +15,7 @@
 	};
 
 	chosen {
-		bootargs = "console=ttyS0,115200"; /* fake the console */
+		bootargs = "console=ttyS2,115200"; /* fake the console */
 	};
 
 	leds {
@@ -157,6 +157,10 @@
 };
 
 &uart1 {
+	status = "okay";
+};
+
+&uart2 {
 	status = "okay";
 };
 
