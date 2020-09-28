@@ -144,6 +144,10 @@ zyxel,keenetic-extra-ii)
 	ucidef_set_led_netdev "wifi_led" "wifi" "green:wifi" "wlan0"
 	ucidef_set_led_switch "internet" "internet" "green:internet" "switch0" "0x01"
 	;;
+kooiot,tlink-c31-16m|\
+kooiot,tlink-c31-32m)
+	set_wifi_led "kooiot:green:wifi"
+	;;
 esac
 
 board_config_flush

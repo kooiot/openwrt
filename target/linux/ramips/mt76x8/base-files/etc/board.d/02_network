@@ -41,7 +41,9 @@ ramips_setup_interfaces()
 			"1:lan" "0:wan" "6@eth0"
 		;;
 	kooiot,tlink-c3-16m|\
-	kooiot,tlink-c3-32m)
+	kooiot,tlink-c3-32m|\
+	kooiot,tlink-c31-16m|\
+	kooiot,tlink-c31-32m)
 		ucidef_add_switch "switch0" \
 			"0:lan" "2:lan" "3:lan" "4:lan" "1:wan" "6@eth0"
 		;;
@@ -203,7 +205,9 @@ ramips_setup_macs()
 	kooiot,tlink-c2-16m|\
 	kooiot,tlink-c2-32m|\
 	kooiot,tlink-c3-16m|\
-	kooiot,tlink-c3-32m)
+	kooiot,tlink-c3-32m|\
+	kooiot,tlink-c31-16m|\
+	kooiot,tlink-c31-32m)
 		lan_mac=$(mtd_get_mac_binary factory 0x28)
 		wan_mac=$(mtd_get_mac_binary factory 0x2e)
 		;;

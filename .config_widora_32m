@@ -3710,6 +3710,7 @@ CONFIG_WOLFSSL_HAS_NO_HW=y
 #
 # Sound
 #
+# CONFIG_PACKAGE_alsa-ucm-conf is not set
 # CONFIG_PACKAGE_liblo is not set
 # end of Sound
 
