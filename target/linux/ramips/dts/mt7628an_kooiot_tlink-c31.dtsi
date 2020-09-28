@@ -26,12 +26,14 @@
 			gpios = <&gpio 11 GPIO_ACTIVE_HIGH>;
 		};
 
+		/*
 		watchdog {
 			label = "kooiot:green:watchdog";
-			gpios = <&gpio 36 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio 36 GPIO_ACTIVE_LOW>;
 			default-state = "on";
 			linux,default-trigger = "heartbeat";
 		};
+		*/
 
 		bbs {
 			label = "kooiot:green:bbs";
@@ -83,6 +85,15 @@
 		};
 	};
 
+	watchdog {
+		compatible = "linux,wdt-gpio";
+
+		gpios = <&gpio 36 GPIO_ACTIVE_LOW>;
+		hw_algo = "toggle";
+		hw_margin_ms = <1200>;
+		always-running;
+	};
+
 	nvmem_sysc: eeprom@10000000 {
 		compatible = "ralink,nvmem-mt7688-sysc";
 		#address-cells = <1>;
@@ -105,7 +116,7 @@
 
 &state_default {
 	gpio {
-		groups = "gpio", "wdt", "refclk", "i2s", "perst", "spi cs1", "wled_an";
+		groups = "gpio", "wdt", "refclk", "i2s", "perst", "wled_an";
 		function = "gpio";
 	};
 
