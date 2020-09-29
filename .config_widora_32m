@@ -71,6 +71,8 @@ CONFIG_TARGET_ramips_mt76x8=y
 # CONFIG_TARGET_ramips_mt76x8_DEVICE_kooiot_tlink-c2-16m is not set
 # CONFIG_TARGET_ramips_mt76x8_DEVICE_kooiot_tlink-c2-32m is not set
 # CONFIG_TARGET_ramips_mt76x8_DEVICE_kooiot_tlink-c3-32m is not set
+# CONFIG_TARGET_ramips_mt76x8_DEVICE_kooiot_tlink-c31-16m is not set
+# CONFIG_TARGET_ramips_mt76x8_DEVICE_kooiot_tlink-c31-32m is not set
 # CONFIG_TARGET_ramips_mt76x8_DEVICE_wavlink_wl-wn577a2 is not set
 # CONFIG_TARGET_ramips_mt76x8_DEVICE_mediatek_linkit-smart-7688 is not set
 # CONFIG_TARGET_ramips_mt76x8_DEVICE_mediatek_mt7628an-eval-board is not set
@@ -1917,6 +1919,11 @@ CONFIG_PACKAGE_wireless-regdb=y
 #
 # Kernel modules
 #
+
+#
+# (I2C_MENU)
+#
+# end of (I2C_MENU)
 
 #
 # Block Devices
@@ -5962,6 +5969,7 @@ CONFIG_PACKAGE_fdisk=y
 # CONFIG_PACKAGE_checkpolicy is not set
 # CONFIG_PACKAGE_checksec is not set
 # CONFIG_PACKAGE_checksec_automator is not set
+# CONFIG_PACKAGE_chkcon is not set
 # CONFIG_PACKAGE_cmdpad is not set
 # CONFIG_PACKAGE_coap-client is not set
 # CONFIG_PACKAGE_collectd is not set
