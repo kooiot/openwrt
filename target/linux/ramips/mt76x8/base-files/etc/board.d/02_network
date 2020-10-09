@@ -203,13 +203,16 @@ ramips_setup_macs()
 	kooiot,tlink-c1-16m|\
 	kooiot,tlink-c1-32m|\
 	kooiot,tlink-c2-16m|\
-	kooiot,tlink-c2-32m|\
+	kooiot,tlink-c2-32m)
+		lan_mac=$(mtd_get_mac_binary factory 0x28)
+		wan_mac=$(mtd_get_mac_binary factory 0x2e)
+		;;
 	kooiot,tlink-c3-16m|\
 	kooiot,tlink-c3-32m|\
 	kooiot,tlink-c31-16m|\
 	kooiot,tlink-c31-32m)
-		lan_mac=$(mtd_get_mac_binary factory 0x28)
-		wan_mac=$(mtd_get_mac_binary factory 0x2e)
+		lan_mac=$(macaddr_setbit_la "$(cat /sys/class/net/eth0/address)")
+		wan_mac=$(macaddr_add "$lan_mac" 1)
 		;;
 	hilink,hlk-7628n)
 		lan_mac=$(macaddr_setbit_la "$(cat /sys/class/net/eth0/address)")
