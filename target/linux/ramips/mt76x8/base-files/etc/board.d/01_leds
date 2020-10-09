@@ -146,7 +146,7 @@ zyxel,keenetic-extra-ii)
 	;;
 kooiot,tlink-c31-16m|\
 kooiot,tlink-c31-32m)
-	set_wifi_led "kooiot:green:wifi"
+	ucidef_set_led_netdev "wifi_led" "wifi" "green:wifi" "wlan0"
 	;;
 esac
 
