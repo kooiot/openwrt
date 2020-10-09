@@ -173,7 +173,7 @@
 };
 
 &ethernet {
-	mtd-mac-address = <&factory 0x190>;
+	mtd-mac-address = <&factory 0x19c>;
 };
 
 &wmac {
