@@ -21,24 +21,24 @@
 
 		/* WLED_AN function is not GPIO. So it will not be mapped to leds
 		led_wifi: wifi {
-			label = "kooiot:green:wifi";
+			label = "green:wifi";
 			gpios = <&gpio 44 GPIO_ACTIVE_LOW>;
 		};
 		*/
 
 		led_status: status {
-			label = "kooiot:green:status";
+			label = "green:status";
 			gpios = <&gpio 37 GPIO_ACTIVE_LOW>;
 			linux,default-trigger = "heartbeat";
 		};
 
 		bs {
-			label = "kooiot:green:bs";
+			label = "green:bs";
 			gpios = <&gpio 4 GPIO_ACTIVE_LOW>;
 		};
 
 		gs {
-			label = "kooiot:green:gs";
+			label = "green:gs";
 			gpios = <&gpio 5 GPIO_ACTIVE_LOW>;
 		};
 	};

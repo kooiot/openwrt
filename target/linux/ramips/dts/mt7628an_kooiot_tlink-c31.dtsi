@@ -22,13 +22,13 @@
 		compatible = "gpio-leds";
 
 		wifi {
-			label = "kooiot:green:wifi";
+			label = "green:wifi";
 			gpios = <&gpio 11 GPIO_ACTIVE_HIGH>;
 		};
 
 		/*
 		watchdog {
-			label = "kooiot:green:watchdog";
+			label = "green:watchdog";
 			gpios = <&gpio 36 GPIO_ACTIVE_LOW>;
 			default-state = "on";
 			linux,default-trigger = "heartbeat";
@@ -36,22 +36,22 @@
 		*/
 
 		bbs {
-			label = "kooiot:green:bbs";
+			label = "green:bbs";
 			gpios = <&gpio 2 GPIO_ACTIVE_HIGH>;
 		};
 
 		bs {
-			label = "kooiot:green:bs";
+			label = "green:bs";
 			gpios = <&gpio 44 GPIO_ACTIVE_LOW>;
 		};
 
 		gs {
-			label = "kooiot:green:gs";
+			label = "green:gs";
 			gpios = <&gpio 37 GPIO_ACTIVE_HIGH>;
 		};
 
 		cloud {
-			label = "kooiot:green:cloud";
+			label = "green:cloud";
 			gpios = <&gpio 0 GPIO_ACTIVE_HIGH>;
 		};
 	};
