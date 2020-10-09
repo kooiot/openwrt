@@ -73,6 +73,6 @@ jobs:
           # With verbose: true, be verbose.
           verbose: false
           # Set custom tag name.
-          tag_name: ThingLink_X1
+          tag_name: ThingLink_X1-${{ github.run_number }}
           # If try to update latest release.
           update_latest_release: true
