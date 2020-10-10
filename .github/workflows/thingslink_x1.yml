@@ -36,7 +36,7 @@ jobs:
 
       # Copy configuration
       - name: Make Openwrt
-        run: make V=s
+        run: make -j8
 
       - name: Cleanup before release files
         run: |
