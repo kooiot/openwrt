@@ -36,7 +36,7 @@ jobs:
 
       # Copy configuration
       - name: Make C1 Firmware
-        run: make -j8
+        run: make V=s
 
       # Copy configuration
       - name: Configuration Copy C2
