@@ -71,8 +71,8 @@ CONFIG_TARGET_ramips_mt76x8_DEVICE_kooiot_tlink-c1-16m=y
 # CONFIG_TARGET_ramips_mt76x8_DEVICE_kooiot_tlink-c2-16m is not set
 # CONFIG_TARGET_ramips_mt76x8_DEVICE_kooiot_tlink-c2-32m is not set
 # CONFIG_TARGET_ramips_mt76x8_DEVICE_kooiot_tlink-c3-32m is not set
-# CONFIG_TARGET_ramips_mt76x8_DEVICE_kooiot_tlink-c31-16m is not set
-# CONFIG_TARGET_ramips_mt76x8_DEVICE_kooiot_tlink-c31-32m is not set
+# CONFIG_TARGET_ramips_mt76x8_DEVICE_kooiot_tlink-c35-16m is not set
+# CONFIG_TARGET_ramips_mt76x8_DEVICE_kooiot_tlink-c35-32m is not set
 # CONFIG_TARGET_ramips_mt76x8_DEVICE_wavlink_wl-wn577a2 is not set
 # CONFIG_TARGET_ramips_mt76x8_DEVICE_mediatek_linkit-smart-7688 is not set
 # CONFIG_TARGET_ramips_mt76x8_DEVICE_mediatek_mt7628an-eval-board is not set
@@ -2752,7 +2752,6 @@ CONFIG_PACKAGE_kmod-mt7603=y
 #
 # CONFIG_PACKAGE_bmr200_freeioe is not set
 # CONFIG_PACKAGE_factory_tlink is not set
-# CONFIG_PACKAGE_focas_ubus is not set
 CONFIG_PACKAGE_freeioe=y
 # CONFIG_PACKAGE_kooiot is not set
 CONFIG_PACKAGE_skynet=y
