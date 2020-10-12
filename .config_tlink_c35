@@ -71,8 +71,8 @@ CONFIG_TARGET_ramips_mt76x8=y
 # CONFIG_TARGET_ramips_mt76x8_DEVICE_kooiot_tlink-c2-16m is not set
 # CONFIG_TARGET_ramips_mt76x8_DEVICE_kooiot_tlink-c2-32m is not set
 # CONFIG_TARGET_ramips_mt76x8_DEVICE_kooiot_tlink-c3-32m is not set
-# CONFIG_TARGET_ramips_mt76x8_DEVICE_kooiot_tlink-c31-16m is not set
-CONFIG_TARGET_ramips_mt76x8_DEVICE_kooiot_tlink-c31-32m=y
+# CONFIG_TARGET_ramips_mt76x8_DEVICE_kooiot_tlink-c35-16m is not set
+CONFIG_TARGET_ramips_mt76x8_DEVICE_kooiot_tlink-c35-32m=y
 # CONFIG_TARGET_ramips_mt76x8_DEVICE_wavlink_wl-wn577a2 is not set
 # CONFIG_TARGET_ramips_mt76x8_DEVICE_mediatek_linkit-smart-7688 is not set
 # CONFIG_TARGET_ramips_mt76x8_DEVICE_mediatek_mt7628an-eval-board is not set
@@ -128,7 +128,7 @@ CONFIG_HAS_SUBTARGETS=y
 CONFIG_HAS_DEVICES=y
 CONFIG_TARGET_BOARD="ramips"
 CONFIG_TARGET_SUBTARGET="mt76x8"
-CONFIG_TARGET_PROFILE="DEVICE_kooiot_tlink-c31-32m"
+CONFIG_TARGET_PROFILE="DEVICE_kooiot_tlink-c35-32m"
 CONFIG_TARGET_ARCH_PACKAGES="mipsel_24kc"
 CONFIG_DEFAULT_TARGET_OPTIMIZATION="-Os -pipe -mno-branch-likely -mips32r2 -mtune=24kc"
 CONFIG_CPU_TYPE="24kc"
