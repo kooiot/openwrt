@@ -838,10 +838,10 @@ define Device/kooiot_tlink-c3-32m
 endef
 TARGET_DEVICES += kooiot_tlink-c3-32m
 
-define Device/kooiot_tlink-c31-16m
+define Device/kooiot_tlink-c35-16m
   IMAGE_SIZE := 16064k
   DEVICE_VENDOR := KooIoT
-  DEVICE_MODEL := ThingsLink C31 (16M)
+  DEVICE_MODEL := ThingsLink C35 (16M)
   DEVICE_VARIANT := 16M
   DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
 	kmod-gpio-button-hotplug kmod-leds-gpio \
@@ -850,14 +850,14 @@ define Device/kooiot_tlink-c31-16m
 	kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-i2c-mt7628 kmod-rtc-pcf8563 \
 	uqmi fdisk usbutils
-  SUPPORTED_DEVICES += tlink-c31-16m
+  SUPPORTED_DEVICES += tlink-c35-16m
 endef
-TARGET_DEVICES += kooiot_tlink-c31-16m
+TARGET_DEVICES += kooiot_tlink-c35-16m
 
-define Device/kooiot_tlink-c31-32m
+define Device/kooiot_tlink-c35-32m
   IMAGE_SIZE := 32448k
   DEVICE_VENDOR := KooIoT
-  DEVICE_MODEL := ThingsLink C31 (32M)
+  DEVICE_MODEL := ThingsLink C35 (32M)
   DEVICE_VARIANT := 32M
   DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
 	kmod-gpio-button-hotplug kmod-leds-gpio \
@@ -866,9 +866,9 @@ define Device/kooiot_tlink-c31-32m
 	kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-i2c-mt7628 kmod-rtc-pcf8563 \
 	uqmi fdisk usbutils
-  SUPPORTED_DEVICES += tlink-c31-32m
+  SUPPORTED_DEVICES += tlink-c35-32m
 endef
-TARGET_DEVICES += kooiot_tlink-c31-32m
+TARGET_DEVICES += kooiot_tlink-c35-32m
 
 define Device/wiznet_wizfi630s
   IMAGE_SIZE := 32448k

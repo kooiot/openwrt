@@ -78,8 +78,8 @@ do_kooiot_tlink_generic() {
 	"kooiot,tlink-c2-32m" | \
 	"kooiot,tlink-c3-16m" | \
 	"kooiot,tlink-c3-32m" | \
-	"kooiot,tlink-c31-16m" | \
-	"kooiot,tlink-c31-32m")
+	"kooiot,tlink-c35-16m" | \
+	"kooiot,tlink-c35-32m")
 		do_product_sn_kooiot
 		;;
 	esac
