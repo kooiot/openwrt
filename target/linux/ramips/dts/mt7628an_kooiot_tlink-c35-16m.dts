@@ -1,8 +1,8 @@
-#include "mt7628an_kooiot_tlink-c31.dtsi"
+#include "mt7628an_kooiot_tlink-c35.dtsi"
 
 / {
-	compatible = "kooiot,tlink-c31-16m", "kooiot,tlink-c31", "mediatek,mt7628an-soc";
-	model = "KooIoT ThingsLink C31 (16M)";
+	compatible = "kooiot,tlink-c35-16m", "kooiot,tlink-c35", "mediatek,mt7628an-soc";
+	model = "KooIoT ThingsLink C35 (16M)";
 };
 
 &spi0 {
