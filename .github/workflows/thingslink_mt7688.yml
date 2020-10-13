@@ -28,8 +28,10 @@ jobs:
           key_build: ${{ secrets.KEY_BUILD }}
           key_build_pub: ${{ secrets.KEY_BUILD_PUB }}
         run: |
-          echo ${{ env.key_build }} > key-build
-          echo ${{ env.key_build_pub }} > key-build.pub
+          echo "${{ env.key_build }}" > key-build
+          echo "${{ env.key_build_pub }}" > key-build.pub
+          md5sum key-build
+          md5sum key-build.pub
       
       # Update feeds & install
       - name: Feeds Update
