@@ -22,6 +22,15 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
 
+      # echo key_build stuff
+      - name: Create key_build
+        env:
+          key_build: ${{ secrets.KEY_BUILD }}
+          key_build_pub: ${{ secrets.KEY_BUILD_PUB }}
+        run: |
+          echo ${{ env.key_build }} > key-build
+          echo ${{ env.key_build_pub }} > key-build.pub
+      
       # Update feeds & install
       - name: Feeds Update
         run: ./scripts/feeds update -a
@@ -29,6 +38,15 @@ jobs:
       # Update feeds  
       - name: Feeds Install
         run: ./scripts/feeds install -a
+        
+      # Cache dl folder
+      - name: Cache
+        uses: actions/cache@v2.1.2
+        with:
+          # A list of files, directories, and wildcard patterns to cache and restore
+          path: dl
+          # An explicit key for restoring and saving the cache
+          key: x1-build-dl-cache
         
       # Copy configuration
       - name: X1 Configuration copy
