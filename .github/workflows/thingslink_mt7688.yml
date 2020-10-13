@@ -22,6 +22,15 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
 
+      # Cache dl folder
+      - name: Cache
+        uses: actions/cache@v2.1.2
+        with:
+          # A list of files, directories, and wildcard patterns to cache and restore
+          path: dl
+          # An explicit key for restoring and saving the cache
+          key: mt7688_build_dl_cache
+ 
       # echo key_build stuff
       - name: Create key_build
         env:
@@ -40,23 +49,14 @@ jobs:
       # Update feeds  
       - name: Feeds Install
         run: ./scripts/feeds install -a
-        
-      # Cache dl folder
-      - name: Cache
-        uses: actions/cache@v2.1.2
-        with:
-          # A list of files, directories, and wildcard patterns to cache and restore
-          path: dl
-          # An explicit key for restoring and saving the cache
-          key: mt7688-build-dl-cache
-     
+    
       # Copy configuration
       - name: Configuration Copy C1
         run: cp .config_tlink_c1 .config
 
       # Copy configuration
       - name: Make C1 Firmware
-        run: make -j8
+        run: make
 
       # Copy configuration
       - name: Configuration Copy C2
