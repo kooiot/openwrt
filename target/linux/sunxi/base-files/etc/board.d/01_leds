@@ -1,15 +1,7 @@
 #!/bin/sh
 
+. /lib/functions/leds.sh
 . /lib/functions/uci-defaults.sh
-
-set_usb_led() {
-	ucidef_set_led_usbdev "usb" "USB" "${1}" "${2:-1-1}"
-}
-
-set_wifi_led() {
-	ucidef_set_led_netdev "wifi_led" "wifi" "${1}" "${2:-wlan0}"
-}
-
 
 board=$(board_name)
 boardname="${board##*,}"
@@ -22,6 +14,10 @@ kooiot,tlink-x2|\
 kooiot,tlink-r1)
 	ucidef_set_led_default "power" "power" "kooiot:blue:power" "1"
 	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "wwan0"
+	;;
+friendlyarm,nanopi-r1)
+	ucidef_set_led_netdev "wan" "WAN" "nanopi:green:wan" "eth0"
+	ucidef_set_led_netdev "lan" "LAN" "nanopi:green:lan" "eth1"
 	;;
 esac
 
