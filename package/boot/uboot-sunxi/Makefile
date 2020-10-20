@@ -307,6 +307,18 @@ define U-Boot/Bananapi_M2_Ultra
   BUILD_DEVICES:=sinovoip_bananapi-m2-ultra
 endef
 
+define U-Boot/tlink_k1
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink K1
+  BUILD_DEVICES:=kooiot_tlink-k1
+endef
+
+define U-Boot/tlink_c4
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink C4
+  BUILD_DEVICES:=kooiot_tlink-c4
+endef
+
 UBOOT_TARGETS := \
 	a64-olinuxino \
 	a64-olinuxino-emmc \
@@ -338,6 +350,7 @@ UBOOT_TARGETS := \
 	tlink_x1 \
 	tlink_r1 \
 	tlink_x2 \
+	tlink_k1 \
 	nanopi_neo2 \
 	nanopi_r1 \
 	orangepi_zero \
