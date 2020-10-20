@@ -222,11 +222,11 @@ define Device/kooiot_tlink-x1
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink X1
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
-	 kmod-usb-net kmod-usb-net-rtl8152 \
-	 kmod-leds-gpio kmod-ledtrig-heartbeat \
-	 kmod-ledtrig-netdev kmod-ledtrig-gpio \
-	 kmod-rtc-rx8010 kmod-usb-net-asix \
-	 kmod-eeprom-at24 fdisk
+    kmod-usb-net kmod-usb-net-rtl8152 \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-rtc-rx8010 kmod-usb-net-asix \
+    kmod-eeprom-at24 fdisk
   SOC := sun8i-h3
 endef
 TARGET_DEVICES += kooiot_tlink-x1
@@ -235,11 +235,28 @@ define Device/kooiot_tlink-r1
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink R1
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
-	 kmod-usb-net kmod-usb-net-rtl8152 \
-	 kmod-leds-gpio kmod-ledtrig-heartbeat \
-	 kmod-ledtrig-netdev kmod-ledtrig-gpio \
-	 kmod-rtc-hym8563 kmod-usb-net-asix \
-	 kmod-net-rtl8723be fdisk
+    kmod-usb-net kmod-usb-net-rtl8152 \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-rtc-hym8563 kmod-usb-net-asix \
+    kmod-net-rtl8723be fdisk
   SOC := sun8i-h3
 endef
 TARGET_DEVICES += kooiot_tlink-r1
+
+define Device/kooiot_tlink-k1
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink K1
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi kmod-brcmfmac \
+    brcmfmac-firmware-43430a0-sdio wpad-basic-wolfssl \
+    kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-usb-serial kmod-usb-net-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+    uqmi fdisk usbutils freeioe wwanleds \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+    tinc_freeioe_tunnel ser2net shellinabox iperf3 ethtool
+  SOC := sun8i-r40
+endef
+TARGET_DEVICES += kooiot_tlink-k1
