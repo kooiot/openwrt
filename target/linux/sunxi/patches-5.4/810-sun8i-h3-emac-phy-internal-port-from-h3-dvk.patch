@@ -6,7 +6,7 @@
  		ret = phylink_connect_phy(priv->phylink, phydev);
  	}
 +
-+	if (ret == 0 && priv->plat->has_sun8i)
++	if (ret == 0 && priv->plat->has_sun8i && priv->plat->interface == PHY_INTERFACE_MODE_MII)
 +	{
 +		struct phy_device* phydev = priv->dev->phydev;
 +		netdev_info(priv->dev, "%s: H3 phy hacks begin\n", __func__);
