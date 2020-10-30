@@ -43,7 +43,7 @@
  	sun8i-v3s-licheepi-zero.dtb
 --- /dev/null
 +++ b/arch/arm/dts/sun8i-r40-tlink-k1.dts
-@@ -0,0 +1,319 @@
+@@ -0,0 +1,310 @@
 +/*
 + * Copyright (C) 2020 Dirk Chang <dirk@kooiot.com>
 + *
@@ -96,7 +96,7 @@
 +	compatible = "kooiot,tlink-k1", "allwinner,sun8i-r40";
 +
 +	aliases {
-+		ethernet0 = &gmac;
++		ethernet0 = &emac;
 +		serial0 = &uart0;
 +	};
 +
@@ -154,7 +154,7 @@
 +
 +&ahci {
 +	ahci-supply = <&reg_dldo4>;
-+	phy-supply = <&reg_eldo3>;
++	phy-supply = <&reg_eldo2>;
 +	status = "okay";
 +};
 +
@@ -169,23 +169,19 @@
 +&ehci2 {
 +	status = "okay";
 +};
-+&emac_sram {
-+	status = "okay";
-+};
 +
-+&emac {
++&gmac {
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&emac_mii_pins>;
++	pinctrl-0 = <&gmac_mii_pins>;
 +	phy-handle = <&phy1>;
 +	phy-mode = "mii";
 +	phy-supply = <&reg_dcdc1>;
 +	status = "okay";
 +};
 +
-+&emac_mdio {
-+	status = "okay";
-+	phy-supply = <&reg_dcdc1>;
++&gmac_mdio {
 +	phy1: ethernet-phy@1 {
++		compatible = "ethernet-phy-ieee802.3-c22";
 +		reg = <1>;
 +	};
 +};
@@ -214,29 +210,19 @@
 +#include "axp22x.dtsi"
 +
 +&mmc0 {
-+	vmmc-supply = <&reg_dldo2>;
++	vmmc-supply = <&reg_dcdc1>;
++	vqmmc-supply = <&reg_dcdc1>;
++	vdmmc-supply = <&reg_dcdc1>;
 +	bus-width = <4>;
 +	cd-gpios = <&pio 8 11 GPIO_ACTIVE_LOW>; /* PI11 */
 +	status = "okay";
 +};
 +
-+&mmc1 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&mmc1_pg_pins>;
-+	vmmc-supply = <&reg_dldo2>;
-+	vqmmc-supply = <&reg_dldo1>;
-+	mmc-pwrseq = <&wifi_pwrseq>;
-+	bus-width = <4>;
-+	non-removable;
-+	status = "okay";
-+};
-+
-+&mmc3 {
++&mmc2 {
 +	vmmc-supply = <&reg_dcdc1>;
-+	vqmmc-supply = <&reg_dcdc1>;
-+	vdmmc-supply = <&reg_dcdc1>;
-+	cd-gpios = <&pio 8 10 GPIO_ACTIVE_LOW>; /* PI10 */
-+	bus-width = <4>;
++	vqmmc-supply = <&reg_aldo2>;
++	bus-width = <8>;
++	non-removable;
 +	status = "okay";
 +};
 +
@@ -253,11 +239,18 @@
 +	pinctrl-0 = <&clk_out_a_pin>;
 +};
 +
++&reg_aldo1 {
++	regulator-always-on;
++	regulator-min-microvolt = <3300000>;
++	regulator-max-microvolt = <3300000>;
++	regulator-name = "vcc-tvin";
++};
++
 +&reg_aldo2 {
 +	regulator-always-on;
-+	regulator-min-microvolt = <2500000>;
-+	regulator-max-microvolt = <2500000>;
-+	regulator-name = "vcc-pa";
++	regulator-min-microvolt = <1800000>;
++	regulator-max-microvolt = <1800000>;
++	regulator-name = "vcc-pc";
 +};
 +
 +&reg_aldo3 {
@@ -268,16 +261,16 @@
 +};
 +
 +&reg_dc1sw {
-+	regulator-min-microvolt = <3000000>;
-+	regulator-max-microvolt = <3000000>;
-+	regulator-name = "vcc-gmac-phy";
++	regulator-min-microvolt = <3300000>;
++	regulator-max-microvolt = <3300000>;
++	regulator-name = "vcc-emac-phy";
 +};
 +
 +&reg_dcdc1 {
 +	regulator-always-on;
-+	regulator-min-microvolt = <3000000>;
-+	regulator-max-microvolt = <3000000>;
-+	regulator-name = "vcc-3v0";
++	regulator-min-microvolt = <3300000>;
++	regulator-max-microvolt = <3300000>;
++	regulator-name = "vcc-3v3";
 +};
 +
 +&reg_dcdc2 {
@@ -302,27 +295,18 @@
 +};
 +
 +&reg_dldo1 {
-+	regulator-min-microvolt = <1800000>;
++	regulator-min-microvolt = <3300000>;
 +	regulator-max-microvolt = <3300000>;
 +	regulator-name = "vcc-wifi-io";
 +};
 +
-+/*
-+ * Our WiFi chip needs both DLDO2 and DLDO3 to be powered at the same
-+ * time, with the two being in sync, to be able to meet maximum power
-+ * consumption during transmits. Since this is not really supported
-+ * right now, just use the two as always on, and we will fix it later.
-+ */
-+
 +&reg_dldo2 {
-+	regulator-always-on;
 +	regulator-min-microvolt = <3300000>;
 +	regulator-max-microvolt = <3300000>;
 +	regulator-name = "vcc-wifi";
 +};
 +
 +&reg_dldo3 {
-+	regulator-always-on;
 +	regulator-min-microvolt = <3300000>;
 +	regulator-max-microvolt = <3300000>;
 +	regulator-name = "vcc-wifi-2";
@@ -334,10 +318,17 @@
 +	regulator-name = "vdd2v5-sata";
 +};
 +
-+&reg_eldo3 {
++&reg_eldo2 {
 +	regulator-min-microvolt = <1200000>;
 +	regulator-max-microvolt = <1200000>;
 +	regulator-name = "vdd1v2-sata";
++};
++
++&reg_eldo3 {
++	regulator-always-on;
++	regulator-min-microvolt = <2800000>;
++	regulator-max-microvolt = <2800000>;
++	regulator-name = "vcc-pe";
 +};
 +
 +&tcon_tv0 {

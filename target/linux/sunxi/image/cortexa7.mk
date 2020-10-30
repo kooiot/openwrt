@@ -248,6 +248,7 @@ define Device/kooiot_tlink-k1
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink K1
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi kmod-brcmfmac \
+    kmod-sun4i-emac kmod-rtc-rx8010 \
     brcmfmac-firmware-43430a0-sdio wpad-basic-wolfssl \
     kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
