@@ -33,7 +33,7 @@
  				drive-strength = <40>;
  			};
  
-+			emac_mii_pins: emac-mii-pins {
++			gmac_mii_pins: gmac-mii-pins {
 +				pins = "PA0", "PA1", "PA2", "PA3",
 +				       "PA4", "PA5", "PA6", "PA7",
 +				       "PA8", "PA9", "PA10", "PA11",
@@ -51,7 +51,7 @@
  		};
  
 +		emac: ethernet@1c0b000 {
-+			compatible = "allwinner,sun8i-a10-emac";
++			compatible = "allwinner,sun4i-a10-emac";
 +			syscon = <&ccu>;
 +			reg = <0x01c0b000 0x1000>;
 +			interrupts = <GIC_SPI 55 IRQ_TYPE_LEVEL_HIGH>;
