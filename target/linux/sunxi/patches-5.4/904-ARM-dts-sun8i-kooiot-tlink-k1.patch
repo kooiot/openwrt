@@ -10,7 +10,7 @@
  	sun8i-v3s-licheepi-zero.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k1.dts
-@@ -0,0 +1,442 @@
+@@ -0,0 +1,448 @@
 +/*
 + * Copyright (C) 2020 Dirk Chang <dirk@kooiot.com>
 + *
@@ -124,6 +124,12 @@
 +			gpio-export,output=<1>;
 +			gpios = <&pio 1 8 GPIO_ACTIVE_HIGH>; /* PB8 */
 +		};
++
++		phy_rst {
++			gpio-export,name = "phy_rst";
++			gpio-export,output=<0>;
++			gpios = <&pio 7 22 GPIO_ACTIVE_LOW>; /* PH22 */
++		};
 +	};
 +
 +	reg_vcc5v0: vcc5v0 {
@@ -163,6 +169,7 @@
 +	status = "okay";
 +};
 +
++/*
 +&emac_sram {
 +	status = "okay";
 +};
@@ -182,6 +189,7 @@
 +		reg = <0>;
 +	};
 +};
++*/
 +
 +&gmac {
 +	pinctrl-names = "default";
@@ -320,8 +328,6 @@
 +};
 +
 +&reg_dc1sw {
-+	regulator-min-microvolt = <3300000>;
-+	regulator-max-microvolt = <3300000>;
 +	regulator-name = "vcc-emac-phy";
 +};
 +
