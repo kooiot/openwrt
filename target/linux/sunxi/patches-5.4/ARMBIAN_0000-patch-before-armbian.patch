@@ -17,7 +17,7 @@
  		};
  
  		watchdog: watchdog@30090a0 {
-@@ -318,6 +328,16 @@
+@@ -308,6 +318,16 @@
  				pins = "PH0", "PH1";
  				function = "uart0";
  			};
@@ -34,7 +34,7 @@
  		};
  
  		gic: interrupt-controller@3021000 {
-@@ -811,5 +831,17 @@
+@@ -801,5 +821,17 @@
  			#address-cells = <1>;
  			#size-cells = <0>;
  		};

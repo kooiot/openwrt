@@ -1,6 +1,6 @@
 --- a/arch/arm/boot/dts/Makefile
 +++ b/arch/arm/boot/dts/Makefile
- @@ -1126,6 +1126,7 @@
+ @@ -1127,6 +1127,7 @@
  	sun8i-r16-nintendo-super-nes-classic.dtb \
  	sun8i-r16-parrot.dtb \
  	sun8i-r40-bananapi-m2-ultra.dtb \
@@ -121,8 +121,8 @@
 +
 +		pcie_power {
 +			gpio-export,name = "pcie_power";
-+			gpio-export,output=<0>;
-+			gpios = <&pio 1 8 GPIO_ACTIVE_LOW>; /* PB8 */
++			gpio-export,output=<1>;
++			gpios = <&pio 1 8 GPIO_ACTIVE_HIGH>; /* PB8 */
 +		};
 +	};
 +
