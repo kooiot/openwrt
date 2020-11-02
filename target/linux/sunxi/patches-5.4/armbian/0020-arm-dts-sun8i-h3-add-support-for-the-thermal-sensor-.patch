@@ -16,7 +16,7 @@ diff --git a/arch/arm/boot/dts/sun8i-h3.dtsi b/arch/arm/boot/dts/sun8i-h3.dtsi
 index f0096074a467..5907b54b6e1d 100644
 --- a/arch/arm/boot/dts/sun8i-h3.dtsi
 +++ b/arch/arm/boot/dts/sun8i-h3.dtsi
-@@ -244,3 +244,8 @@
+@@ -216,3 +216,8 @@
  &pio {
  	compatible = "allwinner,sun8i-h3-pinctrl";
  };

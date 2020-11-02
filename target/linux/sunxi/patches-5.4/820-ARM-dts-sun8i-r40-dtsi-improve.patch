@@ -1,6 +1,6 @@
 --- a/arch/arm/boot/dts/sun8i-r40.dtsi
 +++ b/arch/arm/boot/dts/sun8i-r40.dtsi
-@@ -172,6 +172,28 @@
+@@ -189,6 +189,28 @@
  			};
  		};
  
@@ -29,7 +29,7 @@
  		nmi_intc: interrupt-controller@1c00030 {
  			compatible = "allwinner,sun7i-a20-sc-nmi";
  			interrupt-controller;
-@@ -369,6 +381,26 @@
+@@ -386,11 +408,36 @@
  				drive-strength = <40>;
  			};
  
@@ -56,8 +56,6 @@
  			i2c0_pins: i2c0-pins {
  				pins = "PB0", "PB1";
  				function = "i2c0";
-@@ -416,6 +416,11 @@
- 				function = "i2c0";
  			};
  
 +			i2c2_pins: i2c2-pins {
@@ -68,11 +66,10 @@
  			mmc0_pins: mmc0-pins {
  				pins = "PF0", "PF1", "PF2",
  				       "PF3", "PF4", "PF5";
-@@ -440,6 +445,14 @@
- 				drive-strength = <30>;
+@@ -416,11 +463,29 @@
  				bias-pull-up;
  			};
-+
+ 
 +			mmc3_pins: mmc3-pins {
 +				pins = "PI4", "PI5", "PI6",
 +				       "PI7", "PI8", "PI9";
@@ -80,10 +77,9 @@
 +				drive-strength = <30>;
 +				bias-pull-up;
 +			};
- 
++
  			uart0_pb_pins: uart0-pb-pins {
  				pins = "PB22", "PB23";
-@@ -446,6 +459,16 @@
  				function = "uart0";
  			};
  
@@ -100,7 +96,7 @@
  			uart3_pg_pins: uart3-pg-pins {
  				pins = "PG6", "PG7";
  				function = "uart3";
-@@ -455,6 +478,21 @@
+@@ -430,6 +495,21 @@
  				pins = "PG8", "PG9";
  				function = "uart3";
  			};
@@ -122,7 +118,7 @@
  		};
  
  		wdt: watchdog@1c20c90 {
-@@ -585,6 +657,28 @@
+@@ -593,6 +673,28 @@
  			status = "disabled";
  			#address-cells = <1>;
  			#size-cells = <0>;
@@ -151,4 +147,3 @@
  		};
  
  		gmac: ethernet@1c50000 {
-
