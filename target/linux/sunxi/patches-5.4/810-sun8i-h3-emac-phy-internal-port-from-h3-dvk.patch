@@ -1,6 +1,6 @@
 --- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c	2019-10-21 12:04:20.446544933 +0800
 +++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c	2019-10-21 12:18:01.518256212 +0800
-@@ -1034,6 +1034,30 @@
+@@ -1033,6 +1033,30 @@
 		}
  
  		ret = phylink_connect_phy(priv->phylink, phydev);
