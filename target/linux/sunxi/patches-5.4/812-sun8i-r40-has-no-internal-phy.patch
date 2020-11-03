@@ -1,0 +1,14 @@
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
+@@ -122,9 +122,11 @@
+ static const struct emac_variant emac_variant_r40 = {
+ 	.default_syscon_value = 0,
+ 	.syscon_field = &sun8i_ccu_reg_field,
++	.soc_has_internal_phy = false,
+ 	.support_mii = true,
+ 	.support_rgmii = true,
+ 	.rx_delay_max = 7,
++	.tx_delay_max = 7,
+ };
+
+ static const struct emac_variant emac_variant_a64 = {
