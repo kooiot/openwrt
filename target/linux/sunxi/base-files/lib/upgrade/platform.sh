@@ -1,9 +1,13 @@
 tlink_get_type_magic() {
-	get_image "$@" | dd bs=1 count=8 skip=8245 2>/dev/null | hexdump -v -n 8 -e '/1 "%c"'
+	local skip_base=8236
+	local skip_offset=$(($1+$skip_base+1))
+	get_image "$@" | dd bs=1 count=8 skip=$skip_offset 2>/dev/null | hexdump -v -n 8 -e '/1 "%c"'
 }
 
 tlink_check_image() {
-	local typemagic="$(tlink_get_type_magic "$1")"
+	local img_arch=$1
+	local skip_offset=${#img_arch}
+	local typemagic="$(tlink_get_type_magic $skip_offset "$2")"
 	[ "kooiot,${typemagic}" != "$(board_name)" ] && {
 		echo "Invalid image, bad type: $typemagic"
 		return 1
@@ -41,7 +45,11 @@ platform_check_image() {
 	"kooiot,tlink-x1"|\
 	"kooiot,tlink-x2"|\
 	"kooiot,tlink-r1")
-		tlink_check_image "$1" && return 0
+		tlink_check_image "sun8i-h3" "$1" && return 0
+		return 1
+		;;
+	"kooiot,tlink-k1")
+		tlink_check_image "sun8i-r40" "$1" && return 0
 		return 1
 		;;
 	*)
@@ -64,6 +72,7 @@ platform_pre_upgrade() {
 	case "$(board_name)" in
 	"kooiot,tlink-x1"|\
 	"kooiot,tlink-x2"|\
+	"kooiot,tlink-k1"|\
 	"kooiot,tlink-r1")
 		platform_kooiot_pre_upgrade
 		;;

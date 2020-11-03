@@ -11,6 +11,7 @@ board_config_update
 case $board in
 kooiot,tlink-x1|\
 kooiot,tlink-x2|\
+kooiot,tlink-k1|\
 kooiot,tlink-r1)
 	ucidef_set_led_default "power" "power" "kooiot:blue:power" "1"
 	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "wwan0"
