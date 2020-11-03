@@ -1,0 +1,15 @@
+--- a/board/sunxi/board.c
++++ b/board/sunxi/board.c
+@@ -819,8 +819,10 @@
+ 				continue;
+ 
+ 			/* Non OUI / registered MAC address */
+-			mac_addr[0] = (i << 4) | 0x02;
+-			mac_addr[1] = (sid[0] >>  0) & 0xff;
++			//mac_addr[0] = (i << 4) | 0x02;
++			//mac_addr[1] = (sid[0] >>  0) & 0xff;
++			mac_addr[0] = 0xB0; // Using our own MAC area
++			mac_addr[1] = 0xC9;
+ 			mac_addr[2] = (sid[3] >> 24) & 0xff;
+ 			mac_addr[3] = (sid[3] >> 16) & 0xff;
+ 			mac_addr[4] = (sid[3] >>  8) & 0xff;
