@@ -9,7 +9,7 @@
  #include <linux/if.h>
  #include <linux/if_vlan.h>
  #include <linux/dma-mapping.h>
-@@ -2154,6 +2156,72 @@
+@@ -2154,6 +2156,75 @@
  }
  
  /**
@@ -22,13 +22,16 @@
 +	u32 *chipid;
 +
 +	cell = devm_nvmem_cell_get(dev, "chipid");
-+	if (IS_ERR(cell))
++	if (IS_ERR(cell)) {
++		dev_info(dev, "Failed to get nvmem cell: chipid\n");
 +		return;
++	};
 +
 +	chipid = (u32 *)nvmem_cell_read(cell, &cell_size);
 +	devm_nvmem_cell_put(dev, cell);
 +	if (cell_size < 16) {
 +		kfree(chipid);
++		dev_info(dev, "Failed to read nvmem cell!\n");
 +		return;
 +	}
 +
@@ -82,7 +85,7 @@
   * stmmac_check_ether_addr - check if the MAC addr is valid
   * @priv: driver private structure
   * Description:
-@@ -2165,7 +2233,7 @@
+@@ -2165,7 +2236,7 @@
  	if (!is_valid_ether_addr(priv->dev->dev_addr)) {
  		stmmac_get_umac_addr(priv, priv->hw, priv->dev->dev_addr, 0);
  		if (!is_valid_ether_addr(priv->dev->dev_addr))
