@@ -257,7 +257,8 @@ define Device/kooiot_tlink-k1
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    tinc_freeioe_tunnel ser2net shellinabox iperf3 ethtool
+    tinc_freeioe_tunnel ser2net shellinabox iperf3 ethtool \
+    blockd kmod-usb-storage
   SOC := sun8i-r40
 endef
 TARGET_DEVICES += kooiot_tlink-k1
