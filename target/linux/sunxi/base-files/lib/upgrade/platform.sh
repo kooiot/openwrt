@@ -1,7 +1,7 @@
 tlink_get_type_magic() {
 	local skip_base=8236
 	local skip_offset=$(($1+$skip_base+1))
-	get_image "$@" | dd bs=1 count=8 skip=$skip_offset 2>/dev/null | hexdump -v -n 8 -e '/1 "%c"'
+	get_image "$2" | dd bs=1 count=8 skip=$skip_offset 2>/dev/null | hexdump -v -n 8 -e '/1 "%c"'
 }
 
 tlink_check_image() {
