@@ -22,6 +22,7 @@ define U-Boot/Default
   BUILD_TARGET:=sunxi
   UBOOT_IMAGE:=u-boot-sunxi-with-spl.bin
   UENV:=default
+  UENV_EMMC:=default
   HIDDEN:=1
 endef
 
@@ -319,12 +320,14 @@ define U-Boot/Bananapi_M2_Ultra
   BUILD_SUBTARGET:=cortexa7
   NAME:=Bananapi M2 Ultra
   BUILD_DEVICES:=sinovoip_bananapi-m2-ultra
+  UENV_EMMC:=r40
 endef
 
 define U-Boot/tlink_k1
   BUILD_SUBTARGET:=cortexa7
   NAME:=ThingsLink K1
   BUILD_DEVICES:=kooiot_tlink-k1
+  UENV_EMMC:=r40
 endef
 
 define U-Boot/tlink_c4
@@ -392,6 +395,8 @@ define Build/InstallDev
 	$(CP) $(PKG_BUILD_DIR)/$(UBOOT_IMAGE) $(STAGING_DIR_IMAGE)/$(BUILD_DEVICES)-u-boot-with-spl.bin
 	mkimage -C none -A arm -T script -d uEnv-$(UENV).txt \
 		$(STAGING_DIR_IMAGE)/$(BUILD_DEVICES)-boot.scr
+	mkimage -C none -A arm -T script -d uEnv-eMMC-$(UENV_EMMC).txt \
+		$(STAGING_DIR_IMAGE)/$(BUILD_DEVICES)-boot-emmc.scr
 endef
 
 define Package/u-boot/install/default

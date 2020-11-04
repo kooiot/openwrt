@@ -16,6 +16,7 @@ define Build/sunxi-sdcard
 	rm -rf $@.bootfs
 	mkdir $@.bootfs
 	cp -i $(STAGING_DIR_IMAGE)/$(DEVICE_NAME)-boot.scr $@.bootfs/boot.scr
+	cp -i $(STAGING_DIR_IMAGE)/$(DEVICE_NAME)-boot-emmc.scr $@.bootfs/boot-emmc.scr
 	cp -i $(DTS_DIR)/$(SUNXI_DTS).dtb $@.bootfs/dtb
 	cp -i $(IMAGE_KERNEL) $@.bootfs/uImage
 
