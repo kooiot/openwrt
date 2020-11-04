@@ -16,6 +16,12 @@ echo ""
 FORCE_INSTALL=${1}
 
 EMMC_DISK="/dev/mmcblk1"
+
+# If blk1 not there try blk2 (in R40 borads)
+if [ ! -b EMMC_DISK ]; then
+	EMMC_DISK="/dev/mmcblk2"
+fi
+
 EMMC_FIRST_SECTOR=2048
 EMMC_BOOTFS_SIZE=$((20 * 1024 * 1024))
 EMMC_ROOTFS_SIZE=$((256 * 1024 * 1024))
@@ -168,7 +174,11 @@ echo "boot partitions mounted to $BOOTFS_DIR"
 
 # copy bootfs
 
-cp -pf ${BOOT_DIR}/boot.scr ${BOOTFS_DIR}/
+if [ -f ${BOOT_DIR}/boot-emmc.scr ]; then
+	cp -pf ${BOOT_DIR}/boot-emmc.scr ${BOOTFS_DIR}/boot.scr
+else
+	cp -pf ${BOOT_DIR}/boot.scr ${BOOTFS_DIR}/
+fi
 cp -pf ${BOOT_DIR}/uImage ${BOOTFS_DIR}/
 cp -pf ${BOOT_DIR}/dtb ${BOOTFS_DIR}/
 

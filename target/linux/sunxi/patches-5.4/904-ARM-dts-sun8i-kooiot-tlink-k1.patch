@@ -258,13 +258,13 @@
 +	status = "okay";
 +};
 +
-+/* SDIO (P26)  disabled as u-boot setting bootdev to 1, enable this will cause eMMC seq changed to 2
++/* SDIO (P26) */
 +&mmc1 {
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&mmc1_pg_pins>;
 +	bus-width = <4>;
 +	status = "okay";
-+}; */
++};
 +
 +/* eMMC */
 +&mmc2 {
