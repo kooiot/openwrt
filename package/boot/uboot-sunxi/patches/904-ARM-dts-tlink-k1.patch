@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/configs/tlink_k1_defconfig
-@@ -0,0 +1,30 @@
+@@ -0,0 +1,31 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
 +CONFIG_SPL=y
@@ -30,7 +30,8 @@
 +CONFIG_AXP_ELDO2_VOLT=1200
 +CONFIG_AXP_ELDO3_VOLT=2800
 +CONFIG_SCSI=y
-+CONFIG_SYS_USB_EVENT_POLL_VIA_INT_QUEUE=y
++CONFIG_USB_ECHI_HCD=y
++CONFIG_USB_OCHI_HCD=y
 +++ a/arch/arm/dts/Makefile
 +++ b/arch/arm/dts/Makefile
 @@ -545,6 +545,7 @@
@@ -255,8 +256,8 @@
 +
 +&reg_aldo3 {
 +	regulator-always-on;
-+	regulator-min-microvolt = <2700000>;
-+	regulator-max-microvolt = <3300000>;
++	regulator-min-microvolt = <3000000>;
++	regulator-max-microvolt = <3000000>;
 +	regulator-name = "avcc";
 +};
 +
