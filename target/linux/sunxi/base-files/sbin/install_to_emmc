@@ -18,7 +18,7 @@ FORCE_INSTALL=${1}
 EMMC_DISK="/dev/mmcblk1"
 
 # If blk1 not there try blk2 (in R40 borads)
-if [ ! -b EMMC_DISK ]; then
+if [ ! -b ${EMMC_DISK} ]; then
 	EMMC_DISK="/dev/mmcblk2"
 fi
 

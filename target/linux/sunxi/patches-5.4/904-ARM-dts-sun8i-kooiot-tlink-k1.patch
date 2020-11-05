@@ -10,7 +10,7 @@
  	sun8i-v3s-licheepi-zero.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k1.dts
-@@ -0,0 +1,448 @@
+@@ -0,0 +1,452 @@
 +/*
 + * Copyright (C) 2020 Dirk Chang <dirk@kooiot.com>
 + *
@@ -71,6 +71,10 @@
 +		serial3 = &uart4;
 +		serial4 = &uart5;
 +		serial5 = &uart7;
++		mmc0 = &mmc0;
++		mmc1 = &mmc2;
++		mmc2 = &mmc1;
++		mmc3 = &mmc3;
 +	};
 +
 +	chosen {

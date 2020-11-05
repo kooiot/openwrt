@@ -1,6 +1,16 @@
 --- b/arch/arm/boot/dts/sun8i-r40-bananapi-m2-ultra.dts
 +++ b/arch/arm/boot/dts/sun8i-r40-bananapi-m2-ultra.dts
-@@ -223,8 +223,6 @@
+@@ -53,6 +53,9 @@
+ 	aliases {
+ 		ethernet0 = &gmac;
+ 		serial0 = &uart0;
++		mmc0 = &mmc0;
++		mmc1 = &mmc2;
++		mmc2 = &mmc1;
+ 	};
+ 
+ 	chosen {
+@@ -223,16 +226,14 @@
  };
  
  &reg_dc1sw {
@@ -8,4 +18,26 @@
 -	regulator-max-microvolt = <3300000>;
  	regulator-name = "vcc-gmac-phy";
  };
+ 
+ &reg_dcdc1 {
+ 	regulator-always-on;
+-	regulator-min-microvolt = <3300000>;
+-	regulator-max-microvolt = <3300000>;
+-	regulator-name = "vcc-3v3";
++	regulator-min-microvolt = <3000000>;
++	regulator-max-microvolt = <3000000>;
++	regulator-name = "vcc-3v0";
+ };
+ 
+ &reg_dcdc2 {
+--- a/drivers/regulator/core.c
++++ b/drivers/regulator/core.c
+@@ -1121,7 +1121,7 @@
+ 		int target_min, target_max;
+ 		int current_uV = regulator_get_voltage_rdev(rdev);
 
+-		if (current_uV == -ENOTRECOVERABLE) {
++		if (current_uV == -ENOTRECOVERABLE) {
+ 			/* This regulator can't be read and must be initialized */
+ 			rdev_info(rdev, "Setting %d-%duV\n",
+ 				  rdev->constraints->min_uV,
