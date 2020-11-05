@@ -1,0 +1,25 @@
+--- a/drivers/mmc/host/sunxi-mmc.c
++++ b/drivers/mmc/host/sunxi-mmc.c
+@@ -1331,6 +1331,7 @@
+ {
+ 	struct sunxi_mmc_host *host;
+ 	struct mmc_host *mmc;
++	int mmc_alias_id;
+ 	int ret;
+ 
+ 	mmc = mmc_alloc_host(sizeof(struct sunxi_mmc_host), &pdev->dev);
+@@ -1424,6 +1425,14 @@
+ 	/* TODO: This driver doesn't support HS400 mode yet */
+ 	mmc->caps2 &= ~MMC_CAP2_HS400;
+ 
++	if (host->dev->of_node) {
++		mmc_alias_id = of_alias_get_id(host->dev->of_node, "mmc");
++		if (mmc_alias_id >= 0) {
++			dev_info(&pdev->dev, "Got alias mmc%d\n", mmc_alias_id);
++			mmc->index = mmc_alias_id;
++		}
++	}
++
+ 	ret = sunxi_mmc_init_host(host);
+ 	if (ret)
+ 		goto error_free_dma;
