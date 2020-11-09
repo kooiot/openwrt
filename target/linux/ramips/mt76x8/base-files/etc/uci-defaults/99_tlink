@@ -22,16 +22,18 @@ tlink_add_qmi_interface() {
 }
 
 tlink_add_4g_wan() {
+	PPP_TTY=$1
+	INFO_TTY=$2
 	uci set network.4g_wan='interface'
 	uci set network.4g_wan.service='umts'
 	uci set network.4g_wan.proto='3g'
-	uci set network.4g_wan.device='/dev/ttyUSB2'
+	uci set network.4g_wan.device="/dev/ttyUSB${PPP_TTY}"
 	uci set network.4g_wan.ipv6='auto'
 	uci set network.4g_wan.apn='3gnet'
 	uci set network.4g_wan.metric='10'
 	uci commit network
 
-	uci set 3ginfo.@3ginfo[0].device='/dev/ttyUSB1'
+	uci set 3ginfo.@3ginfo[0].device="/dev/ttyUSB${INFO_TTY}"
 	uci commit 3ginfo
 
 	uci set system.led_modem.dev='3g-4g_wan'
@@ -45,8 +47,17 @@ tlink_default() {
 		echo "QMI module found!!!" > /dev/console
 		tlink_add_qmi_interface
 	} || {
+		# Serial option
 		echo "QMI module not found!!!" > /dev/console
-		tlink_add_4g_wan
+		case "$(board_name)" in
+		"kooiot,tlink-c2-16m" | \
+		"kooiot,tlink-c2-32m")
+			tlink_add_4g_wan 3 2
+			;;
+		*)
+			tlink_add_4g_wan 2 1
+			;;
+		esac
 	}
 
 	# set ttylogin (for ttyS0, default will promote console with password)
