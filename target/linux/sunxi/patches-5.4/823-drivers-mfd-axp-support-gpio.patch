@@ -1,0 +1,62 @@
+--- a/drivers/mfd/axp20x.c
++++ b/drivers/mfd/axp20x.c
+@@ -622,6 +622,9 @@
+ 		.num_resources	= ARRAY_SIZE(axp22x_pek_resources),
+ 		.resources	= axp22x_pek_resources,
+ 	}, {
++		.name		= "axp221-gpio",
++		.of_compatible	= "x-powers,axp813-gpio",
++	}, {
+ 		.name		= "axp20x-regulator",
+ 	}, {
+ 		.name		= "axp22x-adc",
+--- a/arch/arm/boot/dts/axp22x.dtsi
++++ b/arch/arm/boot/dts/axp22x.dtsi
+@@ -62,6 +62,12 @@
+ 		#io-channel-cells = <1>;
+ 	};
+ 
++	axp_gpio: gpio {
++		compatible = "x-powers,axp813-gpio";
++		gpio-controller;
++		#gpio-cells = <2>;
++	};
++
+ 	battery_power_supply: battery-power-supply {
+ 		compatible = "x-powers,axp221-battery-power-supply";
+ 		status = "disabled";
+--- a/arch/arm/boot/dts/sun8i-r40-bananapi-m2-ultra.dts
++++ b/arch/arm/boot/dts/sun8i-r40-bananapi-m2-ultra.dts
+@@ -93,6 +93,17 @@
+ 		};
+ 	};
+ 
++	gpio_export {
++		compatible = "gpio-export";
++		#size-cells = <0>;
++
++		axp_gpio_1 {
++			gpio-export,name = "axpio_gpio_1";
++			gpio-export,output=<1>;
++			gpios = <&axp_gpio 1 GPIO_ACTIVE_HIGH>; /* GPIO */
++		};
++	};
++
+ 	reg_vcc5v0: vcc5v0 {
+ 		compatible = "regulator-fixed";
+ 		regulator-name = "vcc5v0";
+@@ -183,6 +194,14 @@
+ 	bus-width = <4>;
+ 	non-removable;
+ 	status = "okay";
++
++	ap6212: sdio_wifi@1 {
++		compatible = "brcm,bcm4329-fmac";
++		reg = <1>;
++		interrupt-parent = <&axp_gpio>;
++		interrupts = <0 IRQ_TYPE_LEVEL_LOW>; /* GPIO0 */
++		interrupt-names = "host-wake";
++	};
+ };
+ 
+ &mmc2 {
