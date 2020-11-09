@@ -10,34 +10,31 @@
  	};
  
  	chosen {
-@@ -223,16 +226,14 @@
+@@ -95,7 +98,7 @@
+ 		regulator-name = "vcc5v0";
+ 		regulator-min-microvolt = <5000000>;
+ 		regulator-max-microvolt = <5000000>;
+-		gpio = <&pio 7 23 GPIO_ACTIVE_HIGH>; /* PH23 */
++		gpio = <&pio 8 13 GPIO_ACTIVE_HIGH>; /* PI13 */
+ 		enable-active-high;
+ 	};
+ 
+@@ -187,7 +190,7 @@
+ 	vqmmc-supply = <&reg_dcdc1>;
+ 	bus-width = <8>;
+ 	non-removable;
+-	status = "okay";
++	status = "disabled";
  };
  
- &reg_dc1sw {
--	regulator-min-microvolt = <3300000>;
--	regulator-max-microvolt = <3300000>;
- 	regulator-name = "vcc-gmac-phy";
+ &ohci1 {
+@@ -325,6 +328,9 @@
  };
  
- &reg_dcdc1 {
- 	regulator-always-on;
--	regulator-min-microvolt = <3300000>;
--	regulator-max-microvolt = <3300000>;
--	regulator-name = "vcc-3v3";
-+	regulator-min-microvolt = <3000000>;
-+	regulator-max-microvolt = <3000000>;
-+	regulator-name = "vcc-3v0";
- };
- 
- &reg_dcdc2 {
---- a/drivers/regulator/core.c
-+++ b/drivers/regulator/core.c
-@@ -1121,7 +1121,7 @@
- 		int target_min, target_max;
- 		int current_uV = regulator_get_voltage_rdev(rdev);
-
--		if (current_uV == -ENOTRECOVERABLE) {
-+		if (current_uV == -ENOTRECOVERABLE) {
- 			/* This regulator can't be read and must be initialized */
- 			rdev_info(rdev, "Setting %d-%duV\n",
- 				  rdev->constraints->min_uV,
+ &usbphy {
++	usb0_id_det-gpios = <&pio 8 4 GPIO_ACTIVE_HIGH>; /* PI4 */
++	usb0_vbus_det-gpios = <&pio 8 8 GPIO_ACTIVE_HIGH>; /* PI8 */
++	usb0_vbus-supply = <&reg_vcc5v0>;
+ 	usb1_vbus-supply = <&reg_vcc5v0>;
+ 	usb2_vbus-supply = <&reg_vcc5v0>;
+ 	status = "okay";
