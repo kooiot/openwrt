@@ -45,7 +45,7 @@
  	reg_vcc5v0: vcc5v0 {
  		compatible = "regulator-fixed";
  		regulator-name = "vcc5v0";
-@@ -183,6 +194,14 @@
+@@ -180,6 +191,14 @@
  	bus-width = <4>;
  	non-removable;
  	status = "okay";
