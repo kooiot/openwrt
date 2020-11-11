@@ -27,7 +27,7 @@
  		status = "disabled";
 --- a/arch/arm/boot/dts/sun8i-r40-bananapi-m2-ultra.dts
 +++ b/arch/arm/boot/dts/sun8i-r40-bananapi-m2-ultra.dts
-@@ -93,6 +93,17 @@
+@@ -90,6 +90,17 @@
  		};
  	};
  

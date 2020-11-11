@@ -15,7 +15,7 @@
  		regulator-min-microvolt = <5000000>;
  		regulator-max-microvolt = <5000000>;
 -		gpio = <&pio 7 23 GPIO_ACTIVE_HIGH>; /* PH23 */
-+		gpio = <&pio 8 13 GPIO_ACTIVE_HIGH>; /* PI13 */
++		gpio = <&pio 8 9 GPIO_ACTIVE_HIGH>; /* PI9 */
  		enable-active-high;
  	};
  
@@ -28,7 +28,7 @@
  };
  
  &ohci1 {
-@@ -334,6 +347,9 @@
+@@ -344,6 +357,9 @@
  };
  
  &usbphy {

@@ -95,3 +95,26 @@ define KernelPackage/sound-soc-sunxi-spdif/description
 endef
 
 $(eval $(call KernelPackage,sound-soc-sunxi-spdif))
+
+define KernelPackage/usb-otg-sunxi
+  TITLE:=AllWinner built-in SoC USB OTG support
+  KCONFIG:= \
+	  CONFIG_USB_OTG \
+	  CONFIG_NOP_USB_XCEIV \
+	  CONFIG_USB_MUSB_HDRC \
+	  CONFIG_USB_MUSB_DUAL_ROLE \
+	  CONFIG_USB_MUSB_SUNXI
+  FILES:= \
+	  $(LINUX_DIR)/drivers/usb/phy/phy-generic.ko \
+	  $(LINUX_DIR)/drivers/usb/musb/musb_hdrc.ko \
+	  $(LINUX_DIR)/drivers/usb/musb/sunxi.ko
+  AUTOLOAD:=$(call AutoLoad,50,sunxi,1)
+  DEPENDS:=@TARGET_sunxi
+  $(call AddDepends/usb)
+endef
+
+define KernelPackage/usb-otg-sunxi/description
+  Kernel support for AllWinner built-in SoC USB OTG
+endef
+
+$(eval $(call KernelPackage,usb-otg-sunxi))
