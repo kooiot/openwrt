@@ -1,6 +1,6 @@
 --- a/drivers/regulator/core.c
 +++ b/drivers/regulator/core.c
-@@ -1169,6 +1169,9 @@ static int machine_constraints_voltage(struct regulator_dev *rdev,
+@@ -1133,6 +1133,9 @@ static int machine_constraints_voltage(struct regulator_dev *rdev,
  		}
  
  		if (current_uV < 0) {

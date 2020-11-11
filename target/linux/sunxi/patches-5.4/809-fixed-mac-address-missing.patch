@@ -1,6 +1,6 @@
 --- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
 +++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
-@@ -2718,6 +2741,12 @@
+@@ -2695,6 +2718,12 @@
  	u32 chan;
  	int ret;
  
