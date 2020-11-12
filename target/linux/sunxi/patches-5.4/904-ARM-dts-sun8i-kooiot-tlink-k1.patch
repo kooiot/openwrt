@@ -10,7 +10,7 @@
  	sun8i-v3s-licheepi-zero.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k1.dts
-@@ -0,0 +1,452 @@
+@@ -0,0 +1,475 @@
 +/*
 + * Copyright (C) 2020 Dirk Chang <dirk@kooiot.com>
 + *
@@ -129,10 +129,10 @@
 +			gpios = <&pio 1 8 GPIO_ACTIVE_HIGH>; /* PB8 */
 +		};
 +
-+		phy_rst {
-+			gpio-export,name = "phy_rst";
++		usb_rst {
++			gpio-export,name = "usb_rst";
 +			gpio-export,output=<0>;
-+			gpios = <&pio 7 22 GPIO_ACTIVE_LOW>; /* PH22 */
++			gpios = <&pio 1 12 GPIO_ACTIVE_LOW>; /* PB12 */
 +		};
 +	};
 +
@@ -162,6 +162,26 @@
 +};
 +
 +&de {
++	status = "okay";
++};
++
++&hdmi {
++	status = "okay";
++};
++
++&dsi {
++	status = "okay";
++};
++
++&dphy {
++	status = "okay";
++};
++
++&otg_ram {
++	status = "okay";
++};
++
++&usb_otg {
 +	status = "okay";
 +};
 +
@@ -205,6 +225,7 @@
 +};
 +
 +&gmac_mdio {
++	snps,reset-gpio = <&pio 7 22 GPIO_ACTIVE_LOW>; /* PH22 */
 +	phy1: ethernet-phy@1 {
 +		compatible = "ethernet-phy-ieee802.3-c22";
 +		reg = <1>;
@@ -402,6 +423,10 @@
 +	regulator-name = "vcc-pe";
 +};
 +
++&de {
++	status = "okay";
++};
++
 +&tcon_tv0 {
 +	status = "okay";
 +};
@@ -448,8 +473,6 @@
 +	usb0_id_det-gpios = <&pio 7 21 GPIO_ACTIVE_HIGH>; /* PH21 */
 +	usb0_vbus_det-gpios = <&pio 7 17 GPIO_ACTIVE_HIGH>; /* PH17 */
 +	usb0_vbus-supply = <&reg_vcc5v0>;
-+	usb1_vbus-supply = <&reg_vcc3v3_wifi>;
-+	usb2_vbus-supply = <&reg_vcc5v0>;
 +	status = "okay";
 +};
 +
