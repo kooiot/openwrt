@@ -182,7 +182,103 @@ index e0b3c5330b9a..732ac19b4371 100644
  
  	return 0;
  }
-
+diff --git a/arch/arm/boot/dts/sun8i-r40.dtsi b/arch/arm/boot/dts/sun8i-r40.dtsi
+index 3faa35d43afa..4c61e93d9a0b 100644
+--- a/arch/arm/boot/dts/sun8i-r40.dtsi
++++ b/arch/arm/boot/dts/sun8i-r40.dtsi
+@@ -628,6 +628,7 @@ 
+ 
+ 					tcon_top_mixer0_out_tcon_lcd0: endpoint@0 {
+ 						reg = <0>;
++						remote-endpoint = <&tcon_lcd0_in_tcon_top_mixer0>;
+ 					};
+ 
+ 					tcon_top_mixer0_out_tcon_lcd1: endpoint@1 {
+@@ -706,6 +707,45 @@ 
+ 			};
+ 		};
+ 
++		tcon_lcd0: lcd-controller@1c71000 {
++			compatible = "allwinner,sun8i-r40-tcon-lcd";
++			reg = <0x01c71000 0x1000>;
++			interrupts = <GIC_SPI 44 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&ccu CLK_BUS_TCON_LCD0>, <&ccu CLK_TCON_LCD0>;
++			clock-names = "ahb", "tcon-ch0";
++			clock-output-names = "tcon-pixel-clock";
++			resets = <&ccu RST_BUS_TCON_LCD0>, <&ccu RST_BUS_LVDS>;
++			reset-names = "lcd", "lvds";
++			status = "disabled";
++
++			ports {
++				#address-cells = <1>;
++				#size-cells = <0>;
++
++				tcon_lcd0_in: port@0 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <0>;
++
++					tcon_lcd0_in_tcon_top_mixer0: endpoint@0 {
++						reg = <0>;
++						remote-endpoint = <&tcon_top_mixer0_out_tcon_lcd0>;
++					};
++				};
++
++				tcon_lcd0_out: port@1 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <1>;
++
++					tcon_lcd0_out_dsi_out: endpoint@1 {
++						reg = <1>;
++						remote-endpoint = <&dsi_in_tcon_lcd0_out>;
++					};
++				};
++			};
++		};
++
+ 		tcon_tv0: lcd-controller@1c73000 {
+ 			compatible = "allwinner,sun8i-r40-tcon-tv";
+ 			reg = <0x01c73000 0x1000>;
+@@ -803,6 +843,38 @@ 
+ 			interrupts = <GIC_PPI 9 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_HIGH)>;
+ 		};
+ 
++		dsi: dsi@1ca0000 {
++			compatible = "allwinner,sun8i-r40-mipi-dsi",
++				     "allwinner,sun50i-a64-mipi-dsi";
++			reg = <0x01ca0000 0x1000>;
++			interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&ccu CLK_BUS_MIPI_DSI>;
++			resets = <&ccu RST_BUS_MIPI_DSI>;
++			phys = <&dphy>;
++			phy-names = "dphy";
++			status = "disabled";
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			port {
++				dsi_in_tcon_lcd0_out: endpoint {
++					remote-endpoint = <&tcon_lcd0_out_dsi_out>;
++				};
++			};
++		};
++
++		dphy: d-phy@1ca1000 {
++			compatible = "allwinner,sun8i-r40-mipi-dphy",
++				     "allwinner,sun6i-a31-mipi-dphy";
++			reg = <0x01ca1000 0x1000>;
++			clocks = <&ccu CLK_BUS_MIPI_DSI>,
++				 <&tcon_top CLK_TCON_TOP_DSI>;
++			clock-names = "bus", "mod";
++			resets = <&ccu RST_BUS_MIPI_DSI>;
++			status = "disabled";
++			#phy-cells = <0>;
++		};
++
+ 		hdmi: hdmi@1ee0000 {
+ 			compatible = "allwinner,sun8i-r40-dw-hdmi",
+ 				     "allwinner,sun8i-a83t-dw-hdmi";
 diff --git a/arch/arm/boot/dts/sun8i-r40-bananapi-m2-ultra.dts b/arch/arm/boot/dts/sun8i-r40-bananapi-m2-ultra.dts
 index 42d62d1ba1dc..99f84e6f15ce 100644
 --- a/arch/arm/boot/dts/sun8i-r40-bananapi-m2-ultra.dts
@@ -241,7 +337,7 @@ index 42d62d1ba1dc..99f84e6f15ce 100644
  
 +&pwm {
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&pwm0_pin>;
++	pinctrl-0 = <&pwm_ch0_pin>;
 +	status = "okay";
 +};
 +
