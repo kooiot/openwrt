@@ -23,7 +23,7 @@ diff --git a/drivers/iio/adc/sun4i-gpadc-iio.c b/drivers/iio/adc/sun4i-gpadc-iio
 index 363936b37c5a..1a80744bd472 100644
 --- a/drivers/iio/adc/sun4i-gpadc-iio.c
 +++ b/drivers/iio/adc/sun4i-gpadc-iio.c
-@@ -19,6 +19,7 @@
+@@ -22,6 +22,7 @@
   * shutdown for not being used.
   */
  
@@ -31,7 +31,7 @@ index 363936b37c5a..1a80744bd472 100644
  #include <linux/completion.h>
  #include <linux/interrupt.h>
  #include <linux/io.h>
-@@ -28,6 +29,7 @@
+@@ -31,6 +32,7 @@
  #include <linux/platform_device.h>
  #include <linux/pm_runtime.h>
  #include <linux/regmap.h>
@@ -39,7 +39,7 @@ index 363936b37c5a..1a80744bd472 100644
  #include <linux/thermal.h>
  #include <linux/delay.h>
  
-@@ -72,6 +74,9 @@ struct gpadc_data {
+@@ -75,6 +77,9 @@ struct gpadc_data {
  	u32		ctrl2_map;
  	u32		sensor_en_map;
  	u32		filter_map;
@@ -49,7 +49,7 @@ index 363936b37c5a..1a80744bd472 100644
  };
  
  static const struct gpadc_data sun4i_gpadc_data = {
-@@ -131,6 +136,9 @@ struct sun4i_gpadc_iio {
+@@ -134,6 +139,9 @@ struct sun4i_gpadc_iio {
  	atomic_t			ignore_temp_data_irq;
  	const struct gpadc_data		*data;
  	bool				no_irq;
@@ -59,7 +59,7 @@ index 363936b37c5a..1a80744bd472 100644
  	/* prevents concurrent reads of temperature and ADC */
  	struct mutex			mutex;
  	struct thermal_zone_device	*tzd;
-@@ -432,6 +440,12 @@ static int sun4i_gpadc_runtime_suspend(struct device *dev)
+@@ -435,6 +443,12 @@ static int sun4i_gpadc_runtime_suspend(struct device *dev)
  {
  	struct sun4i_gpadc_iio *info = iio_priv(dev_get_drvdata(dev));
  
@@ -72,7 +72,7 @@ index 363936b37c5a..1a80744bd472 100644
  	return info->data->sample_end(info);
  }
  
-@@ -480,6 +494,12 @@ static int sun4i_gpadc_runtime_resume(struct device *dev)
+@@ -483,6 +497,12 @@ static int sun4i_gpadc_runtime_resume(struct device *dev)
  {
  	struct sun4i_gpadc_iio *info = iio_priv(dev_get_drvdata(dev));
  
@@ -85,7 +85,7 @@ index 363936b37c5a..1a80744bd472 100644
  	return info->data->sample_start(info);
  }
  
-@@ -592,10 +612,61 @@ static int sun4i_gpadc_probe_dt(struct platform_device *pdev,
+@@ -597,10 +617,61 @@ static int sun4i_gpadc_probe_dt(struct platform_device *pdev,
  		return ret;
  	}
  
@@ -147,7 +147,7 @@ index 363936b37c5a..1a80744bd472 100644
  }
  
  static int sun4i_gpadc_probe_mfd(struct platform_device *pdev,
-@@ -761,6 +832,15 @@ static int sun4i_gpadc_remove(struct platform_device *pdev)
+@@ -766,6 +837,15 @@ static int sun4i_gpadc_remove(struct platform_device *pdev)
  	if (!info->no_irq)
  		iio_map_array_unregister(indio_dev);
  

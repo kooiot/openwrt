@@ -1,13 +1,13 @@
 --- a/arch/arm/boot/dts/Makefile
 +++ b/arch/arm/boot/dts/Makefile
-@@ -1127,6 +1127,7 @@
+@@ -1129,6 +1129,7 @@
  	sun8i-r16-nintendo-super-nes-classic.dtb \
  	sun8i-r16-parrot.dtb \
  	sun8i-r40-bananapi-m2-ultra.dtb \
 +	sun8i-r40-tlink-k1.dtb \
  	sun8i-s3-lichee-zero-plus.dtb \
+ 	sun8i-s3-olinuxino.dtb \
  	sun8i-t3-cqa3t-bv3.dtb \
- 	sun8i-v3s-licheepi-zero.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k1.dts
 @@ -0,0 +1,475 @@

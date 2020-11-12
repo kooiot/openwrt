@@ -99,7 +99,7 @@ index de78c824bbfd..1b7be8fbde86 100644
  	void __iomem *base;
  	spinlock_t ctrl_lock;
  	const struct sun4i_pwm_data *data;
-@@ -365,6 +368,14 @@ static int sun4i_pwm_probe(struct platform_device *pdev)
+@@ -371,6 +374,14 @@ static int sun4i_pwm_probe(struct platform_device *pdev)
  	if (IS_ERR(pwm->clk))
  		return PTR_ERR(pwm->clk);
  
@@ -114,7 +114,7 @@ index de78c824bbfd..1b7be8fbde86 100644
  	pwm->chip.dev = &pdev->dev;
  	pwm->chip.ops = &sun4i_pwm_ops;
  	pwm->chip.base = -1;
-@@ -377,19 +388,31 @@ static int sun4i_pwm_probe(struct platform_device *pdev)
+@@ -383,19 +394,31 @@ static int sun4i_pwm_probe(struct platform_device *pdev)
  	ret = pwmchip_add(&pwm->chip);
  	if (ret < 0) {
  		dev_err(&pdev->dev, "failed to add PWM chip: %d\n", ret);
@@ -178,7 +178,7 @@ index 1b7be8fbde86..7d3ac3f2dc3f 100644
  	struct clk *clk;
  	struct reset_control *rst;
  	void __iomem *base;
-@@ -376,6 +378,16 @@ static int sun4i_pwm_probe(struct platform_device *pdev)
+@@ -382,6 +384,16 @@ static int sun4i_pwm_probe(struct platform_device *pdev)
  		reset_control_deassert(pwm->rst);
  	}
  
@@ -195,7 +195,7 @@ index 1b7be8fbde86..7d3ac3f2dc3f 100644
  	pwm->chip.dev = &pdev->dev;
  	pwm->chip.ops = &sun4i_pwm_ops;
  	pwm->chip.base = -1;
-@@ -396,6 +408,8 @@ static int sun4i_pwm_probe(struct platform_device *pdev)
+@@ -402,6 +414,8 @@ static int sun4i_pwm_probe(struct platform_device *pdev)
  	return 0;
  
  err_pwm_add:
@@ -204,7 +204,7 @@ index 1b7be8fbde86..7d3ac3f2dc3f 100644
  	reset_control_assert(pwm->rst);
  
  	return ret;
-@@ -410,6 +424,7 @@ static int sun4i_pwm_remove(struct platform_device *pdev)
+@@ -416,6 +430,7 @@ static int sun4i_pwm_remove(struct platform_device *pdev)
  	if (ret)
  		return ret;
  
@@ -226,7 +226,7 @@ diff --git a/drivers/pwm/pwm-sun4i.c b/drivers/pwm/pwm-sun4i.c
 index 7d3ac3f2dc3f..9e0eca79ff88 100644
 --- a/drivers/pwm/pwm-sun4i.c
 +++ b/drivers/pwm/pwm-sun4i.c
-@@ -325,6 +325,13 @@ static const struct sun4i_pwm_data sun4i_pwm_single_bypass = {
+@@ -331,6 +331,13 @@ static const struct sun4i_pwm_data sun4i_pwm_single_bypass = {
  	.npwm = 1,
  };
  
@@ -240,7 +240,7 @@ index 7d3ac3f2dc3f..9e0eca79ff88 100644
  static const struct of_device_id sun4i_pwm_dt_ids[] = {
  	{
  		.compatible = "allwinner,sun4i-a10-pwm",
-@@ -341,6 +348,9 @@ static const struct of_device_id sun4i_pwm_dt_ids[] = {
+@@ -347,6 +354,9 @@ static const struct of_device_id sun4i_pwm_dt_ids[] = {
  	}, {
  		.compatible = "allwinner,sun8i-h3-pwm",
  		.data = &sun4i_pwm_single_bypass,
@@ -290,7 +290,7 @@ index 9e0eca79ff88..848cff26f385 100644
  	if ((PWM_REG_PRESCAL(val, pwm->hwpwm) == PWM_PRESCAL_MASK) &&
  	    sun4i_pwm->data->has_prescaler_bypass)
  		prescaler = 1;
-@@ -205,7 +218,8 @@ static int sun4i_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
+@@ -211,7 +224,8 @@ static int sun4i_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
  {
  	struct sun4i_pwm_chip *sun4i_pwm = to_sun4i_pwm_chip(chip);
  	struct pwm_state cstate;
@@ -300,7 +300,7 @@ index 9e0eca79ff88..848cff26f385 100644
  	int ret;
  	unsigned int delay_us;
  	unsigned long now;
-@@ -220,6 +234,16 @@ static int sun4i_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
+@@ -226,6 +240,16 @@ static int sun4i_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
  		}
  	}
  
@@ -317,7 +317,7 @@ index 9e0eca79ff88..848cff26f385 100644
  	spin_lock(&sun4i_pwm->ctrl_lock);
  	ctrl = sun4i_pwm_readl(sun4i_pwm, PWM_CTRL_REG);
  
-@@ -267,6 +291,11 @@ static int sun4i_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
+@@ -273,6 +297,11 @@ static int sun4i_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
  		ctrl &= ~BIT_CH(PWM_CLK_GATING, pwm->hwpwm);
  	}
  
@@ -347,7 +347,7 @@ diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h6.dtsi b/arch/arm64/boot/dts/
 index e8bed58e7246..c1abd805cfdc 100644
 --- a/arch/arm64/boot/dts/allwinner/sun50i-h6.dtsi
 +++ b/arch/arm64/boot/dts/allwinner/sun50i-h6.dtsi
-@@ -241,6 +241,16 @@
+@@ -229,6 +229,16 @@
  			status = "disabled";
  		};
  
