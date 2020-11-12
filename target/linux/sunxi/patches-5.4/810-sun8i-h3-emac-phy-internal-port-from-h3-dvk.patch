@@ -31,7 +31,6 @@
 +	}
  
  	return ret;
-
 @@ -2821,12 +2845,17 @@
  {
  	struct stmmac_priv *priv = netdev_priv(dev);

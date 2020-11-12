@@ -19,7 +19,7 @@ diff --git a/drivers/iio/adc/sun4i-gpadc-iio.c b/drivers/iio/adc/sun4i-gpadc-iio
 index 77e07f042730..f2e0ec65c53e 100644
 --- a/drivers/iio/adc/sun4i-gpadc-iio.c
 +++ b/drivers/iio/adc/sun4i-gpadc-iio.c
-@@ -142,6 +142,31 @@ static const struct gpadc_data sun8i_a33_gpadc_data = {
+@@ -145,6 +145,31 @@ static const struct gpadc_data sun8i_a33_gpadc_data = {
  	.support_irq = false,
  };
  
@@ -51,7 +51,7 @@ index 77e07f042730..f2e0ec65c53e 100644
  struct sun4i_gpadc_iio {
  	struct iio_dev			*indio_dev;
  	struct completion		completion;
-@@ -638,6 +663,10 @@ static const struct of_device_id sun4i_gpadc_of_id[] = {
+@@ -643,6 +668,10 @@ static const struct of_device_id sun4i_gpadc_of_id[] = {
  		.compatible = "allwinner,sun8i-a33-ths",
  		.data = &sun8i_a33_gpadc_data,
  	},

@@ -25,7 +25,7 @@ diff --git a/drivers/iio/adc/sun4i-gpadc-iio.c b/drivers/iio/adc/sun4i-gpadc-iio
 index 7b12666cdd9e..77e07f042730 100644
 --- a/drivers/iio/adc/sun4i-gpadc-iio.c
 +++ b/drivers/iio/adc/sun4i-gpadc-iio.c
-@@ -75,11 +75,14 @@ struct gpadc_data {
+@@ -78,11 +78,14 @@ struct gpadc_data {
  	u32		ctrl2_map;
  	u32		sensor_en_map;
  	u32		filter_map;
@@ -40,7 +40,7 @@ index 7b12666cdd9e..77e07f042730 100644
  };
  
  static const struct gpadc_data sun4i_gpadc_data = {
-@@ -94,6 +97,7 @@ static const struct gpadc_data sun4i_gpadc_data = {
+@@ -97,6 +100,7 @@ static const struct gpadc_data sun4i_gpadc_data = {
  	.sample_end = sun4i_gpadc_sample_end,
  	.sensor_count = 1,
  	.supports_nvmem = false,
@@ -48,7 +48,7 @@ index 7b12666cdd9e..77e07f042730 100644
  };
  
  static const struct gpadc_data sun5i_gpadc_data = {
-@@ -108,6 +112,7 @@ static const struct gpadc_data sun5i_gpadc_data = {
+@@ -111,6 +115,7 @@ static const struct gpadc_data sun5i_gpadc_data = {
  	.sample_end = sun4i_gpadc_sample_end,
  	.sensor_count = 1,
  	.supports_nvmem = false,
@@ -56,7 +56,7 @@ index 7b12666cdd9e..77e07f042730 100644
  };
  
  static const struct gpadc_data sun6i_gpadc_data = {
-@@ -122,6 +127,7 @@ static const struct gpadc_data sun6i_gpadc_data = {
+@@ -125,6 +130,7 @@ static const struct gpadc_data sun6i_gpadc_data = {
  	.sample_end = sun4i_gpadc_sample_end,
  	.sensor_count = 1,
  	.supports_nvmem = false,
@@ -64,7 +64,7 @@ index 7b12666cdd9e..77e07f042730 100644
  };
  
  static const struct gpadc_data sun8i_a33_gpadc_data = {
-@@ -133,6 +139,7 @@ static const struct gpadc_data sun8i_a33_gpadc_data = {
+@@ -136,6 +142,7 @@ static const struct gpadc_data sun8i_a33_gpadc_data = {
  	.sample_end = sun4i_gpadc_sample_end,
  	.sensor_count = 1,
  	.supports_nvmem = false,
@@ -72,7 +72,7 @@ index 7b12666cdd9e..77e07f042730 100644
  };
  
  struct sun4i_gpadc_iio {
-@@ -336,6 +343,11 @@ static int sun4i_gpadc_temp_read(struct iio_dev *indio_dev, int *val,
+@@ -339,6 +346,11 @@ static int sun4i_gpadc_temp_read(struct iio_dev *indio_dev, int *val,
  		return 0;
  	}
  
@@ -84,7 +84,7 @@ index 7b12666cdd9e..77e07f042730 100644
  	return sun4i_gpadc_read(indio_dev, 0, val, info->temp_data_irq);
  }
  
-@@ -433,6 +445,17 @@ static irqreturn_t sun4i_gpadc_fifo_data_irq_handler(int irq, void *dev_id)
+@@ -436,6 +448,17 @@ static irqreturn_t sun4i_gpadc_fifo_data_irq_handler(int irq, void *dev_id)
  	return IRQ_HANDLED;
  }
  
@@ -102,7 +102,7 @@ index 7b12666cdd9e..77e07f042730 100644
  static int sun4i_gpadc_sample_end(struct sun4i_gpadc_iio *info)
  {
  	/* Disable the ADC on IP */
-@@ -445,6 +468,8 @@ static int sun4i_gpadc_sample_end(struct sun4i_gpadc_iio *info)
+@@ -448,6 +471,8 @@ static int sun4i_gpadc_sample_end(struct sun4i_gpadc_iio *info)
  
  static int sunxi_ths_sample_end(struct sun4i_gpadc_iio *info)
  {
@@ -111,7 +111,7 @@ index 7b12666cdd9e..77e07f042730 100644
  	/* Disable temperature sensor */
  	regmap_write(info->regmap, SUNXI_THS_CTRL2, 0x0);
  
-@@ -506,9 +531,15 @@ static int sunxi_ths_sample_start(struct sun4i_gpadc_iio *info)
+@@ -509,9 +534,15 @@ static int sunxi_ths_sample_start(struct sun4i_gpadc_iio *info)
  	regmap_write(info->regmap, SUNXI_THS_CTRL2,
  		info->data->ctrl2_map);
  
@@ -127,7 +127,7 @@ index 7b12666cdd9e..77e07f042730 100644
  	regmap_read(info->regmap, SUNXI_THS_CTRL2, &value);
  
  	regmap_write(info->regmap, SUNXI_THS_CTRL2,
-@@ -620,12 +651,29 @@ static int sun4i_gpadc_probe_dt(struct platform_device *pdev,
+@@ -625,12 +656,29 @@ static int sun4i_gpadc_probe_dt(struct platform_device *pdev,
  	struct nvmem_cell *cell;
  	ssize_t cell_size;
  	u64 *cell_data;
@@ -158,7 +158,7 @@ index 7b12666cdd9e..77e07f042730 100644
  	indio_dev->num_channels = ARRAY_SIZE(sun8i_a33_gpadc_channels);
  	indio_dev->channels = sun8i_a33_gpadc_channels;
  
-@@ -835,11 +883,13 @@ static int sun4i_gpadc_probe(struct platform_device *pdev)
+@@ -840,11 +888,13 @@ static int sun4i_gpadc_probe(struct platform_device *pdev)
  	if (ret)
  		return ret;
  
@@ -177,7 +177,7 @@ index 7b12666cdd9e..77e07f042730 100644
  
  	if (IS_ENABLED(CONFIG_THERMAL_OF)) {
  		for (i = 0; i < info->data->sensor_count; i++) {
-@@ -860,6 +910,9 @@ static int sun4i_gpadc_probe(struct platform_device *pdev)
+@@ -865,6 +915,9 @@ static int sun4i_gpadc_probe(struct platform_device *pdev)
  		}
  	}
  
@@ -187,7 +187,7 @@ index 7b12666cdd9e..77e07f042730 100644
  	ret = devm_iio_device_register(&pdev->dev, indio_dev);
  	if (ret < 0) {
  		dev_err(&pdev->dev, "could not register the device\n");
-@@ -889,6 +942,9 @@ static int sun4i_gpadc_remove(struct platform_device *pdev)
+@@ -894,6 +947,9 @@ static int sun4i_gpadc_remove(struct platform_device *pdev)
  	if (!IS_ENABLED(CONFIG_THERMAL_OF))
  		return 0;
  
@@ -201,7 +201,7 @@ diff --git a/include/linux/mfd/sun4i-gpadc.h b/include/linux/mfd/sun4i-gpadc.h
 index c251002431bd..ab34a96a7ff3 100644
 --- a/include/linux/mfd/sun4i-gpadc.h
 +++ b/include/linux/mfd/sun4i-gpadc.h
-@@ -86,6 +86,8 @@
+@@ -89,6 +89,8 @@
  /* SUNXI_THS COMMON REGISTERS + DEFINES */
  #define SUNXI_THS_CTRL0					0x00
  #define SUNXI_THS_CTRL2					0x40
@@ -210,7 +210,7 @@ index c251002431bd..ab34a96a7ff3 100644
  #define SUNXI_THS_FILTER				0x70
  #define SUNXI_THS_CDATA_0_1				0x74
  #define SUNXI_THS_CDATA_2_3				0x78
-@@ -104,6 +106,37 @@
+@@ -107,6 +109,37 @@
  #define SUNXI_THS_TEMP_SENSE_EN2			BIT(2)
  #define SUNXI_THS_TEMP_SENSE_EN3			BIT(3)
  

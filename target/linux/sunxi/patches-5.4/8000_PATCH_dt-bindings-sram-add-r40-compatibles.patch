@@ -1,0 +1,82 @@
+diff --git a/arch/arm/boot/dts/sun8i-r40.dtsi b/arch/arm/boot/dts/sun8i-r40.dtsi
+index dff9a3dc1fba..0c7526365896 100644
+--- a/arch/arm/boot/dts/sun8i-r40.dtsi
++++ b/arch/arm/boot/dts/sun8i-r40.dtsi
+@@ -190,6 +190,29 @@  mixer1_out_tcon_top: endpoint {
+ 			};
+ 		};
+ 
++		syscon: system-control@1c00000 {
++			compatible = "allwinner,sun8i-r40-system-control",
++				     "allwinner,sun4i-a10-system-control";
++			reg = <0x01c00000 0x30>;
++			#address-cells = <1>;
++			#size-cells = <1>;
++			ranges;
++
++			sram_c: sram@1d00000 {
++				compatible = "mmio-sram";
++				reg = <0x01d00000 0xd0000>;
++				#address-cells = <1>;
++				#size-cells = <1>;
++				ranges = <0 0x01d00000 0xd0000>;
++
++				ve_sram: sram-section@0 {
++					compatible = "allwinner,sun8i-r40-sram-c1",
++						     "allwinner,sun4i-a10-sram-c1";
++					reg = <0x000000 0x80000>;
++				};
++			};
++		};
++
+ 		nmi_intc: interrupt-controller@1c00030 {
+ 			compatible = "allwinner,sun7i-a20-sc-nmi";
+ 			interrupt-controller;
+index bc27f9430eeb..83a654a618be 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus.c
++++ b/drivers/staging/media/sunxi/cedrus/cedrus.c
+@@ -496,6 +496,11 @@  static const struct cedrus_variant sun8i_h3_cedrus_variant = {
+ 	.mod_rate	= 402000000,
+ };
+ 
++static const struct cedrus_variant sun8i_r40_cedrus_variant = {
++	.capabilities	= CEDRUS_CAPABILITY_UNTILED,
++	.mod_rate	= 297000000,
++};
++
+ static const struct cedrus_variant sun50i_a64_cedrus_variant = {
+ 	.capabilities	= CEDRUS_CAPABILITY_UNTILED |
+ 			  CEDRUS_CAPABILITY_H265_DEC,
+@@ -536,6 +541,10 @@  static const struct of_device_id cedrus_dt_match[] = {
+ 		.compatible = "allwinner,sun8i-h3-video-engine",
+ 		.data = &sun8i_h3_cedrus_variant,
+ 	},
++	{
++		.compatible = "allwinner,sun8i-r40-video-engine",
++		.data = &sun8i_r40_cedrus_variant,
++	},
+ 	{
+ 		.compatible = "allwinner,sun50i-a64-video-engine",
+ 		.data = &sun50i_a64_cedrus_variant,
+diff --git a/arch/arm/boot/dts/sun8i-r40.dtsi b/arch/arm/boot/dts/sun8i-r40.dtsi
+index 0c7526365896..7907569e7b5c 100644
+--- a/arch/arm/boot/dts/sun8i-r40.dtsi
++++ b/arch/arm/boot/dts/sun8i-r40.dtsi
+@@ -261,6 +261,17 @@
+			allwinner,sram = <&ve_sram 1>;
+ 		};
+ 
++		video-codec@1c0e000 {
++			compatible = "allwinner,sun8i-r40-video-engine";
++			reg = <0x01c0e000 0x1000>;
++			clocks = <&ccu CLK_BUS_VE>, <&ccu CLK_VE>,
++			<&ccu CLK_DRAM_VE>;
++			clock-names = "ahb", "mod", "ram";
++			resets = <&ccu RST_BUS_VE>;
++			interrupts = <GIC_SPI 53 IRQ_TYPE_LEVEL_HIGH>;
++			allwinner,sram = <&ve_sram 1>;
++		};
++
+ 		mmc0: mmc@1c0f000 {
+ 			compatible = "allwinner,sun8i-r40-mmc",
+ 				     "allwinner,sun50i-a64-mmc";

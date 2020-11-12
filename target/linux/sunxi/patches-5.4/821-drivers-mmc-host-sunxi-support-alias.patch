@@ -1,6 +1,6 @@
 --- a/drivers/mmc/host/sunxi-mmc.c
 +++ b/drivers/mmc/host/sunxi-mmc.c
-@@ -1331,6 +1331,7 @@
+@@ -1339,6 +1339,7 @@
  {
  	struct sunxi_mmc_host *host;
  	struct mmc_host *mmc;
@@ -8,7 +8,7 @@
  	int ret;
  
  	mmc = mmc_alloc_host(sizeof(struct sunxi_mmc_host), &pdev->dev);
-@@ -1424,6 +1425,14 @@
+@@ -1434,6 +1435,14 @@
  	/* TODO: This driver doesn't support HS400 mode yet */
  	mmc->caps2 &= ~MMC_CAP2_HS400;
  

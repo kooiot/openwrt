@@ -1,6 +1,6 @@
 --- b/arch/arm/boot/dts/sun8i-r40-bananapi-m2-ultra.dts
 +++ b/arch/arm/boot/dts/sun8i-r40-bananapi-m2-ultra.dts
-@@ -104,6 +104,15 @@
+@@ -113,6 +113,15 @@
  		};
  	};
  
@@ -16,8 +16,8 @@
  	reg_vcc5v0: vcc5v0 {
  		compatible = "regulator-fixed";
  		regulator-name = "vcc5v0";
-@@ -131,6 +140,22 @@
- 	status = "okay";
+@@ -158,6 +167,22 @@
+ 	};
  };
  
 +&otg_sram {
@@ -39,7 +39,7 @@
  &ehci1 {
  	status = "okay";
  };
-@@ -349,7 +374,7 @@
+@@ -386,7 +411,7 @@
  &usbphy {
  	usb0_id_det-gpios = <&pio 8 4 GPIO_ACTIVE_HIGH>; /* PI4 */
  	usb0_vbus_det-gpios = <&pio 8 8 GPIO_ACTIVE_HIGH>; /* PI8 */

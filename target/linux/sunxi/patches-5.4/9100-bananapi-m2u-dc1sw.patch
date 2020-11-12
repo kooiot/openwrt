@@ -1,6 +1,6 @@
 --- b/arch/arm/boot/dts/sun8i-r40-bananapi-m2-ultra.dts
 +++ b/arch/arm/boot/dts/sun8i-r40-bananapi-m2-ultra.dts
-@@ -53,6 +53,9 @@
+@@ -54,6 +54,9 @@
  	aliases {
  		ethernet0 = &gmac;
  		serial0 = &uart0;
@@ -9,8 +9,8 @@
 +		mmc2 = &mmc1;
  	};
  
- 	chosen {
-@@ -106,7 +109,7 @@
+ 	backlight: backlight {
+@@ -115,7 +118,7 @@
  		regulator-name = "vcc5v0";
  		regulator-min-microvolt = <5000000>;
  		regulator-max-microvolt = <5000000>;
@@ -19,7 +19,7 @@
  		enable-active-high;
  	};
  
-@@ -206,7 +209,7 @@
+@@ -233,7 +236,7 @@
  	vqmmc-supply = <&reg_dcdc1>;
  	bus-width = <8>;
  	non-removable;
@@ -28,7 +28,7 @@
  };
  
  &ohci1 {
-@@ -344,6 +357,9 @@
+@@ -381,6 +384,9 @@
  };
  
  &usbphy {

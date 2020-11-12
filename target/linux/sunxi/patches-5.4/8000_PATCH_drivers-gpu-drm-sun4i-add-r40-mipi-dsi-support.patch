@@ -1,0 +1,261 @@
+diff --git a/Documentation/devicetree/bindings/display/sunxi/sun4i-drm.txt b/Documentation/devicetree/bindings/display/sunxi/sun4i-drm.txt
+index 31ab72cba3d4..9e9c7f934202 100644
+--- a/Documentation/devicetree/bindings/display/sunxi/sun4i-drm.txt
++++ b/Documentation/devicetree/bindings/display/sunxi/sun4i-drm.txt
+@@ -160,6 +160,7 @@  Required properties:
+    * allwinner,sun8i-a33-tcon
+    * allwinner,sun8i-a83t-tcon-lcd
+    * allwinner,sun8i-a83t-tcon-tv
++   * allwinner,sun8i-r40-tcon-lcd
+    * allwinner,sun8i-r40-tcon-tv
+    * allwinner,sun8i-v3s-tcon
+    * allwinner,sun9i-a80-tcon-lcd
+diff --git a/drivers/gpu/drm/sun4i/sun4i_tcon.c b/drivers/gpu/drm/sun4i/sun4i_tcon.c
+index fad72799b8df..69611d38c844 100644
+--- a/drivers/gpu/drm/sun4i/sun4i_tcon.c
++++ b/drivers/gpu/drm/sun4i/sun4i_tcon.c
+@@ -1470,6 +1470,13 @@  static const struct sun4i_tcon_quirks sun8i_a83t_tv_quirks = {
+ 	.has_channel_1		= true,
+ };
+ 
++static const struct sun4i_tcon_quirks sun8i_r40_lcd_quirks = {
++	.supports_lvds		= true,
++	.has_channel_0		= true,
++	/* TODO Need to support TCON output muxing via GPIO pins */
++	.set_mux		= sun8i_r40_tcon_tv_set_mux,
++};
++
+ static const struct sun4i_tcon_quirks sun8i_r40_tv_quirks = {
+ 	.has_channel_1		= true,
+ 	.set_mux		= sun8i_r40_tcon_tv_set_mux,
+@@ -1500,6 +1507,7 @@  const struct of_device_id sun4i_tcon_of_table[] = {
+ 	{ .compatible = "allwinner,sun8i-a33-tcon", .data = &sun8i_a33_quirks },
+ 	{ .compatible = "allwinner,sun8i-a83t-tcon-lcd", .data = &sun8i_a83t_lcd_quirks },
+ 	{ .compatible = "allwinner,sun8i-a83t-tcon-tv", .data = &sun8i_a83t_tv_quirks },
++	{ .compatible = "allwinner,sun8i-r40-tcon-lcd", .data = &sun8i_r40_lcd_quirks },
+ 	{ .compatible = "allwinner,sun8i-r40-tcon-tv", .data = &sun8i_r40_tv_quirks },
+ 	{ .compatible = "allwinner,sun8i-v3s-tcon", .data = &sun8i_v3s_quirks },
+ 	{ .compatible = "allwinner,sun9i-a80-tcon-lcd", .data = &sun9i_a80_tcon_lcd_quirks },
+diff --git a/arch/arm/boot/dts/sun8i-r40.dtsi b/arch/arm/boot/dts/sun8i-r40.dtsi
+index c9c2688db66d..3faa35d43afa 100644
+--- a/arch/arm/boot/dts/sun8i-r40.dtsi
++++ b/arch/arm/boot/dts/sun8i-r40.dtsi
+@@ -44,6 +44,7 @@ 
+ #include <dt-bindings/interrupt-controller/arm-gic.h>
+ #include <dt-bindings/clock/sun8i-de2.h>
+ #include <dt-bindings/clock/sun8i-r40-ccu.h>
++#include <dt-bindings/clock/sun8i-tcon-top.h>
+ #include <dt-bindings/reset/sun8i-r40-ccu.h>
+ #include <dt-bindings/reset/sun8i-de2.h>
+ 
+@@ -709,7 +710,7 @@ 
+ 			compatible = "allwinner,sun8i-r40-tcon-tv";
+ 			reg = <0x01c73000 0x1000>;
+ 			interrupts = <GIC_SPI 51 IRQ_TYPE_LEVEL_HIGH>;
+-			clocks = <&ccu CLK_BUS_TCON_TV0>, <&tcon_top 0>;
++			clocks = <&ccu CLK_BUS_TCON_TV0>, <&tcon_top CLK_TCON_TOP_TV0>;
+ 			clock-names = "ahb", "tcon-ch1";
+ 			resets = <&ccu RST_BUS_TCON_TV0>;
+ 			reset-names = "lcd";
+@@ -752,7 +753,7 @@ 
+ 			compatible = "allwinner,sun8i-r40-tcon-tv";
+ 			reg = <0x01c74000 0x1000>;
+ 			interrupts = <GIC_SPI 52 IRQ_TYPE_LEVEL_HIGH>;
+-			clocks = <&ccu CLK_BUS_TCON_TV1>, <&tcon_top 1>;
++			clocks = <&ccu CLK_BUS_TCON_TV1>, <&tcon_top CLK_TCON_TOP_TV1>;
+ 			clock-names = "ahb", "tcon-ch1";
+ 			resets = <&ccu RST_BUS_TCON_TV1>;
+ 			reset-names = "lcd";
+diff --git a/drivers/gpu/drm/sun4i/sun8i_tcon_top.c b/drivers/gpu/drm/sun4i/sun8i_tcon_top.c
+index 75d8e60c149d..e0b3c5330b9a 100644
+--- a/drivers/gpu/drm/sun4i/sun8i_tcon_top.c
++++ b/drivers/gpu/drm/sun4i/sun8i_tcon_top.c
+@@ -194,19 +194,22 @@  static int sun8i_tcon_top_bind(struct device *dev, struct device *master,
+ 	clk_data->hws[CLK_TCON_TOP_TV0] =
+ 		sun8i_tcon_top_register_gate(dev, "tcon-tv0", regs,
+ 					     &tcon_top->reg_lock,
+-					     TCON_TOP_TCON_TV0_GATE, 0);
++					     TCON_TOP_TCON_TV0_GATE,
++					     CLK_TCON_TOP_TV0);
+ 
+ 	if (quirks->has_tcon_tv1)
+ 		clk_data->hws[CLK_TCON_TOP_TV1] =
+ 			sun8i_tcon_top_register_gate(dev, "tcon-tv1", regs,
+ 						     &tcon_top->reg_lock,
+-						     TCON_TOP_TCON_TV1_GATE, 1);
++						     TCON_TOP_TCON_TV1_GATE,
++						     CLK_TCON_TOP_TV1);
+ 
+ 	if (quirks->has_dsi)
+ 		clk_data->hws[CLK_TCON_TOP_DSI] =
+ 			sun8i_tcon_top_register_gate(dev, "dsi", regs,
+ 						     &tcon_top->reg_lock,
+-						     TCON_TOP_TCON_DSI_GATE, 2);
++						     TCON_TOP_TCON_DSI_GATE,
++						     CLK_TCON_TOP_DSI);
+ 
+ 	for (i = 0; i < CLK_NUM; i++)
+ 		if (IS_ERR(clk_data->hws[i])) {
+diff --git a/drivers/gpu/drm/sun4i/sun8i_tcon_top.c b/drivers/gpu/drm/sun4i/sun8i_tcon_top.c
+index e0b3c5330b9a..732ac19b4371 100644
+--- a/drivers/gpu/drm/sun4i/sun8i_tcon_top.c
++++ b/drivers/gpu/drm/sun4i/sun8i_tcon_top.c
+@@ -124,7 +124,22 @@  static struct clk_hw *sun8i_tcon_top_register_gate(struct device *dev,
+ static int sun8i_tcon_top_bind(struct device *dev, struct device *master,
+ 			       void *data)
+ {
+-	struct platform_device *pdev = to_platform_device(dev);
++	return 0;
++}
++
++static void sun8i_tcon_top_unbind(struct device *dev, struct device *master,
++				  void *data)
++{
++}
++
++static const struct component_ops sun8i_tcon_top_ops = {
++	.bind	= sun8i_tcon_top_bind,
++	.unbind	= sun8i_tcon_top_unbind,
++};
++
++static int sun8i_tcon_top_probe(struct platform_device *pdev)
++{
++	struct device *dev = &pdev->dev;
+ 	struct clk_hw_onecell_data *clk_data;
+ 	struct sun8i_tcon_top *tcon_top;
+ 	const struct sun8i_tcon_top_quirks *quirks;
+@@ -132,7 +147,7 @@  static int sun8i_tcon_top_bind(struct device *dev, struct device *master,
+ 	void __iomem *regs;
+ 	int ret, i;
+ 
+-	quirks = of_device_get_match_data(&pdev->dev);
++	quirks = of_device_get_match_data(dev);
+ 
+ 	tcon_top = devm_kzalloc(dev, sizeof(*tcon_top), GFP_KERNEL);
+ 	if (!tcon_top)
+@@ -226,22 +241,21 @@  static int sun8i_tcon_top_bind(struct device *dev, struct device *master,
+ 
+ 	dev_set_drvdata(dev, tcon_top);
+ 
+-	return 0;
++	return component_add(dev, &sun8i_tcon_top_ops);
+ 
+ err_unregister_gates:
+ 	for (i = 0; i < CLK_NUM; i++)
+ 		if (!IS_ERR_OR_NULL(clk_data->hws[i]))
+ 			clk_hw_unregister_gate(clk_data->hws[i]);
+-	clk_disable_unprepare(tcon_top->bus);
+ err_assert_reset:
+ 	reset_control_assert(tcon_top->rst);
+ 
+ 	return ret;
+ }
+ 
+-static void sun8i_tcon_top_unbind(struct device *dev, struct device *master,
+-				  void *data)
++static int sun8i_tcon_top_remove(struct platform_device *pdev)
+ {
++	struct device *dev = &pdev->dev;
+ 	struct sun8i_tcon_top *tcon_top = dev_get_drvdata(dev);
+ 	struct clk_hw_onecell_data *clk_data = tcon_top->clk_data;
+ 	int i;
+@@ -253,21 +267,8 @@  static void sun8i_tcon_top_unbind(struct device *dev, struct device *master,
+ 
+ 	clk_disable_unprepare(tcon_top->bus);
+ 	reset_control_assert(tcon_top->rst);
+-}
+-
+-static const struct component_ops sun8i_tcon_top_ops = {
+-	.bind	= sun8i_tcon_top_bind,
+-	.unbind	= sun8i_tcon_top_unbind,
+-};
+-
+-static int sun8i_tcon_top_probe(struct platform_device *pdev)
+-{
+-	return component_add(&pdev->dev, &sun8i_tcon_top_ops);
+-}
+ 
+-static int sun8i_tcon_top_remove(struct platform_device *pdev)
+-{
+-	component_del(&pdev->dev, &sun8i_tcon_top_ops);
++	component_del(dev, &sun8i_tcon_top_ops);
+ 
+ 	return 0;
+ }
+
+diff --git a/arch/arm/boot/dts/sun8i-r40-bananapi-m2-ultra.dts b/arch/arm/boot/dts/sun8i-r40-bananapi-m2-ultra.dts
+index 42d62d1ba1dc..99f84e6f15ce 100644
+--- a/arch/arm/boot/dts/sun8i-r40-bananapi-m2-ultra.dts
++++ b/arch/arm/boot/dts/sun8i-r40-bananapi-m2-ultra.dts
+@@ -45,6 +45,7 @@ 
+ #include "sun8i-r40.dtsi"
+ 
+ #include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/pwm/pwm.h>
+ 
+ / {
+ 	model = "Banana Pi BPI-M2-Ultra";
+@@ -55,6 +56,14 @@ 
+ 		serial0 = &uart0;
+ 	};
+ 
++	backlight: backlight {
++		compatible = "pwm-backlight";
++		pwms = <&pwm 0 50000 PWM_POLARITY_INVERTED>;
++		brightness-levels = <1 2 4 8 16 32 64 128 255>;
++		default-brightness-level = <2>;
++		enable-gpios = <&pio 7 16 GPIO_ACTIVE_HIGH>; /* LCD-BL-EN: PH16 */
++	};
++
+ 	chosen {
+ 		stdout-path = "serial0:115200n8";
+ 	};
+@@ -117,6 +126,24 @@ 
+ 	status = "okay";
+ };
+ 
++&dphy {
++	status = "okay";
++};
++
++&dsi {
++	vcc-dsi-supply = <&reg_dcdc1>;		/* VCC-DSI */
++	status = "okay";
++
++	panel@0 {
++		compatible = "bananapi,s070wv20-ct16-icn6211";
++		reg = <0>;
++		enable-gpio = <&pio 7 18 GPIO_ACTIVE_HIGH>; /* LCD-PWR-EN: PH18 */
++		reset-gpios = <&pio 7 17 GPIO_ACTIVE_HIGH>; /* LCD-RST: PH17 */
++		vdd-supply = <&reg_dcdc1>;
++		backlight = <&backlight>;
++	};
++};
++
+ &ehci1 {
+ 	status = "okay";
+ };
+@@ -209,6 +236,12 @@ 
+ 	vcc-pg-supply = <&reg_dldo1>;
+ };
+ 
++&pwm {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pwm0_pin>;
++	status = "okay";
++};
++
+ &reg_aldo2 {
+ 	regulator-min-microvolt = <2500000>;
+ 	regulator-max-microvolt = <2500000>;
+@@ -295,6 +328,10 @@ 
+ 	regulator-name = "vdd1v2-sata";
+ };
+ 
++&tcon_lcd0 {
++	status = "okay";
++};
++
+ &tcon_tv0 {
+ 	status = "okay";
+ };

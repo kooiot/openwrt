@@ -1,6 +1,6 @@
 --- a/drivers/mfd/axp20x.c
 +++ b/drivers/mfd/axp20x.c
-@@ -622,6 +622,9 @@
+@@ -623,6 +623,9 @@
  		.num_resources	= ARRAY_SIZE(axp22x_pek_resources),
  		.resources	= axp22x_pek_resources,
  	}, {
@@ -27,7 +27,7 @@
  		status = "disabled";
 --- a/arch/arm/boot/dts/sun8i-r40-bananapi-m2-ultra.dts
 +++ b/arch/arm/boot/dts/sun8i-r40-bananapi-m2-ultra.dts
-@@ -90,6 +90,17 @@
+@@ -99,6 +99,17 @@
  		};
  	};
  
@@ -45,7 +45,7 @@
  	reg_vcc5v0: vcc5v0 {
  		compatible = "regulator-fixed";
  		regulator-name = "vcc5v0";
-@@ -180,6 +191,14 @@
+@@ -207,6 +218,14 @@
  	bus-width = <4>;
  	non-removable;
  	status = "okay";
