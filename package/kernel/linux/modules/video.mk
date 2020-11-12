@@ -295,6 +295,42 @@ endef
 $(eval $(call KernelPackage,drm-amdgpu))
 
 
+define KernelPackage/drm-sunxi
+  SUBMENU:=$(VIDEO_MENU)
+  TITLE:=Sunxi SOCs DRM support
+  DEPENDS:=@TARGET_sunxi +kmod-drm-kms-helper +kmod-lib-crc-ccitt
+  KCONFIG:=CONFIG_DRM_SUN4I \
+	CONFIG_DRM_FBDEV_EMULATION=y \
+	CONFIG_DRM_FBDEV_OVERALLOC=100 \
+	CONFIG_DRM_GEM_CMA_HELPER=y \
+	CONFIG_DRM_KMS_CMA_HELPER=y \
+	CONFIG_DRM_MIPI_DSI \
+	CONFIG_DRM_SUN6I_DSI \
+	CONFIG_DRM_SUN8I_DW_HDMI \
+	CONFIG_DRM_SUN8I_MIXER
+  FILES:= \
+	$(LINUX_DIR)/drivers/gpu/drm/bridge/synopsys/dw-hdmi.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun4i-backend.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun4i-frontend.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun4i-drm.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun4i-drm-hdmi.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun4i-tcon.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun4i_tv.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun6i_drc.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun8i-drm-hdmi.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun8i_tcon_top.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun8i-mixer.ko
+  AUTOLOAD:=$(call AutoLoad,08,sun4i-drm-hdmi sun8i-drm-hdmi sun8i-mixer sun6i_mipi_dsi)
+endef
+
+define KernelPackage/drm-sunxi/description
+  Direct Rendering Manager (DRM) support for Sunxi SOCs
+endef
+
+$(eval $(call KernelPackage,drm-sunxi))
+
+
 define KernelPackage/drm-imx
   SUBMENU:=$(VIDEO_MENU)
   TITLE:=Freescale i.MX DRM support
