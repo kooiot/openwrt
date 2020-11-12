@@ -1,0 +1,53 @@
+diff --git a/Documentation/devicetree/bindings/gpu/arm,mali-utgard.yaml b/Documentation/devicetree/bindings/gpu/arm,mali-utgard.yaml
+index 6226d31ec4b7..d4d785790eaa 100644
+--- a/Documentation/devicetree/bindings/gpu/arm,mali-utgard.yaml
++++ b/Documentation/devicetree/bindings/gpu/arm,mali-utgard.yaml
+@@ -25,6 +25,7 @@  properties:
+               - allwinner,sun4i-a10-mali
+               - allwinner,sun7i-a20-mali
+               - allwinner,sun8i-h3-mali
++              - allwinner,sun8i-r40-mali
+               - allwinner,sun50i-a64-mali
+               - rockchip,rk3036-mali
+               - rockchip,rk3066-mali
+@@ -129,6 +130,7 @@  allOf:
+             enum:
+               - allwinner,sun4i-a10-mali
+               - allwinner,sun7i-a20-mali
++              - allwinner,sun8i-r40-mali
+               - allwinner,sun50i-a64-mali
+               - allwinner,sun50i-h5-mali
+               - amlogic,meson8-mali
+diff --git a/arch/arm/boot/dts/sun8i-r40.dtsi b/arch/arm/boot/dts/sun8i-r40.dtsi
+index b782041e0e04..b82031b19893 100644
+--- a/arch/arm/boot/dts/sun8i-r40.dtsi
++++ b/arch/arm/boot/dts/sun8i-r40.dtsi
+@@ -743,6 +743,28 @@  i2c4: i2c@1c2c000 {
+ 			#size-cells = <0>;
+ 		};
+ 
++		mali: gpu@1c40000 {
++			compatible = "allwinner,sun8i-r40-mali", "arm,mali-400";
++			reg = <0x01c40000 0x10000>;
++			interrupts = <GIC_SPI 69 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 70 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 72 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 75 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 73 IRQ_TYPE_LEVEL_HIGH>;
++			interrupt-names = "gp",
++					  "gpmmu",
++					  "pp0",
++					  "ppmmu0",
++					  "pp1",
++					  "ppmmu1",
++					  "pmu";
++			clocks = <&ccu CLK_BUS_GPU>, <&ccu CLK_GPU>;
++			clock-names = "bus", "core";
++			resets = <&ccu RST_BUS_GPU>;
++		};
++
+ 		gmac: ethernet@1c50000 {
+ 			compatible = "allwinner,sun8i-r40-gmac";
+ 			syscon = <&ccu>;

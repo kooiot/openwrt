@@ -22,7 +22,7 @@ diff --git a/drivers/iio/adc/sun4i-gpadc-iio.c b/drivers/iio/adc/sun4i-gpadc-iio
 index 03804ff9c006..363936b37c5a 100644
 --- a/drivers/iio/adc/sun4i-gpadc-iio.c
 +++ b/drivers/iio/adc/sun4i-gpadc-iio.c
-@@ -46,6 +46,18 @@ static unsigned int sun6i_gpadc_chan_select(unsigned int chan)
+@@ -49,6 +49,18 @@ static unsigned int sun6i_gpadc_chan_select(unsigned int chan)
  	return SUN6I_GPADC_CTRL1_ADC_CHAN_SELECT(chan);
  }
  
@@ -41,7 +41,7 @@ index 03804ff9c006..363936b37c5a 100644
  struct gpadc_data {
  	int		temp_offset;
  	int		temp_scale;
-@@ -53,6 +65,13 @@ struct gpadc_data {
+@@ -56,6 +68,13 @@ struct gpadc_data {
  	unsigned int	tp_adc_select;
  	unsigned int	(*adc_chan_select)(unsigned int chan);
  	unsigned int	adc_chan_mask;
@@ -55,7 +55,7 @@ index 03804ff9c006..363936b37c5a 100644
  };
  
  static const struct gpadc_data sun4i_gpadc_data = {
-@@ -62,6 +81,9 @@ static const struct gpadc_data sun4i_gpadc_data = {
+@@ -65,6 +84,9 @@ static const struct gpadc_data sun4i_gpadc_data = {
  	.tp_adc_select = SUN4I_GPADC_CTRL1_TP_ADC_SELECT,
  	.adc_chan_select = &sun4i_gpadc_chan_select,
  	.adc_chan_mask = SUN4I_GPADC_CTRL1_ADC_CHAN_MASK,
@@ -65,7 +65,7 @@ index 03804ff9c006..363936b37c5a 100644
  };
  
  static const struct gpadc_data sun5i_gpadc_data = {
-@@ -71,6 +93,9 @@ static const struct gpadc_data sun5i_gpadc_data = {
+@@ -74,6 +96,9 @@ static const struct gpadc_data sun5i_gpadc_data = {
  	.tp_adc_select = SUN4I_GPADC_CTRL1_TP_ADC_SELECT,
  	.adc_chan_select = &sun4i_gpadc_chan_select,
  	.adc_chan_mask = SUN4I_GPADC_CTRL1_ADC_CHAN_MASK,
@@ -75,7 +75,7 @@ index 03804ff9c006..363936b37c5a 100644
  };
  
  static const struct gpadc_data sun6i_gpadc_data = {
-@@ -80,12 +105,18 @@ static const struct gpadc_data sun6i_gpadc_data = {
+@@ -83,12 +108,18 @@ static const struct gpadc_data sun6i_gpadc_data = {
  	.tp_adc_select = SUN6I_GPADC_CTRL1_TP_ADC_SELECT,
  	.adc_chan_select = &sun6i_gpadc_chan_select,
  	.adc_chan_mask = SUN6I_GPADC_CTRL1_ADC_CHAN_MASK,
@@ -94,7 +94,7 @@ index 03804ff9c006..363936b37c5a 100644
  };
  
  struct sun4i_gpadc_iio {
-@@ -274,7 +305,7 @@ static int sun4i_gpadc_temp_read(struct iio_dev *indio_dev, int *val)
+@@ -277,7 +308,7 @@ static int sun4i_gpadc_temp_read(struct iio_dev *indio_dev, int *val)
  	if (info->no_irq) {
  		pm_runtime_get_sync(indio_dev->dev.parent);
  
@@ -103,7 +103,7 @@ index 03804ff9c006..363936b37c5a 100644
  
  		pm_runtime_mark_last_busy(indio_dev->dev.parent);
  		pm_runtime_put_autosuspend(indio_dev->dev.parent);
-@@ -379,10 +410,8 @@ static irqreturn_t sun4i_gpadc_fifo_data_irq_handler(int irq, void *dev_id)
+@@ -382,10 +413,8 @@ static irqreturn_t sun4i_gpadc_fifo_data_irq_handler(int irq, void *dev_id)
  	return IRQ_HANDLED;
  }
  
@@ -115,7 +115,7 @@ index 03804ff9c006..363936b37c5a 100644
  	/* Disable the ADC on IP */
  	regmap_write(info->regmap, SUN4I_GPADC_CTRL1, 0);
  	/* Disable temperature sensor on IP */
-@@ -391,19 +420,32 @@ static int sun4i_gpadc_runtime_suspend(struct device *dev)
+@@ -394,19 +423,32 @@ static int sun4i_gpadc_runtime_suspend(struct device *dev)
  	return 0;
  }
  
@@ -152,7 +152,7 @@ index 03804ff9c006..363936b37c5a 100644
  	/* period = SUN4I_GPADC_TPR_TEMP_PERIOD * 256 * 16 / clkin; ~0.6s */
  	regmap_write(info->regmap, SUN4I_GPADC_TPR,
  		     SUN4I_GPADC_TPR_TEMP_ENABLE |
-@@ -412,6 +454,35 @@ static int sun4i_gpadc_runtime_resume(struct device *dev)
+@@ -415,6 +457,35 @@ static int sun4i_gpadc_runtime_resume(struct device *dev)
  	return 0;
  }
  
@@ -192,7 +192,7 @@ diff --git a/include/linux/mfd/sun4i-gpadc.h b/include/linux/mfd/sun4i-gpadc.h
 index 78d31984a222..39e096c3ddac 100644
 --- a/include/linux/mfd/sun4i-gpadc.h
 +++ b/include/linux/mfd/sun4i-gpadc.h
-@@ -14,7 +14,6 @@
+@@ -17,7 +17,6 @@
  #define SUN4I_GPADC_CTRL0_ADC_CLK_SELECT		BIT(22)
  #define SUN4I_GPADC_CTRL0_ADC_CLK_DIVIDER(x)		((GENMASK(1, 0) & (x)) << 20)
  #define SUN4I_GPADC_CTRL0_FS_DIV(x)			((GENMASK(3, 0) & (x)) << 16)
@@ -200,7 +200,7 @@ index 78d31984a222..39e096c3ddac 100644
  
  #define SUN4I_GPADC_CTRL1				0x04
  
-@@ -48,9 +47,6 @@
+@@ -51,9 +50,6 @@
  
  #define SUN4I_GPADC_CTRL3				0x0c
  
@@ -210,7 +210,7 @@ index 78d31984a222..39e096c3ddac 100644
  #define SUN4I_GPADC_TPR					0x18
  
  #define SUN4I_GPADC_TPR_TEMP_ENABLE			BIT(16)
-@@ -87,6 +83,21 @@
+@@ -90,6 +86,21 @@
  /* 10s delay before suspending the IP */
  #define SUN4I_GPADC_AUTOSUSPEND_DELAY			10000
  

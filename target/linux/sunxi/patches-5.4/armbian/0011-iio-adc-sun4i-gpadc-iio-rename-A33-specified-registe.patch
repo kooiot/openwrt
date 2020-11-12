@@ -25,7 +25,7 @@ diff --git a/drivers/iio/adc/sun4i-gpadc-iio.c b/drivers/iio/adc/sun4i-gpadc-iio
 index 04d7147e0110..03804ff9c006 100644
 --- a/drivers/iio/adc/sun4i-gpadc-iio.c
 +++ b/drivers/iio/adc/sun4i-gpadc-iio.c
-@@ -85,7 +85,7 @@ static const struct gpadc_data sun6i_gpadc_data = {
+@@ -88,7 +88,7 @@ static const struct gpadc_data sun6i_gpadc_data = {
  static const struct gpadc_data sun8i_a33_gpadc_data = {
  	.temp_offset = -1662,
  	.temp_scale = 162,
@@ -38,7 +38,7 @@ diff --git a/include/linux/mfd/sun4i-gpadc.h b/include/linux/mfd/sun4i-gpadc.h
 index 139872c2e0fe..78d31984a222 100644
 --- a/include/linux/mfd/sun4i-gpadc.h
 +++ b/include/linux/mfd/sun4i-gpadc.h
-@@ -35,9 +35,9 @@
+@@ -38,9 +38,9 @@
  #define SUN6I_GPADC_CTRL1_ADC_CHAN_SELECT(x)		(GENMASK(3, 0) & BIT(x))
  #define SUN6I_GPADC_CTRL1_ADC_CHAN_MASK			GENMASK(3, 0)
  

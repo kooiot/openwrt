@@ -49,7 +49,7 @@ index 8b0cd08034e0..9f5de14fb2fe 100644
 +};
 +
  static struct drm_driver sun4i_drv_driver = {
- 	.driver_features	= DRIVER_GEM | DRIVER_MODESET | DRIVER_ATOMIC,
+ 	.driver_features	= DRIVER_GEM | DRIVER_MODESET | DRIVER_PRIME | DRIVER_ATOMIC,
  
 @@ -51,6 +74,10 @@
  	.major			= 1,
@@ -60,8 +60,8 @@ index 8b0cd08034e0..9f5de14fb2fe 100644
 +	.num_ioctls		= ARRAY_SIZE(sun4i_drv_ioctls),
 +
  	/* GEM Operations */
- 	DRM_GEM_CMA_VMAP_DRIVER_OPS,
- 	.dumb_create		= drm_sun4i_gem_dumb_create,
+ 	.dumb_create		= drm_gem_cma_dumb_create,
+ 	.gem_free_object_unlocked = drm_gem_cma_free_object,
 diff --git a/include/uapi/drm/sun4i_drm.h b/include/uapi/drm/sun4i_drm.h
 new file mode 100644
 index 000000000000..67b9dd4ee594

@@ -7,6 +7,6 @@
 +			if (current_uV == -EINVAL && rdev->supply_name)
 +				return -EPROBE_DEFER; // DIRK: we got this from mail list, we will remove this pacth when dc1sw fixed in kernel mainline. 
 +
- 			rdev_err(rdev,
- 				 "failed to get the current voltage: %pe\n",
- 				 ERR_PTR(current_uV));
+			rdev_err(rdev,
+				 "failed to get the current voltage(%d)\n",
+				 current_uV);
