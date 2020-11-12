@@ -177,7 +177,7 @@
 +	status = "okay";
 +};
 +
-+&otg_ram {
++&otg_sram {
 +	status = "okay";
 +};
 +
