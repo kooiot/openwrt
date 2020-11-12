@@ -1,0 +1,14 @@
+--- a/drivers/gpu/drm/sun4i/sun4i_drv.c
++++ b/drivers/gpu/drm/sun4i/sun4i_drv.c
+@@ -52,8 +52,11 @@
+ 	/* The Mali requires a 64 bytes alignment */
+ 	size = ALIGN(args->size, 64);
+ 
++	pr_err("%s: drm_gem_cma_create_with_handle function is static inside helper.c\n");
++	/*
+ 	cma_obj = drm_gem_cma_create_with_handle(file_priv, drm, size,
+ 						 &args->handle);
++						 */
+ 
+ 	return PTR_ERR_OR_ZERO(cma_obj);
+ }

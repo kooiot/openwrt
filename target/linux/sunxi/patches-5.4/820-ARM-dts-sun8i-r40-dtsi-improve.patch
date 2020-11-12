@@ -7,7 +7,7 @@
 +		system-control@1c00000 {
 +			compatible = "allwinner,sun8i-r40-system-control",
 +				     "allwinner,sun4i-a10-system-control";
-+			reg = <0x01c00000 0x24>;
++			reg = <0x01c00000 0x30>;
 +			#address-cells = <1>;
 +			#size-cells = <1>;
 +			ranges;
