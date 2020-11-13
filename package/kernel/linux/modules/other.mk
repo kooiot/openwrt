@@ -1307,3 +1307,20 @@ define KernelPackage/f71808e-wdt/description
 endef
 
 $(eval $(call KernelPackage,f71808e-wdt))
+
+
+define KernelPackage/pwm-sun8i
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=SUN8I PWM support
+  DEPENDS:=@TARGET_sunxi
+  KCONFIG:=CONFIG_PWM \
+	  CONFIG_PWM_SUN8I
+  FILES:=$(LINUX_DIR)/drivers/pwm/pwm-sun8i.ko
+  AUTOLOAD:=$(call AutoProbe,pwm-sun8i,1)
+endef
+
+define KernelPackage/pwm-sun8i/description
+  Kernel module for SUN8I PWM support.
+endef
+
+$(eval $(call KernelPackage,pwm-sun8i))
