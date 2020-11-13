@@ -10,7 +10,7 @@
  	sun8i-t3-cqa3t-bv3.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k1.dts
-@@ -0,0 +1,475 @@
+@@ -0,0 +1,510 @@
 +/*
 + * Copyright (C) 2020 Dirk Chang <dirk@kooiot.com>
 + *
@@ -57,6 +57,7 @@
 +#include "sun8i-r40.dtsi"
 +
 +#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/pwm/pwm.h>
 +
 +/ {
 +	model = "ThingsLink K1";
@@ -75,6 +76,22 @@
 +		mmc1 = &mmc2;
 +		mmc2 = &mmc1;
 +		mmc3 = &mmc3;
++	};
++
++	lcd_backlight: backlight {
++		compatible = "pwm-backlight";
++		pwms = <&pwm 0 50000 PWM_POLARITY_INVERTED>;
++		brightness-levels = <1 2 4 8 16 32 64 128 255>;
++		default-brightness-level = <2>;
++		enable-gpios = <&pio 1 9 GPIO_ACTIVE_HIGH>; /* LCD_BL_EN: PB9 */
++	};
++
++	mipi_backlight: backlight {
++		compatible = "pwm-backlight";
++		pwms = <&pwm 1 50000 PWM_POLARITY_INVERTED>;
++		brightness-levels = <1 2 4 8 16 32 64 128 255>;
++		default-brightness-level = <2>;
++		enable-gpios = <&pio 7 11 GPIO_ACTIVE_HIGH>; /* MIPI-DSI-EN: PH11 */
 +	};
 +
 +	chosen {
@@ -165,12 +182,17 @@
 +	status = "okay";
 +};
 +
-+&hdmi {
-+	status = "okay";
-+};
-+
 +&dsi {
++	vcc-dsi-supply = <&reg_dcdc1>;		/* VCC-DSI */
 +	status = "okay";
++
++	panel@0 {
++		compatible = "bananapi,s070wv20-ct16-icn6211";
++		reg = <0>;
++		enable-gpio = <&pio 7 11 GPIO_ACTIVE_HIGH>; /* LCD-PWR-EN: PH11 */
++		vdd-supply = <&reg_dcdc1>;
++		backlight = <&mipi_backlight>;
++	};
 +};
 +
 +&dphy {
@@ -331,6 +353,13 @@
 +	vcc-pg-supply = <&reg_dldo1>;
 +};
 +
++&pwm {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pwm_ch0_pin>,
++				<&pwm_ch1_pin>;
++	status = "okay";
++};
++
 +&reg_aldo1 {
 +	regulator-always-on;
 +	regulator-min-microvolt = <3300000>;
@@ -431,6 +460,10 @@
 +	status = "okay";
 +};
 +
++&tcon_lcd0 {
++	status = "okay";
++};
++
 +&uart0 {
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&uart0_pb_pins>;
@@ -473,6 +506,8 @@
 +	usb0_id_det-gpios = <&pio 7 21 GPIO_ACTIVE_HIGH>; /* PH21 */
 +	usb0_vbus_det-gpios = <&pio 7 17 GPIO_ACTIVE_HIGH>; /* PH17 */
 +	usb0_vbus-supply = <&reg_vcc5v0>;
++	usb1_vbus-supply = <&reg_vcc3v3_wifi>;
++	usb2_vbus-supply = <&reg_vcc5v0>;
 +	status = "okay";
 +};
 +
