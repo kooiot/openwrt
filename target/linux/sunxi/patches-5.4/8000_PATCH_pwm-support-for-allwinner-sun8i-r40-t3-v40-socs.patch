@@ -401,7 +401,7 @@ index 0000000..d8597e4
 +}
 +
 +static int sun8i_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
-+			   struct pwm_state *state)
++			   const struct pwm_state *state)
 +{
 +	int ret;
 +	struct sun8i_pwm_chip *sun8i_pwm = to_sun8i_pwm_chip(chip);
