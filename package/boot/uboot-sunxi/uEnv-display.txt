@@ -1,0 +1,6 @@
+setenv fdt_high ffffffff
+setenv loadkernel load mmc \$mmc_bootdev \$kernel_addr_r uImage
+setenv loaddtb load mmc \$mmc_bootdev \$fdt_addr_r dtb
+setenv bootargs console=tty0 console=tty1 console=ttyS0,115200 earlyprintk root=/dev/mmcblk${mmc_bootdev}p2 rootwait hdmi.audio=EDID:0 disp.screen0_output_mode=1920x1080p60 consoleblank=0 sunxi_ve_mem_reserve=0 sunxi_g2d_mem_reserve=0 sunxi_fb_mem_reserve=16
+setenv uenvcmd run loadkernel \&\& run loaddtb \&\& bootm \$kernel_addr_r - \$fdt_addr_r
+run uenvcmd
