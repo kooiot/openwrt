@@ -311,7 +311,6 @@ define KernelPackage/drm-sun8i
 	CONFIG_DRM_HDLCD \
 	CONFIG_DRM_MALI_DISPLAY \
 	CONFIG_DRM_LIMA \
-	CONFIG_DRM_VKMS \
 	CONFIG_DRM_SUN4I_BACKEND \
 	CONFIG_DRM_SUN8I_MIXER \
 	CONFIG_DRM_SUN8I_TCON_TOP
@@ -319,7 +318,6 @@ define KernelPackage/drm-sun8i
 	$(LINUX_DIR)/drivers/gpu/drm/arm/mali-dp.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/scheduler/gpu-sched.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/lima/lima.ko \
-	$(LINUX_DIR)/drivers/gpu/drm/vkms/vkms.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun4i-backend.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun4i-frontend.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun4i-drm.ko \
@@ -328,7 +326,7 @@ define KernelPackage/drm-sun8i
 	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun6i_drc.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun8i_tcon_top.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun8i-mixer.ko
-  AUTOLOAD:=$(call AutoLoad,08,sun8i-mixer)
+  AUTOLOAD:=$(call AutoLoad,08,gpu-sched lima mali-dp sun4i-frontend sun4i-backend sun4i-drm sun4i-tcon sun4i_tv sun6i_drc sun8i_tcon-top sun8i-mixer)
 endef
 
 define KernelPackage/drm-sun8i/description
@@ -359,7 +357,7 @@ define KernelPackage/drm-sun8i-hdmi
 	$(LINUX_DIR)/drivers/gpu/drm/bridge/synopsys/dw-hdmi-cec.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/bridge/synopsys/dw-hdmi-i2s-audio.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/bridge/synopsys/dw-hdmi-ahb-audio.ko
-  AUTOLOAD:=$(call AutoLoad,08,sun8i-drm-hdmi)
+  AUTOLOAD:=$(call AutoLoad,08,sun4i-drm-hdmi sun8i-drm-hdmi)
 endef
 
 define KernelPackage/drm-sun8i-hdmi/description
@@ -371,7 +369,7 @@ $(eval $(call KernelPackage,drm-sun8i-hdmi))
 define KernelPackage/drm-sun8i-dsi
   SUBMENU:=$(VIDEO_MENU)
   TITLE:=SUN8I SoCs LVDS DRM support
-  DEPENDS:=+kmod-backlight-pwm kmod-drm-sun8i kmod-pwm-sun8i
+  DEPENDS:=+kmod-backlight-pwm kmod-drm-sun8i +kmod-pwm-sun8i
   KCONFIG:= \
 	CONFIG_DRM_MIPI_DBI \
 	CONFIG_DRM_MIPI_DSI=y \
@@ -384,7 +382,7 @@ define KernelPackage/drm-sun8i-dsi
 	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/panel/panel-simple.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/panel/panel-lvds.ko
-  AUTOLOAD:=$(call AutoLoad,08,sun6i_mipi_dsi)
+  AUTOLOAD:=$(call AutoLoad,08,sun6i_mipi_dsi panel-simple panel-lvds)
 endef
 
 define KernelPackage/drm-sun8i-dsi/description
