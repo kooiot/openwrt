@@ -48,10 +48,10 @@
  			compatible = "arm,cortex-a7";
  			device_type = "cpu";
  			reg = <0>;
-+			clocks = <&ccu CLK_CPU>;
-+			clock-names = "cpu";
-+			operating-points-v2 = <&cpu0_opp_table>;
-+			#cooling-cells = <2>;
++			// clocks = <&ccu CLK_CPU>;
++			// clock-names = "cpu";
++			// operating-points-v2 = <&cpu0_opp_table>;
++			// #cooling-cells = <2>;
  		};
  
 -		cpu@1 {
@@ -59,10 +59,10 @@
  			compatible = "arm,cortex-a7";
  			device_type = "cpu";
  			reg = <1>;
-+			clocks = <&ccu CLK_CPU>;
-+			clock-names = "cpu";
-+			operating-points-v2 = <&cpu0_opp_table>;
-+			#cooling-cells = <2>;
++			// clocks = <&ccu CLK_CPU>;
++			// clock-names = "cpu";
++			// operating-points-v2 = <&cpu0_opp_table>;
++			// #cooling-cells = <2>;
  		};
  
 -		cpu@2 {
@@ -70,10 +70,10 @@
  			compatible = "arm,cortex-a7";
  			device_type = "cpu";
  			reg = <2>;
-+			clocks = <&ccu CLK_CPU>;
-+			clock-names = "cpu";
-+			operating-points-v2 = <&cpu0_opp_table>;
-+			#cooling-cells = <2>;
++			// clocks = <&ccu CLK_CPU>;
++			// clock-names = "cpu";
++			// operating-points-v2 = <&cpu0_opp_table>;
++			// #cooling-cells = <2>;
  		};
  
 -		cpu@3 {
@@ -81,10 +81,10 @@
  			compatible = "arm,cortex-a7";
  			device_type = "cpu";
  			reg = <3>;
-+			clocks = <&ccu CLK_CPU>;
-+			clock-names = "cpu";
-+			operating-points-v2 = <&cpu0_opp_table>;
-+			#cooling-cells = <2>;
++			// clocks = <&ccu CLK_CPU>;
++			// clock-names = "cpu";
++			// operating-points-v2 = <&cpu0_opp_table>;
++			// #cooling-cells = <2>;
  		};
  	};
  
