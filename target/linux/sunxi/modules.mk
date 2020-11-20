@@ -105,7 +105,8 @@ define KernelPackage/usb-otg-sunxi
 	  CONFIG_NOP_USB_XCEIV \
 	  CONFIG_USB_MUSB_HDRC \
 	  CONFIG_USB_MUSB_DUAL_ROLE=y \
-	  CONFIG_USB_MUSB_SUNXI
+	  CONFIG_USB_MUSB_SUNXI \
+	  CONFIG_MUSB_PIO_ONLY=y
   FILES:= \
 	  $(LINUX_DIR)/drivers/usb/phy/phy-generic.ko \
 	  $(LINUX_DIR)/drivers/usb/musb/musb_hdrc.ko \
