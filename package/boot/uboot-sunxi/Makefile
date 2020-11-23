@@ -320,6 +320,7 @@ define U-Boot/tlink_k1
   BUILD_SUBTARGET:=cortexa7
   NAME:=ThingsLink K1
   BUILD_DEVICES:=kooiot_tlink-k1
+  UENV:=display
 endef
 
 define U-Boot/tlink_c4
