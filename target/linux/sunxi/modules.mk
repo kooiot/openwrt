@@ -119,3 +119,18 @@ define KernelPackage/usb-otg-sunxi/description
 endef
 
 $(eval $(call KernelPackage,usb-otg-sunxi))
+
+define KernelPackage/input-touchscreen-goodix
+  SUBMENU:=$(INPUT_MODULES_MENU)
+  TITLE:=Goodix I2C touchscreen
+  DEPENDS:=+kmod-hwmon-core +kmod-input-core +kmod-i2c-core
+  FILES:=$(LINUX_DIR)/drivers/input/touchscreen/goodix.ko \
+	$(LINUX_DIR)/drivers/input/touchscreen/of_touchscreen.ko
+  AUTOLOAD:=$(call AutoProbe,goodix)
+endef
+
+define KernelPackage/input-touchscreen-goodix/description
+ Kernel modules for Goodix I2C touchscreen driver
+endef
+
+$(eval $(call KernelPackage,input-touchscreen-goodix))
