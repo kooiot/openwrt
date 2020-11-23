@@ -379,10 +379,11 @@ define KernelPackage/drm-sun8i-dsi
 	CONFIG_DRM_PANEL_SIMPLE \
 	CONFIG_DRM_PANEL=y
   FILES:= \
+	$(LINUX_DIR)/drivers/phy/allwinner/phy-sun6i-mipi-dphy.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/panel/panel-simple.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/panel/panel-lvds.ko
-  AUTOLOAD:=$(call AutoLoad,08,sun6i_mipi_dsi panel-simple panel-lvds)
+  AUTOLOAD:=$(call AutoLoad,08,phy-sun6i-mipi-dphy sun6i_mipi_dsi panel-simple panel-lvds)
 endef
 
 define KernelPackage/drm-sun8i-dsi/description
