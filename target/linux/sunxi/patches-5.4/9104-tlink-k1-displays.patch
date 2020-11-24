@@ -1,0 +1,155 @@
+--- a/arch/arm/boot/dts/sun8i-r40.dtsi
++++ b/arch/arm/boot/dts/sun8i-r40.dtsi
+@@ -1143,6 +1143,10 @@
+ 					#size-cells = <0>;
+ 					reg = <1>;
+ 
++					tcon_lcd0_out_lcd0_lvds0_out: endpoint@0 {
++						reg = <0>;
++					};
++
+ 					tcon_lcd0_out_dsi_out: endpoint@1 {
+ 						reg = <1>;
+ 						remote-endpoint = <&dsi_in_tcon_lcd0_out>;
+--- a/arch/arm/boot/dts/sun8i-r40-tlink-k1.dts
++++ b/arch/arm/boot/dts/sun8i-r40-tlink-k1.dts
+@@ -51,6 +51,8 @@
+ 	compatible = "kooiot,tlink-k1", "allwinner,sun8i-r40";
+ 
+ 	aliases {
++		display0 = &hdmi;
++		display1 = &dsi;
+ 		ethernet0 = &gmac;
+ 		ethernet1 = &emac;
+ 		serial0 = &uart0;
+@@ -70,7 +72,7 @@
+ 		pwms = <&pwm 0 50000 PWM_POLARITY_INVERTED>;
+ 		brightness-levels = <1 2 4 8 16 32 64 128 255>;
+ 		default-brightness-level = <2>;
+-		enable-gpios = <&pio 1 9 GPIO_ACTIVE_HIGH>; /* LCD_BL_EN: PB9 */
++		// enable-gpios = <&pio 1 9 GPIO_ACTIVE_HIGH>; /* LCD_BL_EN: PB9 */
+ 	};
+ 
+ 	mipi_backlight: backlight {
+@@ -79,6 +81,7 @@
+ 		brightness-levels = <1 2 4 8 16 32 64 128 255>;
+ 		default-brightness-level = <2>;
+ 		enable-gpios = <&pio 7 11 GPIO_ACTIVE_HIGH>; /* MIPI-DSI-EN: PH11 */
++		status = "disabled";
+ 	};
+ 
+ 	chosen {
+@@ -96,6 +99,20 @@
+ 		};
+ 	};
+ 
++	lcd-panel {
++		compatible = "dlc,dlc0700yzg-1", "simple-panel";
++		enable-gpio = <&pio 2 9 GPIO_ACTIVE_HIGH>; /* LCD-PWR-EN: PB9 */
++		vdd-supply = <&reg_dcdc1>;
++		backlight = <&lcd_backlight>;
++		status = "disabled";
++
++		port {
++			lcd0_con_in: endpoint {
++				remote-endpoint = <&tcon_lcd0_out_lcd0_lvds0_out>;
++			};
++		};
++	};
++
+ 	leds {
+ 		compatible = "gpio-leds";
+ 
+@@ -174,11 +191,11 @@
+ 	status = "okay";
+ 
+ 	panel@0 {
+-		compatible = "bananapi,s070wv20-ct16-icn6211";
++		compatible = "dlc,dlc0700yzg-1", "simple-panel";
+ 		reg = <0>;
+-		enable-gpio = <&pio 7 11 GPIO_ACTIVE_HIGH>; /* LCD-PWR-EN: PH11 */
++		enable-gpio = <&pio 2 9 GPIO_ACTIVE_HIGH>; /* LCD-PWR-EN: PB9 */
+ 		vdd-supply = <&reg_dcdc1>;
+-		backlight = <&mipi_backlight>;
++		backlight = <&lcd_backlight>;
+ 	};
+ };
+ 
+@@ -269,6 +286,10 @@
+ 	};
+ };
+ 
++&tcon_lcd0_out_lcd0_lvds0_out {
++	remote-endpoint = <&lcd0_con_in>;
++};
++
+ &i2c0 {
+ 	status = "okay";
+ 
+@@ -280,6 +301,26 @@
+ 	};
+ };
+ 
++&i2c3 {
++	status = "okay";
++	pinctrl-0 = <&i2c3_pins>;
++	pinctrl-names = "default";
++
++	gt911: touchscreen@5d {
++		compatible = "goodix,gt911";
++		reg = <0x5d>;
++		interrupt-parent = <&pio>;
++		interrupts = <7 15 IRQ_TYPE_EDGE_FALLING>; /* EINT15 (PH15) */
++		//irq-gpios = <&pio 7 15 GPIO_ACTIVE_HIGH>; /* INT (PH15) */
++		reset-gpios = <&pio 7 14 GPIO_ACTIVE_HIGH>; /* RST (PH14) */
++		//touchscreen-swapped-x-y;
++		touchscreen-inverted-x;
++		touchscreen-inverted-y;
++		touchscreen-size-x = <800>;
++		touchscreen-size-y = <480>;
++	};
++};
++
+ #include "axp22x.dtsi"
+ 
+ /* SD Card */
+@@ -338,12 +379,28 @@
+ 	vcc-pe-supply = <&reg_dcdc1>;
+ 	vcc-pf-supply = <&reg_dldo4>;
+ 	vcc-pg-supply = <&reg_dldo1>;
++
++	i2c3_pins: i2c3-pins {
++		pins = "PI0", "PI1";
++		function = "i2c3";
++	};
++
++	/omit-if-no-ref/
++	lcd0_rgb888_pins: lcd0-rgb888-pins {
++		pins = "PD0", "PD1", "PD2", "PD3",
++			   "PD4", "PD5", "PD6", "PD7",
++			   "PD8", "PD9", "PD10", "PD11",
++			   "PD12", "PD13", "PD14", "PD15",
++			   "PD16", "PD17", "PD18", "PD19",
++			   "PD20", "PD21", "PD22", "PD23",
++			   "PD24", "PD25", "PD26", "PD27";
++		function = "lcd0";
++	};
+ };
+ 
+ &pwm {
+ 	pinctrl-names = "default";
+-	pinctrl-0 = <&pwm_ch0_pin>,
+-				<&pwm_ch1_pin>;
++	pinctrl-0 = <&pwm_ch0_pin>;
+ 	status = "okay";
+ };
+ 
+@@ -448,6 +505,8 @@
+ };
+ 
+ &tcon_lcd0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&lcd0_rgb888_pins>;
+ 	status = "okay";
+ };
+ 
