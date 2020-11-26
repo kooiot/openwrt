@@ -1,7 +1,9 @@
 setenv fdt_high ffffffff
 setenv loadkernel load mmc \$mmc_bootdev \$kernel_addr_r uImage
 setenv loaddtb load mmc \$mmc_bootdev \$fdt_addr_r dtb
-setenv display_args console=tty1 consoleblank=0 video=DSI-1 video=LVDS-1 video=VGA-1 video=LCD-1 video=HDMI-A-1:1920x1080@60me hdmi.audio=EDID:0
-setenv bootargs console=ttyS0,115200 earlyprintk root=/dev/mmcblk${mmc_bootdev}p2 rootwait ${display_args}
+setenv display_args_bak consoleblank=0 video=DSI-1 video=LVDS-1 video=VGA-1 video=LCD-1 video=HDMI-A-1:1920x1080e hdmi.audio=EDID:0
+setenv display_args video=DSI-1 video=LVDS-1 video=VGA-1 video=LCD-1 video=HDMI-A-1:1920x1080e hdmi.audio=EDID:0
+setenv console_args console=tty1 console=ttyS0,115200
+setenv bootargs ${console_args} earlyprintk root=/dev/mmcblk${mmc_bootdev}p2 rootwait ${display_args}
 setenv uenvcmd run loadkernel \&\& run loaddtb \&\& bootm \$kernel_addr_r - \$fdt_addr_r
 run uenvcmd

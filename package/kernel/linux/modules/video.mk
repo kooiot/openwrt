@@ -29,7 +29,7 @@ define KernelPackage/backlight
 		CONFIG_BACKLIGHT_OT200=n \
 		CONFIG_BACKLIGHT_PM8941_WLED=n
 	FILES:=$(LINUX_DIR)/drivers/video/backlight/backlight.ko
-	AUTOLOAD:=$(call AutoProbe,video backlight)
+	AUTOLOAD:=$(call AutoProbe,video backlight,1)
 endef
 
 define KernelPackage/backlight/description
@@ -44,7 +44,7 @@ define KernelPackage/backlight-pwm
 	DEPENDS:=+kmod-backlight
 	KCONFIG:=CONFIG_BACKLIGHT_PWM
 	FILES:=$(LINUX_DIR)/drivers/video/backlight/pwm_bl.ko
-	AUTOLOAD:=$(call AutoProbe,video pwm_bl)
+	AUTOLOAD:=$(call AutoProbe,video pwm_bl,1)
 endef
 
 define KernelPackage/backlight-pwm/description
@@ -326,7 +326,7 @@ define KernelPackage/drm-sun8i
 	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun6i_drc.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun8i_tcon_top.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun8i-mixer.ko
-  AUTOLOAD:=$(call AutoLoad,08,gpu-sched lima mali-dp sun4i-frontend sun4i-backend sun4i-drm sun4i-tcon sun4i_tv sun6i_drc sun8i_tcon-top sun8i-mixer)
+  AUTOLOAD:=$(call AutoLoad,08,gpu-sched lima mali-dp sun4i-frontend sun4i-backend sun4i-drm sun4i-tcon sun4i_tv sun6i_drc sun8i_tcon-top sun8i-mixer,1)
 endef
 
 define KernelPackage/drm-sun8i/description
@@ -357,7 +357,7 @@ define KernelPackage/drm-sun8i-hdmi
 	$(LINUX_DIR)/drivers/gpu/drm/bridge/synopsys/dw-hdmi-cec.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/bridge/synopsys/dw-hdmi-i2s-audio.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/bridge/synopsys/dw-hdmi-ahb-audio.ko
-  AUTOLOAD:=$(call AutoLoad,08,sun4i-drm-hdmi sun8i-drm-hdmi)
+  AUTOLOAD:=$(call AutoLoad,08,sun4i-drm-hdmi sun8i-drm-hdmi,1)
 endef
 
 define KernelPackage/drm-sun8i-hdmi/description
@@ -383,7 +383,7 @@ define KernelPackage/drm-sun8i-dsi
 	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/panel/panel-simple.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/panel/panel-lvds.ko
-  AUTOLOAD:=$(call AutoLoad,08,phy-sun6i-mipi-dphy sun6i_mipi_dsi panel-simple panel-lvds)
+  AUTOLOAD:=$(call AutoLoad,08,phy-sun6i-mipi-dphy sun6i_mipi_dsi panel-simple panel-lvds,1)
 endef
 
 define KernelPackage/drm-sun8i-dsi/description
