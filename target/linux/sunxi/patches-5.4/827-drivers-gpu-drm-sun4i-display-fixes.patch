@@ -38,24 +38,13 @@
  			clock-names = "bus", "mod", "pll-0", "pll-1";
  			resets = <&ccu RST_BUS_HDMI0>;
  			reset-names = "phy";
---- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
-+++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
-@@ -2179,7 +2179,7 @@
- 					     connector);
- 
- 	mutex_lock(&hdmi->mutex);
--	hdmi->force = DRM_FORCE_UNSPECIFIED;
-+	hdmi->force = DRM_FORCE_UNSPECIFIED; // force ? DRM_FORCE_ON : DRM_FORCE_UNSPECIFIED;
- 	dw_hdmi_update_power(hdmi);
- 	dw_hdmi_update_phy_mask(hdmi);
- 	mutex_unlock(&hdmi->mutex);
 --- a/drivers/gpu/drm/sun4i/sun4i_drv.c
 +++ b/drivers/gpu/drm/sun4i/sun4i_drv.c
 @@ -112,6 +112,7 @@
  	}
  
  	drm_mode_config_init(drm);
-+	drm->mode_config.allow_fb_modifiers = true; // DIRK:
++	// drm->mode_config.allow_fb_modifiers = true;
  
  	ret = component_bind_all(drm->dev, drm);
  	if (ret) {
@@ -65,7 +54,7 @@
  
  	DRM_DEBUG_KMS("[CONNECTOR:%d:%s]\n", connector->base.id,
  			connector->name);
-+	//DIRK:
++	// using console args parsed to kernel to force connector on
 +	// connector->force = DRM_FORCE_ON;
  
  retry:
