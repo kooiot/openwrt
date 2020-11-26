@@ -332,9 +332,9 @@
 +};
 +
 +&i2c3 {
-+	status = "okay";
-+	pinctrl-0 = <&i2c3_pins>;
 +	pinctrl-names = "default";
++	pinctrl-0 = <&i2c3_pins>;
++	status = "okay";
 +
 +	gt911: touchscreen@5d {
 +		compatible = "goodix,gt911";
