@@ -70,35 +70,6 @@ index 6f4c9ca..cc05b2c 100644
  		uart0: serial@1c28000 {
  			compatible = "snps,dw-apb-uart";
  			reg = <0x01c28000 0x400>;
-diff --git a/drivers/clk/clk.c b/drivers/clk/clk.c
-index d31055a..3d2c2cd 100644
---- a/drivers/clk/clk.c
-+++ b/drivers/clk/clk.c
-@@ -3466,6 +3466,12 @@  static int devm_clk_hw_match(struct device *dev, void *res, void *data)
- 	return hw == data;
- }
- 
-+bool devm_clk_name_match(struct clk *clk, const char *string)
-+{
-+	return match_string(&clk->con_id, 1, string) == 0;
-+}
-+EXPORT_SYMBOL_GPL(devm_clk_name_match);
-+
- /**
-  * devm_clk_unregister - resource managed clk_unregister()
-  * @clk: clock to unregister
-diff --git a/include/linux/clk-provider.h b/include/linux/clk-provider.h
-index 08b1aa7..5cd2eed 100644
---- a/include/linux/clk-provider.h
-+++ b/include/linux/clk-provider.h
-@@ -764,6 +764,7 @@  struct clk *devm_clk_register(struct device *dev, struct clk_hw *hw);
- int __must_check clk_hw_register(struct device *dev, struct clk_hw *hw);
- int __must_check devm_clk_hw_register(struct device *dev, struct clk_hw *hw);
- 
-+bool devm_clk_name_match(struct clk *clk, const char *string);
- void clk_unregister(struct clk *clk);
- void devm_clk_unregister(struct device *dev, struct clk *clk);
- 
 diff --git a/drivers/clk/sunxi-ng/ccu-sun8i-r40.h b/drivers/clk/sunxi-ng/ccu-sun8i-r40.h
 index db2a124..181ab26 100644
 --- a/drivers/clk/sunxi-ng/ccu-sun8i-r40.h
@@ -145,11 +116,11 @@ index 504d252..6105ac8 100644
  	  will be called pwm-sun4i.
  
 +config PWM_SUN8I
-+	tristate "Allwinner SUN8I (R40/V40/T3) PWM support"
++	tristate "Allwinner SUN8I R40 PWM support"
 +	depends on ARCH_SUNXI || COMPILE_TEST
 +	depends on HAS_IOMEM && COMMON_CLK
 +	help
-+	  Generic PWM framework driver for Allwinner R40/V40/T3 SoCs.
++	  Generic PWM framework driver for Allwinner R40 SoCs.
 +
 +	  To compile this driver as a module, choose M here: the module
 +	  will be called pwm-sun8i.
@@ -174,9 +145,10 @@ new file mode 100644
 index 0000000..d8597e4
 --- /dev/null
 +++ b/drivers/pwm/pwm-sun8i.c
-@@ -0,0 +1,418 @@ 
+@@ -0,0 +1,403 @@
 +// SPDX-License-Identifier: GPL-2.0
 +// Copyright (C) 2018 Hao Zhang <hao5781286@gmail.com>
++// Copyright (C) 2020 Dirk Chang <dirk@kooiot.com>
 +
 +#include <linux/bitops.h>
 +#include <linux/clk.h>
@@ -253,6 +225,7 @@ index 0000000..d8597e4
 +struct sun8i_pwm_chip {
 +	struct pwm_chip chip;
 +	struct clk *clk;
++	bool is_pll_clk;
 +	void __iomem *base;
 +	const struct sun8i_pwm_data *data;
 +	struct regmap *regmap;
@@ -300,65 +273,32 @@ index 0000000..d8597e4
 +}
 +
 +static int sun8i_pwm_config(struct sun8i_pwm_chip *sun8i_pwm, u8 ch,
-+			    struct pwm_state *state)
++			    const struct pwm_state *state)
 +{
 +	u64 clk_rate, clk_div, val;
 +	u16 prescaler = 0;
 +	u16 div_id = 0;
-+	struct clk *clk;
-+	bool is_clk;
-+	int ret;
++	struct clk *clk = sun8i_pwm->clk;
++	const char* clk_name = sun8i_pwm->is_pll_clk ? "24M_PLL" : "APB1";
 +
-+	clk_rate = clk_get_rate(sun8i_pwm->clk);
++	clk_rate = clk_get_rate(clk);
 +
 +	/* check period and select clock source */
 +	val = state->period * clk_rate;
 +	do_div(val, NSEC_PER_SEC);
-+	is_clk = devm_clk_name_match(sun8i_pwm->clk, "mux-0");
-+	if (val <= 1 && is_clk) {
-+		clk = devm_clk_get(sun8i_pwm->chip.dev, "mux-1");
-+		if (IS_ERR(clk)) {
-+			dev_err(sun8i_pwm->chip.dev,
-+				"Period expects a larger value\n");
-+			return -EINVAL;
-+		}
-+
-+		clk_rate = clk_get_rate(clk);
-+		val = state->period * clk_rate;
-+		do_div(val, NSEC_PER_SEC);
-+		if (val <= 1) {
-+			dev_err(sun8i_pwm->chip.dev,
-+				"Period expects a larger value\n");
-+			return -EINVAL;
-+		}
-+
-+		/* change clock source to "mux-1" */
-+		clk_disable_unprepare(sun8i_pwm->clk);
-+		devm_clk_put(sun8i_pwm->chip.dev, sun8i_pwm->clk);
-+		sun8i_pwm->clk = clk;
-+
-+		ret = clk_prepare_enable(sun8i_pwm->clk);
-+		if (ret) {
-+			dev_err(sun8i_pwm->chip.dev,
-+				"Failed to enable PWM clock\n");
-+			return ret;
-+		}
-+
-+	} else {
++	if (val <= 1) {
 +		dev_err(sun8i_pwm->chip.dev,
-+			"Period expects a larger value\n");
++				"Period expects a larger value. clk_rate:%lld period: %d\n",
++				clk_rate, state->period);
 +		return -EINVAL;
 +	}
 +
-+	is_clk = devm_clk_name_match(sun8i_pwm->clk, "mux-0");
-+	if (is_clk)
-+		sun8i_pwm_set_value(sun8i_pwm, CLK_CFG_REG(ch),
-+				    CLK_SRC_SEL, 0 << 7);
-+	else
-+		sun8i_pwm_set_value(sun8i_pwm, CLK_CFG_REG(ch),
-+				    CLK_SRC_SEL, 1 << 7);
++	dev_dbg(sun8i_pwm->chip.dev,
++			"[PWM-%d] clock source:%s freq:%lldHz\n",
++			ch, clk_name, clk_rate);
 +
-+	dev_info(sun8i_pwm->chip.dev, "clock source freq:%lldHz\n", clk_rate);
++	sun8i_pwm_set_value(sun8i_pwm, CLK_CFG_REG(ch),
++			CLK_SRC_SEL, (sun8i_pwm->is_pll_clk ? 0 : 1) << 7);
 +
 +	/* calculate and set prescaler, div table, PWM entire cycle */
 +	clk_div = val;
@@ -382,9 +322,9 @@ index 0000000..d8597e4
 +	sun8i_pwm_set_value(sun8i_pwm, PWM_PERIOD_REG(ch),
 +			    PWM_ENTIRE_CYCLE, clk_div << 16);
 +	sun8i_pwm_set_value(sun8i_pwm, PWM_CTR_REG(ch),
-+			    PWM_PRESCAL_K, prescaler << 0);
++			    PWM_PRESCAL_K, prescaler);
 +	sun8i_pwm_set_value(sun8i_pwm, CLK_CFG_REG(ch),
-+			    CLK_DIV_M, div_id << 0);
++			    CLK_DIV_M, div_id);
 +
 +	/* set duty cycle */
 +	val = state->period;
@@ -458,12 +398,12 @@ index 0000000..d8597e4
 +	clk_rate = clk_get_rate(sun8i_pwm->clk);
 +
 +	val = sun8i_pwm_read(sun8i_pwm, PWM_CTR_REG(chn));
-+	if (PWM_ACT_STA & val)
++	if (val & PWM_ACT_STA)
 +		state->polarity = PWM_POLARITY_NORMAL;
 +	else
 +		state->polarity = PWM_POLARITY_INVERSED;
 +
-+	prescal = PWM_PRESCAL_K & val;
++	prescal = val & PWM_PRESCAL_K;
 +
 +	val = sun8i_pwm_read(sun8i_pwm, PWM_ENABLE_REG);
 +	if (PWM_EN(chn) & val)
@@ -514,6 +454,8 @@ index 0000000..d8597e4
 +	int ret;
 +	const struct of_device_id *match;
 +
++	dev_info(&pdev->dev, "%s: start\n", __func__);
++
 +	match = of_match_device(sun8i_pwm_dt_ids, &pdev->dev);
 +	if (!match) {
 +		dev_err(&pdev->dev, "Error: No device match found\n");
@@ -539,20 +481,30 @@ index 0000000..d8597e4
 +	/* we use mux-0 as default clock source */
 +	pwm->clk = devm_clk_get(&pdev->dev, "mux-0");
 +	if (IS_ERR(pwm->clk)) {
++		if (PTR_ERR(pwm->clk) == -EPROBE_DEFER)
++			return PTR_ERR(pwm->clk);
++
 +		pwm->clk = devm_clk_get(&pdev->dev, "mux-1");
++		pwm->is_pll_clk = false;
++
 +		if (IS_ERR(pwm->clk)) {
++			if (PTR_ERR(pwm->clk) == -EPROBE_DEFER)
++				return PTR_ERR(pwm->clk);
++
 +			dev_err(&pdev->dev, "Failed to get PWM clock\n");
 +			return PTR_ERR(pwm->clk);
 +		}
++	} else {
++		pwm->is_pll_clk = true;
 +	}
 +
 +	ret = of_property_read_u32(np, "pwm-channels", &pwm->chip.npwm);
-+	if (ret && !pwm->chip.npwm) {
++	if (ret) {
 +		dev_err(&pdev->dev, "Can't get pwm-channels\n");
 +		return ret;
 +	}
 +
-+	dev_info(&pdev->dev, "pwm-channels:%d\n", pwm->chip.npwm);
++	dev_dbg(&pdev->dev, "pwm-channels:%d\n", pwm->chip.npwm);
 +	pwm->data = match->data;
 +	pwm->chip.dev = &pdev->dev;
 +	pwm->chip.ops = &sun8i_pwm_ops;
@@ -560,23 +512,26 @@ index 0000000..d8597e4
 +	pwm->chip.of_xlate = of_pwm_xlate_with_flags;
 +	pwm->chip.of_pwm_n_cells = 3;
 +
-+	ret = pwmchip_add(&pwm->chip);
-+	if (ret < 0) {
-+		dev_err(&pdev->dev, "Failed to add PWM chip: %d\n", ret);
-+		return ret;
-+	}
-+
 +	platform_set_drvdata(pdev, pwm);
 +
-+	return 0;
++	ret = pwmchip_add(&pwm->chip);
++	if (ret < 0)
++		dev_err(&pdev->dev, "Failed to add PWM chip: %d\n", ret);
++
++	return ret;
 +}
 +
 +static int sun8i_pwm_remove(struct platform_device *pdev)
 +{
 +	struct sun8i_pwm_chip *pwm = platform_get_drvdata(pdev);
++	int ret;
++
++	ret = pwmchip_remove(&pwm->chip);
++	if (ret)
++		return ret;
 +
 +	clk_disable_unprepare(pwm->clk);
-+	return pwmchip_remove(&pwm->chip);
++	return 0;
 +}
 +
 +static struct platform_driver sun8i_pwm_driver = {
@@ -589,7 +544,8 @@ index 0000000..d8597e4
 +};
 +module_platform_driver(sun8i_pwm_driver);
 +
-+MODULE_ALIAS("platform: sun8i-pwm");
++MODULE_ALIAS("platform:sun8i-pwm");
 +MODULE_AUTHOR("Hao Zhang <hao5781286@gmail.com>");
++MODULE_AUTHOR("Dirk Chang <dirk@kooiot.com>");
 +MODULE_DESCRIPTION("Allwinner sun8i PWM driver");
 +MODULE_LICENSE("GPL v2");
