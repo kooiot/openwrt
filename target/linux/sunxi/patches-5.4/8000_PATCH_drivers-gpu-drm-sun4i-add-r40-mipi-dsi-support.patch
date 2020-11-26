@@ -323,7 +323,7 @@ index 42d62d1ba1dc..99f84e6f15ce 100644
 +		reg = <0>;
 +		enable-gpio = <&pio 7 18 GPIO_ACTIVE_HIGH>; /* LCD-PWR-EN: PH18 */
 +		reset-gpios = <&pio 7 17 GPIO_ACTIVE_HIGH>; /* LCD-RST: PH17 */
-+		vdd-supply = <&reg_dcdc1>;
++		power-supply = <&reg_dcdc1>;
 +		backlight = <&backlight>;
 +	};
 +};
