@@ -41,11 +41,14 @@ ramips_setup_interfaces()
 			"1:lan" "0:wan" "6@eth0"
 		;;
 	kooiot,tlink-c3-16m|\
-	kooiot,tlink-c3-32m|\
+	kooiot,tlink-c3-32m)
+		ucidef_add_switch "switch0" \
+			"0:lan" "1:wan" "6@eth0"
+		;;
 	kooiot,tlink-c35-16m|\
 	kooiot,tlink-c35-32m)
 		ucidef_add_switch "switch0" \
-			"0:lan" "2:lan" "3:lan" "4:lan" "1:wan" "6@eth0"
+			"0:lan" "1:lan" "2:lan" "3:lan" "4:wan" "6@eth0"
 		;;
 	asus,rt-n10p-v3|\
 	asus,rt-n11p-b1|\
