@@ -30,11 +30,6 @@ define Package/arm-trusted-firmware-sunxi
     DEPENDS:=@TARGET_sunxi_cortexa53
 endef
 
-define Package/arm-trusted-firmware-sunxi-a64
-$(call Package/arm-trusted-firmware-sunxi)
-    TITLE:=ARM Trusted Firmware for Allwinner (A64)
-endef
-
 define Package/arm-trusted-firmware-sunxi-h6
 $(call Package/arm-trusted-firmware-sunxi)
     TITLE:=ARM Trusted Firmware for Allwinner (H6)
@@ -61,5 +56,5 @@ define Build/InstallDev
 	$(CP) $(PKG_BUILD_DIR)/build/$(ATF_PLAT)/release/bl31.bin $(STAGING_DIR_IMAGE)/bl31.bin
 endef
 
-$(eval $(call BuildPackage,arm-trusted-firmware-sunxi-a64))
+$(eval $(call BuildPackage,arm-trusted-firmware-sunxi))
 $(eval $(call BuildPackage,arm-trusted-firmware-sunxi-h6))
