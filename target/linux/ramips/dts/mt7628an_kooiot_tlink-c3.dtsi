@@ -180,3 +180,8 @@
 	status = "okay";
 	mediatek,mtd-eeprom = <&factory 0x8000>;
 };
+/*
+&esw {
+	mediatek,portmap = <0x3e>;
+};
+*/
