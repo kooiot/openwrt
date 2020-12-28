@@ -1,20 +1,18 @@
 // SPDX-License-Identifier: GPL-2.0-or-later OR MIT
 
-#include "ar9341.dtsi"
+#include "ar9344.dtsi"
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
 
 / {
-	model = "Engenius EAP300 v2";
-	compatible = "engenius,eap300-v2", "qca,ar9341";
-
 	aliases {
-		serial0 = &uart;
+		label-mac-device = &eth0;
 		led-boot = &led_power;
 		led-failsafe = &led_power;
 		led-running = &led_power;
 		led-upgrade = &led_power;
+		serial0 = &uart;
 	};
 
 	keys {
@@ -22,30 +20,19 @@
 
 		reset {
 			label = "reset";
-			gpios = <&gpio 1 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio 17 GPIO_ACTIVE_LOW>;
 			debounce-interval = <60>;
 			linux,code = <KEY_RESTART>;
 		};
 	};
 
-	leds {
+	ath9k-leds {
 		compatible = "gpio-leds";
 
-		led_power: power {
-			label = "blue:power";
-			gpios = <&gpio 0 GPIO_ACTIVE_LOW>;
-			default-state = "on";
-		};
-
-		wlan {
-			label = "blue:wlan";
-			gpios = <&gpio 17 GPIO_ACTIVE_LOW>;
-			linux,default-trigger = "phy0tpt";
-		};
-
-		lan {
-			label = "blue:lan";
-			gpios = <&gpio 16 GPIO_ACTIVE_LOW>;
+		wifi2g {
+			label = "blue:wifi2g";
+			gpios = <&ath9k 0 GPIO_ACTIVE_LOW>;
+			linux,default-trigger = "phy1tpt";
 		};
 	};
 
@@ -82,7 +69,7 @@
 	flash@0 {
 		compatible = "jedec,spi-nor";
 		reg = <0>;
-		spi-max-frequency = <20000000>;
+		spi-max-frequency = <40000000>;
 
 		partitions {
 			compatible = "fixed-partitions";
@@ -143,25 +130,49 @@
 	};
 };
 
-&eth0 {
+&mdio0 {
 	status = "okay";
 
-	mtd-mac-address = <&art 0x0>;
-
-	phy-handle = <&swphy0>;
-
-	gmac-config {
-		device = <&gmac>;
-		switch-phy-swap = <1>;
+	phy0: ethernet-phy@0 {
+		reg = <0>;
+		eee-broken-100tx;
+		eee-broken-1000t;
 	};
 };
 
-&eth1 {
-	compatible = "syscon", "simple-mfd";
+&eth0 {
+	status = "okay";
+
+	phy-handle = <&phy0>;
+	phy-mode = "rgmii-id";
+
+	pll-data = <0x02000000 0x00000101 0x00001313>;
+
+	gmac-config {
+		device = <&gmac>;
+		rgmii-gmac0 = <1>;
+		rxdv-delay = <3>;
+		rxd-delay = <3>;
+	};
+};
+
+&pcie {
+	status = "okay";
+
+	ath9k: wifi@0,0,0 {
+		compatible = "pci168c,0030";
+		reg = <0x0 0 0 0 0>;
+		qca,disable-5ghz;
+		qca,no-eeprom;
+		#gpio-cells = <2>;
+		gpio-controller;
+	};
 };
 
 &wmac {
 	status = "okay";
+
+	qca,disable-2ghz;
 
 	mtd-cal-data = <&art 0x1000>;
 };
