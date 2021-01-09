@@ -29,7 +29,7 @@ define U-Boot/a64-olinuxino
   BUILD_SUBTARGET:=cortexa53
   NAME:=Olimex A64-OLinuXino
   BUILD_DEVICES:=olimex_a64-olinuxino
-  DEPENDS:=+PACKAGE_u-boot-olimex_a64-olinuxino:arm-trusted-firmware-sunxi-a64
+  DEPENDS:=+PACKAGE_u-boot-olimex_a64-olinuxino:arm-trusted-firmware-sunxi
   UENV:=a64
 endef
 
@@ -37,7 +37,7 @@ define U-Boot/a64-olinuxino-emmc
   BUILD_SUBTARGET:=cortexa53
   NAME:=Olimex A64-OLinuXino eMMC
   BUILD_DEVICES:=olimex_a64-olinuxino-emmc
-  DEPENDS:=+PACKAGE_u-boot-olimex_a64-olinuxino-emmc:arm-trusted-firmware-sunxi-a64
+  DEPENDS:=+PACKAGE_u-boot-olimex_a64-olinuxino-emmc:arm-trusted-firmware-sunxi
   UENV:=a64
 endef
 
