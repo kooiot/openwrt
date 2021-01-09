@@ -31,14 +31,11 @@
 +	}
  
  	return ret;
-@@ -2821,12 +2845,17 @@
+@@ -2821,9 +2845,14 @@
  {
  	struct stmmac_priv *priv = netdev_priv(dev);
  	u32 chan;
 +	int value = 0;
- 
- 	if (priv->eee_enabled)
- 		del_timer_sync(&priv->eee_ctrl_timer);
  
  	/* Stop and disconnect the PHY */
  	phylink_stop(priv->phylink);
