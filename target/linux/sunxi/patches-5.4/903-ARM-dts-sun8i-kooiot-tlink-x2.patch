@@ -143,9 +143,9 @@
 +	status = "okay";
 +};
 +
-+&dwc3 {
++/*&dwc3 {
 +	status = "okay";
-+};
++};*/
 +
 +&hdmi {
 +	status = "okay";
@@ -372,6 +372,6 @@
 +	status = "okay";
 +};
 +
-+&usb3phy {
++/*&usb3phy {
 +	status = "okay";
-+};
++};*/
