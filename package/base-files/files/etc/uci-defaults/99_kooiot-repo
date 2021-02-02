@@ -1,0 +1,6 @@
+# source /etc/os-release
+# echo "src/gz kooiot http://openwrt.kooiot.com/releases/${VERSION_ID}/packages/${OPENWRT_ARCH}/kooiot" >> /etc/opkg/customfeeds.conf
+
+sed -i "s/^\(.*_kooiot\).*\(\/[^/\]*\/packages\/.*kooiot\)/\1 http:\/\/openwrt.kooiot.com\/releases\2/g" /etc/opkg/distfeeds.conf
+
+exit 0
