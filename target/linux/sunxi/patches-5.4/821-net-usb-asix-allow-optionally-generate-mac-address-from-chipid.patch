@@ -1,0 +1,80 @@
+--- a/drivers/net/usb/asix_devices.c
++++ b/drivers/net/usb/asix_devices.c
+@@ -20,6 +20,9 @@
+  */
+ 
+ #include "asix.h"
++#ifdef CONFIG_MACH_SUN8I
++#include <linux/nvmem-consumer.h>
++#endif
+ 
+ #define PHY_MODE_MARVELL	0x0000
+ #define MII_MARVELL_LED_CTRL	0x0018
+@@ -686,6 +689,48 @@
+ 	return usbnet_resume(intf);
+ }
+ 
++#ifdef CONFIG_MACH_SUN8I
++/**
++ * Generate mac address from chipid as what u-boot does
++ */
++static u8 * eth_hw_addr_nvmem_sun8i_chipid(struct device* dev, struct net_device* ndev, u8* buf, u8 offset)
++{
++	struct nvmem_cell *cell;
++	ssize_t cell_size;
++	u32 *chipid;
++
++	cell = devm_nvmem_cell_get(dev, "chipid");
++	if (IS_ERR(cell))
++		return NULL;
++
++	chipid = (u32 *)nvmem_cell_read(cell, &cell_size);
++	devm_nvmem_cell_put(dev, cell);
++	if (cell_size < 16) {
++		kfree(chipid);
++		return NULL;
++	}
++
++	dev_info(dev, "Using the MAC address generated from nvmem[chipid].\n");
++	chipid[3] = crc32_be(0, (unsigned char *)&chipid[1], 12) + offset;
++
++	/* Ensure the NIC specific bytes of the mac are not all 0 */
++	if ((chipid[3] & 0xffffff) == 0)
++		chipid[3] |= 0x800000;
++
++	/* Non OUI / registered MAC address */
++	buf[0] = 0xB0;
++	buf[1] = 0xC9;
++	buf[2] = (chipid[3] >> 24) & 0xff;
++	buf[3] = (chipid[3] >> 16) & 0xff;
++	buf[4] = (chipid[3] >>  8) & 0xff;
++	buf[5] = (chipid[3] >>  0) & 0xff;
++
++	kfree(chipid);
++
++	return buf;
++}
++#endif
++
+ static int ax88772_bind(struct usbnet *dev, struct usb_interface *intf)
+ {
+ 	int ret, i;
+@@ -698,6 +743,10 @@
+ 
+ 	/* Maybe the boot loader passed the MAC address via device tree */
+ 	mac_addr = of_get_mac_address(dev->udev->dev.of_node);
++#ifdef CONFIG_MACH_SUN8I
++	if (!mac_addr)
++		mac_addr = eth_hw_addr_nvmem_sun8i_chipid(&dev->udev->dev, dev->net, buf, 1);
++#else
+ 	if (mac_addr) {
+ 		netdev_info(dev->net, "Got MAC address from device-tree\n");
+ 		memcpy(buf, mac_addr, ETH_ALEN);
+@@ -723,6 +772,7 @@
+ 			return ret;
+ 		}
+ 	}
++#endif
+ 
+ 	asix_set_netdev_dev_addr(dev, buf);
+ 
