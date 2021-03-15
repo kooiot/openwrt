@@ -263,3 +263,23 @@ define Device/kooiot_tlink-k1
   SOC := sun8i-r40
 endef
 TARGET_DEVICES += kooiot_tlink-k1
+
+define Device/kooiot_tlink-k2
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink K2
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi kmod-brcmfmac \
+    kmod-sun4i-emac kmod-rtc-rx8010 \
+    brcmfmac-firmware-43430a0-sdio wpad-basic-wolfssl \
+    kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-usb-serial kmod-usb-net-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+    uqmi fdisk usbutils freeioe wwanleds \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+    tinc_freeioe_tunnel ser2net shellinabox iperf3 ethtool \
+    blockd kmod-usb-storage kmod-drm-sunxi \
+	usb-otg-sunxi kmod-usb-gadget-serial
+  SOC := sun8i-t3
+endef
+TARGET_DEVICES += kooiot_tlink-k2

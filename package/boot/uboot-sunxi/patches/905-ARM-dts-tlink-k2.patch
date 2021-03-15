@@ -1,5 +1,5 @@
 --- /dev/null
-+++ b/configs/tlink_k1_defconfig
++++ b/configs/tlink_k2_defconfig
 @@ -0,0 +1,31 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
@@ -7,17 +7,17 @@
 +CONFIG_MACH_SUN8I_R40=y
 +CONFIG_DRAM_CLK=576
 +CONFIG_DRAM_ZQ=3881979
-+CONFIG_SUNXI_DRAM_DW_R40_DUAL_RANK=y
-+CONFIG_MMC0_CD_PIN="PI11"
++# CONFIG_SUNXI_DRAM_DW_R40_DUAL_RANK=y
++CONFIG_MMC0_CD_PIN="PI15"
 +CONFIG_MMC_SUNXI_SLOT_EXTRA=2
 +CONFIG_USB1_VBUS_PIN="PI13"
 +CONFIG_USB2_VBUS_PIN="PI13"
 +CONFIG_AHCI=y
-+CONFIG_NR_DRAM_BANKS=1
++# CONFIG_NR_DRAM_BANKS=1
 +# CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
 +CONFIG_SPL_I2C_SUPPORT=y
 +# CONFIG_CMD_FLASH is not set
-+CONFIG_DEFAULT_DEVICE_TREE="sun8i-r40-tlink-k1"
++CONFIG_DEFAULT_DEVICE_TREE="sun8i-t3-tlink-k2"
 +CONFIG_SCSI_AHCI=y
 +CONFIG_MII=y
 +CONFIG_SUN8I_EMAC=y
@@ -34,16 +34,18 @@
 +CONFIG_USB_OCHI_HCD=y
 +++ a/arch/arm/dts/Makefile
 +++ b/arch/arm/dts/Makefile
-@@ -545,6 +545,7 @@
- 	sun8i-h3-zeropi.dtb
+@@ -547,7 +547,8 @@
  dtb-$(CONFIG_MACH_SUN8I_R40) += \
  	sun8i-r40-bananapi-m2-ultra.dtb \
-+	sun8i-r40-tlink-k1.dtb \
- 	sun8i-v40-bananapi-m2-berry.dtb
+ 	sun8i-r40-tlink-k1.dtb \
+-	sun8i-v40-bananapi-m2-berry.dtb
++	sun8i-v40-bananapi-m2-berry.dtb \
++	sun8i-t3-tlink-k2.dtb
  dtb-$(CONFIG_MACH_SUN8I_V3S) += \
  	sun8i-v3s-licheepi-zero.dtb
+ dtb-$(CONFIG_MACH_SUN50I_H5) += \
 --- /dev/null
-+++ b/arch/arm/dts/sun8i-r40-tlink-k1.dts
++++ b/arch/arm/dts/sun8i-t3-tlink-k2.dts
 @@ -0,0 +1,269 @@
 +/*
 + * Copyright (C) 2020 Dirk Chang <dirk@kooiot.com>
@@ -56,8 +58,8 @@
 +#include <dt-bindings/gpio/gpio.h>
 +
 +/ {
-+	model = "ThingsLink K1";
-+	compatible = "kooiot,tlink-k1", "allwinner,sun8i-r40";
++	model = "ThingsLink K2";
++	compatible = "kooiot,tlink-k2", "allwinner,sun8i-t3", "allwinner,sun8i-r40";
 +
 +	aliases {
 +		ethernet0 = &emac;
@@ -90,7 +92,7 @@
 +
 +		user-led-blue {
 +			label = "blue:user";
-+			gpios = <&pio 8 15 GPIO_ACTIVE_HIGH>; /* PI15 */
++			gpios = <&pio 8 11 GPIO_ACTIVE_HIGH>; /* PI11 */
 +		};
 +	};
 +
@@ -174,7 +176,7 @@
 +	vqmmc-supply = <&reg_dcdc1>;
 +	vdmmc-supply = <&reg_dcdc1>;
 +	bus-width = <4>;
-+	cd-gpios = <&pio 8 11 GPIO_ACTIVE_LOW>; /* PI11 */
++	cd-gpios = <&pio 8 15 GPIO_ACTIVE_LOW>; /* PI15 */
 +	status = "okay";
 +};
 +

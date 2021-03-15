@@ -329,6 +329,13 @@ define U-Boot/tlink_k1
   UENV:=display
 endef
 
+define U-Boot/tlink_k2
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink K2
+  BUILD_DEVICES:=kooiot_tlink-k2
+  UENV:=display
+endef
+
 define U-Boot/tlink_c4
   BUILD_SUBTARGET:=cortexa7
   NAME:=ThingsLink C4
@@ -368,6 +375,7 @@ UBOOT_TARGETS := \
 	tlink_r1 \
 	tlink_x2 \
 	tlink_k1 \
+	tlink_k2 \
 	nanopi_neo2 \
 	nanopi_r1 \
 	orangepi_zero \
