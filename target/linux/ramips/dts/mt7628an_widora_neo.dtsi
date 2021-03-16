@@ -30,6 +30,14 @@
 		};
 	};
 
+	wgpio: gpio-wifi {
+		compatible = "mediatek,gpio-wifi";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		gpio-controller;
+		#gpio-cells = <2>;
+	};
+
 	nvmem_sysc: eeprom@10000000 {
 		compatible = "ralink,nvmem-mt7688-sysc";
 		#address-cells = <1>;
