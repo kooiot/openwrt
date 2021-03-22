@@ -8,10 +8,10 @@
 +CONFIG_DRAM_CLK=576
 +CONFIG_DRAM_ZQ=3881979
 +CONFIG_SUNXI_DRAM_DW_R40_DUAL_RANK=y
-+CONFIG_MMC0_CD_PIN="PI11"
++CONFIG_MMC0_CD_PIN="PH3"
 +CONFIG_MMC_SUNXI_SLOT_EXTRA=2
-+CONFIG_USB1_VBUS_PIN="PI13"
-+CONFIG_USB2_VBUS_PIN="PI13"
++CONFIG_USB0_VBUS_PIN="PH13"
++CONFIG_USB1_VBUS_PIN="PB8"
 +CONFIG_AHCI=y
 +CONFIG_NR_DRAM_BANKS=1
 +# CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
@@ -34,14 +34,14 @@
 +CONFIG_USB_OCHI_HCD=y
 +++ a/arch/arm/dts/Makefile
 +++ b/arch/arm/dts/Makefile
-@@ -545,6 +545,7 @@
- 	sun8i-h3-zeropi.dtb
+@@ -547,6 +547,7 @@
  dtb-$(CONFIG_MACH_SUN8I_R40) += \
  	sun8i-r40-bananapi-m2-ultra.dtb \
+ 	sun8i-r40-tlink-ok-a40i.dtb \
 +	sun8i-r40-tlink-k1.dtb \
- 	sun8i-v40-bananapi-m2-berry.dtb
+ 	sun8i-v40-bananapi-m2-berry.dtb \
+ 	sun8i-v40-tlink-t3.dtb
  dtb-$(CONFIG_MACH_SUN8I_V3S) += \
- 	sun8i-v3s-licheepi-zero.dtb
 --- /dev/null
 +++ b/arch/arm/dts/sun8i-r40-tlink-k1.dts
 @@ -0,0 +1,269 @@
@@ -99,7 +99,7 @@
 +		regulator-name = "vcc5v0";
 +		regulator-min-microvolt = <5000000>;
 +		regulator-max-microvolt = <5000000>;
-+		gpio = <&pio 8 13 GPIO_ACTIVE_HIGH>; /* PI13 */
++		gpio = <&pio 7 13 GPIO_ACTIVE_HIGH>; /* PH13 */
 +		enable-active-high;
 +	};
 +
@@ -174,7 +174,7 @@
 +	vqmmc-supply = <&reg_dcdc1>;
 +	vdmmc-supply = <&reg_dcdc1>;
 +	bus-width = <4>;
-+	cd-gpios = <&pio 8 11 GPIO_ACTIVE_LOW>; /* PI11 */
++	cd-gpios = <&pio 7 3 GPIO_ACTIVE_LOW>; /* PH3 */
 +	status = "okay";
 +};
 +
@@ -309,8 +309,8 @@
 +};
 +
 +&usbphy {
-+	usb0_id_det-gpios = <&pio 7 21 GPIO_ACTIVE_HIGH>; /* PH21 */
-+	usb0_vbus_det-gpios = <&pio 7 17 GPIO_ACTIVE_HIGH>; /* PH17 */
++	usb0_id_det-gpios = <&pio 1 12 GPIO_ACTIVE_HIGH>; /* PB12 */
++	usb0_vbus_det-gpios = <&pio 7 12 GPIO_ACTIVE_HIGH>; /* PH12 */
 +	usb0_vbus-supply = <&reg_vcc5v0>;
 +	status = "okay";
 +};

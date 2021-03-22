@@ -4,11 +4,11 @@
  dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-orangepi-3.dtb
  dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-orangepi-lite2.dtb
  dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-orangepi-one-plus.dtb
-+dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-tlink-x2.dtb
++dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-tlink-rp-h6.dtb
  dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-pine-h64.dtb
  dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-tanix-tx6.dtb
 --- /dev/null
-+++ b/arch/arm64/boot/dts/allwinner/sun50i-h6-tlink-x2.dts
++++ b/arch/arm64/boot/dts/allwinner/sun50i-h6-tlink-rp-h6.dts
 @@ -0,0 +1,365 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +/*
@@ -22,8 +22,8 @@
 +#include <dt-bindings/gpio/gpio.h>
 +
 +/ {
-+	model = "ThingsLink X2";
-+	compatible = "kooiot,tlink-x2", "allwinner,sun50i-h6";
++	model = "ThingsLink RP-H6";
++	compatible = "kooiot,tlink-rp-h6", "allwinner,sun50i-h6";
 +
 +	aliases {
 +		ethernet0 = &emac;

@@ -1,5 +1,5 @@
 --- /dev/null
-+++ b/configs/tlink_k2_defconfig
++++ b/configs/tlink_t3_defconfig
 @@ -0,0 +1,31 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
@@ -17,7 +17,7 @@
 +# CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
 +CONFIG_SPL_I2C_SUPPORT=y
 +# CONFIG_CMD_FLASH is not set
-+CONFIG_DEFAULT_DEVICE_TREE="sun8i-t3-tlink-k2"
++CONFIG_DEFAULT_DEVICE_TREE="sun8i-t3-tlink-t3"
 +CONFIG_SCSI_AHCI=y
 +CONFIG_MII=y
 +CONFIG_SUN8I_EMAC=y
@@ -34,18 +34,18 @@
 +CONFIG_USB_OCHI_HCD=y
 +++ a/arch/arm/dts/Makefile
 +++ b/arch/arm/dts/Makefile
-@@ -547,7 +547,8 @@
+@@ -545,7 +545,8 @@
  dtb-$(CONFIG_MACH_SUN8I_R40) += \
  	sun8i-r40-bananapi-m2-ultra.dtb \
- 	sun8i-r40-tlink-k1.dtb \
+ 	sun8i-r40-tlink-ok-a40i.dtb \
 -	sun8i-v40-bananapi-m2-berry.dtb
 +	sun8i-v40-bananapi-m2-berry.dtb \
-+	sun8i-t3-tlink-k2.dtb
++	sun8i-t3-tlink-t3.dtb
  dtb-$(CONFIG_MACH_SUN8I_V3S) += \
  	sun8i-v3s-licheepi-zero.dtb
  dtb-$(CONFIG_MACH_SUN50I_H5) += \
 --- /dev/null
-+++ b/arch/arm/dts/sun8i-t3-tlink-k2.dts
++++ b/arch/arm/dts/sun8i-t3-tlink-t3.dts
 @@ -0,0 +1,269 @@
 +/*
 + * Copyright (C) 2020 Dirk Chang <dirk@kooiot.com>
@@ -58,8 +58,8 @@
 +#include <dt-bindings/gpio/gpio.h>
 +
 +/ {
-+	model = "ThingsLink K2";
-+	compatible = "kooiot,tlink-k2", "allwinner,sun8i-t3", "allwinner,sun8i-r40";
++	model = "ThingsLink T3";
++	compatible = "kooiot,tlink-t3", "allwinner,sun8i-t3", "allwinner,sun8i-r40";
 +
 +	aliases {
 +		ethernet0 = &emac;

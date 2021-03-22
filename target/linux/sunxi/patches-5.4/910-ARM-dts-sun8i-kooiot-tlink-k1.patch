@@ -1,18 +1,18 @@
 --- a/arch/arm/boot/dts/Makefile
 +++ b/arch/arm/boot/dts/Makefile
-@@ -1133,6 +1133,7 @@
+@@ -1130,6 +1130,7 @@
+ 	sun8i-r16-parrot.dtb \
+ 	sun8i-r40-bananapi-m2-ultra.dtb \
+ 	sun8i-r40-tlink-ok-a40i.dtb \
++	sun8i-r40-tlink-k1.dtb \
  	sun8i-s3-lichee-zero-plus.dtb \
  	sun8i-s3-olinuxino.dtb \
  	sun8i-t3-cqa3t-bv3.dtb \
-+	sun8i-t3-tlink-k2.dtb \
- 	sun8i-v3s-licheepi-zero.dtb \
- 	sun8i-v3s-licheepi-zero-dock.dtb \
- 	sun8i-v40-bananapi-m2-berry.dtb
 --- /dev/null
-+++ b/arch/arm/boot/dts/sun8i-t3-tlink-k2.dts
-@@ -0,0 +1,559 @@
++++ b/arch/arm/boot/dts/sun8i-r40-tlink-k1.dts
+@@ -0,0 +1,512 @@
 +/*
-+ * Copyright (C) 2020 Dirk Chang <dirk@kooiot.com>
++ * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
 + */
 +
@@ -21,15 +21,15 @@
 +
 +#include <dt-bindings/gpio/gpio.h>
 +#include <dt-bindings/pwm/pwm.h>
++#include <dt-bindings/input/input.h>
 +
 +/ {
-+	model = "ThingsLink K2";
-+	compatible = "kooiot,tlink-k2", "allwinner,sun8i-t3", "allwinner,sun8i-r40";
++	model = "ThingsLink K1";
++	compatible = "kooiot,tlink-k1", "allwinner,sun8i-r40";
 +
 +	aliases {
 +		display0 = &hdmi;
 +		display1 = &lcd0;
-+		display2 = &dsi;
 +		ethernet0 = &gmac;
 +		ethernet1 = &emac;
 +		serial0 = &uart0;
@@ -68,15 +68,6 @@
 +		enable-gpios = <&pio 1 9 GPIO_ACTIVE_HIGH>; /* LCD_BL_EN: PB9 */
 +	};
 +
-+	mipi_backlight: mipi-backlight {
-+		compatible = "pwm-backlight";
-+		pwms = <&pwm 1 50000 PWM_POLARITY_INVERTED>;
-+		brightness-levels = <1 2 4 8 16 32 64 128 255>;
-+		default-brightness-level = <2>;
-+		power-supply = <&reg_dc1sw>;
-+		enable-gpios = <&pio 7 11 GPIO_ACTIVE_HIGH>; /* MIPI-DSI-EN: PH11 */
-+	};
-+
 +	chosen {
 +		stdout-path = "serial0:115200n8";
 +	};
@@ -111,32 +102,35 @@
 +
 +		pwr-led {
 +			label = "red:pwr";
-+			gpios = <&pio 8 14 GPIO_ACTIVE_HIGH>; /* PI14 */
++			gpios = <&pio 8 5 GPIO_ACTIVE_HIGH>; /* PI5 empty?? */
 +			default-state = "on";
 +		};
 +
 +		user-led-blue {
 +			label = "blue:user";
-+			gpios = <&pio 8 11 GPIO_ACTIVE_HIGH>; /* PI11 */
++			gpios = <&pio 2 0 GPIO_ACTIVE_HIGH>; /* PC0 */
 +		};
 +
-+		heartbeat {
-+			label = "kooio:green:heartbeat";
-+			gpios = <&pio 8 12 GPIO_ACTIVE_HIGH>; /* PH12 */
++		user-led-red {
++			label = "red:user";
++			gpios = <&pio 2 1 GPIO_ACTIVE_HIGH>; /* PC1 */
++		};
++
++		user-led-green {
++			label = "green:user";
++			gpios = <&pio 2 2 GPIO_ACTIVE_HIGH>; /* PC2 */
 +		};
 +	};
 +
-+	/*
 +	gpio_keys {
 +		compatible = "gpio-keys";
 +
 +		reset {
 +			label = "reset";
 +			linux,code = <KEY_RESTART>;
-+			gpios = <&pio 0 10 GPIO_ACTIVE_LOW>;
++			gpios = <&pio 8 6 GPIO_ACTIVE_LOW>; /* PI6 */
 +		};
 +	};
-+	*/
 +
 +	gpio_export {
 +		compatible = "gpio-export";
@@ -145,14 +139,18 @@
 +		pcie_power {
 +			gpio-export,name = "pcie_power";
 +			gpio-export,output=<1>;
-+			gpios = <&pio 1 8 GPIO_ACTIVE_HIGH>; /* PB8 */
++			gpios = <&pio 8 4 GPIO_ACTIVE_HIGH>; /* PI4 */
 +		};
++	};
 +
-+		usb_rst {
-+			gpio-export,name = "usb_rst";
-+			gpio-export,output=<0>;
-+			gpios = <&pio 1 12 GPIO_ACTIVE_LOW>; /* PB12 */
-+		};
++	reg_vcc3v3_sdc: vcc3v3-sdc {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc3v3-sdc";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		gpio = <&pio 7 13 GPIO_ACTIVE_HIGH>; /* PH13 SDC0_EN*/
++		enable-active-high;
++		regulator-always-on;
 +	};
 +
 +	reg_vcc5v0: vcc5v0 {
@@ -160,17 +158,15 @@
 +		regulator-name = "vcc5v0";
 +		regulator-min-microvolt = <5000000>;
 +		regulator-max-microvolt = <5000000>;
-+		gpio = <&pio 8 13 GPIO_ACTIVE_HIGH>; /* PI13 */
++		gpio = <&pio 7 13 GPIO_ACTIVE_HIGH>; /* PH13 */
 +		enable-active-high;
 +	};
 +
-+	reg_vcc3v3_wifi: vcc3v3-wifi {
-+		compatible = "regulator-fixed";
-+		regulator-name = "vcc3v3";
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+		reset-gpios = <&pio 1 10 GPIO_ACTIVE_LOW>; /* PB10 WIFI_EN */
-+		enable-active-low;
++	wifi_pwrseq: wifi_pwrseq {
++		compatible = "mmc-pwrseq-simple";
++		reset-gpios = <&pio 1 3 GPIO_ACTIVE_LOW>; /* PB3 WIFI_EN */
++		clocks = <&ccu CLK_OUTA>;
++		clock-names = "ext_clock";
 +	};
 +};
 +
@@ -182,19 +178,6 @@
 +
 +&de {
 +	status = "okay";
-+};
-+
-+&dsi {
-+	vcc-dsi-supply = <&reg_dcdc1>;		/* VCC-DSI */
-+	status = "okay";
-+
-+	panel@0 {
-+		compatible = "lg,ld070wx3-sl01", "simple-panel-dsi";
-+		reg = <0>;
-+		enable-gpio = <&pio 7 11 GPIO_ACTIVE_HIGH>; /* LCD-PWR-EN: PH11 */
-+		power-supply = <&reg_dcdc1>;
-+		backlight = <&mipi_backlight>;
-+	};
 +};
 +
 +&dphy {
@@ -241,27 +224,9 @@
 +
 +&gmac {
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&gmac_mii_pins>;
-+	phy-handle = <&phy1>;
-+	phy-mode = "mii";
-+	phy-supply = <&reg_dcdc1>;
-+	status = "okay";
-+};
-+
-+&gmac_mdio {
-+	snps,reset-gpio = <&pio 7 22 GPIO_ACTIVE_LOW>; /* PH22 */
-+	phy1: ethernet-phy@1 {
-+		compatible = "ethernet-phy-ieee802.3-c22";
-+		reg = <1>;
-+	};
-+};
-+
-+/*
-+&gmac {
-+	pinctrl-names = "default";
 +	pinctrl-0 = <&gmac_rgmii_pins>;
 +	phy-handle = <&phy1>;
-+	phy-mode = "rgmii";
++	phy-mode = "rgmii-id";
 +	phy-supply = <&reg_dcdc1>;
 +	status = "okay";
 +};
@@ -272,7 +237,6 @@
 +		reg = <1>;
 +	};
 +};
-+*/
 +
 +&hdmi {
 +	status = "okay";
@@ -308,9 +272,9 @@
 +		compatible = "goodix,gt911";
 +		reg = <0x5d>;
 +		interrupt-parent = <&pio>;
-+		interrupts = <7 15 IRQ_TYPE_EDGE_FALLING>; /* EINT15 (PH15) */
++		interrupts = <8 17 IRQ_TYPE_EDGE_FALLING>; /* EINT29 (PI17) */
 +		//irq-gpios = <&pio 7 15 GPIO_ACTIVE_HIGH>; /* INT (PH15) */
-+		reset-gpios = <&pio 7 14 GPIO_ACTIVE_HIGH>; /* RST (PH14) */
++		reset-gpios = <&pio 8 16 GPIO_ACTIVE_HIGH>; /* RST (PI16) */
 +		//touchscreen-swapped-x-y;
 +		touchscreen-inverted-x;
 +		touchscreen-inverted-y;
@@ -324,10 +288,10 @@
 +/* SD Card */
 +&mmc0 {
 +	vmmc-supply = <&reg_dcdc1>;
-+	vqmmc-supply = <&reg_dcdc1>;
++	vqmmc-supply = <&reg_vcc3v3_sdc>;
 +	vdmmc-supply = <&reg_dcdc1>;
 +	bus-width = <4>;
-+	cd-gpios = <&pio 8 15 GPIO_ACTIVE_LOW>; /* PI15 */
++	cd-gpios = <&pio 7 3 GPIO_ACTIVE_LOW>; /* PH3 */
 +	status = "okay";
 +};
 +
@@ -345,18 +309,6 @@
 +	vqmmc-supply = <&reg_aldo2>;
 +	bus-width = <8>;
 +	non-removable;
-+	status = "okay";
-+};
-+
-+/* TF Card */
-+&mmc3 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&mmc3_pins>;
-+	vmmc-supply = <&reg_dcdc1>;
-+	vqmmc-supply = <&reg_dcdc1>;
-+	vdmmc-supply = <&reg_dcdc1>;
-+	bus-width = <4>;
-+	cd-gpios = <&pio 8 10 GPIO_ACTIVE_LOW>; /* PI10 */
 +	status = "okay";
 +};
 +
@@ -398,8 +350,7 @@
 +
 +&pwm {
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&pwm_ch0_pin>,
-+		<&pwm_ch1_pin>;
++	pinctrl-0 = <&pwm_ch0_pin>;
 +	status = "okay";
 +};
 +
@@ -552,10 +503,12 @@
 +};
 +
 +&usbphy {
-+	usb0_id_det-gpios = <&pio 7 21 GPIO_ACTIVE_HIGH>; /* PH21 */
-+	usb0_vbus_det-gpios = <&pio 7 17 GPIO_ACTIVE_HIGH>; /* PH17 */
++	usb0_id_det-gpios = <&pio 1 12 GPIO_ACTIVE_HIGH>; /* PB12 */
++	usb0_vbus_det-gpios = <&pio 7 12 GPIO_ACTIVE_HIGH>; /* PH12 */
 +	usb0_vbus-supply = <&reg_vcc5v0>;
-+	usb1_vbus-supply = <&reg_vcc3v3_wifi>;
++	usb1_id_det-gpios = <&pio 1 13 GPIO_ACTIVE_HIGH>; /* PB13 */
++	usb1_vbus_det-gpios = <&pio 7 2 GPIO_ACTIVE_HIGH>; /* PH2 */
++	usb1_vbus-supply = <&reg_vcc5v0>;
 +	usb2_vbus-supply = <&reg_vcc5v0>;
 +	status = "okay";
 +};

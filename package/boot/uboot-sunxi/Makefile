@@ -307,11 +307,11 @@ define U-Boot/orangepi_pc2
   UENV:=a64
 endef
 
-define U-Boot/tlink_x2
+define U-Boot/tlink_rp_h6
   BUILD_SUBTARGET:=cortexa53
-  NAME:=ThingsLink X2
-  BUILD_DEVICES:=kooiot_tlink-x2
-  DEPENDS:=+PACKAGE_u-boot-tlink_x2:arm-trusted-firmware-sunxi-h6
+  NAME:=ThingsLink RP-H6
+  BUILD_DEVICES:=kooiot_tlink-rp-h6
+  DEPENDS:=+PACKAGE_u-boot-tlink_rp_h6:arm-trusted-firmware-sunxi-h6
   UENV:=h6
 endef
 
@@ -322,6 +322,13 @@ define U-Boot/Bananapi_M2_Ultra
   UENV:=display
 endef
 
+define U-Boot/tlink_ok_a40i
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink OK-A40i
+  BUILD_DEVICES:=kooiot_tlink-ok-a40i
+  UENV:=display
+endef
+
 define U-Boot/tlink_k1
   BUILD_SUBTARGET:=cortexa7
   NAME:=ThingsLink K1
@@ -329,10 +336,10 @@ define U-Boot/tlink_k1
   UENV:=display
 endef
 
-define U-Boot/tlink_k2
+define U-Boot/tlink_t3
   BUILD_SUBTARGET:=cortexa7
-  NAME:=ThingsLink K2
-  BUILD_DEVICES:=kooiot_tlink-k2
+  NAME:=ThingsLink T3
+  BUILD_DEVICES:=kooiot_tlink-t3
   UENV:=display
 endef
 
@@ -373,9 +380,10 @@ UBOOT_TARGETS := \
 	nanopi_neo_plus2 \
 	tlink_x1 \
 	tlink_r1 \
-	tlink_x2 \
+	tlink_rp_h6 \
+	tlink_ok_a40i \
 	tlink_k1 \
-	tlink_k2 \
+	tlink_t3 \
 	nanopi_neo2 \
 	nanopi_r1 \
 	orangepi_zero \

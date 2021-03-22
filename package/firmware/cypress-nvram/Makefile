@@ -66,20 +66,20 @@ endef
 
 $(eval $(call BuildPackage,cypress-nvram-43430-sdio-rpi-zero-w))
 
-# Cypress 43430 SDIO ThingsLink X2 NVRAM
-define Package/cypress-nvram-43430-sdio-tlink-x2
+# Cypress 43430 SDIO ThingsLink RP-H6 NVRAM
+define Package/cypress-nvram-43430-sdio-tlink-rp-h6
   $(Package/cypress-nvram-default)
   TITLE:=CYW43430 NVRAM for ThingsLink X2
 endef
 
-define Package/cypress-nvram-43430-sdio-tlink-x2/install
+define Package/cypress-nvram-43430-sdio-tlink-rp-h6/install
 	$(INSTALL_DIR) $(1)/lib/firmware/brcm
 	$(INSTALL_DATA) \
 		$(PKG_BUILD_DIR)/brcmfmac43430-sdio.AP6212.txt \
-		$(1)/lib/firmware/brcm/brcmfmac43430-sdio.kooiot,tlink-x2.txt
+		$(1)/lib/firmware/brcm/brcmfmac43430-sdio.kooiot,tlink-rp-h6.txt
 endef
 
-$(eval $(call BuildPackage,cypress-nvram-43430-sdio-tlink-x2))
+$(eval $(call BuildPackage,cypress-nvram-43430-sdio-tlink-rp-h6))
 
 # Cypress 43455 SDIO Raspberry Pi 3B+ NVRAM
 define Package/cypress-nvram-43455-sdio-rpi-3b-plus

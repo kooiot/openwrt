@@ -1,6 +1,6 @@
 --- a/arch/arm/dts/Makefile
 +++ b/arch/arm/dts/Makefile
-@@ -540,6 +540,7 @@
+@@ -541,6 +541,7 @@
  	sun8i-h3-orangepi-plus2e.dtb \
  	sun8i-h3-orangepi-zero-plus2.dtb \
 	sun8i-h3-tlink-x1.dtb \
