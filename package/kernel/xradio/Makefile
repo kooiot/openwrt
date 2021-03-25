@@ -17,7 +17,7 @@ include $(INCLUDE_DIR)/kernel.mk
 include $(INCLUDE_DIR)/package.mk
 
 define KernelPackage/xradio
-  SUBMENU:=Wireless Drivers Test-xr819
+  SUBMENU:=Wireless Drivers
   TITLE:=Xradio xr819 wifi-drivers support
   DEPENDS:=@TARGET_sunxi +kmod-mac80211 \
 	+@DRIVER_11AC_SUPPORT +@DRIVER_11N_SUPPORT
