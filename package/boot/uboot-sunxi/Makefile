@@ -238,6 +238,12 @@ define U-Boot/tlink_r1
   BUILD_DEVICES:=kooiot_tlink-r1
 endef
 
+define U-Boot/Lichee_Zero_Plus
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=SiPEED LicheePi Zero Plus (S3)
+  BUILD_DEVICES:=sipeed_licheepi-zero-plus
+endef
+
 define U-Boot/pangolin
   BUILD_SUBTARGET:=cortexa7
   NAME:=Theobroma A31-yQ7 devboard
@@ -384,6 +390,7 @@ UBOOT_TARGETS := \
 	tlink_ok_a40i \
 	tlink_k1 \
 	tlink_t3 \
+	Lichee_Zero_Plus \
 	nanopi_neo2 \
 	nanopi_r1 \
 	orangepi_zero \
