@@ -35,6 +35,8 @@ tlink_add_qmi_interface() {
 	uci set network.4g_wan.proto='qmi'
 	uci set network.4g_wan.device='/dev/cdc-wdm0'
 	uci set network.4g_wan.metric='10'
+	uci set network.4g_wan.auth='none'
+	uci set network.4g_wan.pdptype='ipv4'
 	uci commit network
 }
 
