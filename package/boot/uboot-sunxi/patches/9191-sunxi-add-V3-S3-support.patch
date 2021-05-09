@@ -1,0 +1,36 @@
+From ef9025b5a9a5e75d9fb954f3e34c19d4e915a840 Mon Sep 17 00:00:00 2001
+From: Icenowy Zheng <icenowy@aosc.io>
+Date: Mon, 26 Oct 2020 22:15:59 +0800
+Subject: sunxi: add V3/S3 support
+
+Allwinner V3/Sochip S3 uses the same die with Allwinner V3s/S3L, but V3 comes
+with no co-packaged DDR (DDR3 is usually used externally), and S3L comes
+with co-packaged DDR3.
+
+Add support for Allwinner V3/S3 chips by add SoC names to original V3s
+choice, and allow to select DDR3.
+
+Signed-off-by: Icenowy Zheng <icenowy@aosc.io>
+Reviewed-by: Jagan Teki <jagan@amarulasolutions.com>
+
+diff --git a/arch/arm/mach-sunxi/Kconfig b/arch/arm/mach-sunxi/Kconfig
+index 8421f3b685..49ef217f08 100644
+--- a/arch/arm/mach-sunxi/Kconfig
++++ b/arch/arm/mach-sunxi/Kconfig
+@@ -253,7 +253,7 @@ config MACH_SUN8I_R40
+ 	select PHY_SUN4I_USB
+ 
+ config MACH_SUN8I_V3S
+-	bool "sun8i (Allwinner V3s)"
++	bool "sun8i (Allwinner V3/V3s/S3/S3L)"
+ 	select CPU_V7A
+ 	select CPU_V7_HAS_NONSEC
+ 	select CPU_V7_HAS_VIRT
+@@ -363,7 +363,6 @@ choice
+ config SUNXI_DRAM_DDR3_1333
+ 	bool "DDR3 1333"
+ 	select SUNXI_DRAM_DDR3
+-	depends on !MACH_SUN8I_V3S
+ 	---help---
+ 	This option is the original only supported memory type, which suits
+ 	many H3/H5/A64 boards available now.

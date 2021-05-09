@@ -252,7 +252,7 @@ endef
 define U-Boot/Lichee_Zero_Plus
   BUILD_SUBTARGET:=cortexa7
   NAME:=SiPEED LicheePi Zero Plus (S3)
-  BUILD_DEVICES:=sipeed_licheepi-zero-plus
+  BUILD_DEVICES:=sipeed_lichee-zero-plus
 endef
 
 define U-Boot/pangolin
