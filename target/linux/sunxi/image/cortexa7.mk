@@ -228,13 +228,13 @@ define Device/xunlong_orangepi-2
  endef
 TARGET_DEVICES += xunlong_orangepi-2
 
-define Device/sipeed_licheepi-zero-plus
+define Device/sipeed_lichee-zero-plus
   DEVICE_VENDOR := SiPEED
   DEVICE_MODEL := SiPEED lichee zero plus
   DEVICE_PACKAGES:=kmod-rtc-sunxi
   SOC := sun8i-s3
 endef
-TARGET_DEVICES += sipeed_licheepi-zero-plus
+TARGET_DEVICES += sipeed_lichee-zero-plus
 
 define Device/kooiot_tlink-x1
   DEVICE_VENDOR := KooIoT

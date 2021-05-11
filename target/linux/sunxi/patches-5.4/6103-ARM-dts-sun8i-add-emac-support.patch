@@ -1,0 +1,39 @@
+From 7ed2ab7262d054bd7ebfb9e398a5ee4ead167005 Mon Sep 17 00:00:00 2001
+From: greedyhao <hao_kr@163.com>
+Date: Fri, 6 Sep 2019 16:06:40 +0800
+Subject: [PATCH 6103/6117] ARM:dts:sun8i:add emac support
+
+---
+ .../boot/dts/sun8i-s3-lichee-zero-plus.dts    |  8 +++
+ arch/arm/boot/dts/sun8i-v3s.dtsi              | 65 +++++++++++++++++++
+ 2 files changed, 73 insertions(+)
+
+diff --git a/arch/arm/boot/dts/sun8i-s3-lichee-zero-plus.dts b/arch/arm/boot/dts/sun8i-s3-lichee-zero-plus.dts
+index 309727bb2f40..3f3513b1e9f2 100644
+--- a/arch/arm/boot/dts/sun8i-s3-lichee-zero-plus.dts
++++ b/arch/arm/boot/dts/sun8i-s3-lichee-zero-plus.dts
+@@ -15,6 +15,7 @@
+ 
+ 	aliases {
+ 		serial0 = &uart0;
++		ethernet0 = &emac;
+ 	};
+ 
+ 	chosen {
+@@ -77,6 +78,13 @@
+ 	};
+ };
+ 
++&emac {
++	phy-handle = <&int_mii_phy>;
++	phy-mode = "mii";
++	allwinner,leds-active-low;
++	status = "okay";
++};
++
+ &mmc0 {
+ 	broken-cd;
+ 	bus-width = <4>;
+-- 
+2.30.2
+

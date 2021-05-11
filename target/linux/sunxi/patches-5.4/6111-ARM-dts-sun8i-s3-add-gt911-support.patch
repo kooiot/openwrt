@@ -1,0 +1,38 @@
+From d674cc5b1753b277d97570149a9171db33681474 Mon Sep 17 00:00:00 2001
+From: greedyhao <hao_kr@163.com>
+Date: Thu, 12 Sep 2019 07:10:34 +0800
+Subject: [PATCH 6111/6117] ARM:dts:sun8i:s3:add gt911 support
+
+---
+ arch/arm/boot/dts/sun8i-s3-lichee-zero-plus.dts | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+diff --git a/arch/arm/boot/dts/sun8i-s3-lichee-zero-plus.dts b/arch/arm/boot/dts/sun8i-s3-lichee-zero-plus.dts
+index d6567b8cb10c..8def85da80f1 100644
+--- a/arch/arm/boot/dts/sun8i-s3-lichee-zero-plus.dts
++++ b/arch/arm/boot/dts/sun8i-s3-lichee-zero-plus.dts
+@@ -94,6 +94,21 @@
+ 	status = "okay";
+ };
+ 
++&i2c0 {
++	status = "okay";
++
++	gt911: touchscreen@14 {
++        compatible = "goodix,gt911";
++        reg = <0x14>;
++        interrupt-parent = <&pio>;
++        interrupts = <1 11 IRQ_TYPE_EDGE_FALLING>; /* (PB11) */
++        pinctrl-names = "default";
++        irq-gpios = <&pio 1 11 GPIO_ACTIVE_HIGH>; /* (PB11) */
++        reset-gpios = <&pio 4 9 GPIO_ACTIVE_HIGH>; /* RST (PE9) */
++        /* touchscreen-swapped-x-y */
++    };
++};
++
+ &lradc {
+ 	vref-supply = <&reg_vcc3v3>;
+ 	status = "okay";
+-- 
+2.30.2
+

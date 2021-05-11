@@ -1,0 +1,29 @@
+From 52a70e641a1fe6b0dc3ff46a8498d778ce6b99de Mon Sep 17 00:00:00 2001
+From: Paul Kocialkowski <contact@paulk.fr>
+Date: Sat, 31 Oct 2020 19:21:31 +0100
+Subject: ARM: dts: sun8i-v3s: Add I2C1 PB pins description
+
+I2C1 can be exposed through PB pins in addition to PE pins on the V3s.
+Add the device-tree description for these pins.
+
+Signed-off-by: Paul Kocialkowski <contact@paulk.fr>
+Signed-off-by: Maxime Ripard <maxime@cerno.tech>
+Link: https://lore.kernel.org/r/20201031182137.1879521-4-contact@paulk.fr
+
+diff --git a/arch/arm/boot/dts/sun8i-v3s.dtsi b/arch/arm/boot/dts/sun8i-v3s.dtsi
+index 0c7341676921..7b2d684aeb97 100644
+--- a/arch/arm/boot/dts/sun8i-v3s.dtsi
++++ b/arch/arm/boot/dts/sun8i-v3s.dtsi
+@@ -347,6 +347,12 @@ i2c0_pins: i2c0-pins {
+ 				function = "i2c0";
+ 			};
+ 
++			/omit-if-no-ref/
++			i2c1_pb_pins: i2c1-pb-pins {
++				pins = "PB8", "PB9";
++				function = "i2c1";
++			};
++
+ 			/omit-if-no-ref/
+ 			i2c1_pe_pins: i2c1-pe-pins {
+ 				pins = "PE21", "PE22";

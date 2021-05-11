@@ -1,0 +1,31 @@
+From b5a2221c077a54886cc3161c95ae5c3511049299 Mon Sep 17 00:00:00 2001
+From: Icenowy Zheng <icenowy@aosc.io>
+Date: Wed, 23 Sep 2020 09:00:12 +0800
+Subject: ARM: dts: sun8i: V3/V3s/S3/S3L: add pinctrl for I2C1 at PE bank
+
+I2C1 controller is available at PE bank, usually used for
+connecting an I2C-controlled camera sensor.
+
+Add pinctrl node for it.
+
+Signed-off-by: Icenowy Zheng <icenowy@aosc.io>
+Signed-off-by: Maxime Ripard <maxime@cerno.tech>
+Link: https://lore.kernel.org/r/20200923010014.148482-2-icenowy@aosc.io
+
+diff --git a/arch/arm/boot/dts/sun8i-v3s.dtsi b/arch/arm/boot/dts/sun8i-v3s.dtsi
+index 19fba1a9115b..bae8fa9e356a 100644
+--- a/arch/arm/boot/dts/sun8i-v3s.dtsi
++++ b/arch/arm/boot/dts/sun8i-v3s.dtsi
+@@ -331,6 +331,12 @@ i2c0_pins: i2c0-pins {
+ 				function = "i2c0";
+ 			};
+ 
++			/omit-if-no-ref/
++			i2c1_pe_pins: i2c1-pe-pins {
++				pins = "PE21", "PE22";
++				function = "i2c1";
++			};
++
+ 			uart0_pb_pins: uart0-pb-pins {
+ 				pins = "PB8", "PB9";
+ 				function = "uart0";
