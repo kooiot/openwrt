@@ -63,6 +63,7 @@ do_kooiot_tlink_generic() {
 	. /lib/functions.sh
 
 	case "$(board_name)" in
+	"sipeed,lichee-zero-plus"|\
 	"kooiot,tlink-x1"|\
 	"kooiot,tlink-x2"|\
 	"kooiot,tlink-k1"|\

@@ -52,6 +52,10 @@ platform_check_image() {
 		tlink_check_image "sun8i-r40" "$1" && return 0
 		return 1
 		;;
+	"sipeed,lichee-zero-plus")
+		tlink_check_image "sun8i-s3" "$1" && return 0
+		return 1
+		;;
 	*)
 		return 0
 		;;
@@ -70,6 +74,7 @@ platform_kooiot_pre_upgrade() {
 
 platform_pre_upgrade() {
 	case "$(board_name)" in
+	"sipeed,lichee-zero-plus"|\
 	"kooiot,tlink-x1"|\
 	"kooiot,tlink-x2"|\
 	"kooiot,tlink-k1"|\

@@ -6,6 +6,7 @@ psn=$1
 . /lib/functions/tlink.sh
 
 case "$(board_name)" in
+"sipeed,lichee-zero-plus" | \
 "kooiot,tlink-x1" | \
 "kooiot,tlink-x2" | \
 "kooiot,tlink-k1" | \
