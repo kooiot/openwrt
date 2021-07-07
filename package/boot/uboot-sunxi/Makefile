@@ -255,6 +255,12 @@ define U-Boot/Lichee_Zero_Plus
   BUILD_DEVICES:=sipeed_lichee-zero-plus
 endef
 
+define U-Boot/sinlinx-sin-v3s
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=SINLINX Sin V3s (V3s)
+  BUILD_DEVICES:=sinlinx_sinlinx-sin-v3s
+endef
+
 define U-Boot/pangolin
   BUILD_SUBTARGET:=cortexa7
   NAME:=Theobroma A31-yQ7 devboard
@@ -416,6 +422,7 @@ UBOOT_TARGETS := \
 	tlink_k1 \
 	tlink_t3 \
 	Lichee_Zero_Plus \
+	sinlinx-sin-v3s \
 	nanopi_neo2 \
 	nanopi_r1 \
 	orangepi_zero \

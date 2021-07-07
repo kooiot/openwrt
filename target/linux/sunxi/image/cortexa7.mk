@@ -236,6 +236,14 @@ define Device/sipeed_lichee-zero-plus
 endef
 TARGET_DEVICES += sipeed_lichee-zero-plus
 
+define Device/sinlinx_sinlinx-sin-v3s
+  DEVICE_VENDOR := SINLINX
+  DEVICE_MODEL := SINLINX Sin V3s
+  DEVICE_PACKAGES:=kmod-rtc-sunxi
+  SOC := sun8i-v3s
+endef
+TARGET_DEVICES += sinlinx_sinlinx-sin-v3s
+
 define Device/kooiot_tlink-x1
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink X1
