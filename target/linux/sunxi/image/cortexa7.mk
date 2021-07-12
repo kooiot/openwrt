@@ -244,6 +244,14 @@ define Device/sinlinx_sinlinx-sin-v3s
 endef
 TARGET_DEVICES += sinlinx_sinlinx-sin-v3s
 
+define Device/nrisc_dj-a40i-e
+  DEVICE_VENDOR := NRISC
+  DEVICE_MODEL := NRISC DJ A40i E
+  DEVICE_PACKAGES:=kmod-rtc-sunxi
+  SOC := sun8i-r40
+endef
+TARGET_DEVICES += nrisc_dj-a40i-e
+
 define Device/kooiot_tlink-x1
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink X1
