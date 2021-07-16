@@ -770,6 +770,24 @@ endef
 $(eval $(call KernelPackage,rtc-hym8563))
 
 
+define KernelPackage/rtc-sd3078
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=Shenzhen Wave Electronic Technology SD3077/3078
+  DEFAULT:=m if ALL_KMODS && RTC_SUPPORT
+  DEPENDS:=+kmod-i2c-core
+  KCONFIG:=CONFIG_RTC_DRV_SD3078 \
+	CONFIG_RTC_CLASS=y
+  FILES:=$(LINUX_DIR)/drivers/rtc/rtc-sd3078.ko
+  AUTOLOAD:=$(call AutoLoad,50,rtc-sd3078,1)
+endef
+
+define KernelPackage/rtc-sd3078/description
+ Kernel module for Shenzhen Wave Electronic Technology SD3077/3078 RTC chip
+endef
+
+$(eval $(call KernelPackage,rtc-sd3078))
+
+
 define KernelPackage/mtdtests
   SUBMENU:=$(OTHER_MENU)
   TITLE:=MTD subsystem tests

@@ -358,7 +358,7 @@ define U-Boot/Bananapi_M2_Ultra
   UENV:=display
 endef
 
-define U-Boot/tlink_ok_a40i
+define U-Boot/tlink_ok-a40i
   BUILD_SUBTARGET:=cortexa7
   NAME:=ThingsLink OK-A40i
   BUILD_DEVICES:=kooiot_tlink-ok-a40i
@@ -424,7 +424,7 @@ UBOOT_TARGETS := \
 	tlink_x1 \
 	tlink_r1 \
 	tlink_rp_h6 \
-	tlink_ok_a40i \
+	tlink_ok-a40i \
 	tlink_k1 \
 	dj_a40i_e \
 	tlink_t3 \

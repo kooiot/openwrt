@@ -260,7 +260,7 @@ define Device/kooiot_tlink-x1
     kmod-leds-gpio kmod-ledtrig-heartbeat \
     kmod-ledtrig-netdev kmod-ledtrig-gpio \
     kmod-rtc-rx8010 kmod-usb-net-asix \
-    kmod-eeprom-at24 fdisk
+    kmod-rtc-sd3078 kmod-eeprom-at24 fdisk
   SOC := sun8i-h3
 endef
 TARGET_DEVICES += kooiot_tlink-x1
