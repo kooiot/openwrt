@@ -1,5 +1,5 @@
 --- /dev/null
-+++ b/configs/dj_a40i_e_defconfig
++++ b/configs/tlink_dj-a40i-e_defconfig
 @@ -0,0 +1,32 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y

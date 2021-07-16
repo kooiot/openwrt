@@ -249,12 +249,6 @@ define U-Boot/tlink_r1
   BUILD_DEVICES:=kooiot_tlink-r1
 endef
 
-define U-Boot/dj_a40i_e
-  BUILD_SUBTARGET:=cortexa7
-  NAME:=NRISC DJ A40i E
-  BUILD_DEVICES:=nrisc_dj-a40i-e
-endef
-
 define U-Boot/Lichee_Zero_Plus
   BUILD_SUBTARGET:=cortexa7
   NAME:=SiPEED LicheePi Zero Plus (S3)
@@ -365,6 +359,12 @@ define U-Boot/tlink_ok-a40i
   UENV:=display
 endef
 
+define U-Boot/tlink_dj-a40i-e
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=NRISC DJ A40i E
+  BUILD_DEVICES:=nrisc_dj-a40i-e
+endef
+
 define U-Boot/tlink_k1
   BUILD_SUBTARGET:=cortexa7
   NAME:=ThingsLink K1
@@ -426,7 +426,7 @@ UBOOT_TARGETS := \
 	tlink_rp_h6 \
 	tlink_ok-a40i \
 	tlink_k1 \
-	dj_a40i_e \
+	tlink_dj-a40i-e \
 	tlink_t3 \
 	Lichee_Zero_Plus \
 	sinlinx-sin-v3s \
