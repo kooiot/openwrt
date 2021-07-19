@@ -362,7 +362,7 @@ endef
 define U-Boot/tlink_dj-a40i-e
   BUILD_SUBTARGET:=cortexa7
   NAME:=NRISC DJ A40i E
-  BUILD_DEVICES:=nrisc_dj-a40i-e
+  BUILD_DEVICES:=kooiot_tlink-dj-a40i-e
 endef
 
 define U-Boot/tlink_k1

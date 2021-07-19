@@ -244,13 +244,33 @@ define Device/sinlinx_sinlinx-sin-v3s
 endef
 TARGET_DEVICES += sinlinx_sinlinx-sin-v3s
 
-define Device/nrisc_dj-a40i-e
-  DEVICE_VENDOR := NRISC
-  DEVICE_MODEL := NRISC DJ A40i E
-  DEVICE_PACKAGES:=kmod-rtc-sunxi
+define Device/kooiot_tlink-dj-a40i-e
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink DJ-A40i-E
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-gpio \
+    kmod-usb-net kmod-usb-net-rtl8152 \
+    kmod-usb-serial kmod-usb-net-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+	kmod-usb-net-rndis kmod-usb-otg-sunxi \
+    kmod-eeprom-at24 kmod-rtc-pcf8563 \
+    kmod-usb-storage kmod-drm-sunxi \
+	kmod-backlight kmod-drm-sun8i \
+	kmod-drm-sun8i-dsi kmod-drm-sun8i-hdmi \
+	kmod-rtl8xxxu rtl8723bu-firmware \
+	kmod-input-core kmod-input-evdev \
+	kmod-sound-soc-sunxi kmod-backlight-pwm \
+	kmod-pwm-sun8i kmod-mmc usb-modeswitch \
+	usb-otg-sunxi kmod-usb-gadget-serial \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+	luci-app-ddns luci-app-mosquitto luci-app-ser2net \
+    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    uqmi umbim usbutils freeioe wwanleds \
+	blockd siridb-server mosquitto-nossl \
+	wpad-basic-wolfssl uclibcxx curl fdisk
   SOC := sun8i-r40
 endef
-TARGET_DEVICES += nrisc_dj-a40i-e
+TARGET_DEVICES += kooiot_tlink-dj-a40i-e
 
 define Device/kooiot_tlink-x1
   DEVICE_VENDOR := KooIoT
@@ -291,7 +311,7 @@ define Device/kooiot_tlink-ok-a40i
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    tinc_freeioe_tunnel ser2net shellinabox iperf3 ethtool \
+    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage kmod-drm-sunxi \
 	usb-otg-sunxi kmod-usb-gadget-serial
   SOC := sun8i-r40
@@ -311,7 +331,7 @@ define Device/kooiot_tlink-k1
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    tinc_freeioe_tunnel ser2net shellinabox iperf3 ethtool \
+    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage kmod-drm-sunxi \
 	usb-otg-sunxi kmod-usb-gadget-serial
   SOC := sun8i-r40
@@ -331,7 +351,7 @@ define Device/kooiot_tlink-t3
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    tinc_freeioe_tunnel ser2net shellinabox iperf3 ethtool \
+    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage kmod-drm-sunxi \
 	usb-otg-sunxi kmod-usb-gadget-serial
   SOC := sun8i-t3
