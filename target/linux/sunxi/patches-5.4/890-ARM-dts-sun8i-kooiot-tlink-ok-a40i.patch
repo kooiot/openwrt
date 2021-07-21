@@ -10,7 +10,7 @@
  	sun8i-t3-cqa3t-bv3.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-ok-a40i.dts
-@@ -0,0 +1,554 @@
+@@ -0,0 +1,559 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -341,6 +341,11 @@
 +	bus-width = <8>;
 +	non-removable;
 +	status = "okay";
++};
++
++&mmc2_pins {
++	/* Increase drive strength for DDR modes */
++	drive-strength = <40>;
 +};
 +
 +/* TF Card */

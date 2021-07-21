@@ -55,6 +55,7 @@ CONFIG_TARGET_sunxi_cortexa7=y
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_friendlyarm_nanopi-neo-air is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_friendlyarm_nanopi-r1 is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_friendlyarm_zeropi is not set
+# CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-dj-a40i-e is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-k1 is not set
 CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-ok-a40i=y
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-r1 is not set
@@ -66,7 +67,6 @@ CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-ok-a40i=y
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_linksprite_pcduino3 is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_linksprite_pcduino3-nano is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_mele_m9 is not set
-# CONFIG_TARGET_sunxi_cortexa7_DEVICE_nrisc_dj-a40i-e is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_olimex_a20-olinuxino-lime is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_olimex_a20-olinuxino-lime2 is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_olimex_a20-olinuxino-lime2-emmc is not set
@@ -123,9 +123,9 @@ CONFIG_DEFAULT_kmod-rtc-sunxi=y
 CONFIG_DEFAULT_kmod-sun4i-emac=y
 CONFIG_DEFAULT_kmod-usb-gadget-serial=y
 CONFIG_DEFAULT_kmod-usb-net-qmi-wwan=y
-CONFIG_DEFAULT_kmod-usb-net-serial-option=y
 CONFIG_DEFAULT_kmod-usb-ohci=y
 CONFIG_DEFAULT_kmod-usb-serial=y
+CONFIG_DEFAULT_kmod-usb-serial-option=y
 CONFIG_DEFAULT_kmod-usb-serial-qualcomm=y
 CONFIG_DEFAULT_kmod-usb-storage=y
 CONFIG_DEFAULT_kmod-usb2=y
@@ -148,7 +148,7 @@ CONFIG_DEFAULT_ppp-mod-pppoe=y
 CONFIG_DEFAULT_procd=y
 CONFIG_DEFAULT_ser2net=y
 CONFIG_DEFAULT_shellinabox=y
-CONFIG_DEFAULT_tinc_freeioe_tunnel=y
+CONFIG_DEFAULT_tinc-freeioe-tunnel=y
 CONFIG_DEFAULT_uboot-envtools=y
 CONFIG_DEFAULT_uci=y
 CONFIG_DEFAULT_uclient-fetch=y
@@ -455,7 +455,7 @@ CONFIG_LIBC="musl"
 CONFIG_TARGET_SUFFIX="muslgnueabi"
 # CONFIG_IB is not set
 # CONFIG_SDK is not set
-CONFIG_MAKE_TOOLCHAIN=y
+# CONFIG_MAKE_TOOLCHAIN is not set
 # CONFIG_IMAGEOPT is not set
 # CONFIG_PREINITOPT is not set
 CONFIG_TARGET_PREINIT_SUPPRESS_STDERR=y
@@ -1701,7 +1701,7 @@ CONFIG_ZABBIX_POSTGRESQL=y
 #
 # Boot Loaders
 #
-CONFIG_PACKAGE_u-boot-tlink_ok-a40i=y
+CONFIG_PACKAGE_u-boot-tlink_ok_a40i=y
 # end of Boot Loaders
 
 #

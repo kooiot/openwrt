@@ -1,5 +1,5 @@
 --- /dev/null
-+++ b/configs/tlink_ok-a40i_defconfig
++++ b/configs/tlink_ok_a40i_defconfig
 @@ -0,0 +1,31 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
