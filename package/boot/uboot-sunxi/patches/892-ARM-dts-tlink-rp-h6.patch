@@ -1,5 +1,5 @@
 --- /dev/null
-+++ b/configs/tlink_rp-h6_defconfig
++++ b/configs/tlink_rp_h6_defconfig
 @@ -0,0 +1,16 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y

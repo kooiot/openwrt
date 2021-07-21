@@ -250,7 +250,7 @@ define Device/kooiot_tlink-dj-a40i-e
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-gpio \
     kmod-usb-net kmod-usb-net-rtl8152 \
-    kmod-usb-serial kmod-usb-net-serial-option \
+    kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-usb-net-rndis kmod-usb-otg-sunxi \
     kmod-eeprom-at24 kmod-rtc-pcf8563 \
@@ -307,7 +307,7 @@ define Device/kooiot_tlink-ok-a40i
     kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
     kmod-ledtrig-netdev kmod-ledtrig-gpio \
-    kmod-usb-serial kmod-usb-net-serial-option \
+    kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
@@ -327,7 +327,7 @@ define Device/kooiot_tlink-k1
     kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
     kmod-ledtrig-netdev kmod-ledtrig-gpio \
-    kmod-usb-serial kmod-usb-net-serial-option \
+    kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
@@ -347,7 +347,7 @@ define Device/kooiot_tlink-t3
     kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
     kmod-ledtrig-netdev kmod-ledtrig-gpio \
-    kmod-usb-serial kmod-usb-net-serial-option \
+    kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \

@@ -18,6 +18,16 @@ tlink_mount_data() {
 	if [ ! -b $data_blk_p ]; then
 		data_blk_p="/dev/mmcblk2p3"
 	fi
+
+	if [ -b "/dev/mmcblk1p4"]; then
+		echo "EMC not initialized!!!" > /dev/console
+		return
+	fi
+	if [ -b "/dev/mmcblk1p5"]; then
+		echo "EMC not initialized!!!" > /dev/console
+		return
+	fi
+
 	rule_name=$(uci add fstab mount)
 	uci batch <<EOF
 set fstab.$rule_name.target='/mnt/data'
@@ -172,6 +182,8 @@ case "$(board_name)" in
 "kooiot,tlink-x1"|\
 "kooiot,tlink-x2"|\
 "kooiot,tlink-k1"|\
+"kooiot,tlink-ok-a40i"|\
+"kooiot,tlink-dj-a40i-e"|\
 "kooiot,tlink-r1")
 	tlink_default
 	;;

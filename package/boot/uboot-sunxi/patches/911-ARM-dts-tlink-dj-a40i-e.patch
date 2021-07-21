@@ -1,5 +1,5 @@
 --- /dev/null
-+++ b/configs/tlink_dj-a40i-e_defconfig
++++ b/configs/tlink_dj_a40i_e_defconfig
 @@ -0,0 +1,32 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
@@ -45,7 +45,7 @@
  dtb-$(CONFIG_MACH_SUN8I_V3S) += \
 --- /dev/null
 +++ b/arch/arm/dts/sun8i-r40-tlink-dj-a40i-e.dts
-@@ -0,0 +1,344 @@
+@@ -0,0 +1,328 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -133,19 +133,11 @@
 +	status = "okay";
 +};
 +
-+&ohci0 {
-+	status = "okay";
-+};
-+
 +&ohci1 {
 +	status = "okay";
 +};
 +
 +&ohci2 {
-+	status = "okay";
-+};
-+
-+&ehci0 {
 +	status = "okay";
 +};
 +
@@ -170,7 +162,7 @@
 +	phy1: ethernet-phy@1 {
 +		compatible = "ethernet-phy-ieee802.3-c22";
 +		reg = <1>;
-+		reset-gpios = <&pio 0 9 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>; /* PA9 */
++		reset-gpios = <&pio 0 9 GPIO_ACTIVE_LOW>; /* PA9 */
 +		reset-assert-us = <10000>;
 +		reset-deassert-us = <1000000>;
 +	};
@@ -356,14 +348,6 @@
 +	status = "okay";
 +};
 +
-+&otg_sram {
-+	status = "okay";
-+};
-+
-+&usb_otg {
-+	status = "okay";
-+};
-+
 +&ac_power_supply {
 +	status = "okay";
 +};
@@ -382,8 +366,8 @@
 +};
 +
 +&usbphy {
-+	usb0_id_det-gpios = <&pio 7 6 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>; /* PH6 default is pull-up???*/
-+	usb0_vbus_det-gpios = <&pio 8 14 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>; /* PI14 */
++	usb0_id_det-gpios = <&pio 7 6 GPIO_ACTIVE_HIGH>; /* PH6 default is pull-up???*/
++	usb0_vbus_det-gpios = <&pio 8 14 GPIO_ACTIVE_HIGH>; /* PI14 */
 +	usb0_vbus_power-supply = <&usb_power_supply>;
 +	usb0_vbus-supply = <&reg_drivevbus>;
 +	usb1_vbus-supply = <&reg_usb_vcc5v0>;
