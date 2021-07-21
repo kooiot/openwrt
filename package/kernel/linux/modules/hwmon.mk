@@ -570,3 +570,19 @@ endef
 $(eval $(call KernelPackage,hwmon-adcxx))
 
 
+define KernelPackage/hwmon-pcf8591
+  TITLE:=Philips/NXP PCF8591 ADC/DAC support
+  KCONFIG:=CONFIG_SENSORS_PCF8591
+  FILES:=$(LINUX_DIR)/drivers/hwmon/pcf8591.ko
+  AUTOLOAD:=$(call AutoLoad,60,pcf8591)
+  $(call AddDepends/hwmon,+kmod-i2c-core)
+endef
+
+define KernelPackage/hwmon-pcf8591/description
+  Kernel module for the Philips/NXP PCF8591
+  4-channel ADC, 1-channel DAC chips
+endef
+
+$(eval $(call KernelPackage,hwmon-pcf8591))
+
+
