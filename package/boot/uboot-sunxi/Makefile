@@ -361,8 +361,14 @@ endef
 
 define U-Boot/tlink_dj_a40i_e
   BUILD_SUBTARGET:=cortexa7
-  NAME:=NRISC DJ A40i E
+  NAME:=ThingsLink DJ A40i E
   BUILD_DEVICES:=kooiot_tlink-dj-a40i-e
+endef
+
+define U-Boot/tlink_qh_x40
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink QH X40
+  BUILD_DEVICES:=kooiot_tlink-qh-x40
 endef
 
 define U-Boot/tlink_k1
@@ -425,8 +431,9 @@ UBOOT_TARGETS := \
 	tlink_r1 \
 	tlink_rp_h6 \
 	tlink_ok_a40i \
-	tlink_k1 \
+	tlink_qh_x40 \
 	tlink_dj_a40i_e \
+	tlink_k1 \
 	tlink_t3 \
 	Lichee_Zero_Plus \
 	sinlinx_sin_v3s \

@@ -32,7 +32,7 @@
  			reg = <0x01c18000 0x1000>;
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k1.dts
-@@ -0,0 +1,611 @@
+@@ -0,0 +1,612 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -274,6 +274,7 @@
 +};
 +
 +&gmac_mdio {
++	status = "okay";
 +	/* snps,reset-delays-us = <0 10000 50000>;
 +	snps,reset-delays-us = <0 10000 30000>;
 +	snps,reset-gpio = <&pio 0 17 GPIO_ACTIVE_LOW>; // PA17

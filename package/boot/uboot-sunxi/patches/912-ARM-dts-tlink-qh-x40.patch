@@ -1,15 +1,50 @@
---- a/arch/arm/boot/dts/Makefile
-+++ b/arch/arm/boot/dts/Makefile
-@@ -1132,6 +1132,7 @@
+--- /dev/null
++++ b/configs/tlink_qh_x40_defconfig
+@@ -0,0 +1,30 @@
++CONFIG_ARM=y
++CONFIG_ARCH_SUNXI=y
++CONFIG_SPL=y
++CONFIG_MACH_SUN8I_R40=y
++CONFIG_DRAM_CLK=576
++CONFIG_DRAM_ZQ=3881979
++CONFIG_MMC0_CD_PIN="PH15"
++CONFIG_MMC_SUNXI_SLOT_EXTRA=2
++CONFIG_USB0_ID_DET="PH10"
++CONFIG_USB1_VBUS_PIN="PH9"
++CONFIG_AHCI=y
++# CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
++CONFIG_SPL_I2C_SUPPORT=y
++# CONFIG_CMD_FLASH is not set
++CONFIG_DEFAULT_DEVICE_TREE="sun8i-r40-tlink-qh-x40"
++CONFIG_SCSI_AHCI=y
++CONFIG_MII=y
++CONFIG_SUN8I_EMAC=y
++CONFIG_AXP_GPIO=y
++CONFIG_AXP_DCDC1_VOLT=3300
++CONFIG_AXP_DCDC2_VOLT=1160
++CONFIG_AXP_DCDC3_VOLT=1100
++CONFIG_AXP_ALDO1_VOLT=3000
++CONFIG_AXP_ALDO2_VOLT=1800
++CONFIG_AXP_ALDO3_VOLT=3000
++CONFIG_AXP_DLDO1_VOLT=3300
++CONFIG_AXP_DLDO2_VOLT=3300
++CONFIG_SCSI=y
++CONFIG_USB_ECHI_HCD=y
++CONFIG_USB_OCHI_HCD=y
++++ a/arch/arm/dts/Makefile
++++ b/arch/arm/dts/Makefile
+@@ -549,6 +549,7 @@
  	sun8i-r40-tlink-ok-a40i.dtb \
 	sun8i-r40-tlink-k1.dtb \
 	sun8i-r40-tlink-dj-a40i-e.dtb \
 +	sun8i-r40-tlink-qh-x40.dtb \
- 	sun8i-s3-lichee-zero-plus.dtb \
- 	sun8i-s3-olinuxino.dtb \
- 	sun8i-t3-cqa3t-bv3.dtb \
+ 	sun8i-v40-bananapi-m2-berry.dtb \
+ 	sun8i-v40-tlink-t3.dtb
+ dtb-$(CONFIG_MACH_SUN8I_V3S) += \
+
 --- /dev/null
-+++ b/arch/arm/boot/dts/sun8i-r40-tlink-qh-x40.dts
++++ b/arch/arm/dts/sun8i-r40-tlink-qh-x40.dts
+@@ -0,0 +1,255 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -19,9 +54,6 @@
 +#include "sun8i-r40.dtsi"
 +
 +#include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/pwm/pwm.h>
-+#include <dt-bindings/input/input.h>
-+#include <dt-bindings/pinctrl/sun4i-a10.h>
 +
 +/ {
 +	model = "ThingsLink QH X40";
@@ -29,41 +61,10 @@
 +		     "allwinner,sun8i-r40";
 +
 +	aliases {
-+		display0 = &hdmi;
-+		display1 = &lcd0;
-+		display2 = &dsi;
 +		ethernet0 = &gmac;
 +		serial0 = &uart0;
-+		serial3 = &uart3;
-+		serial4 = &uart4;
-+		serial5 = &uart5;
-+		serial7 = &uart7;
 +		mmc0 = &mmc0;
 +		mmc1 = &mmc2;
-+	};
-+
-+	reserved-memory {
-+		#address-cells = <1>;
-+		#size-cells = <1>;
-+		ranges;
-+
-+		/* global autoconfigured region for contiguous allocations */
-+		linux,cma {
-+			compatible = "shared-dma-pool";
-+			reusable;
-+			size = <0x2000000>; // 32M
-+			alignment = <0x2000>;
-+			linux,cma-default;
-+		};
-+	};
-+
-+	lcd_backlight: lcd-backlight {
-+		compatible = "pwm-backlight";
-+		pwms = <&pwm 0 50000 PWM_POLARITY_INVERTED>;
-+		brightness-levels = <1 2 4 8 16 32 64 128 255>;
-+		default-brightness-level = <2>;
-+		power-supply = <&reg_dc1sw>;
-+		enable-gpios = <&pio 1 3 GPIO_ACTIVE_HIGH>; /* LCD_BL_EN: PB3 */
 +	};
 +
 +	chosen {
@@ -80,19 +81,6 @@
 +			};
 +		};
 +	};
-+	lcd0: display {
-+		compatible = "dlc,dlc0700yzg-1", "simple-panel";
-+		//enable-gpio = <&pio 1 9 GPIO_ACTIVE_HIGH>; /* LCD-PWR-EN: PB9 */
-+		power-supply = <&reg_dc1sw>;
-+		backlight = <&lcd_backlight>;
-+		//status = "disabled";
-+
-+		port {
-+			lcd0_con_in: endpoint {
-+				remote-endpoint = <&tcon_lcd0_out_lcd0_lvds0_out>;
-+			};
-+		};
-+	};
 +
 +	leds {
 +		compatible = "gpio-leds";
@@ -100,29 +88,6 @@
 +			label = "blue:status";
 +			gpios = <&pio 7 7 GPIO_ACTIVE_HIGH>; /* PH7  */
 +			linux,default-trigger = "heartbeat";
-+		};
-+	};
-+
-+	gpio_keys {
-+		compatible = "gpio-keys";
-+
-+		/*
-+		reset {
-+			label = "reset";
-+			linux,code = <KEY_RESTART>;
-+			gpios = <&pio 8 6 GPIO_ACTIVE_LOW>; // PI6 
-+		};
-+		*/
-+	};
-+
-+	gpio_export {
-+		compatible = "gpio-export";
-+		#size-cells = <0>;
-+
-+		axp_gpio_1 {
-+			gpio-export,name = "axpio_gpio_1";
-+			gpio-export,output=<1>;
-+			gpios = <&axp_gpio 1 GPIO_ACTIVE_HIGH>; /* GPIO */
 +		};
 +	};
 +
@@ -144,48 +109,13 @@
 +
 +&de {
 +	status = "okay";
-+	mali_supply = <&reg_dcdc3>;
 +};
 +
-+&dsi {
-+	vcc-dsi-supply = <&reg_dcdc1>;		/* VCC-DSI */
-+	status = "okay";
-+
-+	panel@0 {
-+		compatible = "lg,ld070wx3-sl01", "simple-panel-dsi";
-+		reg = <0>;
-+		// enable-gpio = <&pio 7 11 GPIO_ACTIVE_HIGH>; /* LCD-PWR-EN: PH11 */
-+		power-supply = <&reg_dc1sw>;
-+		// backlight = <&mipi_backlight>;
-+	};
-+};
-+
-+&tcon_tv0 {
-+	status = "okay";
-+};
-+&tcon_tv1 {
++&ohci1 {
 +	status = "okay";
 +};
 +
-+&tcon_lcd0 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&lcd0_rgb888_pins>;
-+	status = "okay";
-+};
-+
-+&dphy {
-+	status = "okay";
-+};
-+
-+&otg_sram {
-+	status = "okay";
-+};
-+
-+&usb_otg {
-+	status = "okay";
-+};
-+
-+&ehci0 {
++&ohci2 {
 +	status = "okay";
 +};
 +
@@ -197,21 +127,9 @@
 +	status = "okay";
 +};
 +
-+&ohci0 {
-+	status = "okay";
-+};
-+
-+&ohci1 {
-+	status = "okay";
-+};
-+
-+&ohci2 {
-+	status = "okay";
-+};
-+
 +&gmac {
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&emac_pa_pins>, <&emac_txerr>;
++	pinctrl-0 = <&gmac_mii_pins>;
 +	phy-handle = <&phy1>;
 +	phy-mode = "mii";
 +	status = "okay";
@@ -243,20 +161,8 @@
 +		reg = <0x34>;
 +		interrupt-parent = <&nmi_intc>;
 +		interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
++		//eldoin-supply = <&reg_dcdc1>;
 +		swin-supply = <&reg_dcdc1>;
-+		x-powers,drive-vbus-en;
-+	};
-+};
-+
-+&i2c1 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&i2c1_pins>;
-+	status = "okay";
-+
-+	pcf8563: pcf8563@51 {
-+		compatible = "nxp,pcf8563";
-+		reg = <0x51>;
-+		status = "okay";
 +	};
 +};
 +
@@ -291,33 +197,6 @@
 +	vcc-pe-supply = <&reg_eldo3>;
 +	vcc-pf-supply = <&reg_dcdc1>;
 +	vcc-pg-supply = <&reg_dldo1>;
-+
-+	emac_txerr: emac-txerr-pin {
-+		pins = "PA17";
-+		function = "emac";
-+	};
-+
-+	i2c1_pins: i2c1-pins {
-+		pins = "PB18", "PB19";
-+		function = "i2c1";
-+	};
-+
-+	uart5_pi_pins: uart5-pi-pins {
-+		pins = "PI10", "PI11";
-+		function = "uart5";
-+	};
-+
-+	/omit-if-no-ref/
-+	lcd0_rgb888_pins: lcd0-rgb888-pins {
-+		pins = "PD0", "PD1", "PD2", "PD3",
-+			   "PD4", "PD5", "PD6", "PD7",
-+			   "PD8", "PD9", "PD10", "PD11",
-+			   "PD12", "PD13", "PD14", "PD15",
-+			   "PD16", "PD17", "PD18", "PD19",
-+			   "PD20", "PD21", "PD22", "PD23",
-+			   "PD24", "PD25", "PD26", "PD27";
-+		function = "lcd0";
-+	};
 +};
 +
 +&reg_aldo2 {
@@ -393,31 +272,6 @@
 +&uart0 {
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&uart0_pb_pins>;
-+	status = "okay";
-+};
-+
-+&uart3 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&uart3_pg_pins>,<&uart3_rts_cts_pg_pins>;
-+	uart-has-rtscts;
-+	status = "okay";
-+};
-+
-+&uart4 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&uart4_pg_pins>;
-+	status = "okay";
-+};
-+
-+&uart5 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&uart5_pi_pins>;
-+	status = "okay";
-+};
-+
-+&uart7 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&uart7_pi_pins>;
 +	status = "okay";
 +};
 +
