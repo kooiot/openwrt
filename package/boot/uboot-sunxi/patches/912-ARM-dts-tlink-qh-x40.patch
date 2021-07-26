@@ -132,11 +132,11 @@
 +	pinctrl-0 = <&gmac_mii_pins>;
 +	phy-handle = <&phy1>;
 +	phy-mode = "mii";
++	phy-supply = <&reg_dldo2>;
 +	status = "okay";
 +};
 +
 +&gmac_mdio {
-+	status = "okay";
 +	phy1: ethernet-phy@1 {
 +		compatible = "ethernet-phy-ieee802.3-c22";
 +		reg = <1>;

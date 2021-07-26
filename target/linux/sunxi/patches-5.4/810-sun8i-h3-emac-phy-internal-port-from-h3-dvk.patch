@@ -6,7 +6,7 @@
  		ret = phylink_connect_phy(priv->phylink, phydev);
  	}
 +
-+	if (ret == 0 && priv->plat->has_sun8i && priv->plat->interface == PHY_INTERFACE_MODE_MII)
++	if (ret == 0 && priv->plat->need_sun8i_ephy_hack)
 +	{
 +		struct phy_device* phydev = priv->dev->phydev;
 +		netdev_info(priv->dev, "%s: H3 phy hacks begin\n", __func__);
@@ -39,10 +39,46 @@
  
  	/* Stop and disconnect the PHY */
  	phylink_stop(priv->phylink);
-+	if (priv->plat->has_sun8i) {
-+		value = phy_read(dev->phydev, MII_BMCR);
-+		phy_write(dev->phydev, MII_BMCR, (value | BMCR_PDOWN));
++	if (priv->plat->need_sun8i_ephy_hack) {
++		// value = phy_read(dev->phydev, MII_BMCR);
++		// phy_write(dev->phydev, MII_BMCR, (value | BMCR_PDOWN));
 +	}
  	phylink_disconnect_phy(priv->phylink);
  
  	stmmac_stop_all_queues(priv);
+--- a/include/linux/stmmac.h
++++ b/include/linux/stmmac.h
+@@ -174,6 +174,7 @@
+ 	struct stmmac_axi *axi;
+ 	int has_gmac4;
+ 	bool has_sun8i;
++	bool need_sun8i_ephy_hack;
+ 	bool tso_en;
+ 	int rss_en;
+ 	int mac_port_sel_speed;
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
+@@ -49,6 +49,7 @@
+ 	u32 default_syscon_value;
+ 	const struct reg_field *syscon_field;
+ 	bool soc_has_internal_phy;
++	bool soc_has_ephy_hack;
+ 	bool support_mii;
+ 	bool support_rmii;
+ 	bool support_rgmii;
+@@ -97,6 +98,7 @@
+ 	.default_syscon_value = 0x58000,
+ 	.syscon_field = &sun8i_syscon_reg_field,
+ 	.soc_has_internal_phy = true,
++	.soc_has_ephy_hack = true,
+ 	.support_mii = true,
+ 	.support_rmii = true,
+ 	.support_rgmii = true,
+@@ -1202,6 +1204,7 @@
+ 	plat_dat->rx_coe = STMMAC_RX_COE_TYPE2;
+ 	plat_dat->tx_coe = 1;
+ 	plat_dat->has_sun8i = true;
++	plat_dat->need_sun8i_ephy_hack = gmac->variant->soc_has_ephy_hack;
+ 	plat_dat->bsp_priv = gmac;
+ 	plat_dat->init = sun8i_dwmac_init;
+ 	plat_dat->exit = sun8i_dwmac_exit;
