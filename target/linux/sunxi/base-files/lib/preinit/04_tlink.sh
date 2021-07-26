@@ -70,6 +70,7 @@ do_kooiot_tlink_generic() {
 	"kooiot,tlink-ok-a40i"|\
 	"kooiot,tlink-dj-a40i-e"|\
 	"kooiot,tlink-dr4-a40i"|\
+	"kooiot,tlink-nano-a40i"|\
 	"kooiot,tlink-qh-x40"|\
 	"kooiot,tlink-r1")
 		do_product_sn_kooiot

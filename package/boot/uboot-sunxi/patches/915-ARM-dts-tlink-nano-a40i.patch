@@ -1,21 +1,21 @@
 --- /dev/null
-+++ b/configs/tlink_qh_x40_defconfig
-@@ -0,0 +1,30 @@
++++ b/configs/tlink_nano_a40i_defconfig
+@@ -0,0 +1,29 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
 +CONFIG_SPL=y
 +CONFIG_MACH_SUN8I_R40=y
-+CONFIG_DRAM_CLK=576
++CONFIG_DRAM_CLK=648
 +CONFIG_DRAM_ZQ=3881979
-+CONFIG_MMC0_CD_PIN="PH15"
++CONFIG_MMC0_CD_PIN="PH8"
 +CONFIG_MMC_SUNXI_SLOT_EXTRA=2
-+CONFIG_USB0_ID_DET="PH10"
-+CONFIG_USB1_VBUS_PIN="PH9"
-+CONFIG_AHCI=y
++CONFIG_USB0_ID_DET="PH2"
++CONFIG_USB0_VBUS_DET="PH3"
++CONFIG_USB0_VBUS_PIN="PH14"
 +# CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
 +CONFIG_SPL_I2C_SUPPORT=y
 +# CONFIG_CMD_FLASH is not set
-+CONFIG_DEFAULT_DEVICE_TREE="sun8i-r40-tlink-qh-x40"
++CONFIG_DEFAULT_DEVICE_TREE="sun8i-r40-tlink-nano-a40i"
 +CONFIG_SCSI_AHCI=y
 +CONFIG_MII=y
 +CONFIG_SUN8I_EMAC=y
@@ -23,28 +23,27 @@
 +CONFIG_AXP_DCDC1_VOLT=3300
 +CONFIG_AXP_DCDC2_VOLT=1160
 +CONFIG_AXP_DCDC3_VOLT=1100
-+CONFIG_AXP_ALDO1_VOLT=3000
++CONFIG_AXP_DCDC5_VOLT=1200
 +CONFIG_AXP_ALDO2_VOLT=1800
 +CONFIG_AXP_ALDO3_VOLT=3000
-+CONFIG_AXP_DLDO1_VOLT=3300
-+CONFIG_AXP_DLDO2_VOLT=3300
++CONFIG_AXP_ELDO1_VOLT=3300
 +CONFIG_SCSI=y
 +CONFIG_USB_ECHI_HCD=y
 +CONFIG_USB_OCHI_HCD=y
 +++ a/arch/arm/dts/Makefile
 +++ b/arch/arm/dts/Makefile
-@@ -549,6 +549,7 @@
- 	sun8i-r40-tlink-ok-a40i.dtb \
+@@ -550,6 +550,7 @@
 	sun8i-r40-tlink-k1.dtb \
 	sun8i-r40-tlink-dj-a40i-e.dtb \
-+	sun8i-r40-tlink-qh-x40.dtb \
+	sun8i-r40-tlink-qh-x40.dtb \
++	sun8i-r40-tlink-nano-a40i.dtb \
  	sun8i-v40-bananapi-m2-berry.dtb \
  	sun8i-v40-tlink-t3.dtb
  dtb-$(CONFIG_MACH_SUN8I_V3S) += \
 
 --- /dev/null
-+++ b/arch/arm/dts/sun8i-r40-tlink-qh-x40.dts
-@@ -0,0 +1,255 @@
++++ b/arch/arm/dts/sun8i-r40-tlink-nano-a40i.dts
+@@ -0,0 +1,242 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -56,9 +55,8 @@
 +#include <dt-bindings/gpio/gpio.h>
 +
 +/ {
-+	model = "ThingsLink QH X40";
-+	compatible = "kooiot,tlink-qh-x40", "allwinner,sun8i-t3",
-+		     "allwinner,sun8i-r40";
++	model = "ThingsLink Nano A40i";
++	compatible = "kooiot,tlink-nano-a40i", "allwinner,sun8i-r40";
 +
 +	aliases {
 +		ethernet0 = &gmac;
@@ -96,7 +94,7 @@
 +		regulator-name = "vcc5v0";
 +		regulator-min-microvolt = <5000000>;
 +		regulator-max-microvolt = <5000000>;
-+		gpio = <&pio 7 9 GPIO_ACTIVE_HIGH>; /* PH9 */
++		gpio = <&pio 7 14 GPIO_ACTIVE_HIGH>; /* PH14 */
 +		enable-active-high;
 +	};
 +};
@@ -132,7 +130,7 @@
 +	pinctrl-0 = <&gmac_mii_pins>;
 +	phy-handle = <&phy1>;
 +	phy-mode = "mii";
-+	phy-supply = <&reg_dldo2>;
++	phy-supply = <&reg_aldo1>; // PH11??
 +	status = "okay";
 +};
 +
@@ -170,14 +168,16 @@
 +
 +&mmc0 {
 +	vmmc-supply = <&reg_dcdc1>;
++	vqmmc-supply = <&reg_dcdc1>;
++	vdmmc-supply = <&reg_dcdc1>;
 +	bus-width = <4>;
-+	cd-gpios = <&pio 7 15 GPIO_ACTIVE_LOW>; /* PH15 */
++	cd-gpios = <&pio 7 8 GPIO_ACTIVE_LOW>; /* PH8 */
 +	status = "okay";
 +};
 +
 +&mmc2 {
 +	vmmc-supply = <&reg_dcdc1>;
-+	vqmmc-supply = <&reg_dcdc1>;
++	vqmmc-supply = <&reg_aldo2>;
 +	bus-width = <8>;
 +	non-removable;
 +	status = "okay";
@@ -191,19 +191,26 @@
 +&pio {
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&clk_out_a_pin>;
-+	vcc-pa-supply = <&reg_dldo2>;
++	vcc-pa-supply = <&reg_aldo1>;
 +	vcc-pc-supply = <&reg_aldo2>;
 +	vcc-pd-supply = <&reg_dcdc1>;
 +	vcc-pe-supply = <&reg_eldo3>;
-+	vcc-pf-supply = <&reg_dcdc1>;
-+	vcc-pg-supply = <&reg_dldo1>;
++	vcc-pf-supply = <&reg_dldo4>;
++	vcc-pg-supply = <&reg_dldo2>;
++};
++
++&reg_aldo1 {
++	regulator-always-on;
++	regulator-min-microvolt = <3300000>;
++	regulator-max-microvolt = <3300000>;
++	regulator-name = "vcc-pa";
 +};
 +
 +&reg_aldo2 {
 +	regulator-always-on;
-+	regulator-min-microvolt = <2500000>;
-+	regulator-max-microvolt = <2500000>;
-+	regulator-name = "vcc-pa";
++	regulator-min-microvolt = <1800000>;
++	regulator-max-microvolt = <1800000>;
++	regulator-name = "vcc-pc";
 +};
 +
 +&reg_aldo3 {
@@ -236,36 +243,32 @@
 +
 +&reg_dcdc5 {
 +	regulator-always-on;
-+	regulator-min-microvolt = <1500000>;
-+	regulator-max-microvolt = <1500000>;
++	regulator-min-microvolt = <1200000>;
++	regulator-max-microvolt = <1200000>;
 +	regulator-name = "vcc-dram";
 +};
 +
 +&reg_dldo1 {
-+	regulator-always-on;
++	regulator-min-microvolt = <1800000>;
++	regulator-max-microvolt = <1800000>;
++	regulator-name = "vcc-wifi";
++};
++
++&reg_dldo2 {
 +	regulator-min-microvolt = <3300000>;
 +	regulator-max-microvolt = <3300000>;
 +	regulator-name = "vcc-pg";
 +};
 +
-+&reg_dldo2 {
-+	regulator-always-on;
-+	regulator-min-microvolt = <3300000>;
-+	regulator-max-microvolt = <3300000>;
-+	regulator-name = "vcc-pa";
-+};
-+
 +&reg_dldo3 {
-+	regulator-always-on;
 +	regulator-min-microvolt = <3300000>;
 +	regulator-max-microvolt = <3300000>;
 +	regulator-name = "vcc-dldo3";
 +};
 +
 +&reg_eldo3 {
-+	regulator-always-on;
-+	regulator-min-microvolt = <2800000>;
-+	regulator-max-microvolt = <2800000>;
++	regulator-min-microvolt = <1200000>;
++	regulator-max-microvolt = <1200000>;
 +	regulator-name = "vcc-pe";
 +};
 +
@@ -275,27 +278,10 @@
 +	status = "okay";
 +};
 +
-+&ac_power_supply {
-+	status = "okay";
-+};
-+
-+&battery_power_supply {
-+	status = "okay";
-+};
-+
-+&usb_power_supply {
-+	status = "okay";
-+};
-+
-+&reg_drivevbus {
-+	regulator-name = "usb0-vbus";
-+	status = "okay";
-+};
-+
 +&usbphy {
-+	usb0_id_det-gpios = <&pio 7 10 GPIO_ACTIVE_HIGH>; /* PH10 */
-+	usb0_vbus_power-supply = <&usb_power_supply>;
-+	usb0_vbus-supply = <&reg_drivevbus>,<&reg_vcc5v0>;
++	usb0_id_det-gpios = <&pio 7 2 GPIO_ACTIVE_HIGH>; /* PH2 */
++	usb0_vbus_det-gpios = <&pio 7 3 GPIO_ACTIVE_HIGH>; /* PH3 */
++	usb0_vbus-supply = <&reg_vcc5v0>;
 +	usb1_vbus-supply = <&reg_vcc5v0>;
 +	usb2_vbus-supply = <&reg_vcc5v0>;
 +	status = "okay";
