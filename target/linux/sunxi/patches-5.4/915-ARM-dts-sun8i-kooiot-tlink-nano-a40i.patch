@@ -4,13 +4,13 @@
 	sun8i-r40-tlink-k1.dtb \
 	sun8i-r40-tlink-dj-a40i-e.dtb \
 	sun8i-r40-tlink-qh-x40.dtb \
-+	sun8i-r40-tlink-qh-x40.dtb \
++	sun8i-r40-tlink-nano-a40i.dtb \
  	sun8i-s3-lichee-zero-plus.dtb \
  	sun8i-s3-olinuxino.dtb \
  	sun8i-t3-cqa3t-bv3.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-nano-a40i.dts
-@@ -0,0 +1,495 @@
+@@ -0,0 +1,519 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -64,7 +64,7 @@
 +		pwms = <&pwm 0 50000 PWM_POLARITY_INVERTED>;
 +		brightness-levels = <1 2 4 8 16 32 64 128 255>;
 +		default-brightness-level = <2>;
-+		power-supply = <&reg_dc1sw>;
++		power-supply = <&reg_vcc5v0>, <&reg_vcc3v3>;
 +		enable-gpios = <&pio 1 11 GPIO_ACTIVE_HIGH>; /* LCD_BL_EN: PB11 */
 +	};
 +
@@ -99,9 +99,10 @@
 +
 +	leds {
 +		compatible = "gpio-leds";
++
 +		status {
 +			label = "blue:status";
-+			gpios = <&pio 7 7 GPIO_ACTIVE_HIGH>; /* PH7  */
++			gpios = <&pio 7 11 GPIO_ACTIVE_LOW>; /* PH11  */
 +			linux,default-trigger = "heartbeat";
 +		};
 +	};
@@ -122,17 +123,18 @@
 +		compatible = "gpio-export";
 +		#size-cells = <0>;
 +
-+		/* axp_gpio_1 {
-+			gpio-export,name = "axpio_gpio_1";
++		usb_hub_reset {
++			gpio-export,name = "usb_hub_reset";
 +			gpio-export,output=<1>;
-+			gpios = <&axp_gpio 1 GPIO_ACTIVE_HIGH>; // 
-+		}; */
++			gpios = <&pio 1 12 GPIO_ACTIVE_LOW>; /* PB12 */ 
++		};
 +	};
 +
 +	reg_vcc5v0: vcc5v0 {
 +		compatible = "regulator-fixed";
 +		regulator-name = "vcc5v0";
 +		regulator-always-on;
++		regulator-boot-on;
 +		regulator-min-microvolt = <5000000>;
 +		regulator-max-microvolt = <5000000>;
 +		gpio = <&pio 7 26 GPIO_ACTIVE_HIGH>; /* PH26 */
@@ -143,6 +145,7 @@
 +		compatible = "regulator-fixed";
 +		regulator-name = "vcc3v3";
 +		regulator-always-on;
++		regulator-boot-on;
 +		regulator-min-microvolt = <3300000>;
 +		regulator-max-microvolt = <3300000>;
 +		gpio = <&pio 7 27 GPIO_ACTIVE_HIGH>; /* PH27 */
@@ -156,6 +159,7 @@
 +		regulator-max-microvolt = <5000000>;
 +		gpio = <&pio 7 14 GPIO_ACTIVE_HIGH>; /* PH14 */
 +		enable-active-high;
++		vin-supply = <&reg_vcc5v0>;
 +	};
 +
 +	reg_usb_vcc5v0: usb-vcc5v0 {
@@ -165,6 +169,7 @@
 +		regulator-max-microvolt = <5000000>;
 +		gpio = <&pio 1 8 GPIO_ACTIVE_HIGH>; /* PB8 */
 +		enable-active-high;
++		vin-supply = <&reg_vcc5v0>;
 +	};
 +};
 +
@@ -389,8 +394,8 @@
 +
 +&reg_dc1sw {
 +	regulator-always-on;
-+	regulator-min-microvolt = <3000000>;
-+	regulator-max-microvolt = <3000000>;
++	regulator-min-microvolt = <3300000>;
++	regulator-max-microvolt = <3300000>;
 +	regulator-name = "vcc-dc1sw";
 +};
 +
@@ -438,6 +443,25 @@
 +	regulator-min-microvolt = <3300000>;
 +	regulator-max-microvolt = <3300000>;
 +	regulator-name = "vcc-dldo3";
++};
++
++&reg_dldo4 {
++	regulator-min-microvolt = <2500000>;
++	regulator-max-microvolt = <2500000>;
++	regulator-name = "vcc-sata-25";
++};
++
++&reg_eldo1 {
++	regulator-min-microvolt = <1200000>;
++	regulator-max-microvolt = <1200000>;
++	regulator-name = "vcc-sata-12";
++};
++
++&reg_eldo2 {
++	// regulator-always-on;
++	regulator-min-microvolt = <3300000>;
++	regulator-max-microvolt = <3300000>;
++	regulator-name = "vcc-tvin";
 +};
 +
 +&reg_eldo3 {

@@ -318,6 +318,62 @@ define Device/kooiot_tlink-dj-a40i-e
 endef
 TARGET_DEVICES += kooiot_tlink-dj-a40i-e
 
+define Device/kooiot_tlink-dr4-a40i
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink DR3 A40i
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-gpio \
+    kmod-usb-net kmod-usb-net-rtl8152 \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+	kmod-usb-net-rndis kmod-usb-otg-sunxi \
+    kmod-eeprom-at24 kmod-rtc-pcf8563 \
+    kmod-usb-storage kmod-drm-sunxi \
+	kmod-backlight kmod-drm-sun8i \
+	kmod-drm-sun8i-dsi kmod-drm-sun8i-hdmi \
+	kmod-rtl8xxxu rtl8723bu-firmware \
+	kmod-input-core kmod-input-evdev \
+	kmod-sound-soc-sunxi kmod-backlight-pwm \
+	kmod-pwm-sun8i kmod-mmc usb-modeswitch \
+	usb-otg-sunxi kmod-usb-gadget-serial \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+	luci-app-ddns luci-app-mosquitto luci-app-ser2net \
+    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    uqmi umbim usbutils freeioe wwanleds \
+	blockd siridb-server mosquitto-nossl \
+	wpad-basic-wolfssl uclibcxx curl fdisk
+  SOC := sun8i-r40
+endef
+TARGET_DEVICES += kooiot_tlink-dr4-a40i
+
+define Device/kooiot_tlink-nano-a40i
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink Nano A40i
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-gpio \
+    kmod-usb-net kmod-usb-net-rtl8152 \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+	kmod-usb-net-rndis kmod-usb-otg-sunxi \
+    kmod-eeprom-at24 kmod-rtc-pcf8563 \
+    kmod-usb-storage kmod-drm-sunxi \
+	kmod-backlight kmod-drm-sun8i \
+	kmod-drm-sun8i-dsi kmod-drm-sun8i-hdmi \
+	kmod-rtl8xxxu rtl8723bu-firmware \
+	kmod-input-core kmod-input-evdev \
+	kmod-sound-soc-sunxi kmod-backlight-pwm \
+	kmod-pwm-sun8i kmod-mmc usb-modeswitch \
+	usb-otg-sunxi kmod-usb-gadget-serial \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+	luci-app-ddns luci-app-mosquitto luci-app-ser2net \
+    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    uqmi umbim usbutils freeioe wwanleds \
+	blockd siridb-server mosquitto-nossl \
+	wpad-basic-wolfssl uclibcxx curl fdisk
+  SOC := sun8i-r40
+endef
+TARGET_DEVICES += kooiot_tlink-nano-a40i
+
 define Device/kooiot_tlink-qh-x40
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink QH X40

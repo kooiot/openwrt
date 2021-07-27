@@ -43,7 +43,7 @@
 
 --- /dev/null
 +++ b/arch/arm/dts/sun8i-r40-tlink-nano-a40i.dts
-@@ -0,0 +1,242 @@
+@@ -0,0 +1,250 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -82,9 +82,10 @@
 +
 +	leds {
 +		compatible = "gpio-leds";
++
 +		status {
 +			label = "blue:status";
-+			gpios = <&pio 7 7 GPIO_ACTIVE_HIGH>; /* PH7  */
++			gpios = <&pio 7 11 GPIO_ACTIVE_LOW>; /* PH11  */
 +			linux,default-trigger = "heartbeat";
 +		};
 +	};
@@ -264,6 +265,13 @@
 +	regulator-min-microvolt = <3300000>;
 +	regulator-max-microvolt = <3300000>;
 +	regulator-name = "vcc-dldo3";
++};
++
++&reg_eldo2 {
++	// regulator-always-on;
++	regulator-min-microvolt = <3300000>;
++	regulator-max-microvolt = <3300000>;
++	regulator-name = "vcc-tvin";
 +};
 +
 +&reg_eldo3 {

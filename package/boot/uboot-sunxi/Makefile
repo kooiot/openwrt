@@ -371,6 +371,18 @@ define U-Boot/tlink_qh_x40
   BUILD_DEVICES:=kooiot_tlink-qh-x40
 endef
 
+define U-Boot/tlink_dr4_a40i
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink DR4 A40i
+  BUILD_DEVICES:=kooiot_tlink-dr4-a40i
+endef
+
+define U-Boot/tlink_nano_a40i
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink Nano A40i
+  BUILD_DEVICES:=kooiot_tlink-nano-a40i
+endef
+
 define U-Boot/tlink_k1
   BUILD_SUBTARGET:=cortexa7
   NAME:=ThingsLink K1
@@ -432,6 +444,8 @@ UBOOT_TARGETS := \
 	tlink_rp_h6 \
 	tlink_ok_a40i \
 	tlink_qh_x40 \
+	tlink_dr4_a40i \
+	tlink_nano_a40i \
 	tlink_dj_a40i_e \
 	tlink_k1 \
 	tlink_t3 \
