@@ -150,7 +150,11 @@ tlink_default() {
 	}
 
 	# ETH MAC for usb-eth
-	tlink_set_wan_mac
+	case "$(board_name)" in
+		"kooiot,tlink-x1"|\
+		"kooiot,tlink-k1")
+		tlink_set_wan_mac;;
+	esac
 
 	# set ttylogin (for ttyS0, default will promote console with password)
 	# set system.@system[0].ttylogin='1'
