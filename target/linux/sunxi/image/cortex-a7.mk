@@ -223,6 +223,21 @@ endef
 TARGET_DEVICES += sun8i-h3-tlink-x1
 
 
+define Device/sun8i-h3-tlink-x1s
+  DEVICE_TITLE:=KooIoT TLink X1s
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
+	 kmod-usb-net kmod-usb-net-rtl8152 \
+	 kmod-leds-gpio kmod-ledtrig-heartbeat \
+	 kmod-ledtrig-netdev kmod-ledtrig-gpio \
+	 kmod-rtc-sd3078 kmod-usb-net-asix \
+	 kmod-eeprom-at24 fdisk
+  SUPPORTED_DEVICES:=kooiot,tlink-x1s
+  SUNXI_DTS:=sun8i-h3-tlink-x1s
+endef
+
+TARGET_DEVICES += sun8i-h3-tlink-x1s
+
+
 define Device/sun8i-h3-tlink-r1
   DEVICE_TITLE:=KooIoT TLink R1
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \

@@ -7,6 +7,7 @@ psn=$1
 
 case "$(board_name)" in
 "kooiot,tlink-x1" | \
+"kooiot,tlink-x1s" | \
 "kooiot,tlink-r1")
 	;;
 *)

@@ -64,6 +64,7 @@ do_kooiot_tlink_generic() {
 
 	case "$(board_name)" in
 	"kooiot,tlink-x1"|\
+	"kooiot,tlink-x1s"|\
 	"kooiot,tlink-r1")
 		do_product_sn_kooiot
 		;;

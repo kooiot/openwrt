@@ -192,6 +192,12 @@ define U-Boot/tlink_x1
   BUILD_DEVICES:=sun8i-h3-tlink-x1
 endef
 
+define U-Boot/tlink_x1s
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=U-Boot for TLink X1s (H3)
+  BUILD_DEVICES:=sun8i-h3-tlink-x1s
+endef
+
 define U-Boot/tlink_r1
   BUILD_SUBTARGET:=cortexa7
   NAME:=U-Boot for TLink R1 (H3)
@@ -282,6 +288,7 @@ UBOOT_TARGETS := \
 	nanopi_neo \
 	nanopi_neo_plus2 \
 	tlink_x1 \
+	tlink_x1s \
 	tlink_r1 \
 	orangepi_r1 \
 	orangepi_pc \
