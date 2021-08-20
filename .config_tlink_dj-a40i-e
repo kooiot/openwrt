@@ -467,9 +467,9 @@ CONFIG_GDB=y
 # CONFIG_GDB_PYTHON is not set
 CONFIG_USE_MUSL=y
 CONFIG_SSP_SUPPORT=y
-CONFIG_BINUTILS_VERSION_2_34=y
-CONFIG_BINUTILS_VERSION="2.34"
-CONFIG_GCC_VERSION="8.4.0"
+CONFIG_BINUTILS_VERSION_2_36_1=y
+CONFIG_BINUTILS_VERSION="2.36.1"
+CONFIG_GCC_VERSION="10.3.0"
 # CONFIG_GCC_USE_IREMAP is not set
 CONFIG_LIBC="musl"
 CONFIG_TARGET_SUFFIX="muslgnueabi"
@@ -2737,6 +2737,9 @@ CONFIG_PACKAGE_kmod-rtl8xxxu=y
 # CONFIG_PACKAGE_factory-tlink is not set
 # CONFIG_PACKAGE_focas-ubus is not set
 CONFIG_PACKAGE_freeioe=y
+CONFIG_FREEIOE_CLOUD_HOST=y
+CONFIG_FREEIOE_CLOUD_HOST_ADDR="iot.kooiot.in"
+CONFIG_FREEIOE_CLOUD_PKG_URL="iot.kooiot.in:81"
 # CONFIG_PACKAGE_kooiot is not set
 CONFIG_PACKAGE_skynet=y
 # CONFIG_PACKAGE_strip-ioe is not set
@@ -5552,7 +5555,7 @@ CONFIG_PACKAGE_chat=y
 # CONFIG_PACKAGE_etherwake is not set
 # CONFIG_PACKAGE_etherwake-nfqueue is not set
 CONFIG_PACKAGE_ethtool=y
-# CONFIG_ETHTOOL_PRETTY_DUMP is not set
+# CONFIG_PACKAGE_ethtool-full is not set
 # CONFIG_PACKAGE_fakeidentd is not set
 # CONFIG_PACKAGE_fakepop is not set
 # CONFIG_PACKAGE_family-dns is not set
@@ -5692,6 +5695,7 @@ CONFIG_PACKAGE_ppp-mod-pppoe=y
 # CONFIG_PACKAGE_redsocks is not set
 # CONFIG_PACKAGE_remserial is not set
 # CONFIG_PACKAGE_restic-rest-server is not set
+# CONFIG_PACKAGE_rpcapd is not set
 # CONFIG_PACKAGE_rpcbind is not set
 # CONFIG_PACKAGE_rssileds is not set
 # CONFIG_PACKAGE_rsyslog is not set
@@ -6289,6 +6293,7 @@ CONFIG_PACKAGE_libjson-script=y
 # CONFIG_PACKAGE_mpack is not set
 # CONFIG_PACKAGE_mt-st is not set
 # CONFIG_PACKAGE_namei is not set
+# CONFIG_PACKAGE_naywatch is not set
 # CONFIG_PACKAGE_netopeer2-cli is not set
 # CONFIG_PACKAGE_netopeer2-server is not set
 # CONFIG_PACKAGE_netwhere is not set

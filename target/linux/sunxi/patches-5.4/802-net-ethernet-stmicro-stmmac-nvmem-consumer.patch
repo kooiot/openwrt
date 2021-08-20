@@ -53,9 +53,9 @@ index 72da77b94ecd..8a7b804528ef 100644
 +	   interface as a "local-mac-address" attribute in the dt
 +	   node. Here it is received.
 +	*/
- 	*mac = of_get_mac_address(np);
- 	if (IS_ERR(*mac)) {
- 		if (PTR_ERR(*mac) == -EPROBE_DEFER)
+ 	rc = of_get_mac_address(np, mac);
+ 	if (rc) {
+ 		if (rc == -EPROBE_DEFER)
 @@ -412,6 +434,10 @@
  		*mac = NULL;
  	}
