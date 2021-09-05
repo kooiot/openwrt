@@ -6,7 +6,6 @@ Subject: [PATCH 6114/6117] ARM: sun8i: s3: add ns2009 node for Lichee Pi Zero
 
 ---
  arch/arm/boot/dts/sun8i-s3-lichee-zero-plus.dts | 5 +++++
- arch/arm/configs/licheepi_zero_plus_defconfig   | 3 ++-
  drivers/input/touchscreen/ns2009.c              | 4 +++-
  3 files changed, 10 insertions(+), 2 deletions(-)
 
@@ -26,27 +25,6 @@ index 8def85da80f1..8751e131c00f 100644
  };
  
  &lradc {
-diff --git a/arch/arm/configs/licheepi_zero_plus_defconfig b/arch/arm/configs/licheepi_zero_plus_defconfig
-index 8c091e803056..40fdf072c0a9 100644
---- a/arch/arm/configs/licheepi_zero_plus_defconfig
-+++ b/arch/arm/configs/licheepi_zero_plus_defconfig
-@@ -1215,7 +1215,7 @@ CONFIG_USB_NET_DRIVERS=y
- CONFIG_INPUT=y
- CONFIG_INPUT_LEDS=y
- CONFIG_INPUT_FF_MEMLESS=y
--# CONFIG_INPUT_POLLDEV is not set
-+CONFIG_INPUT_POLLDEV=m
- # CONFIG_INPUT_SPARSEKMAP is not set
- # CONFIG_INPUT_MATRIXKMAP is not set
- 
-@@ -1309,6 +1309,7 @@ CONFIG_TOUCHSCREEN_GOODIX=m
- # CONFIG_TOUCHSCREEN_MK712 is not set
- # CONFIG_TOUCHSCREEN_PENMOUNT is not set
- # CONFIG_TOUCHSCREEN_EDT_FT5X06 is not set
-+CONFIG_TOUCHSCREEN_NS2009=m
- # CONFIG_TOUCHSCREEN_TOUCHRIGHT is not set
- # CONFIG_TOUCHSCREEN_TOUCHWIN is not set
- # CONFIG_TOUCHSCREEN_PIXCIR is not set
 diff --git a/drivers/input/touchscreen/ns2009.c b/drivers/input/touchscreen/ns2009.c
 index 2c47b5ecf231..0f3505d44347 100644
 --- a/drivers/input/touchscreen/ns2009.c
