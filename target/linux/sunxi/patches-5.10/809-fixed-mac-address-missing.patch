@@ -1,0 +1,15 @@
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+@@ -2863,6 +2863,12 @@
+ 	u32 chan;
+ 	int ret;
+ 
++	if (!is_valid_ether_addr(priv->dev->dev_addr)) {
++		eth_hw_addr_nvmem_sun8i_chipid(priv->device, priv->dev);
++		netdev_info(priv->dev, "fix device MAC address %pM\n",
++			priv->dev->dev_addr);
++	}
++
+ 	if (priv->hw->pcs != STMMAC_PCS_TBI &&
+ 	    priv->hw->pcs != STMMAC_PCS_RTBI &&
+ 	    priv->hw->xpcs == NULL) {

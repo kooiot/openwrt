@@ -302,12 +302,14 @@ define KernelPackage/drm-sun8i
 	  +kmod-drm +kmod-drm-kms-helper +kmod-lib-crc-ccitt
   KCONFIG:= \
     CONFIG_DRM_SUN4I \
+	CONFIG_MEDIA_CEC_SUPPORT=y \
 	CONFIG_DRM_FBDEV_EMULATION=y \
 	CONFIG_DRM_FBDEV_OVERALLOC=100 \
 	CONFIG_DRM_LOAD_EDID_FIRMWARE=y \
 	CONFIG_DRM_GEM_CMA_HELPER=y \
 	CONFIG_DRM_KMS_CMA_HELPER=y \
 	CONFIG_DRM_GEM_SHMEM_HELPER=y \
+	CONFIG_VIDEOMODE_HELPERS=y \
 	CONFIG_DRM_HDLCD \
 	CONFIG_DRM_MALI_DISPLAY \
 	CONFIG_DRM_LIMA \
@@ -350,7 +352,7 @@ define KernelPackage/drm-sun8i-hdmi
 	CONFIG_DRM_DW_HDMI_I2S_AUDIO \
 	CONFIG_DRM_DW_HDMI_CEC
   FILES:= \
-	$(LINUX_DIR)/drivers/media/cec/cec.ko \
+	$(LINUX_DIR)/drivers/media/cec/core/cec.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun4i-drm-hdmi.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun8i-drm-hdmi.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/bridge/synopsys/dw-hdmi.ko \
