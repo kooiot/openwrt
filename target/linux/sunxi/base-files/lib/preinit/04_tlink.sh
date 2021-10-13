@@ -1,6 +1,11 @@
 do_product_sn_kooiot_nvmem() {
 	NVMEM_PATH="/sys/devices/platform/soc/1c2ac00.i2c/i2c-0/0-0050/0-00500/nvmem"
 	if [ -b "${NVMEM_PATH}" -o -f "${NVMEM_PATH}" ]; then
+	else
+		NVMEM_PATH="/sys/devices/platform/soc/1c2ac00.i2c/i2c-0/0-0050/0-00501/nvmem"
+	fi
+
+	if [ -b "${NVMEM_PATH}" -o -f "${NVMEM_PATH}" ]; then
 		product_sn=$(dd if=${NVMEM_PATH} \
 			bs=1 count=16 skip=0 2>/dev/null | \
 			hexdump -v -e '/1 "%c"' 2>/dev/null)
@@ -51,7 +56,7 @@ do_product_sn_kooiot_emmc() {
 }
 
 do_product_sn_kooiot() {
-	NVMEM_PATH="/sys/devices/platform/soc/1c2ac00.i2c/i2c-0/0-0050/0-00500/nvmem"
+	NVMEM_PATH="/sys/devices/platform/soc/1c2ac00.i2c/i2c-0/0-0050/eeprom"
 	if [ -b "${NVMEM_PATH}" -o -f "${NVMEM_PATH}" ]; then
 		do_product_sn_kooiot_nvmem
 	else
