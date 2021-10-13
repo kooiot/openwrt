@@ -10,7 +10,7 @@
  	sun8i-r16-bananapi-m2m.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-h3-tlink-x1.dts
-@@ -0,0 +1,195 @@
+@@ -0,0 +1,200 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (C) 2019-2020 Dirk Chang <dirk@kooiot.com>
@@ -22,6 +22,11 @@
 +/ {
 +	model = "KooIoT TLink X1";
 +	compatible = "kooiot,tlink-x1", "allwinner,sun8i-h3";
++
++	aliases {
++		mmc0 = &mmc0;
++		mmc1 = &mmc2;
++	};
 +
 +	leds {
 +		compatible = "gpio-leds";
@@ -213,3 +218,4 @@
 +&ohci3 {
 +	status = "disabled";
 +};
++
