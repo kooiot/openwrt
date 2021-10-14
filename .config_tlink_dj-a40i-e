@@ -48,6 +48,7 @@ CONFIG_TARGET_sunxi_cortexa7=y
 # CONFIG_TARGET_sunxi_cortexa53 is not set
 # CONFIG_TARGET_MULTI_PROFILE is not set
 # CONFIG_TARGET_sunxi_cortexa7_Default is not set
+# CONFIG_TARGET_sunxi_cortexa7_DEVICE_lamobo_lamobo-r1 is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_cubietech_cubieboard2 is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_cubietech_cubietruck is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_friendlyarm_nanopi-m1-plus is not set
@@ -64,7 +65,6 @@ CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-dj-a40i-e=y
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-r1 is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-t3 is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-x1 is not set
-# CONFIG_TARGET_sunxi_cortexa7_DEVICE_lamobo_lamobo-r1 is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_lemaker_bananapi is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_lemaker_bananapro is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_linksprite_pcduino3 is not set
@@ -94,7 +94,7 @@ CONFIG_TARGET_PROFILE="DEVICE_kooiot_tlink-dj-a40i-e"
 CONFIG_TARGET_ARCH_PACKAGES="arm_cortex-a7_neon-vfpv4"
 CONFIG_DEFAULT_TARGET_OPTIMIZATION="-Os -pipe"
 CONFIG_CPU_TYPE="cortex-a7+neon-vfpv4"
-CONFIG_LINUX_5_4=y
+CONFIG_LINUX_5_10=y
 CONFIG_DEFAULT_base-files=y
 CONFIG_DEFAULT_blockd=y
 CONFIG_DEFAULT_busybox=y
@@ -162,6 +162,7 @@ CONFIG_DEFAULT_partx-utils=y
 CONFIG_DEFAULT_ppp=y
 CONFIG_DEFAULT_ppp-mod-pppoe=y
 CONFIG_DEFAULT_procd=y
+CONFIG_DEFAULT_procd-ujail=y
 CONFIG_DEFAULT_rtl8723bu-firmware=y
 CONFIG_DEFAULT_ser2net=y
 CONFIG_DEFAULT_shellinabox=y
@@ -180,6 +181,7 @@ CONFIG_DEFAULT_usb-otg-sunxi=y
 CONFIG_DEFAULT_usbutils=y
 CONFIG_DEFAULT_wpad-basic-wolfssl=y
 CONFIG_DEFAULT_wwanleds=y
+CONFIG_HAS_TESTING_KERNEL=y
 CONFIG_HAS_FPU=y
 CONFIG_AUDIO_SUPPORT=y
 CONFIG_GPIO_SUPPORT=y
@@ -245,6 +247,7 @@ CONFIG_SIGNATURE_CHECK=y
 #
 # General build options
 #
+CONFIG_TESTING_KERNEL=y
 CONFIG_DISPLAY_SUPPORT=y
 # CONFIG_BUILD_PATENTED is not set
 # CONFIG_BUILD_NLS is not set
@@ -291,7 +294,7 @@ CONFIG_KERNEL_MAGIC_SYSRQ=y
 CONFIG_KERNEL_COREDUMP=y
 CONFIG_KERNEL_ELF_CORE=y
 # CONFIG_KERNEL_PROVE_LOCKING is not set
-# CONFIG_KERNEL_LOCKUP_DETECTOR is not set
+# CONFIG_KERNEL_SOFTLOCKUP_DETECTOR is not set
 # CONFIG_KERNEL_DETECT_HUNG_TASK is not set
 # CONFIG_KERNEL_WQ_WATCHDOG is not set
 # CONFIG_KERNEL_DEBUG_ATOMIC_SLEEP is not set
@@ -468,10 +471,9 @@ CONFIG_GDB=y
 # CONFIG_GDB_PYTHON is not set
 CONFIG_USE_MUSL=y
 CONFIG_SSP_SUPPORT=y
-CONFIG_BINUTILS_VERSION_2_36_1=y
-CONFIG_BINUTILS_VERSION="2.36.1"
-CONFIG_GCC_VERSION="10.3.0"
-# CONFIG_GCC_USE_IREMAP is not set
+CONFIG_BINUTILS_VERSION_2_37=y
+CONFIG_BINUTILS_VERSION="2.37"
+CONFIG_GCC_VERSION="11.2.0"
 CONFIG_LIBC="musl"
 CONFIG_TARGET_SUFFIX="muslgnueabi"
 # CONFIG_IB is not set
@@ -1756,8 +1758,6 @@ CONFIG_PACKAGE_u-boot-tlink_dj_a40i_e=y
 # CONFIG_PACKAGE_lttng-tools is not set
 # CONFIG_PACKAGE_m4 is not set
 # CONFIG_PACKAGE_make is not set
-# CONFIG_PACKAGE_meson is not set
-# CONFIG_PACKAGE_ninja is not set
 # CONFIG_PACKAGE_objdump is not set
 # CONFIG_PACKAGE_packr is not set
 # CONFIG_PACKAGE_patch is not set
@@ -2084,7 +2084,6 @@ CONFIG_PACKAGE_kmod-fs-configfs=y
 # CONFIG_PACKAGE_kmod-gl-mifi-mcu is not set
 # CONFIG_PACKAGE_kmod-hwmon-ad7418 is not set
 # CONFIG_PACKAGE_kmod-hwmon-adcxx is not set
-# CONFIG_PACKAGE_kmod-hwmon-ads1015 is not set
 # CONFIG_PACKAGE_kmod-hwmon-adt7410 is not set
 # CONFIG_PACKAGE_kmod-hwmon-adt7475 is not set
 # CONFIG_PACKAGE_kmod-hwmon-core is not set
@@ -2138,6 +2137,7 @@ CONFIG_PACKAGE_kmod-i2c-core=y
 # Industrial I/O Modules
 #
 # CONFIG_PACKAGE_kmod-iio-ad799x is not set
+# CONFIG_PACKAGE_kmod-iio-ads1015 is not set
 # CONFIG_PACKAGE_kmod-iio-am2315 is not set
 # CONFIG_PACKAGE_kmod-iio-bh1750 is not set
 # CONFIG_PACKAGE_kmod-iio-bme680 is not set
@@ -2457,7 +2457,6 @@ CONFIG_PACKAGE_kmod-eeprom-at24=y
 # CONFIG_PACKAGE_kmod-eeprom-at25 is not set
 # CONFIG_PACKAGE_kmod-gpio-beeper is not set
 CONFIG_PACKAGE_kmod-gpio-button-hotplug=y
-# CONFIG_PACKAGE_kmod-gpio-dev is not set
 # CONFIG_PACKAGE_kmod-gpio-mcp23s08 is not set
 # CONFIG_PACKAGE_kmod-gpio-nxp-74hc164 is not set
 # CONFIG_PACKAGE_kmod-gpio-pca953x is not set
@@ -2743,7 +2742,6 @@ CONFIG_PACKAGE_kmod-rtl8xxxu=y
 #
 # CONFIG_PACKAGE_asw-iot-greengrass is not set
 # CONFIG_PACKAGE_bmr200_freeioe is not set
-CONFIG_PACKAGE_dj-a40i-e-configs=y
 # CONFIG_PACKAGE_factory-tlink is not set
 # CONFIG_PACKAGE_focas-ubus is not set
 CONFIG_PACKAGE_freeioe=y
@@ -2752,6 +2750,7 @@ CONFIG_FREEIOE_CLOUD_PKG_VER=2
 CONFIG_FREEIOE_CLOUD_HOST_ADDR="iot.kooiot.in"
 CONFIG_FREEIOE_CLOUD_PKG_URL="iot.kooiot.in:81"
 # CONFIG_PACKAGE_kooiot is not set
+# CONFIG_PACKAGE_sdlnrj-xfrm is not set
 CONFIG_PACKAGE_skynet=y
 # CONFIG_PACKAGE_strip-ioe is not set
 # CONFIG_PACKAGE_symlink is not set
@@ -2923,6 +2922,7 @@ CONFIG_PACKAGE_lua=y
 # CONFIG_PACKAGE_python3-attrs is not set
 # CONFIG_PACKAGE_python3-augeas is not set
 # CONFIG_PACKAGE_python3-automat is not set
+# CONFIG_PACKAGE_python3-awesomeversion is not set
 # CONFIG_PACKAGE_python3-awscli is not set
 # CONFIG_PACKAGE_python3-babel is not set
 # CONFIG_PACKAGE_python3-base is not set
@@ -3023,13 +3023,13 @@ CONFIG_PACKAGE_lua=y
 #
 # Configuration
 #
-# CONFIG_PYTHON3_BLUETOOTH_SUPPORT is not set
 # CONFIG_PYTHON3_HOST_PIP_CACHE_WORLD_READABLE is not set
 # end of Configuration
 
 # CONFIG_PACKAGE_python3-logging is not set
 # CONFIG_PACKAGE_python3-lxml is not set
 # CONFIG_PACKAGE_python3-lzma is not set
+# CONFIG_PACKAGE_python3-mako is not set
 # CONFIG_PACKAGE_python3-markdown is not set
 # CONFIG_PACKAGE_python3-markupsafe is not set
 # CONFIG_PACKAGE_python3-maxminddb is not set
@@ -3132,6 +3132,7 @@ CONFIG_PACKAGE_lua=y
 # CONFIG_PACKAGE_python3-voluptuous-serialize is not set
 # CONFIG_PACKAGE_python3-wcwidth is not set
 # CONFIG_PACKAGE_python3-websocket-client is not set
+# CONFIG_PACKAGE_python3-websockets is not set
 # CONFIG_PACKAGE_python3-werkzeug is not set
 # CONFIG_PACKAGE_python3-xml is not set
 # CONFIG_PACKAGE_python3-xmltodict is not set
@@ -4409,7 +4410,6 @@ CONFIG_PACKAGE_luci-app-opkg=y
 # CONFIG_PACKAGE_luci-app-qos is not set
 # CONFIG_PACKAGE_luci-app-radicale is not set
 # CONFIG_PACKAGE_luci-app-radicale2 is not set
-# CONFIG_PACKAGE_luci-app-rosy-file-server is not set
 # CONFIG_PACKAGE_luci-app-rp-pppoe-server is not set
 # CONFIG_PACKAGE_luci-app-samba4 is not set
 CONFIG_PACKAGE_luci-app-ser2net=y
@@ -4726,6 +4726,18 @@ CONFIG_PACKAGE_luci-i18n-ser2net-zh-cn=y
 # CONFIG_PACKAGE_msmtp-nossl is not set
 # CONFIG_PACKAGE_msmtp-queue is not set
 # CONFIG_PACKAGE_mutt is not set
+
+#
+# Select mutt build options
+#
+CONFIG_MUTT_POP=y
+CONFIG_MUTT_IMAP=y
+# CONFIG_MUTT_SMTP is not set
+# CONFIG_MUTT_SASL is not set
+# CONFIG_MUTT_GNUTLS is not set
+CONFIG_MUTT_OPENSSL=y
+# end of Select mutt build options
+
 # CONFIG_PACKAGE_nail is not set
 # CONFIG_PACKAGE_opendkim is not set
 # CONFIG_PACKAGE_opendkim-tools is not set
@@ -4990,6 +5002,7 @@ CONFIG_PACKAGE_ddns-scripts=y
 CONFIG_PACKAGE_ddns-scripts-cloudflare=y
 CONFIG_PACKAGE_ddns-scripts-cnkuai=y
 CONFIG_PACKAGE_ddns-scripts-digitalocean=y
+# CONFIG_PACKAGE_ddns-scripts-dnspod is not set
 CONFIG_PACKAGE_ddns-scripts-freedns=y
 CONFIG_PACKAGE_ddns-scripts-gandi=y
 CONFIG_PACKAGE_ddns-scripts-godaddy=y
@@ -5465,7 +5478,7 @@ CONFIG_PACKAGE_uhttpd=y
 # CONFIG_PACKAGE_uhttpd-mod-lua is not set
 CONFIG_PACKAGE_uhttpd-mod-ubus=y
 # CONFIG_PACKAGE_uwsgi is not set
-# CONFIG_PACKAGE_v2rayA is not set
+# CONFIG_PACKAGE_v2raya is not set
 # end of Web Servers/Proxies
 
 #
@@ -5570,6 +5583,7 @@ CONFIG_PACKAGE_3ginfo-text=y
 # CONFIG_PACKAGE_boinc is not set
 # CONFIG_PACKAGE_bpftool-full is not set
 # CONFIG_PACKAGE_bpftool-minimal is not set
+CONFIG_PACKAGE_br-lan-dhcp=y
 # CONFIG_PACKAGE_bwm-ng is not set
 # CONFIG_PACKAGE_bwping is not set
 CONFIG_PACKAGE_chat=y
@@ -5577,6 +5591,8 @@ CONFIG_PACKAGE_chat=y
 # CONFIG_PACKAGE_cloud-watch is not set
 # CONFIG_PACKAGE_coap-server is not set
 # CONFIG_PACKAGE_conserver is not set
+# CONFIG_PACKAGE_crowdsec is not set
+# CONFIG_PACKAGE_crowdsec-firewall-bouncer is not set
 # CONFIG_PACKAGE_cshark is not set
 # CONFIG_PACKAGE_daemonlogger is not set
 # CONFIG_PACKAGE_darkstat is not set
@@ -5615,7 +5631,6 @@ CONFIG_PACKAGE_ethtool=y
 # CONFIG_PACKAGE_i2pd is not set
 # CONFIG_PACKAGE_ibrdtn-tools is not set
 # CONFIG_PACKAGE_ibrdtnd is not set
-# CONFIG_PACKAGE_ieee8021xclient is not set
 # CONFIG_PACKAGE_ifstat is not set
 # CONFIG_PACKAGE_iftop is not set
 # CONFIG_PACKAGE_iiod is not set
@@ -5817,7 +5832,6 @@ CONFIG_PACKAGE_wwanleds=y
 # CONFIG_PACKAGE_espeak is not set
 # CONFIG_PACKAGE_faad2 is not set
 # CONFIG_PACKAGE_fdk-aac is not set
-# CONFIG_PACKAGE_forked-daapd is not set
 # CONFIG_PACKAGE_ices is not set
 # CONFIG_PACKAGE_lame is not set
 # CONFIG_PACKAGE_lame-lib is not set
@@ -5830,6 +5844,7 @@ CONFIG_PACKAGE_wwanleds=y
 # CONFIG_PACKAGE_mpd-mini is not set
 # CONFIG_PACKAGE_mpg123 is not set
 # CONFIG_PACKAGE_opus-tools is not set
+# CONFIG_PACKAGE_owntone is not set
 # CONFIG_PACKAGE_pianod is not set
 # CONFIG_PACKAGE_pianod-client is not set
 # CONFIG_PACKAGE_portaudio is not set
@@ -5959,6 +5974,7 @@ CONFIG_PACKAGE_partx-utils=y
 # CONFIG_PACKAGE_ccrypt is not set
 # CONFIG_PACKAGE_certtool is not set
 # CONFIG_PACKAGE_cryptsetup is not set
+# CONFIG_PACKAGE_cryptsetup-ssh is not set
 # CONFIG_PACKAGE_gnupg is not set
 # CONFIG_PACKAGE_gnupg2 is not set
 # CONFIG_PACKAGE_gnupg2-dirmngr is not set

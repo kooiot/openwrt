@@ -1,6 +1,7 @@
 do_product_sn_kooiot_nvmem() {
 	NVMEM_PATH="/sys/devices/platform/soc/1c2ac00.i2c/i2c-0/0-0050/0-00500/nvmem"
 	if [ -b "${NVMEM_PATH}" -o -f "${NVMEM_PATH}" ]; then
+		echo "old eeprom path"
 	else
 		NVMEM_PATH="/sys/devices/platform/soc/1c2ac00.i2c/i2c-0/0-0050/0-00501/nvmem"
 	fi
