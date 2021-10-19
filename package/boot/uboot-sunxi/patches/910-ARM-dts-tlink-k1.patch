@@ -44,7 +44,7 @@
  dtb-$(CONFIG_MACH_SUN8I_V3S) += \
 --- /dev/null
 +++ b/arch/arm/dts/sun8i-r40-tlink-k1.dts
-@@ -0,0 +1,272 @@
+@@ -0,0 +1,274 @@
 +/*
 + * Copyright (C) 2020 Dirk Chang <dirk@kooiot.com>
 + *
@@ -62,6 +62,8 @@
 +	aliases {
 +		ethernet0 = &emac;
 +		serial0 = &uart0;
++		mmc0 = &mmc0;
++		mmc1 = &mmc2;
 +	};
 +
 +	chosen {

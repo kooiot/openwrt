@@ -390,10 +390,10 @@ define U-Boot/tlink_k1
   UENV:=display
 endef
 
-define U-Boot/tlink_t3
+define U-Boot/tlink_m408
   BUILD_SUBTARGET:=cortexa7
-  NAME:=ThingsLink T3
-  BUILD_DEVICES:=kooiot_tlink-t3
+  NAME:=ThingsLink M408
+  BUILD_DEVICES:=kooiot_tlink-m408
   UENV:=display
 endef
 
@@ -448,7 +448,7 @@ UBOOT_TARGETS := \
 	tlink_nano_a40i \
 	tlink_dj_a40i_e \
 	tlink_k1 \
-	tlink_t3 \
+	tlink_m408 \
 	Lichee_Zero_Plus \
 	sinlinx_sin_v3s \
 	nanopi_neo2 \
