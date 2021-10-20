@@ -49,7 +49,7 @@
  dtb-$(CONFIG_MACH_SUN50I_H5) += \
 --- /dev/null
 +++ b/arch/arm/dts/sun8i-t3-tlink-m408.dts
-@@ -0,0 +1,252 @@
+@@ -0,0 +1,241 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -73,17 +73,6 @@
 +
 +	chosen {
 +		stdout-path = "serial0:115200n8";
-+	};
-+
-+	connector {
-+		compatible = "hdmi-connector";
-+		type = "a";
-+
-+		port {
-+			hdmi_con_in: endpoint {
-+				remote-endpoint = <&hdmi_out_con>;
-+			};
-+		};
 +	};
 +
 +	leds {
