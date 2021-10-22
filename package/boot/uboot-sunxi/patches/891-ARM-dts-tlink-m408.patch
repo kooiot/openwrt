@@ -1,19 +1,16 @@
 --- /dev/null
 +++ b/configs/tlink_m408_defconfig
-@@ -0,0 +1,34 @@
+@@ -0,0 +1,31 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
 +CONFIG_SPL=y
 +CONFIG_MACH_SUN8I_R40=y
-+CONFIG_DRAM_CLK=576
++CONFIG_DRAM_CLK=648
 +CONFIG_DRAM_ZQ=3881979
-+# CONFIG_SUNXI_DRAM_DW_R40_DUAL_RANK=y
 +CONFIG_MMC0_CD_PIN="PI15"
 +CONFIG_MMC_SUNXI_SLOT_EXTRA=2
 +CONFIG_USB1_VBUS_PIN="PI13"
 +CONFIG_USB2_VBUS_PIN="PI13"
-+CONFIG_AHCI=y
-+# CONFIG_NR_DRAM_BANKS=1
 +# CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
 +CONFIG_SPL_I2C_SUPPORT=y
 +# CONFIG_CMD_FLASH is not set
@@ -49,7 +46,7 @@
  dtb-$(CONFIG_MACH_SUN50I_H5) += \
 --- /dev/null
 +++ b/arch/arm/dts/sun8i-t3-tlink-m408.dts
-@@ -0,0 +1,241 @@
+@@ -0,0 +1,239 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -65,7 +62,7 @@
 +	compatible = "kooiot,tlink-m408", "allwinner,sun8i-t3", "allwinner,sun8i-r40";
 +
 +	aliases {
-+		ethernet0 = &emac;
++		ethernet0 = &gmac;
 +		serial0 = &uart0;
 +		mmc0 = &mmc0;
 +		mmc1 = &mmc2;
@@ -95,13 +92,9 @@
 +		regulator-name = "vcc5v0";
 +		regulator-min-microvolt = <5000000>;
 +		regulator-max-microvolt = <5000000>;
-+		gpio = <&pio 8 13 GPIO_ACTIVE_HIGH>; /* PI13 */
-+		enable-active-high;
++		// gpio = <&pio 8 13 GPIO_ACTIVE_HIGH>; /* PI13 */
++		// enable-active-high;
 +	};
-+};
-+
-+&de {
-+	status = "okay";
 +};
 +
 +&gmac {
@@ -110,14 +103,18 @@
 +	phy-handle = <&phy1>;
 +	phy-mode = "mii";
 +	phy-supply = <&reg_dcdc1>;
++	snps,reset-gpio = <&pio 0 17 GPIO_ACTIVE_LOW>; /* PA17 */
++	snps,reset-delays-us = <0 10000 1000000>;
 +	status = "okay";
 +};
 +
 +&gmac_mdio {
-+	// snps,reset-gpio = <&pio 7 22 GPIO_ACTIVE_LOW>; /* PH22 */
 +	phy1: ethernet-phy@1 {
 +		compatible = "ethernet-phy-ieee802.3-c22";
 +		reg = <1>;
++		// reset-gpios = <&pio 0 17 GPIO_ACTIVE_LOW>; /* PA17 */
++		// reset-assert-us = <10000>;
++		// reset-deassert-us = <1000000>;
 +	};
 +};
 +
@@ -286,8 +283,6 @@
 +};
 +
 +&usbphy {
-+	usb0_id_det-gpios = <&pio 7 6 GPIO_ACTIVE_HIGH>; /* PH6 */
-+	usb0_vbus_det-gpios = <&pio 8 14 GPIO_ACTIVE_HIGH>; /* PI14 */
 +	usb0_vbus-supply = <&reg_vcc5v0>;
 +	status = "okay";
 +};
