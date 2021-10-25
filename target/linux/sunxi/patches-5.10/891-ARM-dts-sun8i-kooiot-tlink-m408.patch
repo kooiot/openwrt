@@ -10,7 +10,7 @@
  	sun8i-v40-bananapi-m2-berry.dtb
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-t3-tlink-m408.dts
-@@ -0,0 +1,369 @@
+@@ -0,0 +1,354 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -32,8 +32,6 @@
 +		serial0 = &uart0;
 +		mmc0 = &mmc0;
 +		mmc1 = &mmc2;
-+		mmc2 = &mmc1;
-+		mmc3 = &mmc3;
 +	};
 +
 +	chosen {
@@ -87,27 +85,27 @@
 +		regulator-name = "vcc5v0";
 +		regulator-min-microvolt = <5000000>;
 +		regulator-max-microvolt = <5000000>;
-+		gpio = <&pio 8 13 GPIO_ACTIVE_HIGH>; /* PI13 */
-+		enable-active-high;
++		// gpio = <&pio 8 13 GPIO_ACTIVE_HIGH>; /* PI13 */
++		// enable-active-high;
 +	};
-+};
-+
-+&de {
-+	status = "okay";
 +};
 +
 +&emac {
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&emac_ph_pins>;
-+	phy-handle = <&phy0>;
-+	phy-supply = <&reg_aldo1>;
++	phy-handle = <&emac_phy>;
++	phy-supply = <&reg_dcdc1>;
 +	status = "okay";
 +};
 +
 +&emac_mdio {
 +	status = "okay";
-+	phy0: ethernet-phy@0 {
-+		reg = <0>;
++	reset-gpios = <&pio 7 27 GPIO_ACTIVE_LOW>; /* PH27 */
++	reset-assert-us = <10000>;
++	reset-deassert-us = <1000000>;
++	emac_phy: ethernet-phy@3 {
++		compatible = "ethernet-phy-ieee802.3-c22";
++		reg = <3>;
 +	};
 +};
 +
@@ -116,7 +114,9 @@
 +	pinctrl-0 = <&gmac_mii_pins>;
 +	phy-handle = <&phy1>;
 +	phy-mode = "mii";
-+	phy-supply = <&reg_aldo1>;
++	phy-supply = <&reg_dcdc1>;
++	snps,reset-gpio = <&pio 0 17 GPIO_ACTIVE_LOW>; /* PA17 */
++	snps,reset-delays-us = <0 10000 1000000>;
 +	status = "okay";
 +};
 +
@@ -124,6 +124,9 @@
 +	phy1: ethernet-phy@1 {
 +		compatible = "ethernet-phy-ieee802.3-c22";
 +		reg = <1>;
++		// reset-gpios = <&pio 0 17 GPIO_ACTIVE_HIGH>; /* PA17 */
++		// reset-assert-us = <10000>;
++		// reset-deassert-us = <1000000>;
 +	};
 +};
 +
@@ -150,14 +153,6 @@
 +	status = "okay";
 +};
 +
-+/* SDIO (P26) */
-+&mmc1 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&mmc1_pg_pins>;
-+	bus-width = <4>;
-+	status = "okay";
-+};
-+
 +/* eMMC */
 +&mmc2 {
 +	vmmc-supply = <&reg_dcdc1>;
@@ -167,20 +162,9 @@
 +	status = "okay";
 +};
 +
-+/* TF Card */
-+&mmc3 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&mmc3_pins>;
-+	vmmc-supply = <&reg_dcdc1>;
-+	vqmmc-supply = <&reg_dcdc1>;
-+	vdmmc-supply = <&reg_dcdc1>;
-+	bus-width = <4>;
-+	cd-gpios = <&pio 8 10 GPIO_ACTIVE_LOW>; /* PI10 */
-+	status = "okay";
-+};
-+
 +&usb_otg {
-+	status = "okay";
++	status = "disabled";
++	dr_mode = "host";
 +};
 +
 +&ehci1 {
@@ -221,6 +205,7 @@
 +			"PA11", "PA12", "PA13", "PA14",
 +			"PA15", "PA16", "PA17";
 +		function = "gmac";
++		drive-strength = <40>;
 +	};
 +};
 +
@@ -364,9 +349,9 @@
 +};
 +*/
 +&usbphy {
-+	usb0_id_det-gpios = <&pio 7 6 GPIO_ACTIVE_HIGH>; /* PH6 */
-+	usb0_vbus_det-gpios = <&pio 8 14 GPIO_ACTIVE_HIGH>; /* PI14 */
-+	usb0_vbus-supply = <&reg_vcc5v0>;
++	// usb0_vbus-supply = <&reg_vcc5v0>;
++	// usb1_vbus-supply = <&reg_vcc5v0>;
++	// usb1_vbus-supply = <&reg_vcc5v0>;
 +	status = "okay";
 +};
 +
