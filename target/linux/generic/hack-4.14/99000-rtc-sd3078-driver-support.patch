@@ -28,7 +28,7 @@
  obj-$(CONFIG_RTC_DRV_SIRFSOC)	+= rtc-sirfsoc.o
  obj-$(CONFIG_RTC_DRV_SNVS)	+= rtc-snvs.o
 --- /dev/null
-+++ drivers/rtc/rtc-sd3078.c
++++ b/drivers/rtc/rtc-sd3078.c
 @@ -0,0 +1,229 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
