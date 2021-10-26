@@ -221,8 +221,8 @@
 +		return PTR_ERR(sd3078->rtc);
 +
 +	sd3078->rtc->ops = &sd3078_rtc_ops;
-+	sd3078->rtc->range_min = RTC_TIMESTAMP_BEGIN_2000;
-+	sd3078->rtc->range_max = RTC_TIMESTAMP_END_2099;
++	// sd3078->rtc->range_min = RTC_TIMESTAMP_BEGIN_2000;
++	// sd3078->rtc->range_max = RTC_TIMESTAMP_END_2099;
 +
 +	ret = rtc_register_device(sd3078->rtc);
 +	if (ret)
