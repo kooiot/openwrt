@@ -17,6 +17,16 @@
  endif # I2C
  
  comment "SPI RTC drivers"
+--- a/drivers/rtc/Makefile
++++ b/drivers/rtc/Makefile
+@@ -144,6 +144,7 @@
+ obj-$(CONFIG_RTC_DRV_S3C)	+= rtc-s3c.o
+ obj-$(CONFIG_RTC_DRV_S5M)	+= rtc-s5m.o
+ obj-$(CONFIG_RTC_DRV_SA1100)	+= rtc-sa1100.o
++obj-$(CONFIG_RTC_DRV_SD3078)   += rtc-sd3078.o
+ obj-$(CONFIG_RTC_DRV_SH)	+= rtc-sh.o
+ obj-$(CONFIG_RTC_DRV_SIRFSOC)	+= rtc-sirfsoc.o
+ obj-$(CONFIG_RTC_DRV_SNVS)	+= rtc-snvs.o
 --- /dev/null
 +++ drivers/rtc/rtc-sd3078.c
 @@ -0,0 +1,229 @@
