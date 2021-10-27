@@ -255,6 +255,12 @@ define U-Boot/Lichee_Zero_Plus
   BUILD_DEVICES:=sipeed_lichee-zero-plus
 endef
 
+define U-Boot/tlink_s1
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink S1
+  BUILD_DEVICES:=kooiot_tlink-s1
+endef
+
 define U-Boot/sinlinx_sin_v3s
   BUILD_SUBTARGET:=cortexa7
   NAME:=SINLINX Sin V3s (V3s)
@@ -449,6 +455,7 @@ UBOOT_TARGETS := \
 	tlink_dj_a40i_e \
 	tlink_k1 \
 	tlink_m408 \
+	tlink_s1 \
 	Lichee_Zero_Plus \
 	sinlinx_sin_v3s \
 	nanopi_neo2 \

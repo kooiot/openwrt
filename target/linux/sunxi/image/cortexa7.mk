@@ -240,6 +240,23 @@ define Device/sipeed_lichee-zero-plus
 endef
 TARGET_DEVICES += sipeed_lichee-zero-plus
 
+define Device/kooiot_tlink-s1
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink S1
+  DEVICE_PACKAGES:=kmod-rtc-sunxi \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-rtc-sc3078 kmod-usb-net-asix \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+	uqmi fdisk usbutils freeioe wwanleds \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    blockd usb-otg-sunxi kmod-eeprom-at24 fdisk
+  SOC := sun8i-s3
+endef
+TARGET_DEVICES += kooiot_tlink-s1
+
 define Device/sinlinx_sinlinx-sin-v3s
   DEVICE_VENDOR := SINLINX
   DEVICE_MODEL := SINLINX Sin V3s
