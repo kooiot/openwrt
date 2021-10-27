@@ -24,7 +24,7 @@
  	sun8i-v3s-sinlinx-sin-v3s.dtb \
 --- /dev/null
 +++ b/arch/arm/dts/sun8i-s3-tlink-s1.dts
-@@ -0,0 +1,146 @@
+@@ -0,0 +1,84 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
@@ -34,7 +34,6 @@
 +#include "sun8i-v3.dtsi"
 +
 +#include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/input/input.h>
 +
 +/ {
 +	model = "KooIoT TLink S1";
@@ -47,53 +46,6 @@
 +
 +	chosen {
 +		stdout-path = "serial0:115200n8";
-+	};
-+
-+	leds {
-+		compatible = "gpio-leds";
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&leds_pins>;
-+
-+		status {
-+			label = "kooiot:green:status";
-+			gpios = <&pio 6 6 GPIO_ACTIVE_HIGH>; /* PG6 */
-+			linux,default-trigger = "heartbeat";
-+		};
-+		modem {
-+			label = "kooiot:green:modem";
-+			gpios = <&pio 6 7 GPIO_ACTIVE_HIGH>; /* PG7 */
-+			default-state = "off";
-+		};
-+	};
-+
-+	gpio_keys {
-+		compatible = "gpio-keys";
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&keys_pins>;
-+
-+		reset {
-+			label = "reset";
-+			linux,code = <KEY_RESTART>;
-+			gpios = <&pio 6 11 GPIO_ACTIVE_LOW>; /* PG11 */
-+		};
-+	};
-+
-+	gpio_export {
-+		compatible = "gpio-export";
-+		#size-cells = <0>;
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&gpio_export_pins>;
-+
-+		pcie_reset {
-+			gpio-export,name = "pcie_reset";
-+			gpio-export,output=<0>;
-+			gpios = <&pio 6 10 GPIO_ACTIVE_HIGH>; /* PG10 */
-+		};
-+		pcie_power {
-+			gpio-export,name = "pcie_power";
-+			gpio-export,output=<0>;
-+			gpios = <&pio 6 8 GPIO_ACTIVE_LOW>; /* PG8 */
-+		};
 +	};
 +
 +	reg_vcc3v3: vcc3v3 {
@@ -114,9 +66,10 @@
 +};
 +
 +&mmc0 {
++	// broken-cd;
 +	vmmc-supply = <&reg_vcc3v3>;
 +	bus-width = <4>;
-+	cd-gpios = <&pio 5 5 GPIO_ACTIVE_LOW>; /* PF5 */
++	cd-gpios = <&pio 5 6 GPIO_ACTIVE_LOW>; /* PF6 */
 +	status = "okay";
 +};
 +
@@ -139,21 +92,6 @@
 +		function = "mmc2";
 +		drive-strength = <30>;
 +		bias-pull-up;
-+	};
-+
-+	leds_pins: leds-pins {
-+		pins = "PG6", "PG7";
-+		function = "gpio_out";
-+	};
-+
-+	keys_pins: keys-pins {
-+		pins = "PG11";
-+		function = "gpio_in";
-+	};
-+
-+	gpio_export_pins: gpio-export-pins {
-+		pins = "PG8", "PG10";
-+		function = "gpio_out";
 +	};
 +};
 +
