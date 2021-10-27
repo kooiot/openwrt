@@ -246,7 +246,7 @@ define Device/kooiot_tlink-s1
   DEVICE_PACKAGES:=kmod-rtc-sunxi \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
     kmod-ledtrig-netdev kmod-ledtrig-gpio \
-    kmod-rtc-sc3078 kmod-usb-net-asix \
+    kmod-rtc-sd3078 kmod-usb-net-asix \
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	uqmi fdisk usbutils freeioe wwanleds \

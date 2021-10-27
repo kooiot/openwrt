@@ -10,7 +10,7 @@
 	sun8i-t3-cqa3t-bv3.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-s3-tlink-s1.dts
-@@ -0,0 +1,161 @@
+@@ -0,0 +1,177 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
@@ -67,8 +67,8 @@
 +	gpio_export {
 +		compatible = "gpio-export";
 +		#size-cells = <0>;
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&gpio_export_pins>;
++		// pinctrl-names = "default";
++		// pinctrl-0 = <&gpio_export_pins>;
 +
 +		pcie_reset {
 +			gpio-export,name = "pcie_reset";
@@ -102,11 +102,12 @@
 +&mmc0 {
 +	vmmc-supply = <&reg_vcc3v3>;
 +	bus-width = <4>;
-+	cd-gpios = <&pio 5 5 GPIO_ACTIVE_LOW>; /* PF5 */
++	cd-gpios = <&pio 5 6 GPIO_ACTIVE_LOW>; /* PF6 */
 +	status = "okay";
 +};
 +
 +&mmc2 {
++	compatible = "allwinner,sun8i-s3-emmc";
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&mmc2_pins>;
 +	vmmc-supply = <&reg_vcc3v3>;
@@ -164,11 +165,26 @@
 +    };
 +};
 +
++&emac {
++	phy-handle = <&int_mii_phy>;
++	phy-mode = "mii";
++    status = "okay";
++};
++
 +&usb_otg {
-+	dr_mode = "peripheral";
++	dr_mode = "host";
 +	status = "okay";
 +};
 +
 +&usbphy {
++	usb0_vbus-supply = <&reg_vcc3v3>;
++	status = "okay";
++};
++
++&ehci0 {
++	status = "okay";
++};
++
++&ohci0 {
 +	status = "okay";
 +};

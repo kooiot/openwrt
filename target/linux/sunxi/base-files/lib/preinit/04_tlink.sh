@@ -73,6 +73,7 @@ do_kooiot_tlink_generic() {
 	"kooiot,tlink-x1"|\
 	"kooiot,tlink-x2"|\
 	"kooiot,tlink-k1"|\
+	"kooiot,tlink-s1"|\
 	"kooiot,tlink-ok-a40i"|\
 	"kooiot,tlink-dj-a40i-e"|\
 	"kooiot,tlink-dr4-a40i"|\
