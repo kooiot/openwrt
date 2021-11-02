@@ -9,7 +9,7 @@
 +	.clk_delays = sunxi_mmc_clk_delays,
 +	.can_calibrate = false,
 +	// .needs_new_timings = true,
-+	.ccu_has_timings_switch = true,
++	// .ccu_has_timings_switch = true,
 +};
 +
 +static const struct sunxi_mmc_cfg sun8i_r40_emmc_cfg = {

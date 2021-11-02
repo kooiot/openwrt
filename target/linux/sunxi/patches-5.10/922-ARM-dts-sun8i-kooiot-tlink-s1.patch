@@ -124,7 +124,7 @@
 +			   "PC6", "PC7", "PC8",
 +			   "PC9", "PC10";
 +		function = "mmc2";
-+		drive-strength = <30>;
++		drive-strength = <40>;
 +		bias-pull-up;
 +	};
 +

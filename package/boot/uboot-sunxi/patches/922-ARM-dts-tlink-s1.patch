@@ -1,6 +1,6 @@
 --- /dev/null	
 +++ b/configs/tlink_s1_defconfig
-@@ -0,0 +1,11 @@
+@@ -0,0 +1,13 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
 +CONFIG_SPL=y
@@ -8,9 +8,11 @@
 +CONFIG_SUNXI_DRAM_DDR3_1333=y
 +CONFIG_DRAM_CLK=648
 +CONFIG_DRAM_ODT_EN=y
-+CONFIG_I2C0_ENABLE=y
++CONFIG_MMC0_CD_PIN="PF6"
++CONFIG_MMC_SUNXI_SLOT_EXTRA=2
++# CONFIG_I2C0_ENABLE=y
 +CONFIG_DEFAULT_DEVICE_TREE="sun8i-s3-tlink-s1"
-+CONFIG_SPL_I2C_SUPPORT=y
++# CONFIG_SPL_I2C_SUPPORT=y
 +# CONFIG_NETDEVICES is not set
 --- a/arch/arm/dts/Makefile
 +++ b/arch/arm/dts/Makefile
@@ -76,8 +78,8 @@
 +&mmc2 {
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&mmc2_pins>;
-+	vmmc-supply = <&reg_vcc3v3>;
-+	vqmmc-supply = <&reg_vcc3v3>;
++	// vmmc-supply = <&reg_vcc3v3>;
++	// vqmmc-supply = <&reg_vcc3v3>;
 +	bus-width = <8>;
 +	non-removable;
 +	status = "okay";
@@ -90,7 +92,7 @@
 +			   "PC6", "PC7", "PC8",
 +			   "PC9", "PC10";
 +		function = "mmc2";
-+		drive-strength = <30>;
++		drive-strength = <40>;
 +		bias-pull-up;
 +	};
 +};
@@ -102,7 +104,7 @@
 +};
 +
 +&usb_otg {
-+	dr_mode = "peripheral";
++	dr_mode = "host";
 +	status = "okay";
 +};
 +
