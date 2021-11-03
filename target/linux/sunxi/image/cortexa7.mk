@@ -251,6 +251,7 @@ define Device/kooiot_tlink-s1
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
+	kmod-xradio wpad-basic-wolfssl \
     tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
     blockd usb-otg-sunxi kmod-eeprom-at24 fdisk
   SOC := sun8i-s3

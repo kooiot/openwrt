@@ -10,7 +10,7 @@
 	sun8i-t3-cqa3t-bv3.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-s3-tlink-s1.dts
-@@ -0,0 +1,177 @@
+@@ -0,0 +1,215 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
@@ -29,6 +29,11 @@
 +
 +	aliases {
 +		serial0 = &uart0;
++		ethernet0 = &emac;
++		ethernet1 = &xr819;
++		mmc0 = &mmc0;
++		mmc1 = &mmc2;
++		mmc2 = &mmc1;
 +	};
 +
 +	chosen {
@@ -94,7 +99,16 @@
 +		regulator-name = "vcc1v8";
 +		regulator-min-microvolt = <1800000>;
 +		regulator-max-microvolt = <1800000>;
-+		gpio = <&pio 6 9 GPIO_ACTIVE_HIGH>; /* PG9 */
++		gpio = <&pio 6 9 GPIO_ACTIVE_LOW>; /* PG9 */
++		enable-active-low;
++	};
++
++	reg_vcc_wifi: reg_vcc_wifi {
++		compatible = "regulator-fixed";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		regulator-name = "vcc-wifi";
++		gpio = <&pio 6 12 GPIO_ACTIVE_HIGH>; /* PG12 */
 +		enable-active-high;
 +	};
 +};
@@ -104,6 +118,25 @@
 +	bus-width = <4>;
 +	cd-gpios = <&pio 5 6 GPIO_ACTIVE_LOW>; /* PF6 */
 +	status = "okay";
++};
++
++&mmc1 {
++	vmmc-supply = <&reg_vcc_wifi>;
++	vqmmc-supply = <&reg_vcc1v8>;
++	bus-width = <4>;
++	max-frequency = <16000000>;
++	non-removable;
++	status = "okay";
++
++	xr819: sdio_wifi@1 {
++		reg = <1>;
++		compatible = "xradio,xr819";
++		pinctrl-names = "default";
++		pinctrl-0 = <&wifi_wake>;
++		interrupt-parent = <&pio>;
++		interrupts = <6 13 IRQ_TYPE_EDGE_RISING>; /* PG13/EINT13 */
++		interrupt-names = "host-wake";
++	};
 +};
 +
 +&mmc2 {
@@ -124,7 +157,7 @@
 +			   "PC6", "PC7", "PC8",
 +			   "PC9", "PC10";
 +		function = "mmc2";
-+		drive-strength = <40>;
++		drive-strength = <30>;
 +		bias-pull-up;
 +	};
 +
@@ -141,6 +174,11 @@
 +	gpio_export_pins: gpio-export-pins {
 +		pins = "PG8", "PG10";
 +		function = "gpio_out";
++	};
++
++	wifi_wake: wifi_wake {
++		pins = "PG13";
++		function = "gpio_in";
 +	};
 +};
 +
