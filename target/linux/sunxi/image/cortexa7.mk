@@ -249,10 +249,10 @@ define Device/kooiot_tlink-s1
     kmod-rtc-sd3078 kmod-usb-net-asix \
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
-	uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
-	kmod-xradio wpad-basic-wolfssl \
-    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+	kmod-xradio armbian-firmware-xr819 wpad-basic-wolfssl \
+    tinc-freeioe-tunnel iperf3 \
+	uqmi fdisk usbutils freeioe wwanleds \
     blockd usb-otg-sunxi kmod-eeprom-at24 fdisk
   SOC := sun8i-s3
 endef

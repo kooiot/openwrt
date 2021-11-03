@@ -10,7 +10,7 @@
 	sun8i-t3-cqa3t-bv3.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-s3-tlink-s1.dts
-@@ -0,0 +1,215 @@
+@@ -0,0 +1,229 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
@@ -85,31 +85,39 @@
 +			gpio-export,output=<0>;
 +			gpios = <&pio 6 8 GPIO_ACTIVE_LOW>; /* PG8 */
 +		};
++		wifi_power {
++			gpio-export,name = "wifi_power";
++			gpio-export,output=<0>;
++			gpios = <&pio 6 9 GPIO_ACTIVE_LOW>; // PG9 which controls vdd_wifi (1.8v)
++		};
++		wifi_reset {
++			gpio-export,name = "wifi_reset";
++			gpio-export,output=<0>;
++			gpios = <&pio 6 12 GPIO_ACTIVE_LOW>; // PG12 controls vcc_wifi (3.3v)
++		};
 +	};
 +
-+	reg_vcc3v3: vcc3v3 {
++	reg_vcc3v3: reg-vcc3v3 {
 +		compatible = "regulator-fixed";
 +		regulator-name = "vcc3v3";
 +		regulator-min-microvolt = <3300000>;
 +		regulator-max-microvolt = <3300000>;
 +	};
 +
-+	reg_vcc1v8: vcc1v8 {
++	reg_vdd_wifi: reg-vdd-wifi {
 +		compatible = "regulator-fixed";
-+		regulator-name = "vcc1v8";
++		regulator-name = "vdd-wifi-1";
 +		regulator-min-microvolt = <1800000>;
 +		regulator-max-microvolt = <1800000>;
-+		gpio = <&pio 6 9 GPIO_ACTIVE_LOW>; /* PG9 */
-+		enable-active-low;
++		// gpio = <&pio 6 9 GPIO_ACTIVE_LOW>; /* PG9 */
 +	};
 +
-+	reg_vcc_wifi: reg_vcc_wifi {
++	reg_vcc_wifi: reg-vcc-wifi {
 +		compatible = "regulator-fixed";
++		regulator-name = "vcc-wifi-1";
 +		regulator-min-microvolt = <3300000>;
 +		regulator-max-microvolt = <3300000>;
-+		regulator-name = "vcc-wifi";
-+		gpio = <&pio 6 12 GPIO_ACTIVE_HIGH>; /* PG12 */
-+		enable-active-high;
++		// gpio = <&pio 6 12 GPIO_ACTIVE_LOW>; /* PG12 */
 +	};
 +};
 +
@@ -122,7 +130,7 @@
 +
 +&mmc1 {
 +	vmmc-supply = <&reg_vcc_wifi>;
-+	vqmmc-supply = <&reg_vcc1v8>;
++	vqmmc-supply = <&reg_vdd_wifi>;
 +	bus-width = <4>;
 +	max-frequency = <16000000>;
 +	non-removable;
@@ -136,6 +144,7 @@
 +		interrupt-parent = <&pio>;
 +		interrupts = <6 13 IRQ_TYPE_EDGE_RISING>; /* PG13/EINT13 */
 +		interrupt-names = "host-wake";
++		local-mac-address = [dc 44 6d c0 ff ee];
 +	};
 +};
 +
@@ -151,6 +160,11 @@
 +};
 +
 +&pio {
++	vcc-pb-supply = <&reg_vcc3v3>;
++	vcc-pc-supply = <&reg_vcc3v3>;
++	vcc-pf-supply = <&reg_vcc3v3>;
++	vcc-pg-supply = <&reg_vcc3v3>;
++
 +	mmc2_pins: mmc2-pins {
 +		pins = "PC0", "PC1", "PC2",
 +			   "PC3", "PC4", "PC5",
@@ -190,16 +204,16 @@
 +
 +&i2c0 {
 +    status = "okay";
++
 +    sd3077: sd3077@32 {
 +        compatible = "whwave,sd3078";
 +        reg = <0x32>;
-+        status = "okay";
 +    };
++
 +    at24c02: eeprom@50 {
 +        compatible = "atmel,24c02";
 +        reg = <0x50>;
 +        pagesize = <16>;
-+        status = "okay";
 +    };
 +};
 +

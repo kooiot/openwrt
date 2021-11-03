@@ -1,0 +1,20 @@
+--- a/sdio.c
++++ b/sdio.c
+@@ -154,12 +154,12 @@
+ static int sdio_probe(struct sdio_func *func,
+                       const struct sdio_device_id *id)
+ {
+-	dev_dbg(&func->dev, "XRadio Device:sdio clk=%d\n",
++	dev_err(&func->dev, "XRadio Device:sdio clk=%d\n",
+ 	            func->card->host->ios.clock);
+-	dev_dbg(&func->dev, "sdio func->class=%x\n", func->class);
+-	dev_dbg(&func->dev, "sdio_vendor: 0x%04x\n", func->vendor);
+-	dev_dbg(&func->dev, "sdio_device: 0x%04x\n", func->device);
+-	dev_dbg(&func->dev, "Function#: 0x%04x\n",   func->num);
++	dev_err(&func->dev, "sdio func->class=%x\n", func->class);
++	dev_err(&func->dev, "sdio_vendor: 0x%04x\n", func->vendor);
++	dev_err(&func->dev, "sdio_device: 0x%04x\n", func->device);
++	dev_err(&func->dev, "Function#: 0x%04x\n",   func->num);
+ 
+ #if 0  //for odly and sdly debug.
+ {
