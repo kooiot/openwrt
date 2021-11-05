@@ -61,7 +61,7 @@ define KernelPackage/sun4i-emac
   DEPENDS:=@TARGET_sunxi +kmod-of-mdio +kmod-libphy
   KCONFIG:=CONFIG_SUN4I_EMAC
   FILES:=$(LINUX_DIR)/drivers/net/ethernet/allwinner/sun4i-emac.ko
-  AUTOLOAD:=$(call AutoProbe,sun4i-emac)
+  AUTOLOAD:=$(call AutoLoad,50,sun4i-emac)
 endef
 
 $(eval $(call KernelPackage,sun4i-emac))

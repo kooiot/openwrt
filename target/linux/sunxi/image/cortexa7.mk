@@ -274,10 +274,23 @@ define Device/kooiot_tlink-x1
     kmod-leds-gpio kmod-ledtrig-heartbeat \
     kmod-ledtrig-netdev kmod-ledtrig-gpio \
     kmod-rtc-rx8010 kmod-usb-net-asix \
-    kmod-rtc-sd3078 kmod-eeprom-at24 fdisk
+    kmod-eeprom-at24 fdisk
   SOC := sun8i-h3
 endef
 TARGET_DEVICES += kooiot_tlink-x1
+
+define Device/kooiot_tlink-x1s
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink X1s
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
+    kmod-usb-net kmod-usb-net-rtl8152 \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-rtc-sd3078 kmod-usb-net-asix \
+    kmod-eeprom-at24 fdisk
+  SOC := sun8i-h3
+endef
+TARGET_DEVICES += kooiot_tlink-x1s
 
 define Device/kooiot_tlink-r1
   DEVICE_VENDOR := KooIoT

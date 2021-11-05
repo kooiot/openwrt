@@ -224,9 +224,9 @@ index d5ad3b9efd12..c31386e421b1 100644
 +			emac_ph_pins: emac-ph-pins {
 +				pins = "PH8", "PH9", "PH10", "PH11",
 +				       "PH14", "PH15", "PH16", "PH17",
-+				       "PH18","PH19", "PH20", "PH21",
++				       "PH18", "PH19", "PH20", "PH21",
 +				       "PH22", "PH23", "PH24", "PH25",
-+				       "PH26", "PH27";
++				       "PH26";
 +				function = "emac";
 +			};
 +

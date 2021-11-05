@@ -17,7 +17,7 @@ sunxi_setup_interfaces()
 	kooiot,tlink-r1)
 		ucidef_set_interfaces_lan_wan "eth0" "eth1"
 		;;
-	kooiot,tlink-m608)
+	kooiot,tlink-m408)
 		ucidef_set_interfaces_lan_wan "lan1 lan2 lan3 lan4" wan
 		;;
 	friendlyarm,nanopi-r1|\

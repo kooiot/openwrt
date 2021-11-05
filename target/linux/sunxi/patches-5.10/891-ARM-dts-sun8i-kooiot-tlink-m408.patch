@@ -10,7 +10,7 @@
  	sun8i-v40-bananapi-m2-berry.dtb
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-t3-tlink-m408.dts
-@@ -0,0 +1,376 @@
+@@ -0,0 +1,380 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -104,15 +104,15 @@
 +&emac_mdio {
 +	status = "okay";
 +	phy-supply = <&reg_dcdc1>;
-+	//reset-gpios = <&pio 7 27 GPIO_ACTIVE_LOW>; /* PH27 */
-+	//reset-assert-us = <10000>;
-+	//reset-deassert-us = <1000000>;
-+	emac_phy: emac-ethernet-phy@3 {
++	reset-gpios = <&pio 7 27 GPIO_ACTIVE_LOW>; /* PH27 */
++	reset-assert-us = <10000>;
++	reset-deassert-us = <1000000>;
++	emac_phy: ethernet-phy@3 {
 +		compatible = "ethernet-phy-ieee802.3-c22";
 +		reg = <3>;
-+		reset-gpios = <&pio 7 27 GPIO_ACTIVE_HIGH>; /* PH27 */
-+		reset-assert-us = <10000>;
-+		reset-deassert-us = <1000000>;
++		// reset-gpios = <&pio 7 27 GPIO_ACTIVE_HIGH>; /* PH27 */
++		// reset-assert-us = <10000>;
++		// reset-deassert-us = <1000000>;
 +	};
 +};
 +
@@ -168,7 +168,7 @@
 +	non-removable;
 +	status = "okay";
 +};
-+
++/*
 +&otg_sram {
 +	status = "okay";
 +};
@@ -177,9 +177,11 @@
 +	status = "okay";
 +	dr_mode = "host";
 +};
-+
++*/
 +&ehci0 {
-+	// status = "okay";
++	phys = <&usbphy 0>;
++	phy-names = "usb";
++	status = "okay";
 +};
 +
 +&ehci1 {
@@ -191,7 +193,9 @@
 +};
 +
 +&ohci0 {
-+	// status = "okay";
++	phys = <&usbphy 0>;
++	phy-names = "usb";
++	status = "okay";
 +};
 +
 +&ohci1 {
