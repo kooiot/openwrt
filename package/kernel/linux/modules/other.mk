@@ -867,6 +867,21 @@ endef
 $(eval $(call KernelPackage,serial-8250-exar))
 
 
+define KernelPackage/serial-wk2xxx-spi
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=WKMIC WK2xxx SPI to UART Support
+  KCONFIG:=CONFIG_SERIAL_WK2XXX_SPI
+  FILES:=$(LINUX_DIR)/drivers/tty/serial/wk2xxx_spi/wk2xxx_spi.ko
+  AUTOLOAD:=$(call AutoLoad,50,wk2xxx_spi,1)
+endef
+
+define KernelPackage/serial-wk2xxx-spi/description
+ Kernel module for WKMIC WK2xxx SPI UARTs
+endef
+
+$(eval $(call KernelPackage,serial-wk2xxx-spi))
+
+
 define KernelPackage/regmap-core
   SUBMENU:=$(OTHER_MENU)
   TITLE:=Generic register map support

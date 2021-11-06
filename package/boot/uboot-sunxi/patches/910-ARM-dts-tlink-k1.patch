@@ -85,7 +85,7 @@
 +		regulator-min-microvolt = <3300000>;
 +		regulator-max-microvolt = <3300000>;
 +		vin-supply = <&reg_dcdc1>;
-+		gpio = <&pio 8 14 GPIO_ACTIVE_HIGH>; /* PH14 CARD0-PWR*/
++		gpio = <&pio 8 14 GPIO_ACTIVE_HIGH>; /* PI14 CARD0-PWR*/
 +		enable-active-high;
 +	};
 +

@@ -243,6 +243,12 @@ define U-Boot/tlink_x1
   BUILD_DEVICES:=kooiot_tlink-x1
 endef
 
+define U-Boot/tlink_x1s
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink X1s
+  BUILD_DEVICES:=kooiot_tlink-x1s
+endef
+
 define U-Boot/tlink_r1
   BUILD_SUBTARGET:=cortexa7
   NAME:=ThingsLink R1
@@ -455,6 +461,7 @@ UBOOT_TARGETS := \
 	nanopi_neo_air \
 	nanopi_neo_plus2 \
 	tlink_x1 \
+	tlink_x1s \
 	tlink_r1 \
 	tlink_rp_h6 \
 	tlink_ok_a40i \

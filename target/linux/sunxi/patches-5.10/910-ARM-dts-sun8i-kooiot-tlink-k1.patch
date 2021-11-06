@@ -10,7 +10,7 @@
  	sun8i-t3-cqa3t-bv3.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k1.dts
-@@ -0,0 +1,603 @@
+@@ -0,0 +1,615 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -42,7 +42,6 @@
 +		mmc0 = &mmc0;
 +		mmc1 = &mmc2;
 +		mmc2 = &mmc1;
-+		mmc3 = &mmc3;
 +	};
 +
 +	reserved-memory {
@@ -103,25 +102,27 @@
 +
 +		status {
 +			label = "green:status";
-+			gpios = <&pio 2 0 GPIO_ACTIVE_LOW>; /* PC0 */
++			gpios = <&pio 2 0 GPIO_ACTIVE_HIGH>; /* PC0 */
 +			linux,default-trigger = "heartbeat";
 +		};
 +
 +		modem {
 +			label = "green:modem";
-+			gpios = <&pio 2 1 GPIO_ACTIVE_LOW>; /* PC1 */
++			gpios = <&pio 2 1 GPIO_ACTIVE_HIGH>; /* PC1 */
 +			default-state = "off";
 +		};
 +
 +		cloud {
 +			label = "green:cloud";
-+			gpios = <&pio 2 2 GPIO_ACTIVE_LOW>; /* PC2 */
++			gpios = <&pio 2 2 GPIO_ACTIVE_HIGH>; /* PC2 */
 +			default-state = "off";
 +		};
 +	};
 +
 +	gpio_keys {
 +		compatible = "gpio-keys";
++		pinctrl-names = "default";
++		pinctrl-0 = <&keys_pins>;
 +
 +		reset {
 +			label = "reset";
@@ -162,16 +163,19 @@
 +	reg_vcc3v3_sdc: vcc3v3-sdc {
 +		compatible = "regulator-fixed";
 +		regulator-name = "vcc3v3-sdc";
++		regulator-always-on;
++		regulator-boot-on;
 +		regulator-min-microvolt = <3300000>;
 +		regulator-max-microvolt = <3300000>;
 +		vin-supply = <&reg_dcdc1>;
-+		gpio = <&pio 8 14 GPIO_ACTIVE_HIGH>; /* PH14 CARD0-PWR*/
-+		enable-active-high;
++		gpio = <&pio 8 14 GPIO_ACTIVE_LOW>; /* PI14 CARD0-PWR*/
++		// enable-active-high;
 +	};
 +
 +	reg_usb_vcc5v0: usb-vcc5v0 {
 +		compatible = "regulator-fixed";
 +		regulator-name = "vcc5v0";
++		regulator-always-on;
 +		regulator-min-microvolt = <5000000>;
 +		regulator-max-microvolt = <5000000>;
 +		gpio = <&pio 7 13 GPIO_ACTIVE_HIGH>; /* PH13 */
@@ -242,21 +246,22 @@
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&gmac_rgmii_pins>;
 +	phy-handle = <&phy1>;
-+	phy-mode = "rgmii-id";
++	phy-mode = "rgmii";
 +	phy-supply = <&reg_dcdc1>;
-+	// snps,reset-gpio = <&pio 0 9 GPIO_ACTIVE_LOW>; /* PA9 */
-+	// snps,reset-delays-us = <0 10000 1000000>;
++	snps,reset-gpio = <&pio 0 9 GPIO_ACTIVE_LOW>; /* PA9 */
++	snps,reset-delays-us = <0 10000 1000000>;
 +	status = "okay";
 +};
 +
 +&gmac_mdio {
-+	phy1: ethernet-phy@1 {
++	phy1: ethernet-phy@0 {
 +		compatible = "ethernet-phy-ieee802.3-c22";
-+		reg = <1>;
-+		reset-gpios = <&pio 0 9 GPIO_ACTIVE_LOW>; /* PA9 */
-+		reset-assert-us = <10000>;
-+		reset-deassert-us = <1000000>;
-+		interrupts = <&pio 0 17 GPIO_ACTIVE_LOW>; /* PA17 */
++		reg = <0>;
++		// reset-gpios = <&pio 0 9 GPIO_ACTIVE_LOW>; /* PA9 */
++		// reset-assert-us = <10000>;
++		// reset-deassert-us = <1000000>;
++		// interrupt-parent = <&pio>;
++		// interrupts = <&pio 0 17 GPIO_ACTIVE_LOW>; /* PA17 */
 +	};
 +};
 +
@@ -276,8 +281,17 @@
 +
 +&spi2 {
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&spi2_pc_pins>;
++	pinctrl-0 = <&spi2_pc_pins> <&spi_irq_pins>;
 +	status = "okay";
++	spi2_serial@00 {
++		compatible = "wkmic,wk2124spi";
++		reg = <0>;
++		spi-max-frequency = <10000000>;
++		poll_mode = <0>;
++		type = <0>;
++		enable_dma = <0>;
++		irq_gpio=<&pio 8 9 GPIO_ACTIVE_LOW>; /* PI9 */
++	};
 +};
 +
 +&i2c0 {
@@ -292,14 +306,10 @@
 +};
 +
 +&i2c1 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&i2c1_pins>;
 +	status = "okay";
 +};
 +
 +&i2c2 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&i2c2_pins>;
 +	status = "okay";
 +
 +	rx8010: rx8010@32 {
@@ -310,8 +320,6 @@
 +};
 +
 +&i2c3 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&i2c3_pins>;
 +	status = "okay";
 +
 +	gt911: touchscreen@5d {
@@ -330,15 +338,12 @@
 +};
 +
 +&i2c4 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&i2c4_pins>;
 +    status = "okay";
 +
 +    at24c02: eeprom@50 {
 +        compatible = "atmel,24c02";
 +        reg = <0x50>;
 +        pagesize = <16>;
-+        status = "okay";
 +    };
 +};
 +
@@ -357,8 +362,7 @@
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&mmc1_pg_pins>;
 +	vmmc-supply = <&reg_dldo1>;
-+	vqmmc-supply = <&reg_dldo2>;
-+	vdmmc-supply = <&reg_dldo3>;
++	vqmmc-supply = <&reg_dldo3>;
 +	mmc-pwrseq = <&wifi_pwrseq>;
 +	bus-width = <4>;
 +	max-frequency = <16000000>;
@@ -409,6 +413,11 @@
 +		function = "spi2";
 +	};
 +
++	spi_irq_pins: spi-irq-pins {
++		pins = "PI9";
++		function = "gpio_in";
++	};
++
 +	/omit-if-no-ref/
 +	lcd0_rgb888_pins: lcd0-rgb888-pins {
 +		pins = "PD0", "PD1", "PD2", "PD3",
@@ -430,6 +439,11 @@
 +		pins = "PH7";
 +		// function = "irq";
 +		// pull = <SUN4I_PINCTRL_NO_PULL>;
++		function = "gpio_in";
++	};
++
++	keys_pins: key-pins {
++		pins = "PI6";
 +		function = "gpio_in";
 +	};
 +
@@ -512,13 +526,13 @@
 +};
 +
 +&reg_dldo1 {
-+	regulator-always-on;
 +	regulator-min-microvolt = <3300000>;
 +	regulator-max-microvolt = <3300000>;
 +	regulator-name = "vcc-wifi-io";
 +};
 +
 +&reg_dldo2 {
++	regulator-always-on;
 +	regulator-min-microvolt = <1800000>;
 +	regulator-max-microvolt = <1800000>;
 +	regulator-name = "vcc-wifi";
@@ -532,7 +546,6 @@
 +};
 +
 +&reg_dldo4 {
-+	regulator-always-on;
 +	regulator-min-microvolt = <2500000>;
 +	regulator-max-microvolt = <2500000>;
 +	regulator-name = "vdd2v5-sata";
@@ -545,7 +558,6 @@
 +};
 +
 +&reg_eldo3 {
-+	regulator-always-on;
 +	regulator-min-microvolt = <2800000>;
 +	regulator-max-microvolt = <2800000>;
 +	regulator-name = "vcc-pe";

@@ -178,13 +178,13 @@
 +};
 +
 +&mmc0 {
++	vmmc-supply = <&reg_vcc3v3>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&mmc0_pins>, <&mmc0_cd_pin>;
 +	bus-width = <4>;
 +	cd-gpios = <&pio 5 6 GPIO_ACTIVE_HIGH>; /* PF6 */
 +	cd-inverted;
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&mmc0_pins>, <&mmc0_cd_pin>;
 +	status = "okay";
-+	vmmc-supply = <&reg_vcc3v3>;
 +};
 +
 +&ehci1 {
