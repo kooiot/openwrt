@@ -1,4 +1,3 @@
-
 /*
 *	WKIC Ltd.
 *	WK2xxx.c
@@ -18,8 +17,6 @@ ion :1.0 Data:2018-08-08
 #include <linux/console.h>
 #include <asm/irq.h>
 
-
-
 /*****************************
 ***wkxxxx  Global register address defines
 ******************************/
@@ -30,7 +27,6 @@ ion :1.0 Data:2018-08-08
 #define 	WK2XXX_GIFR     0X11
 #define 	WK2XXX_GPDIR    0X21
 #define 	WK2XXX_GPDAT    0X31
-
 
 /*****************************
 *wkxxxx  slave uarts  register address defines
@@ -65,7 +61,6 @@ ion :1.0 Data:2018-08-08
 #define 	WK2XXX_SADR     0X0D
 #define 	WK2XXX_SAEN     0X0E
 #define 	WK2XXX_RRSDLY   0X0F
-
 
 //wkxxx register bit defines
 /*GENA register*/
@@ -156,8 +151,6 @@ ion :1.0 Data:2018-08-08
 #define 	WK2XXX_RTSEN     0x02
 #define 	WK2XXX_RTSINV    0x01
 
-
-
 //
 #define 	NR_PORTS 	4
 
@@ -173,4 +166,3 @@ ion :1.0 Data:2018-08-08
 #define 	WK2XXX_ISR_PASS_LIMIT	50
 #define		PORT_WK2XXX            1
 #endif
-
