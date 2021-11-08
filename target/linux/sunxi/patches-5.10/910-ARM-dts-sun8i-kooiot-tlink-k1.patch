@@ -10,7 +10,7 @@
  	sun8i-t3-cqa3t-bv3.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k1.dts
-@@ -0,0 +1,615 @@
+@@ -0,0 +1,627 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -158,6 +158,18 @@
 +			gpio-export,output=<1>;
 +			gpios = <&pio 1 5 GPIO_ACTIVE_HIGH>; /* PB5 */
 +		};
++
++		wk2xxx_reset_1 {
++			gpio-export,name = "wk2xxx_reset_1";
++			gpio-export,output=<1>;
++			gpios = <&pio 8 9 GPIO_ACTIVE_LOW>; /* PI9 */
++		};
++
++		ap_reset {
++			gpio-export,name = "ap_reset";
++			/* gpio-export,output=<1>; */
++			gpios = <&pio 1 11 GPIO_ACTIVE_LOW>; /* PB11 */
++		};
 +	};
 +
 +	reg_vcc3v3_sdc: vcc3v3-sdc {
@@ -281,16 +293,16 @@
 +
 +&spi2 {
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&spi2_pc_pins> <&spi_irq_pins>;
++	pinctrl-0 = <&spi2_pc_pins>, <&spi_irq_pins>;
 +	status = "okay";
 +	spi2_serial@00 {
-+		compatible = "wkmic,wk2124spi";
++		compatible = "wkmic,wk2132spi";
 +		reg = <0>;
 +		spi-max-frequency = <10000000>;
 +		poll_mode = <0>;
 +		type = <0>;
 +		enable_dma = <0>;
-+		irq_gpio=<&pio 8 9 GPIO_ACTIVE_LOW>; /* PI9 */
++		irq_gpio=<&pio 8 15 GPIO_ACTIVE_LOW>; /* PI15 */
 +	};
 +};
 +
@@ -414,8 +426,8 @@
 +	};
 +
 +	spi_irq_pins: spi-irq-pins {
-+		pins = "PI9";
-+		function = "gpio_in";
++		pins = "PI15";
++		function = "irq";
 +	};
 +
 +	/omit-if-no-ref/
