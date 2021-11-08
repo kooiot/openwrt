@@ -1727,7 +1727,7 @@ skip_countries:
 
 #ifdef CONFIG_GPIOLIB
 	/* Setup GPIO cotroller */
-	gpiochip_base = 16; 
+	gpiochip_base = -1; 
 
 	xr_usb_serial->xr_gpio.owner		= THIS_MODULE;
 	xr_usb_serial->xr_gpio.label		= dev_name(&control_interface->dev);
@@ -1743,7 +1743,7 @@ skip_countries:
 
 	if (rv != 0) {
 		// gpiochip numbers not available, start from 0
-		xr_usb_serial->xr_gpio.base = 0;
+		xr_usb_serial->xr_gpio.base = 300;
 	}
 
 	while (rv != 0) {
