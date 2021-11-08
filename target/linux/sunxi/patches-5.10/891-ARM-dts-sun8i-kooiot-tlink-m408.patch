@@ -107,9 +107,9 @@
 +	reset-gpios = <&pio 7 27 GPIO_ACTIVE_LOW>; /* PH27 */
 +	reset-assert-us = <10000>;
 +	reset-deassert-us = <1000000>;
-+	emac_phy: ethernet-phy@3 {
++	emac_phy: ethernet-phy@1 {
 +		compatible = "ethernet-phy-ieee802.3-c22";
-+		reg = <3>;
++		reg = <1>;
 +		// reset-gpios = <&pio 7 27 GPIO_ACTIVE_HIGH>; /* PH27 */
 +		// reset-assert-us = <10000>;
 +		// reset-deassert-us = <1000000>;
