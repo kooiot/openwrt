@@ -10,7 +10,7 @@
  	sun8i-t3-cqa3t-bv3.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k1.dts
-@@ -0,0 +1,627 @@
+@@ -0,0 +1,628 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -38,7 +38,8 @@
 +		serial2 = &uart3;
 +		serial3 = &uart4;
 +		serial4 = &uart5;
-+		serial5 = &uart7;
++		serial5 = &uart6;
++		serial6 = &uart7;
 +		mmc0 = &mmc0;
 +		mmc1 = &mmc2;
 +		mmc2 = &mmc1;
