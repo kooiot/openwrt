@@ -10,7 +10,7 @@
  	sun8i-v40-bananapi-m2-berry.dtb
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-t3-tlink-m408.dts
-@@ -0,0 +1,405 @@
+@@ -0,0 +1,452 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -30,18 +30,24 @@
 +		ethernet0 = &gmac;
 +		ethernet1 = &emac;
 +		serial0 = &uart0;
-+		serial1 = &uart2;
-+		serial2 = &uart3;
-+		serial3 = &uart4;
-+		serial4 = &uart5;
-+		serial5 = &uart6;
-+		serial6 = &uart7;
++		serial1 = &uart4;
++		serial2 = &uart5;
++		serial3 = &uart3;
++		serial4 = &uart2;
 +		mmc0 = &mmc0;
 +		mmc1 = &mmc2;
 +	};
 +
 +	chosen {
 +		stdout-path = "serial0:115200n8";
++	};
++
++	/* Fixed crystal dedicated to mcp251x */
++	can_clk10m: can-clock-10m {
++		compatible = "fixed-clock";
++		#clock-cells = <0>;
++		clock-frequency = <10000000>;
++		clock-output-names = "can_clk10m";
 +	};
 +
 +	leds {
@@ -85,6 +91,12 @@
 +			gpio-export,name = "pcie_reset";
 +			gpio-export,output=<0>;
 +			gpios = <&pio 4 8 GPIO_ACTIVE_LOW>; /* PE8 */ /* GPIO6 */
++		};
++
++		can_reset {
++			gpio-export,name = "can_reset";
++			gpio-export,output=<0>;
++			gpios = <&pio 4 1 GPIO_ACTIVE_LOW>; /* PE1 */
 +		};
 +	};
 +
@@ -213,8 +225,8 @@
 +};
 +
 +&pio {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&clk_out_a_pin>;
++	// pinctrl-names = "default";
++	// pinctrl-0 = <&clk_out_a_pin>;
 +	vcc-pa-supply = <&reg_dcdc1>;
 +	vcc-pc-supply = <&reg_aldo2>;
 +	vcc-pd-supply = <&reg_dcdc1>;
@@ -227,14 +239,9 @@
 +		function = "uart3";
 +	};
 +
-+	uart5_pi_pins: uart5-pi-pins {
-+		pins = "PI10", "PI11";
++	uart5_m408_pins: uart5-m408-pins {
++		pins = "PI10", "PH7";
 +		function = "uart5";
-+	};
-+
-+	uart6_pi_pins: uart6-pi-pins {
-+		pins = "PI12", "PI13";
-+		function = "uart6";
 +	};
 +
 +	i2c3_pins: i2c3-pins {
@@ -255,6 +262,26 @@
 +			"PA15", "PA16", "PA17";
 +		function = "gmac";
 +		drive-strength = <40>;
++	};
++
++	spi0_m408_pins: spi0-m408-pins {
++		pins = "PI11", "PI12", "PI13", "PC23";
++		function = "spi0";
++	};
++
++	spi0_irq_pin: spi0-irq-pin {
++		pins = "PH13";
++		function = "irq";
++	};
++
++	spi2_pc_pins: spi2-pc-pins {
++		pins = "PC19", "PC20", "PC21", "PC22";
++		function = "spi2";
++	};
++
++	spi2_irq_pin: spi2-irq-pin {
++		pins = "PH12";
++		function = "irq";
 +	};
 +};
 +
@@ -385,19 +412,7 @@
 +
 +&uart5 {
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&uart5_pi_pins>;
-+	status = "okay";
-+};
-+
-+&uart6 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&uart6_pi_pins>;
-+	status = "okay";
-+};
-+
-+&uart7 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&uart7_pi_pins>;
++	pinctrl-0 = <&uart5_m408_pins>;
 +	status = "okay";
 +};
 +
@@ -413,6 +428,38 @@
 +	rx8025: rx8025@32 {
 +		compatible = "epson,rx8025";
 +		reg = <0x32>;
++		status = "okay";
++	};
++};
++
++&spi0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&spi0_m408_pins>, <&spi0_irq_pin>;
++	status = "okay";
++
++	mcp2515_can0: mcp2515-can0@0 {
++		compatible = "microchip,mcp2515";
++		reg = <0>;
++		clocks = <&can_clk10m>;
++		interrupt-parent = <&pio>;
++		interrupts = <&pio 7 13 GPIO_ACTIVE_LOW>; /* PH13 */
++		spi-max-frequency = <10000000>;
++		status = "okay";
++	};
++};
++
++&spi2 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&spi2_pc_pins>, <&spi2_irq_pin>;
++	status = "okay";
++
++	mcp2515_can1: mcp2515-can1@0 {
++		compatible = "microchip,mcp2515";
++		reg = <0>;
++		clocks = <&can_clk10m>;
++		interrupt-parent = <&pio>;
++		interrupts = <&pio 7 12 GPIO_ACTIVE_LOW>; /* PH12 */
++		spi-max-frequency = <10000000>;
 +		status = "okay";
 +	};
 +};
