@@ -303,7 +303,7 @@
 +		poll_mode = <0>;
 +		type = <0>;
 +		enable_dma = <0>;
-+		irq_gpio=<&pio 8 15 GPIO_ACTIVE_LOW>; /* PI15 */
++		irq_gpio=<&pio 8 15 IRQ_TYPE_LEVEL_LOW>; /* PI15 */
 +	};
 +};
 +
