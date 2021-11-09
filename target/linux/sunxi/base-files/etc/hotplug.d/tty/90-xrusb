@@ -9,16 +9,16 @@ board=$(board_name)
 tlink_m408_xr_usb() {
 	case "$DEVICENAME" in
 		ttyXRUSB0)
-			ln -s "/dev/$DEVICENAME" "/dev/ttyS10"
+			ln -s "/dev/$DEVICENAME" "/dev/ttyS7"
 			;;
 		ttyXRUSB1)
-			ln -s "/dev/$DEVICENAME" "/dev/ttyS11"
+			ln -s "/dev/$DEVICENAME" "/dev/ttyS8"
 			;;
 		ttyXRUSB2)
-			ln -s "/dev/$DEVICENAME" "/dev/ttyS12"
+			ln -s "/dev/$DEVICENAME" "/dev/ttyS9"
 			;;
 		ttyXRUSB3)
-			ln -s "/dev/$DEVICENAME" "/dev/ttyS13"
+			ln -s "/dev/$DEVICENAME" "/dev/ttyS10"
 			;;
 	esac
 }
