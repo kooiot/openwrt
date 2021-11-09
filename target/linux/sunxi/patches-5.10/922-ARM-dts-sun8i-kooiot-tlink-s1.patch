@@ -10,7 +10,7 @@
 	sun8i-t3-cqa3t-bv3.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-s3-tlink-s1.dts
-@@ -0,0 +1,235 @@
+@@ -0,0 +1,228 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
@@ -139,8 +139,6 @@
 +	xr819: sdio_wifi@1 {
 +		reg = <1>;
 +		compatible = "xradio,xr819";
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&wifi_wake>;
 +		interrupt-parent = <&pio>;
 +		interrupts = <6 13 IRQ_TYPE_EDGE_RISING>; /* PG13/EINT13 */
 +		interrupt-names = "host-wake";
@@ -188,11 +186,6 @@
 +	gpio_export_pins: gpio-export-pins {
 +		pins = "PG8", "PG10";
 +		function = "gpio_out";
-+	};
-+
-+	wifi_wake: wifi_wake {
-+		pins = "PG13";
-+		function = "gpio_in";
 +	};
 +};
 +

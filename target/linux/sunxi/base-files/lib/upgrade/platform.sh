@@ -60,6 +60,10 @@ platform_check_image() {
 		tlink_check_image "sun8i-r40" "$1" && return 0
 		return 1
 		;;
+	"kooiot,tlink-m408")
+		tlink_check_image "sun8i-t3" "$1" && return 0
+		return 1
+		;;
 	"kooiot,tlink-s1"|\
 	"sipeed,lichee-zero-plus")
 		tlink_check_image "sun8i-s3" "$1" && return 0
@@ -93,6 +97,7 @@ platform_pre_upgrade() {
 	"kooiot,tlink-dr4-a40i"|\
 	"kooiot,tlink-nano-a40i"|\
 	"kooiot,tlink-qh-x40"|\
+	"kooiot,tlink-m408"|\
 	"kooiot,tlink-r1")
 		platform_kooiot_pre_upgrade
 		;;

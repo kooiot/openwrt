@@ -192,6 +192,7 @@ case "$(board_name)" in
 "kooiot,tlink-dr4-a40i"|\
 "kooiot,tlink-nano-a40i"|\
 "kooiot,tlink-qh-x40"|\
+"kooiot,tlink-m408"|\
 "kooiot,tlink-r1")
 	tlink_default
 	;;

@@ -10,7 +10,7 @@
  	sun8i-v40-bananapi-m2-berry.dtb
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-t3-tlink-m408.dts
-@@ -0,0 +1,452 @@
+@@ -0,0 +1,445 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -62,6 +62,7 @@
 +		alarm {
 +			label = "red:alarm";
 +			gpios = <&pio 1 2 GPIO_ACTIVE_HIGH>; /* PB2 */
++			default-state = "off";
 +		};
 +	};
 +
@@ -269,19 +270,9 @@
 +		function = "spi0";
 +	};
 +
-+	spi0_irq_pin: spi0-irq-pin {
-+		pins = "PH13";
-+		function = "irq";
-+	};
-+
 +	spi2_pc_pins: spi2-pc-pins {
 +		pins = "PC19", "PC20", "PC21", "PC22";
 +		function = "spi2";
-+	};
-+
-+	spi2_irq_pin: spi2-irq-pin {
-+		pins = "PH12";
-+		function = "irq";
 +	};
 +};
 +
@@ -434,23 +425,25 @@
 +
 +&spi0 {
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&spi0_m408_pins>, <&spi0_irq_pin>;
++	pinctrl-0 = <&spi0_m408_pins>;
 +	status = "okay";
 +
-+	mcp2515_can0: mcp2515-can0@0 {
++	mcp2515_can0: mcp2515-can0@1 {
 +		compatible = "microchip,mcp2515";
-+		reg = <0>;
++		reg = <1>;
 +		clocks = <&can_clk10m>;
 +		interrupt-parent = <&pio>;
-+		interrupts = <&pio 7 13 GPIO_ACTIVE_LOW>; /* PH13 */
++		interrupts = <7 13 IRQ_TYPE_LEVEL_LOW>; /* PH13/EINT13 */
++		vdd-supply = <&reg_dcdc1>;
 +		spi-max-frequency = <10000000>;
-+		status = "okay";
++		gpio-controller;
++		#gpio-cells = <2>;
 +	};
 +};
 +
 +&spi2 {
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&spi2_pc_pins>, <&spi2_irq_pin>;
++	pinctrl-0 = <&spi2_pc_pins>;
 +	status = "okay";
 +
 +	mcp2515_can1: mcp2515-can1@0 {
@@ -458,7 +451,7 @@
 +		reg = <0>;
 +		clocks = <&can_clk10m>;
 +		interrupt-parent = <&pio>;
-+		interrupts = <&pio 7 12 GPIO_ACTIVE_LOW>; /* PH12 */
++		interrupts = <7 12 IRQ_TYPE_LEVEL_LOW>; /* PH12/EINT12 */
 +		spi-max-frequency = <10000000>;
 +		status = "okay";
 +	};

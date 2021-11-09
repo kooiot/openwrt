@@ -10,7 +10,7 @@
  	sun8i-t3-cqa3t-bv3.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k1.dts
-@@ -0,0 +1,628 @@
+@@ -0,0 +1,619 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -385,8 +385,6 @@
 +	xr819: sdio_wifi@1 {
 +		reg = <1>;
 +		compatible = "xradio,xr819";
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&wifi_wake>;
 +		interrupt-parent = <&pio>;
 +		interrupts = <7 7 IRQ_TYPE_EDGE_RISING>; /* PH7 */
 +		interrupt-names = "host-wake";
@@ -446,13 +444,6 @@
 +	wifi_rst: wifi-rst-pin {
 +		pins = "PH6";
 +		function = "gpio_out";
-+	};
-+
-+	wifi_wake: wifi_wake@0 {
-+		pins = "PH7";
-+		// function = "irq";
-+		// pull = <SUN4I_PINCTRL_NO_PULL>;
-+		function = "gpio_in";
 +	};
 +
 +	keys_pins: key-pins {

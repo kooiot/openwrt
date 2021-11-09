@@ -9,16 +9,20 @@ board=$(board_name)
 tlink_m408_xr_usb() {
 	case "$DEVICENAME" in
 		ttyXRUSB0)
-			ln -s "/dev/$DEVICENAME" "/dev/ttyS7"
+			rm /dev/ttyS5
+			ln -s /dev/$DEVICENAME /dev/ttyS5
 			;;
 		ttyXRUSB1)
-			ln -s "/dev/$DEVICENAME" "/dev/ttyS8"
+			rm /dev/ttyS6
+			ln -s /dev/$DEVICENAME /dev/ttyS6
 			;;
 		ttyXRUSB2)
-			ln -s "/dev/$DEVICENAME" "/dev/ttyS9"
+			rm /dev/ttyS7
+			ln -s /dev/$DEVICENAME /dev/ttyS7
 			;;
 		ttyXRUSB3)
-			ln -s "/dev/$DEVICENAME" "/dev/ttyS10"
+			rm /dev/ttyS8
+			ln -s /dev/$DEVICENAME /dev/ttyS8
 			;;
 	esac
 }
@@ -26,10 +30,12 @@ tlink_m408_xr_usb() {
 tlink_k1_wk_spi() {
 	case "$DEVICENAME" in
 		ttySWK0)
-			ln -s "/dev/$DEVICENAME" "/dev/ttyS7"
+			rm /dev/ttyS7
+			ln -s /dev/$DEVICENAME /dev/ttyS7
 			;;
 		ttySWK1)
-			ln -s "/dev/$DEVICENAME" "/dev/ttyS8"
+			rm /dev/ttyS8
+			ln -s /dev/$DEVICENAME /dev/ttyS8
 			;;
 	esac
 }
