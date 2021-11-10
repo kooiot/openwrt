@@ -232,10 +232,22 @@ define U-Boot/tlink_x1
   BUILD_DEVICES:=kooiot_tlink-x1
 endef
 
+define U-Boot/tlink_x1s
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink X1s
+  BUILD_DEVICES:=kooiot_tlink-x1s
+endef
+
 define U-Boot/tlink_r1
   BUILD_SUBTARGET:=cortexa7
   NAME:=ThingsLink R1
   BUILD_DEVICES:=kooiot_tlink-r1
+endef
+
+define U-Boot/tlink_s1
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink S1
+  BUILD_DEVICES:=kooiot_tlink-s1
 endef
 
 define U-Boot/pangolin
@@ -372,9 +384,12 @@ UBOOT_TARGETS := \
 	nanopi_neo_air \
 	nanopi_neo_plus2 \
 	tlink_x1 \
+	tlink_x1s \
 	tlink_r1 \
 	tlink_x2 \
 	tlink_k1 \
+	tlink_m408 \
+	tlink_s1 \
 	nanopi_neo2 \
 	nanopi_r1 \
 	orangepi_zero \

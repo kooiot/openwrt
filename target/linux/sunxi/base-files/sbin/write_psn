@@ -9,6 +9,8 @@ case "$(board_name)" in
 "kooiot,tlink-x1" | \
 "kooiot,tlink-x2" | \
 "kooiot,tlink-k1" | \
+"kooiot,tlink-s1" | \
+"kooiot,tlink-m408" | \
 "kooiot,tlink-r1")
 	;;
 *)
@@ -48,7 +50,10 @@ echo ""
 #----------------------------------------------------------
 
 
-NVMEM_PATH="/sys/devices/platform/soc/1c2ac00.i2c/i2c-0/0-0050/0-00500/nvmem"
+NVMEM_PATH="/sys/bus/i2c/devices/0-0050/eeprom"
+if [ ! -f ${NVMEM_PATH} ]; then
+	NVMEM_PATH="/sys/bus/i2c/devices/0-0050/0-00501/nvmem"
+fi
 
 if [ ! -f ${NVMEM_PATH} ]; then
     echo "EEPROM not found! Product SN will be writen to EMMC!!!"

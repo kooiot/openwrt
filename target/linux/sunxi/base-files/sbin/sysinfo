@@ -9,6 +9,8 @@ case "$(board_name)" in
 "kooiot,tlink-x1" | \
 "kooiot,tlink-x2" | \
 "kooiot,tlink-k1" | \
+"kooiot,tlink-s1" | \
+"kooiot,tlink-m408" | \
 "kooiot,tlink-r1")
     fm_version=$(cat /etc/build_version)
 	;;
@@ -91,10 +93,6 @@ show_thermal_info(){
     cat <<EOF
 CPU temperature( °C X 1000 ):
   current:	$(cat ${cpu_thermal_zone}/temp)
-  $(cat ${cpu_thermal_zone}/trip_point_0_type):	$(cat ${cpu_thermal_zone}/trip_point_0_temp)
-  $(cat ${cpu_thermal_zone}/trip_point_1_type):	$(cat ${cpu_thermal_zone}/trip_point_1_temp)
-  $(cat ${cpu_thermal_zone}/trip_point_2_type):	$(cat ${cpu_thermal_zone}/trip_point_2_temp)
-  $(cat ${cpu_thermal_zone}/trip_point_3_type):	$(cat ${cpu_thermal_zone}/trip_point_3_temp)
 
 EOF
 }

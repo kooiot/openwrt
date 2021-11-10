@@ -1,0 +1,43 @@
+From a1f934726bbda7975f427332b1a6c99636db3262 Mon Sep 17 00:00:00 2001
+From: greedyhao <hao_kr@163.com>
+Date: Thu, 12 Sep 2019 08:21:49 +0800
+Subject: [PATCH 6114/6117] ARM: sun8i: s3: add ns2009 node for Lichee Pi Zero
+ Plus board
+
+---
+ arch/arm/boot/dts/sun8i-s3-lichee-zero-plus.dts | 5 +++++
+ drivers/input/touchscreen/ns2009.c              | 4 +++-
+ 3 files changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm/boot/dts/sun8i-s3-lichee-zero-plus.dts b/arch/arm/boot/dts/sun8i-s3-lichee-zero-plus.dts
+index 8def85da80f1..8751e131c00f 100644
+--- a/arch/arm/boot/dts/sun8i-s3-lichee-zero-plus.dts
++++ b/arch/arm/boot/dts/sun8i-s3-lichee-zero-plus.dts
+@@ -107,6 +107,11 @@
+         reset-gpios = <&pio 4 9 GPIO_ACTIVE_HIGH>; /* RST (PE9) */
+         /* touchscreen-swapped-x-y */
+     };
++
++	ns2009: ns2009@48 {
++		compatible = "nsiway,ns2009";
++		reg = <0x48>;
++	};
+ };
+ 
+ &lradc {
+diff --git a/drivers/input/touchscreen/ns2009.c b/drivers/input/touchscreen/ns2009.c
+index 2c47b5ecf231..0f3505d44347 100644
+--- a/drivers/input/touchscreen/ns2009.c
++++ b/drivers/input/touchscreen/ns2009.c
+@@ -209,4 +209,6 @@ static struct i2c_driver ns2009_ts_driver = {
+ 		.name = NS2009_TS_NAME,
+ 	},
+ };
+-module_i2c_driver(ns2009_ts_driver);
+\ No newline at end of file
++module_i2c_driver(ns2009_ts_driver);
++
++MODULE_LICENSE("GPL v2");
+-- 
+2.30.2
+

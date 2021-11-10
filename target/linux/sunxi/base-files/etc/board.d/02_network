@@ -27,6 +27,12 @@ kooiot,tlink-k1|\
 kooiot,tlink-r1)
 	ucidef_set_interfaces_lan_wan "eth0" "eth1"
 	;;
+kooiot,tlink-k1)
+	ucidef_set_interface_lan "eth0 eth1"
+	;;
+kooiot,tlink-m408)
+	ucidef_set_interface_lan "eth0 eth1 eth2 eth3"
+	;;
 *)
 	ucidef_set_interface_lan "eth0"
 	;;

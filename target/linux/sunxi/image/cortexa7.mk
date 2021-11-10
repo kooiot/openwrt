@@ -218,6 +218,24 @@ define Device/xunlong_orangepi-2
  endef
 TARGET_DEVICES += xunlong_orangepi-2
 
+define Device/kooiot_tlink-s1
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink S1
+  DEVICE_PACKAGES:=kmod-rtc-sunxi \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-rtc-sd3078 kmod-usb-net-asix \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+	kmod-xradio armbian-firmware-xr819 wpad-basic-wolfssl \
+    tinc-freeioe-tunnel iperf3 \
+	uqmi fdisk usbutils freeioe wwanleds \
+    blockd usb-otg-sunxi kmod-eeprom-at24 fdisk
+  SOC := sun8i-s3
+endef
+TARGET_DEVICES += kooiot_tlink-s1
+
 define Device/kooiot_tlink-x1
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink X1
@@ -230,6 +248,19 @@ define Device/kooiot_tlink-x1
   SOC := sun8i-h3
 endef
 TARGET_DEVICES += kooiot_tlink-x1
+
+define Device/kooiot_tlink-x1s
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink X1s
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
+    kmod-usb-net kmod-usb-net-rtl8152 \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-rtc-sd3078 kmod-usb-net-asix \
+    kmod-eeprom-at24 fdisk
+  SOC := sun8i-h3
+endef
+TARGET_DEVICES += kooiot_tlink-x1s
 
 define Device/kooiot_tlink-r1
   DEVICE_VENDOR := KooIoT
@@ -253,11 +284,12 @@ define Device/kooiot_tlink-k1
     kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
     kmod-ledtrig-netdev kmod-ledtrig-gpio \
-    kmod-usb-serial kmod-usb-net-serial-option \
+    kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+	kmod-serial-wk2xxx-spi \
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    tinc_freeioe_tunnel ser2net shellinabox iperf3 ethtool \
+    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage kmod-drm-sunxi \
 	usb-otg-sunxi kmod-usb-gadget-serial
   SOC := sun8i-r40

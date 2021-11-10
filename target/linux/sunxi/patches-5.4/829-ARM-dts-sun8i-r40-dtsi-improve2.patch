@@ -1,0 +1,194 @@
+--- a/arch/arm/boot/dts/sun8i-r40.dtsi
++++ b/arch/arm/boot/dts/sun8i-r40.dtsi
+@@ -404,6 +404,32 @@
+ 			#dma-cells = <1>;
+ 		};
+ 
++		spi0: spi@1c05000 {
++			compatible = "allwinner,sun8i-r40-spi",
++				     "allwinner,sun8i-h3-spi";
++			reg = <0x01c05000 0x1000>;
++			interrupts = <GIC_SPI 10 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&ccu CLK_BUS_SPI0>, <&ccu CLK_SPI0>;
++			clock-names = "ahb", "mod";
++			resets = <&ccu RST_BUS_SPI0>;
++			status = "disabled";
++			#address-cells = <1>;
++			#size-cells = <0>;
++		};
++
++		spi1: spi@1c06000 {
++			compatible = "allwinner,sun8i-r40-spi",
++				     "allwinner,sun8i-h3-spi";
++			reg = <0x01c06000 0x1000>;
++			interrupts = <GIC_SPI 11 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&ccu CLK_BUS_SPI1>, <&ccu CLK_SPI1>;
++			clock-names = "ahb", "mod";
++			resets = <&ccu RST_BUS_SPI1>;
++			status = "disabled";
++			#address-cells = <1>;
++			#size-cells = <0>;
++		};
++
+ 		video-codec@1c0e000 {
+ 			compatible = "allwinner,sun8i-r40-video-engine";
+ 			reg = <0x01c0e000 0x1000>;
+@@ -515,6 +541,19 @@
+ 			#phy-cells = <1>;
+ 		};
+ 
++		spi2: spi@1c17000 {
++			compatible = "allwinner,sun8i-r40-spi",
++				     "allwinner,sun8i-h3-spi";
++			reg = <0x01c17000 0x1000>;
++			interrupts = <GIC_SPI 12 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&ccu CLK_BUS_SPI2>, <&ccu CLK_SPI2>;
++			clock-names = "ahb", "mod";
++			resets = <&ccu RST_BUS_SPI2>;
++			status = "disabled";
++			#address-cells = <1>;
++			#size-cells = <0>;
++		};
++
+ 		ehci0: usb@1c14000 {
+ 			compatible = "allwinner,sun8i-r40-ehci", "generic-ehci";
+ 			reg = <0x01c14000 0x100>;
+@@ -594,6 +633,19 @@
+ 			status = "disabled";
+ 		};
+ 
++		spi3: spi@1c1f000 {
++			compatible = "allwinner,sun8i-r40-spi",
++				     "allwinner,sun8i-h3-spi";
++			reg = <0x01c1f000 0x1000>;
++			interrupts = <GIC_SPI 50 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&ccu CLK_BUS_SPI3>, <&ccu CLK_SPI3>;
++			clock-names = "ahb", "mod";
++			resets = <&ccu RST_BUS_SPI3>;
++			status = "disabled";
++			#address-cells = <1>;
++			#size-cells = <0>;
++		};
++
+ 		ccu: clock@1c20000 {
+ 			compatible = "allwinner,sun8i-r40-ccu";
+ 			reg = <0x01c20000 0x400>;
+@@ -665,11 +717,36 @@
+ 				function = "i2c0";
+ 			};
+ 
++			i2c1_pins: i2c1-pins {
++				pins = "PB18", "PB19";
++				function = "i2c1";
++			};
++
+ 			i2c2_pins: i2c2-pins {
+ 				pins = "PB20", "PB21";
+ 				function = "i2c2";
+ 			};
+ 
++			i2c3_pins: i2c3-pins {
++				pins = "PI0", "PI1";
++				function = "i2c3";
++			};
++
++			i2c4_pins: i2c4-pins {
++				pins = "PI2", "PI3";
++				function = "i2c4";
++			};
++
++			ir0_pins: ir0-pins {
++				pins = "PB4";
++				function = "ir0";
++			};
++
++			ir1_pins: ir1-pins {
++				pins = "PB23";
++				function = "ir1";
++			};
++
+ 			mmc0_pins: mmc0-pins {
+ 				pins = "PF0", "PF1", "PF2",
+ 				       "PF3", "PF4", "PF5";
+@@ -695,6 +772,36 @@
+ 				bias-pull-up;
+ 			};
+ 
++			/omit-if-no-ref/
++			spi0_pc_pins: spi0-pc-pins {
++				pins = "PC0", "PC1", "PC2";
++				function = "spi0";
++			};
++
++			/omit-if-no-ref/
++			spi0_cs0_pc_pin: spi0-cs0-pc-pin {
++				pins = "PC23";
++				function = "spi0";
++			};
++
++			/omit-if-no-ref/
++			spi1_pi_pins: spi1-pi-pins {
++				pins = "PI17", "PI18", "PI19";
++				function = "spi1";
++			};
++
++			/omit-if-no-ref/
++			spi1_cs0_pi_pin: spi1-cs0-pi-pin {
++				pins = "PI16";
++				function = "spi1";
++			};
++
++			/omit-if-no-ref/
++			spi1_cs1_pi_pin: spi1-cs1-pi-pin {
++				pins = "PI15";
++				function = "spi1";
++			};
++
+ 			pwm_ch0_pin: pwm-ch0-pin {
+ 				pins = "PB2";
+ 				function = "pwm";
+@@ -781,7 +888,7 @@
+ 			interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>;
+ 			resets = <&ccu RST_BUS_THS>;
+ 			/* TODO: add nvmem-cells for calibration */
+-			#thermal-sensor-cells = <2>;
++			#thermal-sensor-cells = <1>;
+ 		};
+ 
+ 		pwm: pwm@1c23400 {
+@@ -902,6 +1009,8 @@
+ 			interrupts = <GIC_SPI 8 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&ccu CLK_BUS_I2C1>;
+ 			resets = <&ccu RST_BUS_I2C1>;
++			pinctrl-0 = <&i2c1_pins>;
++			pinctrl-names = "default";
+ 			status = "disabled";
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+@@ -913,6 +1022,8 @@
+ 			interrupts = <GIC_SPI 9 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&ccu CLK_BUS_I2C2>;
+ 			resets = <&ccu RST_BUS_I2C2>;
++			pinctrl-0 = <&i2c2_pins>;
++			pinctrl-names = "default";
+ 			status = "disabled";
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+@@ -924,6 +1035,8 @@
+ 			interrupts = <GIC_SPI 88 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&ccu CLK_BUS_I2C3>;
+ 			resets = <&ccu RST_BUS_I2C3>;
++			pinctrl-0 = <&i2c3_pins>;
++			pinctrl-names = "default";
+ 			status = "disabled";
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+@@ -935,6 +1048,8 @@
+ 			interrupts = <GIC_SPI 89 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&ccu CLK_BUS_I2C4>;
+ 			resets = <&ccu RST_BUS_I2C4>;
++			pinctrl-0 = <&i2c4_pins>;
++			pinctrl-names = "default";
+ 			status = "disabled";
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;

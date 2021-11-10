@@ -770,6 +770,24 @@ endef
 $(eval $(call KernelPackage,rtc-hym8563))
 
 
+define KernelPackage/rtc-sd3078
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=Shenzhen Wave Electronic Technology SD3077/3078
+  DEFAULT:=m if ALL_KMODS && RTC_SUPPORT
+  DEPENDS:=+kmod-i2c-core
+  KCONFIG:=CONFIG_RTC_DRV_SD3078 \
+	CONFIG_RTC_CLASS=y
+  FILES:=$(LINUX_DIR)/drivers/rtc/rtc-sd3078.ko
+  AUTOLOAD:=$(call AutoLoad,50,rtc-sd3078,1)
+endef
+
+define KernelPackage/rtc-sd3078/description
+ Kernel module for Shenzhen Wave Electronic Technology SD3077/3078 RTC chip
+endef
+
+$(eval $(call KernelPackage,rtc-sd3078))
+
+
 define KernelPackage/mtdtests
   SUBMENU:=$(OTHER_MENU)
   TITLE:=MTD subsystem tests
@@ -863,6 +881,36 @@ define KernelPackage/serial-8250-exar/description
 endef
 
 $(eval $(call KernelPackage,serial-8250-exar))
+
+
+define KernelPackage/serial-wk2xxx-spi
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=WKMIC WK2xxx SPI to UART Support
+  KCONFIG:=CONFIG_SERIAL_WK2XXX_SPI
+  FILES:=$(LINUX_DIR)/drivers/tty/serial/wk2xxx_spi/wk2xxx_spi.ko
+  AUTOLOAD:=$(call AutoLoad,50,wk2xxx_spi,1)
+endef
+
+define KernelPackage/serial-wk2xxx-spi/description
+ Kernel module for WKMIC WK2xxx SPI UARTs
+endef
+
+$(eval $(call KernelPackage,serial-wk2xxx-spi))
+
+
+define KernelPackage/serial-xr14xx-usb
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=MaxLiner XR14xx USB to UART Support
+  KCONFIG:=CONFIG_SERIAL_XR14XX_USB
+  FILES:=$(LINUX_DIR)/drivers/tty/serial/xr14xx_usb/xr_usb_serial_common.ko
+  AUTOLOAD:=$(call AutoProbe,xr_usb_serial_common)
+endef
+
+define KernelPackage/serial-xr14xx-usb/description
+ Kernel module for MaxLiner XR14xx USB UARTs
+endef
+
+$(eval $(call KernelPackage,serial-xr14xx-usb))
 
 
 define KernelPackage/regmap-core

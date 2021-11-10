@@ -1,0 +1,57 @@
+From 37e66f4dcfa0d2e6c5eba3e66b02fbb4168d7b0b Mon Sep 17 00:00:00 2001
+From: greedyhao <hao_kr@163.com>
+Date: Tue, 10 Sep 2019 16:25:12 +0800
+Subject: [PATCH 6110/6117] ARM: dts: sun8i: s3: add node for keys
+
+---
+ .../boot/dts/sun8i-s3-lichee-zero-plus.dts    | 27 +++++++++++++++++++
+ 1 file changed, 27 insertions(+)
+
+diff --git a/arch/arm/boot/dts/sun8i-s3-lichee-zero-plus.dts b/arch/arm/boot/dts/sun8i-s3-lichee-zero-plus.dts
+index 6f92335bb373..d6567b8cb10c 100644
+--- a/arch/arm/boot/dts/sun8i-s3-lichee-zero-plus.dts
++++ b/arch/arm/boot/dts/sun8i-s3-lichee-zero-plus.dts
+@@ -7,6 +7,7 @@
+ #include "sun8i-v3.dtsi"
+ 
+ #include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/input/input.h>
+ 
+ / {
+ 	model = "Sipeed Lichee Zero Plus";
+@@ -93,6 +94,32 @@
+ 	status = "okay";
+ };
+ 
++&lradc {
++	vref-supply = <&reg_vcc3v3>;
++	status = "okay";
++
++	button-430 {
++		label = "key0";
++		linux,code = <BTN_0>;
++		channel = <0>;
++		voltage = <430000>;
++	};
++
++	button-1060 {
++		label = "key1";
++		linux,code = <BTN_1>;
++		channel = <0>;
++		voltage = <1060000>;
++	};
++
++	button-1650 {
++		label = "key2";
++		linux,code = <BTN_2>;
++		channel = <0>;
++		voltage = <1650000>;
++	};
++};
++
+ &pwm {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&pwm0_pins>;
+-- 
+2.30.2
+
