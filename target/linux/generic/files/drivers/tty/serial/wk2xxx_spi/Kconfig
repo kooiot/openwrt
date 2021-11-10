@@ -1,0 +1,6 @@
+config SERIAL_WK2XXX_SPI
+	tristate "WKMIC WK2xxx spi to uart Support"
+	help
+      This selects the  wk2xxx connected to MediaTek chips.
+      If you want to use wk2xxx support, say Y or M here.
+      If unsure, say N.

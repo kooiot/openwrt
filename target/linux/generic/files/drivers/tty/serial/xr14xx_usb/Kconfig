@@ -1,0 +1,6 @@
+config SERIAL_XR14XX_USB
+	tristate "MaxLiner XR14xx usb to uart Support"
+	help
+      This selects the XR14xx connected to MaxLiner chips.
+      If you want to use XR14xx support, say Y or M here.
+      If unsure, say N.

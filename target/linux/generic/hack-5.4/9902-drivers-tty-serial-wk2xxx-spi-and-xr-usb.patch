@@ -1,0 +1,26 @@
+--- a/drivers/tty/serial/Kconfig
++++ b/drivers/tty/serial/Kconfig
+@@ -18,6 +18,10 @@
+ 
+ comment "Non-8250 serial port support"
+ 
++source "drivers/tty/serial/wk2xxx_spi/Kconfig"
++
++source "drivers/tty/serial/xr14xx_usb/Kconfig"
++
+ config SERIAL_AMBA_PL010
+ 	tristate "ARM AMBA PL010 serial port support"
+ 	depends on ARM_AMBA
+--- a/drivers/tty/serial/Makefile
++++ b/drivers/tty/serial/Makefile
+@@ -22,6 +22,10 @@
+ 
+ # Now bring in any enabled 8250/16450/16550 type drivers.
+ obj-$(CONFIG_SERIAL_8250) += 8250/
++# WKMIC WK2xxx SPI uart drivers
++obj-$(CONFIG_SERIAL_WK2XXX_SPI) += wk2xxx_spi/
++# MaxLiner XR14xx USB uart drivers
++obj-$(CONFIG_SERIAL_XR14XX_USB) += xr14xx_usb/
+ 
+ obj-$(CONFIG_SERIAL_AMBA_PL010) += amba-pl010.o
+ obj-$(CONFIG_SERIAL_AMBA_PL011) += amba-pl011.o
