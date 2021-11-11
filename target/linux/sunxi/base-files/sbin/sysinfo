@@ -13,10 +13,10 @@ case "$(board_name)" in
 "kooiot,tlink-m408" | \
 "kooiot,tlink-r1")
     fm_version=$(cat /etc/build_version)
-	;;
+    ;;
 *)
     fm_version=0.00
-	;;
+    ;;
 esac
 
 show_help(){
@@ -59,7 +59,8 @@ parse_cmdline(){
             module | \
             mac | \
             psn | \
-			all)
+            sn | \
+            all)
                 target=$1
                 ;;
             *)
@@ -68,6 +69,15 @@ parse_cmdline(){
                 ;;
         esac
     fi
+}
+
+product_sn_ex(){
+	if [ -f /lib/functions/psn/parser.sh ] ; then
+		. /lib/functions/psn/parser.sh
+		product_sn_decode "$(product_sn)"
+	else
+		$(product_sn)
+	fi
 }
 
 show_software_info(){ # software info
@@ -118,7 +128,8 @@ show_hardware_info(){
     cat <<EOF
 Hardware information:
   Board:        $(board_name)
-  PSN:          $(product_sn)
+  SN:           $(product_sn)
+  PSN:          $(product_sn_ex)
   Modle:        $(cat /tmp/sysinfo/model)
   CPU Type:     $(cat ${sysfs_dir_cpuinfo})
   eMMC Serial:  $(cat ${sysfs_emmc_serial} 2>/dev/null)
@@ -135,7 +146,13 @@ EOF
 
 show_psn_info(){
     cat <<EOF
-  PSN:          $(product_sn)
+  PSN:          $(product_sn_ex)
+EOF
+}
+
+show_sn_info(){
+    cat <<EOF
+  SN:           $(product_sn)
 EOF
 }
 
@@ -194,8 +211,11 @@ show_sysinfo(){
         "mac")
             show_netdev_mac
             ;;
-		"psn")
+        "psn")
             show_psn_info
+            ;;
+        "sn")
+            show_sn_info
             ;;
         "all")
             show_software_info

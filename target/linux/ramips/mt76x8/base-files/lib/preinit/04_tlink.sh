@@ -1,7 +1,13 @@
 #!/bin/sh
 
 do_product_sn_kooiot_nvmem() {
-	NVMEM_PATH="/sys/devices/platform/soc/1c2ac00.i2c/i2c-0/0-0050/0-00500/nvmem"
+	NVMEM_PATH="/sys/bus/i2c/devices/0-0050/eeprom"
+	if [ -b "${NVMEM_PATH}" -o -f "${NVMEM_PATH}" ]; then
+		echo "old eeprom path"
+	else
+		NVMEM_PATH="/sys/bus/nvmem/devices/0-00501/nvmem"
+	fi
+
 	if [ -b "${NVMEM_PATH}" -o -f "${NVMEM_PATH}" ]; then
 		product_sn=$(dd if=${NVMEM_PATH} \
 			bs=1 count=16 skip=0 2>/dev/null | \
@@ -58,7 +64,7 @@ do_product_sn_kooiot_spi_flash() {
 }
 
 do_product_sn_kooiot() {
-	NVMEM_PATH="/sys/devices/platform/soc/1c2ac00.i2c/i2c-0/0-0050/0-00500/nvmem"
+	NVMEM_PATH="/sys/bus/i2c/devices/0-0050/eeprom"
 	if [ -b "${NVMEM_PATH}" -o -f "${NVMEM_PATH}" ]; then
 		do_product_sn_kooiot_nvmem
 	else
