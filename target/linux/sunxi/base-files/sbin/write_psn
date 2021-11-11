@@ -11,7 +11,7 @@ case "$(board_name)" in
 "kooiot,tlink-r1")
 	;;
 *)
-	echo "This only support TLink devices"
+	echo "This only support ThingsLink devices"
 	exit 1
 	;;
 esac
@@ -27,8 +27,19 @@ if [ $# -eq 0 ]; then
 	exit 1
 fi
 
+if [ -f /lib/functions/psn/parser.sh ] ; then
+	. /lib/functions/psn/parser.sh
+	echo "PSN SRC: ${psn}"
+
+	psn="$(product_sn_encode ${psn})"
+	if [ ${#psn} -le 8 ]; then
+		echo "Product Serial Number encode failed!"
+		exit 3
+	fi
+fi
+
 if [ ${#psn} -ne 16 ]; then
-	echo "Product Serial Number must be 16 characters"
+	echo "Product Serial Number must be 16 characters!"
 	exit 2
 fi
 
@@ -76,6 +87,7 @@ else
 fi
 
 if [ "${product_sn}"x = "${product_sn_dp}"x ]; then
+	echo "${product_sn}" > /tmp/sysinfo/product_sn
 	echo "Loaded PSN: ${product_sn}"
 
 	echo "Done!"
