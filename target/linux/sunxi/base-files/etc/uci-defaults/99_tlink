@@ -152,6 +152,7 @@ tlink_default() {
 	# ETH MAC for usb-eth
 	case "$(board_name)" in
 		"kooiot,tlink-x1"|\
+		"kooiot,tlink-x1s"|\
 		"kooiot,tlink-k1")
 		tlink_set_wan_mac;;
 	esac
@@ -184,6 +185,7 @@ xxx() {
 case "$(board_name)" in
 "sipeed,lichee-zero-plus"|\
 "kooiot,tlink-x1"|\
+"kooiot,tlink-x1s"|\
 "kooiot,tlink-x2"|\
 "kooiot,tlink-k1"|\
 "kooiot,tlink-s1"|\
