@@ -76,7 +76,7 @@ product_sn_ex(){
 		. /lib/functions/psn/parser.sh
 		product_sn_decode "$(product_sn)"
 	else
-		$(product_sn)
+		echo "$(product_sn)"
 	fi
 }
 
