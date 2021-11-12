@@ -176,12 +176,3 @@
  			mmc3_pins: mmc3-pins {
  				pins = "PI4", "PI5", "PI6",
  				       "PI7", "PI8", "PI9";
-@@ -874,7 +1004,7 @@
- 			interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>;
- 			resets = <&ccu RST_BUS_THS>;
- 			/* TODO: add nvmem-cells for calibration */
--			#thermal-sensor-cells = <1>;
-+			#thermal-sensor-cells = <2>;
- 		};
- 
- 		codec: codec@1c22c00 {
