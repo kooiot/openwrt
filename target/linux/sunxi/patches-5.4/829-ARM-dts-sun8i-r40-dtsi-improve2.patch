@@ -147,15 +147,6 @@
  			pwm_ch0_pin: pwm-ch0-pin {
  				pins = "PB2";
  				function = "pwm";
-@@ -781,7 +888,7 @@
- 			interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>;
- 			resets = <&ccu RST_BUS_THS>;
- 			/* TODO: add nvmem-cells for calibration */
--			#thermal-sensor-cells = <2>;
-+			#thermal-sensor-cells = <1>;
- 		};
- 
- 		pwm: pwm@1c23400 {
 @@ -902,6 +1009,8 @@
  			interrupts = <GIC_SPI 8 IRQ_TYPE_LEVEL_HIGH>;
  			clocks = <&ccu CLK_BUS_I2C1>;
