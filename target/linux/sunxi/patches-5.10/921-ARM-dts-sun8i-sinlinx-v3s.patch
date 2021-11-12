@@ -1,7 +1,7 @@
 --- a/arch/arm/boot/dts/Makefile
 +++ b/arch/arm/boot/dts/Makefile
-@@ -1137,6 +1137,7 @@
- 	sun8i-t3-tlink-m408.dtb \
+@@ -1138,6 +1138,7 @@
+ 	sun8i-t3-tlink-m416.dtb \
  	sun8i-v3s-licheepi-zero.dtb \
  	sun8i-v3s-licheepi-zero-dock.dtb \
 +	sun8i-v3s-sinlinx-sin-v3s.dtb \

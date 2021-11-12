@@ -81,6 +81,7 @@ do_kooiot_tlink_generic() {
 	"kooiot,tlink-nano-a40i"|\
 	"kooiot,tlink-qh-x40"|\
 	"kooiot,tlink-m408"|\
+	"kooiot,tlink-m416"|\
 	"kooiot,tlink-r1")
 		do_product_sn_kooiot
 		;;

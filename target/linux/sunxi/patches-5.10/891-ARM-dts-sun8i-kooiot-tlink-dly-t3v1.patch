@@ -1,16 +1,6 @@
---- a/arch/arm/boot/dts/Makefile
-+++ b/arch/arm/boot/dts/Makefile
-@@ -1133,6 +1133,7 @@
- 	sun8i-s3-lichee-zero-plus.dtb \
- 	sun8i-s3-olinuxino.dtb \
- 	sun8i-t3-cqa3t-bv3.dtb \
-+	sun8i-t3-tlink-m408.dtb \
- 	sun8i-v3s-licheepi-zero.dtb \
- 	sun8i-v3s-licheepi-zero-dock.dtb \
- 	sun8i-v40-bananapi-m2-berry.dtb
 --- /dev/null
-+++ b/arch/arm/boot/dts/sun8i-t3-tlink-m408.dts
-@@ -0,0 +1,458 @@
++++ b/arch/arm/boot/dts/sun8i-t3-tlink-dly-t3v1.dtsi
+@@ -0,0 +1,455 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -23,9 +13,6 @@
 +#include <dt-bindings/input/input.h>
 +
 +/ {
-+	model = "ThingsLink M408";
-+	compatible = "kooiot,tlink-m408", "allwinner,sun8i-t3", "allwinner,sun8i-r40";
-+
 +	aliases {
 +		ethernet0 = &gmac;
 +		ethernet1 = &emac;
@@ -242,7 +229,7 @@
 +		function = "uart3";
 +	};
 +
-+	uart5_m408_pins: uart5-m408-pins {
++	uart5_dly_pins: uart5-dly-pins {
 +		pins = "PI10", "PH7";
 +		function = "uart5";
 +	};
@@ -267,7 +254,7 @@
 +		drive-strength = <40>;
 +	};
 +
-+	spi0_m408_pins: spi0-m408-pins {
++	spi0_dly_pins: spi0-dly-pins {
 +		pins = "PI11", "PI12", "PI13", "PC23";
 +		function = "spi0";
 +	};
@@ -405,7 +392,7 @@
 +
 +&uart5 {
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&uart5_m408_pins>;
++	pinctrl-0 = <&uart5_dly_pins>;
 +	status = "okay";
 +};
 +
@@ -433,7 +420,7 @@
 +
 +&spi0 {
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&spi0_m408_pins>;
++	pinctrl-0 = <&spi0_dly_pins>;
 +	status = "okay";
 +
 +	mcp2515_can1: mcp2515-can1@0 {

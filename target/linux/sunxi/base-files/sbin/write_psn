@@ -18,6 +18,7 @@ case "$(board_name)" in
 "kooiot,tlink-nano-a40i" | \
 "kooiot,tlink-qh-x40" | \
 "kooiot,tlink-m408" | \
+"kooiot,tlink-m416" | \
 "kooiot,tlink-r1")
 	;;
 *)
