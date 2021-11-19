@@ -1,0 +1,111 @@
+--- /dev/null
++++ b/configs/tlink_m408_defconfig
+@@ -0,0 +1,31 @@
++CONFIG_ARM=y
++CONFIG_ARCH_SUNXI=y
++CONFIG_SPL=y
++CONFIG_MACH_SUN8I_R40=y
++CONFIG_DRAM_CLK=648
++CONFIG_DRAM_ZQ=3881979
++CONFIG_MMC0_CD_PIN="PI15"
++CONFIG_MMC_SUNXI_SLOT_EXTRA=2
++CONFIG_USB1_VBUS_PIN="PI13"
++CONFIG_USB2_VBUS_PIN="PI13"
++# CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
++CONFIG_SPL_I2C_SUPPORT=y
++# CONFIG_CMD_FLASH is not set
++CONFIG_DEFAULT_DEVICE_TREE="sun8i-t3-tlink-m408"
++CONFIG_SCSI_AHCI=y
++CONFIG_MII=y
++CONFIG_SUN8I_EMAC=y
++CONFIG_AXP_GPIO=y
++CONFIG_AXP_DCDC1_VOLT=3300
++CONFIG_AXP_DCDC2_VOLT=1200
++CONFIG_AXP_DCDC3_VOLT=1100
++CONFIG_AXP_ALDO1_VOLT=3300
++CONFIG_AXP_ALDO2_VOLT=2500
++CONFIG_AXP_ALDO3_VOLT=3000
++CONFIG_AXP_DLDO4_VOLT=2500
++CONFIG_AXP_ELDO1_VOLT=2800
++CONFIG_AXP_ELDO2_VOLT=3300
++CONFIG_AXP_ELDO3_VOLT=1200
++CONFIG_SCSI=y
++CONFIG_USB_ECHI_HCD=y
++CONFIG_USB_OCHI_HCD=y
+--- /dev/null
++++ b/configs/tlink_m416_defconfig
+@@ -0,0 +1,31 @@
++CONFIG_ARM=y
++CONFIG_ARCH_SUNXI=y
++CONFIG_SPL=y
++CONFIG_MACH_SUN8I_R40=y
++CONFIG_DRAM_CLK=648
++CONFIG_DRAM_ZQ=3881979
++CONFIG_MMC0_CD_PIN="PI15"
++CONFIG_MMC_SUNXI_SLOT_EXTRA=2
++CONFIG_USB1_VBUS_PIN="PI13"
++CONFIG_USB2_VBUS_PIN="PI13"
++# CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
++CONFIG_SPL_I2C_SUPPORT=y
++# CONFIG_CMD_FLASH is not set
++CONFIG_DEFAULT_DEVICE_TREE="sun8i-t3-tlink-m416"
++CONFIG_SCSI_AHCI=y
++CONFIG_MII=y
++CONFIG_SUN8I_EMAC=y
++CONFIG_AXP_GPIO=y
++CONFIG_AXP_DCDC1_VOLT=3300
++CONFIG_AXP_DCDC2_VOLT=1200
++CONFIG_AXP_DCDC3_VOLT=1100
++CONFIG_AXP_ALDO1_VOLT=3300
++CONFIG_AXP_ALDO2_VOLT=2500
++CONFIG_AXP_ALDO3_VOLT=3000
++CONFIG_AXP_DLDO4_VOLT=2500
++CONFIG_AXP_ELDO1_VOLT=2800
++CONFIG_AXP_ELDO2_VOLT=3300
++CONFIG_AXP_ELDO3_VOLT=1200
++CONFIG_SCSI=y
++CONFIG_USB_ECHI_HCD=y
++CONFIG_USB_OCHI_HCD=y
++++ a/arch/arm/dts/Makefile
++++ b/arch/arm/dts/Makefile
+@@ -544,7 +544,9 @@
+ 	sun8i-h3-zeropi.dtb
+ dtb-$(CONFIG_MACH_SUN8I_R40) += \
+ 	sun8i-r40-bananapi-m2-ultra.dtb \
+-	sun8i-v40-bananapi-m2-berry.dtb
++	sun8i-v40-bananapi-m2-berry.dtb \
++	sun8i-t3-tlink-m408.dtb \
++	sun8i-t3-tlink-m416.dtb
+ dtb-$(CONFIG_MACH_SUN8I_V3S) += \
+ 	sun8i-v3s-licheepi-zero.dtb
+ dtb-$(CONFIG_MACH_SUN50I_H5) += \
+--- /dev/null
++++ b/arch/arm/dts/sun8i-t3-tlink-m408.dts
+@@ -0,0 +1,12 @@
++/*
++ * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
++ *
++ */
++
++/dts-v1/;
++#include "sun8i-t3-tlink-t3v1.dtsi"
++
++/ {
++	model = "ThingsLink M408";
++	compatible = "kooiot,tlink-m408", "allwinner,sun8i-t3", "allwinner,sun8i-r40";
++};
+--- /dev/null
++++ b/arch/arm/dts/sun8i-t3-tlink-m416.dts
+@@ -0,0 +1,12 @@
++/*
++ * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
++ *
++ */
++
++/dts-v1/;
++#include "sun8i-t3-tlink-t3v1.dtsi"
++
++/ {
++	model = "ThingsLink M416";
++	compatible = "kooiot,tlink-m416", "allwinner,sun8i-t3", "allwinner,sun8i-r40";
++};

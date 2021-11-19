@@ -1,0 +1,41 @@
+--- a/arch/arm/boot/dts/Makefile
++++ b/arch/arm/boot/dts/Makefile
+@@ -1129,6 +1129,8 @@
+ 	sun8i-r16-nintendo-super-nes-classic.dtb \
+ 	sun8i-r16-parrot.dtb \
+ 	sun8i-r40-bananapi-m2-ultra.dtb \
++	sun8i-t3-tlink-m408.dtb \
++	sun8i-t3-tlink-m416.dtb \
+ 	sun8i-s3-lichee-zero-plus.dtb \
+ 	sun8i-s3-olinuxino.dtb \
+ 	sun8i-t3-cqa3t-bv3.dtb \
+--- /dev/null
++++ b/arch/arm/boot/dts/sun8i-t3-tlink-m408.dts
+@@ -0,0 +1,12 @@
++/*
++ * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
++ *
++ */
++
++/dts-v1/;
++#include "sun8i-t3-tlink-dly-t3v1.dtsi"
++
++/ {
++	model = "ThingsLink M408";
++	compatible = "kooiot,tlink-m408", "allwinner,sun8i-t3", "allwinner,sun8i-r40";
++};
+--- /dev/null
++++ b/arch/arm/boot/dts/sun8i-t3-tlink-m416.dts
+@@ -0,0 +1,12 @@
++/*
++ * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
++ *
++ */
++
++/dts-v1/;
++#include "sun8i-t3-tlink-dly-t3v1.dtsi"
++
++/ {
++	model = "ThingsLink M416";
++	compatible = "kooiot,tlink-m416", "allwinner,sun8i-t3", "allwinner,sun8i-r40";
++};

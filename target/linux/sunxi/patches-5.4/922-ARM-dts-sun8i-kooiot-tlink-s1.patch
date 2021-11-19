@@ -1,9 +1,9 @@
 --- a/arch/arm/boot/dts/Makefile
 +++ b/arch/arm/boot/dts/Makefile
-@@ -1216,6 +1216,7 @@
- 	sun8i-r40-bananapi-m2-ultra.dtb \
+@@ -1217,6 +1217,7 @@
 	sun8i-r40-tlink-k1.dtb \
 	sun8i-t3-tlink-m408.dtb \
+	sun8i-t3-tlink-m416.dtb \
 +	sun8i-s3-tlink-s1.dtb \
  	sun8i-s3-lichee-zero-plus.dtb \
  	sun8i-s3-olinuxino.dtb \
