@@ -221,7 +221,7 @@ TARGET_DEVICES += xunlong_orangepi-2
 define Device/kooiot_tlink-s1
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink S1
-  DEVICE_PACKAGES:=kmod-rtc-sunxi \
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
     kmod-ledtrig-netdev kmod-ledtrig-gpio \
     kmod-rtc-sd3078 kmod-usb-net-asix \
@@ -278,9 +278,9 @@ TARGET_DEVICES += kooiot_tlink-r1
 define Device/kooiot_tlink-k1
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink K1
-  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi kmod-brcmfmac \
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
     kmod-sun4i-emac kmod-rtc-rx8010 \
-    brcmfmac-firmware-43430a0-sdio wpad-basic-wolfssl \
+	kmod-xradio armbian-firmware-xr819 wpad-basic-wolfssl \
     kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
     kmod-ledtrig-netdev kmod-ledtrig-gpio \
@@ -299,7 +299,7 @@ TARGET_DEVICES += kooiot_tlink-k1
 define Device/kooiot_tlink-m408
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink M408
-  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi kmod-brcmfmac \
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
     kmod-sun4i-emac kmod-rtc-rx8025 \
     wpad-basic-wolfssl \
     kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
@@ -320,7 +320,7 @@ TARGET_DEVICES += kooiot_tlink-m408
 define Device/kooiot_tlink-m416
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink M416
-  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi kmod-brcmfmac \
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
     kmod-sun4i-emac kmod-rtc-rx8025 \
     wpad-basic-wolfssl \
     kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \

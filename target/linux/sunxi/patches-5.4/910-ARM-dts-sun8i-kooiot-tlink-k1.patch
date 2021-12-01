@@ -411,7 +411,7 @@
 +
 +&pio {
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&clk_out_a_pin>;
++	// pinctrl-0 = <&clk_out_a_pin>; // used by UART6
 +	vcc-pa-supply = <&reg_dcdc1>;
 +	vcc-pc-supply = <&reg_aldo2>;
 +	vcc-pd-supply = <&reg_dcdc1>;

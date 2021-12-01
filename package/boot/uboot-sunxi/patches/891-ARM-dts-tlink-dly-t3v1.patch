@@ -1,5 +1,5 @@
 --- /dev/null
-+++ b/arch/arm/dts/sun8i-t3-tlink-dly-t3v1.dts
++++ b/arch/arm/dts/sun8i-t3-tlink-dly-t3v1.dtsi
 @@ -0,0 +1,236 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>

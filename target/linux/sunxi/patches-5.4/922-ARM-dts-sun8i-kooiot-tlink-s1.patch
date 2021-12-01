@@ -10,7 +10,7 @@
  	sun8i-t3-cqa3t-bv3.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-s3-tlink-s1.dts
-@@ -0,0 +1,228 @@
+@@ -0,0 +1,233 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
@@ -29,6 +29,7 @@
 +
 +	aliases {
 +		serial0 = &uart0;
++		serial1 = &uart2;
 +		ethernet0 = &emac;
 +		ethernet1 = &xr819;
 +		mmc0 = &mmc0;
@@ -42,25 +43,25 @@
 +
 +	leds {
 +		compatible = "gpio-leds";
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&leds_pins>;
++		// pinctrl-names = "default";
++		// pinctrl-0 = <&leds_pins>;
 +
 +		status {
 +			label = "kooiot:green:status";
-+			gpios = <&pio 6 6 GPIO_ACTIVE_HIGH>; /* PG6 */
++			gpios = <&pio 6 6 GPIO_ACTIVE_LOW>; /* PG6 */
 +			linux,default-trigger = "heartbeat";
 +		};
 +		modem {
 +			label = "kooiot:green:modem";
-+			gpios = <&pio 6 7 GPIO_ACTIVE_HIGH>; /* PG7 */
++			gpios = <&pio 6 7 GPIO_ACTIVE_LOW>; /* PG7 */
 +			default-state = "off";
 +		};
 +	};
 +
 +	gpio_keys {
 +		compatible = "gpio-keys";
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&keys_pins>;
++		// pinctrl-names = "default";
++		// pinctrl-0 = <&keys_pins>;
 +
 +		reset {
 +			label = "reset";
@@ -192,6 +193,10 @@
 +&uart0 {
 +	pinctrl-0 = <&uart0_pb_pins>;
 +	pinctrl-names = "default";
++	status = "okay";
++};
++
++&uart2 {
 +	status = "okay";
 +};
 +
