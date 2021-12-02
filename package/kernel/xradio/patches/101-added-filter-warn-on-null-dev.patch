@@ -1,9 +1,12 @@
 --- a/sta.c
 +++ b/sta.c
-@@ -605,6 +605,7 @@
+@@ -605,6 +605,10 @@
 	struct xradio_common *hw_priv = hw->priv;
 	struct xradio_vif *priv = NULL;
 	int i = 0;
++	if (WARN_ON(!priv))
++		return -EOPNOTSUPP;
++
 +	printk(KERN_ERR, "%s: xradio_for_each_vif enter!\n", __func__);
 
 	/* delete umac warning */
