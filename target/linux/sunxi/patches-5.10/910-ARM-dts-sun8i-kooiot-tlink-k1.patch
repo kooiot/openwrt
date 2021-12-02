@@ -128,7 +128,7 @@
 +		reset {
 +			label = "reset";
 +			linux,code = <KEY_RESTART>;
-+			gpios = <&pio 8 6 GPIO_ACTIVE_LOW>; /* PI6 */
++			gpios = <&pio 8 6 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>; /* PI6 */
 +		};
 +	};
 +
