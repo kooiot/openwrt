@@ -87,7 +87,7 @@
 +	vqmmc-supply = <&reg_dcdc1>;
 +	vdmmc-supply = <&reg_dcdc1>;
 +	bus-width = <4>;
-+	cd-gpios = <&pio 8 15 GPIO_ACTIVE_LOW>; /* PI15 */
++	// cd-gpios = <&pio 8 15 GPIO_ACTIVE_LOW>; /* PI15 */
 +	status = "okay";
 +};
 +
