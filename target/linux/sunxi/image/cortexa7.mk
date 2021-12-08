@@ -262,6 +262,19 @@ define Device/kooiot_tlink-x1s
 endef
 TARGET_DEVICES += kooiot_tlink-x1s
 
+define Device/kooiot_tlink-x3
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink X3
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
+    kmod-usb-net kmod-usb-net-asix \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-rtc-sd3078 \
+    kmod-eeprom-at24 fdisk
+  SOC := sun8i-x3
+endef
+TARGET_DEVICES += kooiot_tlink-x3
+
 define Device/kooiot_tlink-r1
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink R1
