@@ -12,7 +12,7 @@ diff -uNra a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
 diff -uNra a/arch/arm/boot/dts/sun8i-x3-tlink-x3.dts b/arch/arm/boot/dts/sun8i-x3-tlink-x3.dts
 --- a/arch/arm/boot/dts/sun8i-x3-tlink-x3.dts	1970-01-01 08:00:00.000000000 +0800
 +++ b/arch/arm/boot/dts/sun8i-x3-tlink-x3.dts	2021-12-06 19:42:49.400076485 +0800
-@@ -0,0 +1,236 @@
+@@ -0,0 +1,235 @@
 +/*
 + * Copyright 2021 Dirk Chang <dirk@kooiot.com>
 + */
@@ -69,9 +69,8 @@ diff -uNra a/arch/arm/boot/dts/sun8i-x3-tlink-x3.dts b/arch/arm/boot/dts/sun8i-x
 +	};
 +
 +	gpio_keys {
-+		compatible = "gpio-keys";
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&key_pins>;
++		compatible = "gpio-keys-polled";
++		poll-interval = <20>;
 +
 +		reset {
 +			label = "reset";
@@ -164,7 +163,7 @@ diff -uNra a/arch/arm/boot/dts/sun8i-x3-tlink-x3.dts b/arch/arm/boot/dts/sun8i-x
 +	/* Increase drive strength for DDR modes */
 +	drive-strength = <40>;
 +	/* eMMC is missing pull-ups */
-+	bias-pull-up;
++	// bias-pull-up;
 +};
 +
 +&pio {

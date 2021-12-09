@@ -10,7 +10,7 @@
  	sun8i-t3-cqa3t-bv3.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k1.dts
-@@ -0,0 +1,619 @@
+@@ -0,0 +1,618 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -121,9 +121,8 @@
 +	};
 +
 +	gpio_keys {
-+		compatible = "gpio-keys";
-+		// pinctrl-names = "default";
-+		// pinctrl-0 = <&keys_pins>;
++		compatible = "gpio-keys-polled";
++		poll-interval = <20>;
 +
 +		reset {
 +			label = "reset";
