@@ -215,7 +215,7 @@ diff -uNra a/arch/arm/boot/dts/sun8i-x3-tlink-x3.dts b/arch/arm/boot/dts/sun8i-x
 +
 +&uart3 {
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&uart3_pb_pins>;
++	pinctrl-0 = <&uart3_ph_pins>;
 +	status = "okay";
 +};
 +
