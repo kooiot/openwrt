@@ -70,10 +70,12 @@ do_kooiot_tlink_generic() {
 
 	case "$(board_name)" in
 	"kooiot,tlink-x1"|\
+	"kooiot,tlink-x1s"|\
 	"kooiot,tlink-x2"|\
 	"kooiot,tlink-k1"|\
 	"kooiot,tlink-s1"|\
 	"kooiot,tlink-m408"|\
+	"kooiot,tlink-m416"|\
 	"kooiot,tlink-r1")
 		do_product_sn_kooiot
 		;;

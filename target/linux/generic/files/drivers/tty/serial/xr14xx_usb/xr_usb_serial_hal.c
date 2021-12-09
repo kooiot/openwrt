@@ -489,6 +489,11 @@ int xr_usb_serial_set_flow_mode(struct xr_usb_serial *xr_usb_serial, struct tty_
 		flow      = UART_FLOW_MODE_NONE;
 		gpio_mode = UART_GPIO_MODE_SEL_GPIO;
 	}
+#if defined CONFIG_SERIAL_XR14XX_FORCE_485
+	// Hack for 485 mode
+	dev_info(&xr_usb_serial->control->dev, "xr_usb_serial_set_gpio_mode: rs485\n");
+	gpio_mode |= 0xb;
+#endif
 	
 	if((xr_usb_serial->DeviceProduct == 0x1420)||
 	   (xr_usb_serial->DeviceProduct == 0x1422)||

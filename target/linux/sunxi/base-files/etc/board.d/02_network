@@ -22,6 +22,7 @@ xunlong,orangepi-r1)
 	ucidef_set_interfaces_lan_wan "eth0" "eth1"
 	;;
 kooiot,tlink-x1|\
+kooiot,tlink-x1s|\
 kooiot,tlink-x2|\
 kooiot,tlink-k1|\
 kooiot,tlink-r1)

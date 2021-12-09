@@ -18,7 +18,7 @@
 + */
 +
 +/dts-v1/;
-+#include "sun8i-t3-tlink-dly-t3v1.dtsi"
++#include "sun8i-t3-tlink-dly-t3v2.dtsi"
 +
 +/ {
 +	model = "ThingsLink M408";
@@ -33,7 +33,7 @@
 + */
 +
 +/dts-v1/;
-+#include "sun8i-t3-tlink-dly-t3v1.dtsi"
++#include "sun8i-t3-tlink-dly-t3v2.dtsi"
 +
 +/ {
 +	model = "ThingsLink M416";

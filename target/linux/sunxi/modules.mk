@@ -135,3 +135,20 @@ define KernelPackage/input-touchscreen-goodix/description
 endef
 
 $(eval $(call KernelPackage,input-touchscreen-goodix))
+
+define KernelPackage/usb-hub-251xb
+  TITLE:=Support for USB 251XB Hub chips
+  KCONFIG:=CONFIG_USB_HUB_USB251XB
+  DEPENDS:=+kmod-i2c-core
+  FILES:=$(LINUX_DIR)/drivers/usb/misc/usb251xb.ko
+  AUTOLOAD:=$(call AutoLoad,54,usb251xb.ko,1)
+  $(call AddDepends/usb)
+endef
+
+define KernelPackage/usb-hub-251xb/description
+  USB HUB 251XB chips
+endef
+
+$(eval $(call KernelPackage,usb-hub-251xb))
+
+

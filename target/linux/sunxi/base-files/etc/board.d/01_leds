@@ -13,6 +13,7 @@ friendlyarm,nanopi-r1)
 	ucidef_set_led_netdev "lan" "LAN" "nanopi:green:lan" "eth1"
 	;;
 kooiot,tlink-x1|\
+kooiot,tlink-x1s|\
 kooiot,tlink-x2|\
 kooiot,tlink-k1|\
 kooiot,tlink-r1)
