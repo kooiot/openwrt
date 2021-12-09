@@ -16,7 +16,9 @@
 tlink_mount_data() {
 	data_blk_p="/dev/mmcblk1p3"
 	if [ ! -b $data_blk_p ]; then
-		data_blk_p="/dev/mmcblk2p3"
+		if [ -b "/dev/mmcblk2p3" ]; then
+			data_blk_p="/dev/mmcblk2p3"
+		fi
 	fi
 
 	if [ -b "/dev/mmcblk1p4"]; then
