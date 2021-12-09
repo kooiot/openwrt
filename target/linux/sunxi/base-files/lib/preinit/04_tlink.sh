@@ -72,6 +72,7 @@ do_kooiot_tlink_generic() {
 	"sipeed,lichee-zero-plus"|\
 	"kooiot,tlink-x1"|\
 	"kooiot,tlink-x1s"|\
+	"kooiot,tlink-x3"|\
 	"kooiot,tlink-x2"|\
 	"kooiot,tlink-k1"|\
 	"kooiot,tlink-s1"|\
