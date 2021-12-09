@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-t3-tlink-dly-t3v2.dtsi
-@@ -0,0 +1,459 @@
+@@ -0,0 +1,460 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -91,7 +91,7 @@
 +		usb_reset {
 +			gpio-export,name = "usb_reset";
 +			gpio-export,output=<1>;
-+			gpios = <&pio 7 3 GPIO_ACTIVE_LOW>; /* PH3 */
++			gpios = <&pio 7 3 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>; /* PH3 */
 +		};
 +	};
 +
@@ -183,6 +183,11 @@
 +	non-removable;
 +	status = "okay";
 +};
++
++&mmc2_pins {
++	/* Increase drive strength for DDR modes */
++	drive-strength = <40>;
++};
 +/*
 +&otg_sram {
 +	status = "okay";
@@ -194,8 +199,6 @@
 +};
 +*/
 +&ehci0 {
-+	phys = <&usbphy 0>;
-+	phy-names = "usb";
 +	status = "okay";
 +};
 +
@@ -208,8 +211,6 @@
 +};
 +
 +&ohci0 {
-+	phys = <&usbphy 0>;
-+	phy-names = "usb";
 +	status = "okay";
 +};
 +
