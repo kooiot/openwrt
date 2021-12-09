@@ -122,8 +122,8 @@
 +
 +	gpio_keys {
 +		compatible = "gpio-keys";
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&keys_pins>;
++		// pinctrl-names = "default";
++		// pinctrl-0 = <&keys_pins>;
 +
 +		reset {
 +			label = "reset";
@@ -144,7 +144,7 @@
 +
 +		pcie_reset {
 +			gpio-export,name = "pcie_reset";
-+			gpio-export,output=<0>;
++			gpio-export,output=<1>;
 +			gpios = <&pio 1 6 GPIO_ACTIVE_LOW>; /* PB6 */
 +		};
 +
@@ -411,7 +411,7 @@
 +
 +&pio {
 +	pinctrl-names = "default";
-+	// pinctrl-0 = <&clk_out_a_pin>; // UART6
++	// pinctrl-0 = <&clk_out_a_pin>; // used by UART6
 +	vcc-pa-supply = <&reg_dcdc1>;
 +	vcc-pc-supply = <&reg_aldo2>;
 +	vcc-pd-supply = <&reg_dcdc1>;

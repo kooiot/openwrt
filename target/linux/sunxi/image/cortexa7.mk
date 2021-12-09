@@ -250,7 +250,7 @@ define Device/kooiot_tlink-s1
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    kmod-xradio armbian-firmware-xr819 wpad-basic-wolfssl \
+    kmod-xradio melsem-xr819-firmware wpad-basic-wolfssl \
     tinc-freeioe-tunnel iperf3 \
     uqmi fdisk usbutils freeioe wwanleds \
     blockd usb-otg-sunxi kmod-eeprom-at24 fdisk
@@ -291,6 +291,19 @@ define Device/kooiot_tlink-x1s
   SOC := sun8i-h3
 endef
 TARGET_DEVICES += kooiot_tlink-x1s
+
+define Device/kooiot_tlink-x3
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink X3
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
+    kmod-usb-net kmod-usb-net-asix \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-rtc-sd3078 \
+    kmod-eeprom-at24 fdisk
+  SOC := sun8i-x3
+endef
+TARGET_DEVICES += kooiot_tlink-x3
 
 define Device/kooiot_tlink-r1
   DEVICE_VENDOR := KooIoT
@@ -442,7 +455,7 @@ define Device/kooiot_tlink-k1
   DEVICE_MODEL := ThingsLink K1
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
     kmod-sun4i-emac kmod-rtc-rx8010 \
-    kmod-xradio armbian-firmware-xr819 wpad-basic-wolfssl \
+    kmod-xradio melsem-xr819-firmware wpad-basic-wolfssl \
     kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
     kmod-ledtrig-netdev kmod-ledtrig-gpio \

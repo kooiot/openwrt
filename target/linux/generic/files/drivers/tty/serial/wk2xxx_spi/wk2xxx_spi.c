@@ -43,13 +43,13 @@
 
 MODULE_LICENSE("Dual BSD/GPL");
 
-#define _DEBUG_WK_FUNCTION
-#define _DEBUG_WK_RX
-#define _DEBUG_WK_TX
-#define _DEBUG_WK_IRQ
-#define _DEBUG_WK_VALUE
-#define _DEBUG_WK_FIFO
-#define _DEBUG_WK_TEST
+//#define _DEBUG_WK_FUNCTION
+//#define _DEBUG_WK_RX
+//#define _DEBUG_WK_TX
+//#define _DEBUG_WK_IRQ
+//#define _DEBUG_WK_VALUE
+//#define _DEBUG_WK_FIFO
+//#define _DEBUG_WK_TEST
 
 // #define WK2XXX_STATUS_PE    1
 // #define WK2XXX_STATUS_FE    2
