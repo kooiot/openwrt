@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-t3-tlink-dly-t3v2.dtsi
-@@ -0,0 +1,458 @@
+@@ -0,0 +1,463 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -233,6 +233,11 @@
 +	uart3_ph_pins: uart3-ph-pins {
 +		pins = "PH0", "PH1";
 +		function = "uart3";
++	};
++
++	uart4_ph_pins: uart4-ph-pins {
++		pins = "PH4", "PH5";
++		function = "uart4";
 +	};
 +
 +	uart5_dly_pins: uart5-dly-pins {
