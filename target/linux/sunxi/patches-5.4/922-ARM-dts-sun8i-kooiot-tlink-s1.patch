@@ -10,7 +10,7 @@
  	sun8i-t3-cqa3t-bv3.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-s3-tlink-s1.dts
-@@ -0,0 +1,234 @@
+@@ -0,0 +1,213 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
@@ -43,8 +43,6 @@
 +
 +	leds {
 +		compatible = "gpio-leds";
-+		// pinctrl-names = "default";
-+		// pinctrl-0 = <&leds_pins>;
 +
 +		status {
 +			label = "kooiot:green:status";
@@ -60,8 +58,6 @@
 +
 +	gpio_keys {
 +		compatible = "gpio-keys";
-+		// pinctrl-names = "default";
-+		// pinctrl-0 = <&keys_pins>;
 +
 +		reset {
 +			label = "reset";
@@ -73,8 +69,6 @@
 +	gpio_export {
 +		compatible = "gpio-export";
 +		#size-cells = <0>;
-+		// pinctrl-names = "default";
-+		// pinctrl-0 = <&gpio_export_pins>;
 +
 +		pcie_reset {
 +			gpio-export,name = "pcie_reset";
@@ -172,21 +166,6 @@
 +		function = "mmc2";
 +		drive-strength = <40>;
 +		bias-pull-up;
-+	};
-+
-+	leds_pins: leds-pins {
-+		pins = "PG6", "PG7";
-+		function = "gpio_out";
-+	};
-+
-+	keys_pins: keys-pins {
-+		pins = "PG11";
-+		function = "gpio_in";
-+	};
-+
-+	gpio_export_pins: gpio-export-pins {
-+		pins = "PG8", "PG10";
-+		function = "gpio_out";
 +	};
 +};
 +
