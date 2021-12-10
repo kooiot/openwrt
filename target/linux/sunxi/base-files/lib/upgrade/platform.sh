@@ -82,6 +82,11 @@ platform_check_image() {
 }
 
 platform_kooiot_pre_upgrade() {
+	if [ -f /etc/init.d/symlink ]; then
+		echo "Wait SymLink App quited..."
+		sleep 10
+	fi
+
 	case "$(rootfs_type)" in
 		"overlay")
 			echo "Erasing overlay....."
