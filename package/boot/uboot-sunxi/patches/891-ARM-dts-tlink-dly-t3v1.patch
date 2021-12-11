@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/arch/arm/dts/sun8i-t3-tlink-dly-t3v1.dtsi
-@@ -0,0 +1,236 @@
+@@ -0,0 +1,261 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -51,7 +51,7 @@
 +
 +&emac {
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&emac_ph_pins>;
++	pinctrl-0 = <&emac_mii_pins>;
 +	phy-handle = <&emac_phy>;
 +	phy-supply = <&reg_dcdc1>;
 +	phy-mode = "mii";
