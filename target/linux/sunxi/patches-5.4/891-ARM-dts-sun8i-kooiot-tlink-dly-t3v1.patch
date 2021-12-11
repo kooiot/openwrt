@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-t3-tlink-dly-t3v2.dtsi
-@@ -0,0 +1,469 @@
+@@ -0,0 +1,465 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -185,8 +185,8 @@
 +};
 +
 +&mmc2_pins {
-+      /* Increase drive strength for DDR modes */
-+      drive-strength = <40>;
++	/* Increase drive strength for DDR modes */
++	drive-strength = <40>;
 +};
 +/*
 +&otg_sram {
@@ -199,8 +199,6 @@
 +};
 +*/
 +&ehci0 {
-+	phys = <&usbphy 0>;
-+	phy-names = "usb";
 +	status = "okay";
 +};
 +
@@ -213,8 +211,6 @@
 +};
 +
 +&ohci0 {
-+	phys = <&usbphy 0>;
-+	phy-names = "usb";
 +	status = "okay";
 +};
 +

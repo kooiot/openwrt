@@ -14,6 +14,7 @@
 +/ {
 +	aliases {
 +		ethernet0 = &gmac;
++		ethernet1 = &emac;
 +		serial0 = &uart0;
 +		mmc0 = &mmc0;
 +		mmc1 = &mmc2;
@@ -45,6 +46,30 @@
 +		regulator-max-microvolt = <5000000>;
 +		// gpio = <&pio 8 13 GPIO_ACTIVE_HIGH>; /* PI13 */
 +		// enable-active-high;
++	};
++};
++
++&emac {
++	pinctrl-names = "default";
++	pinctrl-0 = <&emac_ph_pins>;
++	phy-handle = <&emac_phy>;
++	phy-supply = <&reg_dcdc1>;
++	phy-mode = "mii";
++	status = "okay";
++};
++
++&emac_mdio {
++	status = "okay";
++	phy-supply = <&reg_dcdc1>;
++	reset-gpios = <&pio 7 27 GPIO_ACTIVE_LOW>; /* PH27 */
++	reset-assert-us = <10000>;
++	reset-deassert-us = <1000000>;
++	emac_phy: ethernet-phy@1 {
++		compatible = "ethernet-phy-ieee802.3-c22";
++		reg = <1>;
++		// reset-gpios = <&pio 7 27 GPIO_ACTIVE_HIGH>; /* PH27 */
++		// reset-assert-us = <10000>;
++		// reset-deassert-us = <1000000>;
 +	};
 +};
 +
