@@ -60,6 +60,7 @@
 +
 +	aliases {
 +		ethernet0 = &gmac;
++		ethernet1 = &emac;
 +		serial0 = &uart0;
 +		mmc0 = &mmc0;
 +		mmc1 = &mmc2;
@@ -74,7 +75,7 @@
 +
 +		status {
 +			label = "green:status";
-+			gpios = <&pio 2 0 GPIO_ACTIVE_LOW>; /* PC0 */
++			gpios = <&pio 2 0 GPIO_ACTIVE_HIGH>; /* PC0 */
 +			linux,default-trigger = "heartbeat";
 +		};
 +	};
@@ -82,20 +83,44 @@
 +	reg_vcc3v3_sdc: vcc3v3-sdc {
 +		compatible = "regulator-fixed";
 +		regulator-name = "vcc3v3-sdc";
++		regulator-always-on;
++		regulator-boot-on;
 +		regulator-min-microvolt = <3300000>;
 +		regulator-max-microvolt = <3300000>;
 +		vin-supply = <&reg_dcdc1>;
-+		gpio = <&pio 8 14 GPIO_ACTIVE_HIGH>; /* PI14 CARD0-PWR*/
-+		enable-active-high;
++		gpio = <&pio 8 14 GPIO_ACTIVE_LOW>; /* PI14 CARD0-PWR*/
++		// enable-active-high;
 +	};
 +
 +	reg_usb_vcc5v0: usb-vcc5v0 {
 +		compatible = "regulator-fixed";
 +		regulator-name = "vcc5v0";
++		regulator-always-on;
 +		regulator-min-microvolt = <5000000>;
 +		regulator-max-microvolt = <5000000>;
 +		gpio = <&pio 7 13 GPIO_ACTIVE_HIGH>; /* PH13 */
 +		enable-active-high;
++	};
++};
++
++&emac {
++	pinctrl-names = "default";
++	pinctrl-0 = <&emac_ph_pins>;
++	phy-handle = <&emac_phy>;
++	phy-supply = <&reg_dcdc1>;
++	phy-mode = "mii";
++	status = "okay";
++};
++
++&emac_mdio {
++	status = "okay";
++	phy-supply = <&reg_dcdc1>;
++	reset-gpios = <&pio 7 27 GPIO_ACTIVE_LOW>; /* PH27 */
++	reset-assert-us = <10000>;
++	reset-deassert-us = <1000000>;
++	emac_phy: ethernet-phy@3 {
++		compatible = "ethernet-phy-ieee802.3-c22";
++		reg = <3>;
 +	};
 +};
 +
@@ -111,12 +136,13 @@
 +};
 +
 +&gmac_mdio {
-+	phy1: ethernet-phy@1 {
++	phy1: ethernet-phy@0 {
 +		compatible = "ethernet-phy-ieee802.3-c22";
-+		reg = <1>;
-+		// reset-gpios = <&pio 0 17 GPIO_ACTIVE_LOW>; /* PA9 */
++		reg = <0>;
++		// reset-gpios = <&pio 0 9 GPIO_ACTIVE_LOW>; /* PA9 */
 +		// reset-assert-us = <10000>;
-+		// reset-deassert-us = <10000000>;
++		// reset-deassert-us = <1000000>;
++		// interrupt-parent = <&pio>;
 +		// interrupts = <&pio 0 17 GPIO_ACTIVE_LOW>; /* PA17 */
 +	};
 +};
@@ -152,7 +178,7 @@
 +
 +&pio {
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&clk_out_a_pin>;
++	// pinctrl-0 = <&clk_out_a_pin>; // used by UART6
 +	vcc-pa-supply = <&reg_dcdc1>;
 +	vcc-pc-supply = <&reg_aldo2>;
 +	vcc-pd-supply = <&reg_dcdc1>;
@@ -183,6 +209,7 @@
 +};
 +
 +&reg_dc1sw {
++	regulator-always-on;
 +	regulator-min-microvolt = <3300000>;
 +	regulator-max-microvolt = <3300000>;
 +	regulator-name = "vcc-emac-phy";
@@ -223,12 +250,14 @@
 +};
 +
 +&reg_dldo2 {
++	regulator-always-on;
 +	regulator-min-microvolt = <1800000>;
 +	regulator-max-microvolt = <1800000>;
 +	regulator-name = "vcc-wifi";
 +};
 +
 +&reg_dldo3 {
++	regulator-always-on;
 +	regulator-min-microvolt = <1800000>;
 +	regulator-max-microvolt = <1800000>;
 +	regulator-name = "vcc-wifi-2";
@@ -247,7 +276,6 @@
 +};
 +
 +&reg_eldo3 {
-+	regulator-always-on;
 +	regulator-min-microvolt = <2800000>;
 +	regulator-max-microvolt = <2800000>;
 +	regulator-name = "vcc-pe";
@@ -262,5 +290,6 @@
 +&usbphy {
 +	usb0_id_det-gpios = <&pio 1 12 GPIO_ACTIVE_HIGH>; /* PB12 */
 +	usb0_vbus-supply = <&reg_usb_vcc5v0>;
++	usb1_id_det-gpios = <&pio 1 13 GPIO_ACTIVE_HIGH>; /* PB13 */
 +	status = "okay";
 +};

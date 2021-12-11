@@ -33,7 +33,7 @@ diff -uNra a/configs/tlink_x3_defconfig b/configs/tlink_x3_defconfig
 diff -uNra a/arch/arm/dts/sun8i-x3-tlink-x3.dts b/arch/arm/dts/sun8i-x3-tlink-x3.dts
 --- a/arch/arm/dts/sun8i-x3-tlink-x3.dts	1970-01-01 08:00:00.000000000 +0800
 +++ b/arch/arm/dts/sun8i-x3-tlink-x3.dts	2021-12-06 19:07:48.356680975 +0800
-@@ -0,0 +1,108 @@
+@@ -0,0 +1,129 @@
 +/*
 + * Copyright 2021 Dirk Chang <dirk@kooiot.com>
 + */
@@ -47,11 +47,13 @@ diff -uNra a/arch/arm/dts/sun8i-x3-tlink-x3.dts b/arch/arm/dts/sun8i-x3-tlink-x3
 +#include <dt-bindings/pinctrl/sun4i-a10.h>
 +
 +/ {
-+	model = "ThingLink X3";
++	model = "ThingsLink X3";
 +	compatible = "kooiot,tlink-x3", "allwinner,sun8i-a33";
 +
 +	aliases {
 +		serial0 = &uart0;
++		ethernet0 = &usb_eth0;
++		ethernet1 = &usb_eth1;
 +	};
 +
 +	chosen {
@@ -84,10 +86,6 @@ diff -uNra a/arch/arm/dts/sun8i-x3-tlink-x3.dts b/arch/arm/dts/sun8i-x3-tlink-x3
 +	};
 +};
 +
-+&ehci0 {
-+	status = "okay";
-+};
-+
 +&mmc0 {
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&mmc0_pins_a>; //, <&mmc0_cd_pin_tlink>;
@@ -112,11 +110,7 @@ diff -uNra a/arch/arm/dts/sun8i-x3-tlink-x3.dts b/arch/arm/dts/sun8i-x3-tlink-x3
 +	/* Increase drive strength for DDR modes */
 +	drive-strength = <40>;
 +	/* eMMC is missing pull-ups */
-+	bias-pull-up;
-+};
-+
-+&ohci0 {
-+	status = "okay";
++	// bias-pull-up;
 +};
 +/*
 +&r_pio {
@@ -127,6 +121,24 @@ diff -uNra a/arch/arm/dts/sun8i-x3-tlink-x3.dts b/arch/arm/dts/sun8i-x3-tlink-x3
 +	};
 +};
 +*/
++
++&ohci0 {
++	status = "okay";
++};
++
++&ehci0 {
++	status = "okay";
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	usb_eth1: asix@1 {
++		reg = <1>;
++		nvmem-cells = <&chipid>;
++		nvmem-cell-names = "chipid";
++		local-mac-address = [00 00 00 00 00 00];
++	};
++};
++
 +&uart0 {
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&uart0_pins_b>;
@@ -136,6 +148,15 @@ diff -uNra a/arch/arm/dts/sun8i-x3-tlink-x3.dts b/arch/arm/dts/sun8i-x3-tlink-x3
 +&usb_otg {
 +	dr_mode = "host";
 +	status = "okay";
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	usb_eth0: asix@1 {
++		reg = <1>;
++		nvmem-cells = <&chipid>;
++		nvmem-cell-names = "chipid";
++		local-mac-address = [00 00 00 00 00 00];
++	};
 +};
 +
 +&usbphy {

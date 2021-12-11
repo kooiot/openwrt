@@ -91,7 +91,7 @@
 +		usb_reset {
 +			gpio-export,name = "usb_reset";
 +			gpio-export,output=<1>;
-+			gpios = <&pio 7 3 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>; /* PH3 */
++			gpios = <&pio 7 3 GPIO_ACTIVE_LOW>; /* PH3 */
 +		};
 +	};
 +
