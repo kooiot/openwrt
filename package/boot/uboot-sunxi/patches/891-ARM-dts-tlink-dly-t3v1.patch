@@ -51,7 +51,7 @@
 +
 +&emac {
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&emac_ph_pins>;
++	pinctrl-0 = <&emac_mii_pins>;
 +	phy-handle = <&emac_phy>;
 +	phy-supply = <&reg_dcdc1>;
 +	phy-mode = "mii";
