@@ -12,7 +12,7 @@ diff -uNra a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
 diff -uNra a/arch/arm/boot/dts/sun8i-x3-tlink-x3.dts b/arch/arm/boot/dts/sun8i-x3-tlink-x3.dts
 --- a/arch/arm/boot/dts/sun8i-x3-tlink-x3.dts	1970-01-01 08:00:00.000000000 +0800
 +++ b/arch/arm/boot/dts/sun8i-x3-tlink-x3.dts	2021-12-06 19:42:49.400076485 +0800
-@@ -0,0 +1,235 @@
+@@ -0,0 +1,249 @@
 +/*
 + * Copyright 2021 Dirk Chang <dirk@kooiot.com>
 + */
@@ -32,6 +32,8 @@ diff -uNra a/arch/arm/boot/dts/sun8i-x3-tlink-x3.dts b/arch/arm/boot/dts/sun8i-x
 +		serial0 = &uart0;
 +		serial1 = &uart1;
 +		serial2 = &uart3;
++		ethernet0 = &usb_eth0;
++		ethernet1 = &usb_eth1;
 +	};
 +
 +	chosen {
@@ -195,8 +197,11 @@ diff -uNra a/arch/arm/boot/dts/sun8i-x3-tlink-x3.dts b/arch/arm/boot/dts/sun8i-x
 +	#address-cells = <1>;
 +	#size-cells = <0>;
 +
-+	asix@1 {
++	usb_eth1: asix@1 {
 +		reg = <1>;
++		nvmem-cells = <&chipid>;
++		nvmem-cell-names = "chipid";
++		local-mac-address = [00 00 00 00 00 00];
 +	};
 +};
 +
@@ -221,6 +226,15 @@ diff -uNra a/arch/arm/boot/dts/sun8i-x3-tlink-x3.dts b/arch/arm/boot/dts/sun8i-x
 +&usb_otg {
 +	dr_mode = "host";
 +	status = "okay";
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	usb_eth0: asix@1 {
++		reg = <1>;
++		nvmem-cells = <&chipid>;
++		nvmem-cell-names = "chipid";
++		local-mac-address = [00 00 00 00 00 00];
++	};
 +};
 +
 +&usbphy {
