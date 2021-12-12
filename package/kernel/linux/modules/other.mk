@@ -901,7 +901,7 @@ $(eval $(call KernelPackage,serial-wk2xxx-spi))
 define KernelPackage/serial-xr14xx-usb
   SUBMENU:=$(OTHER_MENU)
   TITLE:=MaxLiner XR14xx USB to UART Support
-  KCONFIG:=CONFIG_SERIAL_XR14XX_USB CONFIG_SERIAL_XR14XX_FORCE_485=y
+  KCONFIG:=CONFIG_SERIAL_XR14XX_USB
   FILES:=$(LINUX_DIR)/drivers/tty/serial/xr14xx_usb/xr_usb_serial_common.ko
   AUTOLOAD:=$(call AutoProbe,xr_usb_serial_common)
 endef

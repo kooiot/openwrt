@@ -161,6 +161,7 @@ struct xr_usb_serial {
 	struct gpio_chip xr_gpio;
 	int rv_gpio_created;
 #endif
+	int rs485mode;
 };
 
 #define CDC_DATA_INTERFACE_TYPE	0x0a

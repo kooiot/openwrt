@@ -5,12 +5,3 @@ config SERIAL_XR14XX_USB
       If you want to use XR14xx support, say Y or M here.
       If unsure, say N.
 
-if SERIAL_XR14XX_USB
-
-config SERIAL_XR14XX_FORCE_485
-	bool "Force using 485 mode"
-	depends on SERIAL_XR14XX_USB
-	help
-	  force using rs485 mode
-
-endif # SERIAL_XR14XX_USB
