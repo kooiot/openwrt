@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-t3-tlink-dly-t3v2.dtsi
-@@ -0,0 +1,465 @@
+@@ -0,0 +1,480 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -16,6 +16,8 @@
 +	aliases {
 +		ethernet0 = &gmac;
 +		ethernet1 = &emac;
++		ethernet2 = &usb_eth1;
++		ethernet3 = &usb_eth2;
 +		serial0 = &uart0;
 +		serial1 = &uart4;
 +		serial2 = &uart5;
@@ -204,10 +206,24 @@
 +
 +&ehci1 {
 +	status = "okay";
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	usb_eth1: exar@1 {
++		reg = <1>;
++		local-mac-address = [00 00 00 00 00 00];
++	};
 +};
 +
 +&ehci2 {
 +	status = "okay";
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	usb_eth2: exar@1 {
++		reg = <1>;
++		local-mac-address = [00 00 00 00 00 00];
++	};
 +};
 +
 +&ohci0 {
@@ -465,4 +481,3 @@
 +		status = "okay";
 +	};
 +};
-+
