@@ -403,6 +403,7 @@ UBOOT_TARGETS := \
 	tlink_x2 \
 	tlink_k1 \
 	tlink_m408 \
+	tlink_m416 \
 	tlink_s1 \
 	nanopi_neo2 \
 	nanopi_r1 \
