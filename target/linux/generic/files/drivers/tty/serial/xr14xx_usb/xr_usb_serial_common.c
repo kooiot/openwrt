@@ -55,6 +55,7 @@
 #include <linux/gpio.h>
 #include <linux/idr.h>
 #include <linux/delay.h>
+#include <linux/of.h>
 
 #ifdef CONFIG_COMPAT
 #include <linux/compat.h>
@@ -1765,6 +1766,18 @@ skip_countries:
 	}
 
 #endif
+
+	xr_usb_serial->rs485mode = 0;
+	if (usb_dev->dev.of_node) {
+		if (of_property_read_bool(usb_dev->dev.of_node, "xr_485_mode")) {
+			xr_usb_serial->rs485mode = 1;
+			dev_info(&usb_dev->dev, "of_node:%pOF using xr_485_mode\n", usb_dev->dev.of_node);
+		} else {
+			dev_info(&usb_dev->dev, "of_node:%pOF has no xr_485_mode\n", usb_dev->dev.of_node);
+		}
+	} else {
+		dev_info(&usb_dev->dev, "no of_mode found\n");
+	}
 
 	return 0;
 alloc_fail8:
