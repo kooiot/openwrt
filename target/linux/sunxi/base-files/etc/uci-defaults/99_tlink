@@ -165,14 +165,14 @@ tlink_default() {
 		tlink_add_4g_wan
 	}
 
-	# ETH MAC for usb-eth
-	case "$(board_name)" in
-		"kooiot,tlink-x1"|\
-		"kooiot,tlink-x1s"|\
-		"kooiot,tlink-x3"|\
-		"kooiot,tlink-k1")
-		tlink_set_wan_mac;;
-	esac
+	# ETH MAC for usb-eth mac been set in board.d/02_network
+	#case "$(board_name)" in
+	#	"kooiot,tlink-x1"|\
+	#	"kooiot,tlink-x1s"|\
+	#	"kooiot,tlink-x3"|\
+	#	"kooiot,tlink-k1")
+	#	tlink_set_wan_mac;;
+	#esac
 
 	# set ttylogin (for ttyS0, default will promote console with password)
 	# set system.@system[0].ttylogin='1'

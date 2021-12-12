@@ -10,7 +10,7 @@
  	sun8i-r16-bananapi-m2m.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-h3-tlink-x1.dts
-@@ -0,0 +1,208 @@
+@@ -0,0 +1,210 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (C) 2019-2020 Dirk Chang <dirk@kooiot.com>
@@ -24,6 +24,8 @@
 +	compatible = "kooiot,tlink-x1", "allwinner,sun8i-h3";
 +
 +	aliases {
++		ethernet0 = &emac;
++		ethernet1 = &usb_eth1;
 +		mmc0 = &mmc0;
 +		mmc1 = &mmc2;
 +	};
@@ -178,9 +180,9 @@
 +};
 +
 +&mmc0 {
-+	vmmc-supply = <&reg_vcc3v3>;
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&mmc0_pins>, <&mmc0_cd_pin>;
++	vmmc-supply = <&reg_vcc3v3>;
 +	bus-width = <4>;
 +	cd-gpios = <&pio 5 6 GPIO_ACTIVE_HIGH>; /* PF6 */
 +	cd-inverted;
@@ -191,7 +193,7 @@
 +	status = "okay";
 +	#address-cells = <1>;
 +	#size-cells = <0>;
-+	asix@1 {
++	usb_eth1: asix@1 {
 +		reg = <1>;
 +		nvmem-cells = <&chipid>;
 +		nvmem-cell-names = "chipid";

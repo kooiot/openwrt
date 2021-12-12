@@ -10,7 +10,7 @@
  
  #define PHY_MODE_MARVELL	0x0000
  #define MII_MARVELL_LED_CTRL	0x0018
-@@ -674,6 +677,62 @@
+@@ -674,6 +677,52 @@
  	return usbnet_resume(intf);
  }
  
@@ -18,21 +18,11 @@
 +/**
 + * Generate mac address from chipid as what u-boot does
 + */
-+static int eth_hw_addr_nvmem_sun8i_chipid(struct usb_device* udev, u8* buf, u8 offset)
++static int eth_hw_addr_nvmem_sun8i_chipid(struct device* dev, u8* buf, u8 offset)
 +{
 +	struct nvmem_cell *cell;
 +	ssize_t cell_size;
 +	u32 *chipid;
-+	struct device* dev = &udev->dev;
-+
-+	// Try device parent to get the of_node
-+	if (!dev->of_node && dev->parent && dev->parent->of_node) {
-+		dev = dev->parent;
-+	}
-+	// Try usb device parent
-+	if (!dev->of_node && udev->parent) {
-+		dev = &udev->parent->dev;
-+	}
 +
 +	dev_info(dev, "%s: usb device of_node:%pOF offset:%d\n", __func__, dev->of_node, offset);
 +
@@ -73,7 +63,7 @@
  static int ax88772_bind(struct usbnet *dev, struct usb_interface *intf)
  {
  	int ret, i;
-@@ -684,9 +743,14 @@
+@@ -684,9 +733,14 @@
  	usbnet_get_endpoints(dev, intf);
  
  	/* Maybe the boot loader passed the MAC address via device tree */
@@ -81,7 +71,7 @@
 +	ret = eth_platform_get_mac_address(&dev->udev->dev, buf);
 +#ifdef CONFIG_MACH_SUN8I
 +	if (ret)
-+		ret = eth_hw_addr_nvmem_sun8i_chipid(dev->udev, buf, dev->udev->devnum);
++		ret = eth_hw_addr_nvmem_sun8i_chipid(&dev->udev->dev, buf, dev->udev->devnum);
 +#endif
 +	if (!ret) {
  		netif_dbg(dev, ifup, dev->net,

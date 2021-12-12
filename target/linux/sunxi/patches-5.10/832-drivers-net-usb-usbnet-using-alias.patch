@@ -19,21 +19,11 @@
  	/* usbnet already took usb runtime pm, so have to enable the feature
  	 * for usb interface, otherwise usb_autopm_get_interface may return
  	 * failure if RUNTIME_PM is enabled.
-@@ -1782,6 +1787,27 @@
+@@ -1782,6 +1787,17 @@
  		}
  	}
  
-+	pr_err("%s: net->name:%s\n", __func__, dev->net->name);
-+
 +	pdev = &dev->udev->dev;
-+	// Try device parent to get the of_node
-+	if (!pdev->of_node && pdev->parent && pdev->parent->of_node) {
-+		pdev = pdev->parent;
-+	}
-+	// Try usb device parent
-+	if (!pdev->of_node && dev->udev->parent) {
-+		pdev = &dev->udev->parent->dev;
-+	}
 +	if (pdev->of_node) {
 +		alias_id = of_alias_get_id(pdev->of_node, "ethernet");
 +		if (alias_id >= 0) {
