@@ -491,8 +491,10 @@ int xr_usb_serial_set_flow_mode(struct xr_usb_serial *xr_usb_serial, struct tty_
 	}
 
 	if (xr_usb_serial->rs485mode) {
-		dev_info(&xr_usb_serial->control->dev, "xr_usb_serial_set_gpio_mode: rs485\n");
 		gpio_mode |= 0xb;
+		dev_info(&xr_usb_serial->control->dev, "xr_usb_serial_set_gpio_mode to rs485\t%d\n", gpio_mode);
+	} else {
+		dev_info(&xr_usb_serial->control->dev, "xr_usb_serial_set_gpio_mode to none\t%d\n", gpio_mode);
 	}
 	
 	if((xr_usb_serial->DeviceProduct == 0x1420)||
@@ -818,7 +820,13 @@ int xr_usb_serial_pre_setup(struct xr_usb_serial *xr_usb_serial)
 	if(xr_usb_serial->reg_map.uart_custom_driver)
 		xr_usb_serial_set_reg(xr_usb_serial, xr_usb_serial->reg_map.uart_custom_driver, 1);
 
-	xr_usb_serial_set_reg(xr_usb_serial, xr_usb_serial->reg_map.uart_gpio_mode_addr, 0);  
+	if (xr_usb_serial->rs485mode) {
+		dev_info(&xr_usb_serial->control->dev, "xr_usb_serial_set_gpio_mode init rs485\n");
+		xr_usb_serial_set_reg(xr_usb_serial, xr_usb_serial->reg_map.uart_gpio_mode_addr, 0xb);  
+	} else {
+		dev_info(&xr_usb_serial->control->dev, "xr_usb_serial_set_gpio_mode init none\n");
+		xr_usb_serial_set_reg(xr_usb_serial, xr_usb_serial->reg_map.uart_gpio_mode_addr, 0);  
+	}
 	xr_usb_serial_set_reg(xr_usb_serial, xr_usb_serial->reg_map.uart_gpio_dir_addr, 0x28);  
 	xr_usb_serial_set_reg(xr_usb_serial, xr_usb_serial->reg_map.uart_gpio_set_addr, UART_GPIO_SET_DTR | UART_GPIO_SET_RTS); 
 	
