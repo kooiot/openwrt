@@ -10,7 +10,7 @@
  	sun8i-s3-olinuxino.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k1.dts
-@@ -0,0 +1,623 @@
+@@ -0,0 +1,629 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -245,12 +245,16 @@
 +&emac_mdio {
 +	status = "okay";
 +	phy-supply = <&reg_dcdc1>;
-+	reset-gpios = <&pio 7 27 GPIO_ACTIVE_LOW>; /* PH27 */
-+	reset-assert-us = <10000>;
-+	reset-deassert-us = <1000000>;
++	// reset-gpios = <&pio 7 27 GPIO_ACTIVE_LOW>; /* PH27 */
++	// reset-assert-us = <10000>;
++	// reset-deassert-us = <1000000>;
++	allwinner,emac-fix;
++	allwinner,yt8512c-fix;
 +	emac_phy: ethernet-phy@3 {
 +		compatible = "ethernet-phy-ieee802.3-c22";
 +		reg = <3>;
++		motorcomm,led0 = <0x331>;
++		motorcomm,led1 = <0x30>;
 +	};
 +};
 +
@@ -274,6 +278,8 @@
 +		// reset-deassert-us = <1000000>;
 +		// interrupt-parent = <&pio>;
 +		// interrupts = <&pio 0 17 GPIO_ACTIVE_LOW>; /* PA17 */
++		motorcomm,led1 = <0x1e00>;
++		motorcomm,led2 = <0x24>;
 +	};
 +};
 +

@@ -5,7 +5,7 @@
 	struct xradio_vif *priv = NULL;
 	int i = 0;
 +	if (WARN_ON(!priv))
-+		return -EOPNOTSUPP;
++		return;
 +
 +	printk(KERN_ERR, "%s: xradio_for_each_vif enter!\n", __func__);
 
