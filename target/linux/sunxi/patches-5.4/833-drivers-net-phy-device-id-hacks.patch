@@ -1,14 +1,14 @@
 --- a/drivers/net/phy/phy_device.c	2021-12-22 10:48:18.055470157 +0800
 +++ b/drivers/net/phy/phy_device.c	2021-12-22 10:48:40.373993314 +0800
-@@ -32,6 +32,7 @@
- #include <linux/string.h>
+@@ -31,6 +31,7 @@
+ #include <linux/mdio.h>
+ #include <linux/io.h>
  #include <linux/uaccess.h>
- #include <linux/unistd.h>
 +#include <linux/of.h>
  
  MODULE_DESCRIPTION("PHY library");
  MODULE_AUTHOR("Andy Fleming");
-@@ -853,6 +854,14 @@
+@@ -831,6 +8832,14 @@
  	if (r)
  		return ERR_PTR(r);
  
