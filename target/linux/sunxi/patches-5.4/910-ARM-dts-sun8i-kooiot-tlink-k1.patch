@@ -10,7 +10,7 @@
  	sun8i-s3-olinuxino.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k1.dts
-@@ -0,0 +1,629 @@
+@@ -0,0 +1,634 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -170,6 +170,18 @@
 +			/* gpio-export,output=<1>; */
 +			gpios = <&pio 1 11 GPIO_ACTIVE_LOW>; /* PB11 */
 +		};
++
++		sata_en {
++			gpio-export,name = "sata_en"; /* SATA0_ACTn/GPIO_9 */
++			gpio-export,output=<1>;
++			gpios = <&pio 8 7 GPIO_ACTIVE_HIGH>; /* PI7 */
++		};
++
++		sata_sleep {
++			gpio-export,name = "sata_sleep"; /* DEVSLP0/DEVSLP */
++			gpio-export,output=<0>;
++			gpios = <&pio 8 8 GPIO_ACTIVE_HIGH>; /* PI8 */
++		};
 +	};
 +
 +	reg_vcc3v3_sdc: vcc3v3-sdc {
@@ -205,12 +217,16 @@
 +
 +&ahci {
 +	ahci-supply = <&reg_dldo4>;
-+	phy-supply = <&reg_eldo2>;
++	phy-supply = <&reg_eldo3>;
 +	status = "okay";
 +};
 +
 +&de {
 +	status = "okay";
++};
++
++&ths {
++	allwinner,calib-offset=<(-512)>;
 +};
 +
 +&dphy {
@@ -461,11 +477,6 @@
 +		function = "uart3";
 +	};
 +
-+	uart4_ph_pins: uart4-ph-pins {
-+		pins = "PH4", "PH5";
-+		function = "uart4";
-+	};
-+
 +	uart5_pi_pins: uart5-pi-pins {
 +		pins = "PI10", "PI11";
 +		function = "uart5";
@@ -565,16 +576,10 @@
 +	regulator-name = "vdd2v5-sata";
 +};
 +
-+&reg_eldo2 {
++&reg_eldo3 {
 +	regulator-min-microvolt = <1200000>;
 +	regulator-max-microvolt = <1200000>;
 +	regulator-name = "vdd1v2-sata";
-+};
-+
-+&reg_eldo3 {
-+	regulator-min-microvolt = <2800000>;
-+	regulator-max-microvolt = <2800000>;
-+	regulator-name = "vcc-pe";
 +};
 +
 +&de {
