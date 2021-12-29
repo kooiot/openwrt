@@ -43,7 +43,7 @@
  dtb-$(CONFIG_MACH_SUN8I_V3S) += \
 --- /dev/null
 +++ b/arch/arm/dts/sun8i-r40-tlink-k1.dts
-@@ -0,0 +1,221 @@
+@@ -0,0 +1,243 @@
 +/*
 + * Copyright (C) 2020 Dirk Chang <dirk@kooiot.com>
 + *
@@ -60,6 +60,7 @@
 +
 +	aliases {
 +		ethernet0 = &gmac;
++		ethernet1 = &emac;
 +		serial0 = &uart0;
 +		mmc0 = &mmc0;
 +		mmc1 = &mmc2;
@@ -99,6 +100,27 @@
 +		regulator-max-microvolt = <5000000>;
 +		gpio = <&pio 7 13 GPIO_ACTIVE_HIGH>; /* PH13 */
 +		enable-active-high;
++	};
++};
++
++&emac {
++	pinctrl-names = "default";
++	pinctrl-0 = <&emac_mii_pins>;
++	phy-handle = <&emac_phy>;
++	phy-supply = <&reg_dcdc1>;
++	phy-mode = "mii";
++	status = "okay";
++};
++
++&emac_mdio {
++	status = "okay";
++	phy-supply = <&reg_dcdc1>;
++	reset-gpios = <&pio 7 27 GPIO_ACTIVE_LOW>; /* PH27 */
++	reset-assert-us = <10000>;
++	reset-deassert-us = <1000000>;
++	emac_phy: ethernet-phy@3 {
++		compatible = "ethernet-phy-ieee802.3-c22";
++		reg = <3>;
 +	};
 +};
 +
