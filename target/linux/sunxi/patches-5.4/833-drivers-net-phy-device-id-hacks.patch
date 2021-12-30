@@ -8,15 +8,14 @@
  
  MODULE_DESCRIPTION("PHY library");
  MODULE_AUTHOR("Andy Fleming");
-@@ -831,6 +8832,14 @@
+@@ -831,6 +8832,13 @@
  	if (r)
  		return ERR_PTR(r);
  
 +	if (phy_id == 0) {
 +		dev_info(&bus->dev, "%s: phy_id:%x %pOF\n", __func__, phy_id, bus->dev.of_node);
-+		if (of_property_read_bool(bus->dev.of_node, "allwinner,yt8512c-fix")) {
-+			dev_info(&bus->dev, "%s: phy_id change to:0x128\n", __func__);
-+			phy_id = 0x128;
++		if (!of_property_read_u32(bus->dev.of_node, "allwinner,emac-fix-phy-id", &phy_id)) {
++			dev_info(&bus->dev, "%s: zero phy_id fixed to:%x\n", __func__, phy_id);
 +		}
 +	}
 +
