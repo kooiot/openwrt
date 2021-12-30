@@ -264,8 +264,8 @@
 +	// reset-gpios = <&pio 7 27 GPIO_ACTIVE_LOW>; /* PH27 */
 +	// reset-assert-us = <10000>;
 +	// reset-deassert-us = <1000000>;
-+	allwinner,emac-fix;
-+	allwinner,yt8512c-fix;
++	allwinner,emac-fix-phy-id = <0x128>;
++
 +	emac_phy: ethernet-phy@3 {
 +		compatible = "ethernet-phy-ieee802.3-c22";
 +		reg = <3>;
