@@ -1963,16 +1963,16 @@ CONFIG_PACKAGE_wl18xx-firmware=y
 #
 # CONFIG_PACKAGE_kmod-aoe is not set
 # CONFIG_PACKAGE_kmod-ata-ahci is not set
-# CONFIG_PACKAGE_kmod-ata-ahci-platform is not set
+CONFIG_PACKAGE_kmod-ata-ahci-platform=y
 # CONFIG_PACKAGE_kmod-ata-artop is not set
-# CONFIG_PACKAGE_kmod-ata-core is not set
+CONFIG_PACKAGE_kmod-ata-core=y
 # CONFIG_PACKAGE_kmod-ata-marvell-sata is not set
 # CONFIG_PACKAGE_kmod-ata-nvidia-sata is not set
 # CONFIG_PACKAGE_kmod-ata-pdc202xx-old is not set
 # CONFIG_PACKAGE_kmod-ata-piix is not set
 # CONFIG_PACKAGE_kmod-ata-sil is not set
 # CONFIG_PACKAGE_kmod-ata-sil24 is not set
-# CONFIG_PACKAGE_kmod-ata-sunxi is not set
+CONFIG_PACKAGE_kmod-ata-sunxi=y
 # CONFIG_PACKAGE_kmod-ata-via-sata is not set
 # CONFIG_PACKAGE_kmod-block2mtd is not set
 # CONFIG_PACKAGE_kmod-dax is not set
@@ -2354,6 +2354,7 @@ CONFIG_PACKAGE_kmod-nf-reject6=y
 # Network Devices
 #
 # CONFIG_PACKAGE_kmod-dm9000 is not set
+# CONFIG_PACKAGE_kmod-dp83848-phy is not set
 # CONFIG_PACKAGE_kmod-dummy is not set
 # CONFIG_PACKAGE_kmod-ethoc is not set
 # CONFIG_PACKAGE_kmod-hfcmulti is not set
@@ -2366,7 +2367,6 @@ CONFIG_PACKAGE_kmod-libphy=y
 CONFIG_PACKAGE_kmod-mii=y
 CONFIG_PACKAGE_kmod-motorcomm-yt8512c=y
 CONFIG_PACKAGE_kmod-motorcomm-yt8521s=y
-# CONFIG_PACKAGE_kmod-motorcomm-phy=y
 CONFIG_PACKAGE_kmod-of-mdio=y
 # CONFIG_PACKAGE_kmod-phy-bcm84881 is not set
 # CONFIG_PACKAGE_kmod-phy-broadcom is not set
