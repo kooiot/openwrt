@@ -12,7 +12,7 @@ diff -uNra a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
 diff -uNra a/arch/arm/boot/dts/sun8i-x3-tlink-x3.dts b/arch/arm/boot/dts/sun8i-x3-tlink-x3.dts
 --- a/arch/arm/boot/dts/sun8i-x3-tlink-x3.dts	1970-01-01 08:00:00.000000000 +0800
 +++ b/arch/arm/boot/dts/sun8i-x3-tlink-x3.dts	2021-12-06 19:42:49.400076485 +0800
-@@ -0,0 +1,256 @@
+@@ -0,0 +1,260 @@
 +/*
 + * Copyright 2021 Dirk Chang <dirk@kooiot.com>
 + */
@@ -186,6 +186,10 @@ diff -uNra a/arch/arm/boot/dts/sun8i-x3-tlink-x3.dts b/arch/arm/boot/dts/sun8i-x
 +		function = "gpio_in";
 +		bias-pull-up;
 +	};
++};
++
++&rtc {
++	status = "disabled"; // cpu rtc disabled
 +};
 +
 +&ohci0 {

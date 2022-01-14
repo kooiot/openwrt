@@ -10,7 +10,7 @@
  	sun8i-t3-cqa3t-bv3.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k1.dts
-@@ -0,0 +1,634 @@
+@@ -0,0 +1,638 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -213,6 +213,10 @@
 +		reset-gpios = <&pio 7 6 GPIO_ACTIVE_LOW>; /* PH6 WL_RESTN */
 +		post-power-on-delay-ms = <50>;
 +	};
++};
++
++&rtc {
++	status = "disabled"; // cpu rtc disabled
 +};
 +
 +&ahci {

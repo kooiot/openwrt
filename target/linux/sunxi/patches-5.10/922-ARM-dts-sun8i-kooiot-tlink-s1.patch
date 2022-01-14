@@ -10,7 +10,7 @@
 	sun8i-t3-cqa3t-bv3.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-s3-tlink-s1.dts
-@@ -0,0 +1,213 @@
+@@ -0,0 +1,217 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
@@ -167,6 +167,10 @@
 +		drive-strength = <40>;
 +		bias-pull-up;
 +	};
++};
++
++&rtc {
++	status = "disabled"; // cpu rtc disabled
 +};
 +
 +&uart0 {
