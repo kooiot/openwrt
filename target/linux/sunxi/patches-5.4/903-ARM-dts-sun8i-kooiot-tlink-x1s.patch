@@ -10,7 +10,7 @@
  	sun8i-r16-nintendo-nes-classic.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-h3-tlink-x1s.dts
-@@ -0,0 +1,200 @@
+@@ -0,0 +1,204 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
@@ -125,6 +125,10 @@
 +		pins = "PL10";
 +		function = "gpio_out";
 +	};
++};
++
++&rtc {
++	status = "disabled"; // cpu rtc disabled
 +};
 +
 +&uart1 {
