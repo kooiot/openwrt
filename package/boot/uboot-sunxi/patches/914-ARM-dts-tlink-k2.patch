@@ -36,7 +36,6 @@
 @@ -548,6 +548,7 @@
  	sun8i-r40-bananapi-m2-ultra.dtb \
  	sun8i-r40-tlink-ok-a40i.dtb \
- 	sun8i-r40-tlink-ok-a40i.dtb \
 	sun8i-r40-tlink-k1.dtb \
 +	sun8i-r40-tlink-k2.dtb \
 	sun8i-r40-tlink-dj-a40i-e.dtb \
