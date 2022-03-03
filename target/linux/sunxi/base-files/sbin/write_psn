@@ -77,6 +77,21 @@ if [ ! -f ${NVMEM_PATH} ]; then
 	NVMEM_PATH="/sys/bus/i2c/devices/0-0050/0-00501/nvmem"
 fi
 
+case "$(board_name)" in
+	"kooiot,tlink-k2")
+		NVMEM_PATH="/sys/bus/i2c/devices/3-0050/eeprom"
+		if [ ! -f ${NVMEM_PATH} ]; then
+			NVMEM_PATH="/sys/bus/i2c/devices/3-0050/3-00501/nvmem"
+		fi
+		;;
+	"*")
+		NVMEM_PATH="/sys/bus/i2c/devices/0-0050/eeprom"
+		if [ ! -f ${NVMEM_PATH} ]; then
+			NVMEM_PATH="/sys/bus/i2c/devices/0-0050/0-00501/nvmem"
+		fi
+		;;
+esac
+
 if [ ! -f ${NVMEM_PATH} ]; then
     echo "EEPROM not found! Product SN will be writen to EMMC!!!"
 
