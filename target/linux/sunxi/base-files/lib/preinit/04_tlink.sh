@@ -1,9 +1,11 @@
 do_product_sn_kooiot_nvmem() {
-	NVMEM_PATH="/sys/bus/i2c/devices/0-0050/eeprom"
+	local bus=$1
+	local slave=$2
+	NVMEM_PATH="/sys/bus/i2c/devices/${bus}-${slave}/eeprom"
 	if [ -b "${NVMEM_PATH}" -o -f "${NVMEM_PATH}" ]; then
 		echo "old eeprom path"
 	else
-		NVMEM_PATH="/sys/bus/nvmem/devices/0-00501/nvmem"
+		NVMEM_PATH="/sys/bus/nvmem/devices/${bus}-${slave}1/nvmem"
 	fi
 
 	if [ -b "${NVMEM_PATH}" -o -f "${NVMEM_PATH}" ]; then
@@ -23,10 +25,6 @@ do_product_sn_kooiot_nvmem() {
 			[ -e /tmp/sysinfo/product_sn ] || \
 				echo "UNKNOWN" > /tmp/sysinfo/product_sn
 		fi
-
-		[ -e /tmp/sysinfo/cloud ] || \
-			echo "ioe.thingsroot.com" > /tmp/sysinfo/cloud
-
 	fi
 }
 
@@ -50,16 +48,15 @@ do_product_sn_kooiot_emmc() {
 			[ -e /tmp/sysinfo/product_sn ] || \
 				echo "UNKNOWN" > /tmp/sysinfo/product_sn
 		fi
-
-		[ -e /tmp/sysinfo/cloud ] || \
-			echo "ioe.thingsroot.com" > /tmp/sysinfo/cloud
 	fi
 }
 
 do_product_sn_kooiot() {
-	NVMEM_PATH="/sys/bus/i2c/devices/0-0050/eeprom"
+	local bus=$1
+	local slave=$2
+	NVMEM_PATH="/sys/bus/i2c/devices/${bus}-${slave}/eeprom"
 	if [ -b "${NVMEM_PATH}" -o -f "${NVMEM_PATH}" ]; then
-		do_product_sn_kooiot_nvmem
+		do_product_sn_kooiot_nvmem ${bus} ${slave}
 	else
 		do_product_sn_kooiot_emmc
 	fi
@@ -78,7 +75,10 @@ do_kooiot_tlink_generic() {
 	"kooiot,tlink-m408"|\
 	"kooiot,tlink-m416"|\
 	"kooiot,tlink-r1")
-		do_product_sn_kooiot
+		do_product_sn_kooiot_emmc
+		;;
+	"kooiot,tlink-k2")
+		do_product_sn_kooiot_nvmem "3" "0050"
 		;;
 	esac
 
