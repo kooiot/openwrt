@@ -274,6 +274,11 @@ define Device/kooiot_tlink-x1
     kmod-leds-gpio kmod-ledtrig-heartbeat \
     kmod-ledtrig-netdev kmod-ledtrig-gpio \
     kmod-rtc-rx8010 kmod-usb-net-asix \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+    uqmi fdisk usbutils freeioe wwanleds \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
     kmod-eeprom-at24 fdisk
   SOC := sun8i-h3
 endef
@@ -287,6 +292,11 @@ define Device/kooiot_tlink-x1s
     kmod-leds-gpio kmod-ledtrig-heartbeat \
     kmod-ledtrig-netdev kmod-ledtrig-gpio \
     kmod-rtc-sd3078 kmod-usb-net-asix \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+    uqmi fdisk usbutils freeioe wwanleds \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
     kmod-eeprom-at24 fdisk
   SOC := sun8i-h3
 endef
@@ -299,8 +309,12 @@ define Device/kooiot_tlink-x3
     kmod-usb-net kmod-usb-net-asix \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
     kmod-ledtrig-netdev kmod-ledtrig-gpio \
-    kmod-rtc-sd3078 \
-    kmod-eeprom-at24 fdisk
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+    uqmi fdisk usbutils freeioe wwanleds \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+    tinc-freeioe-tunnel iperf3 ethtool \
+    kmod-rtc-sd3078 kmod-eeprom-at24 fdisk
   SOC := sun8i-x3
 endef
 TARGET_DEVICES += kooiot_tlink-x3
@@ -483,7 +497,7 @@ define Device/kooiot_tlink-k2
     kmod-ledtrig-netdev kmod-ledtrig-gpio \
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
-    kmod-serial-wk2xxx-spi \
+    kmod-usb-net-asix kmod-serial-wk2xxx-spi \
 	kmod-motorcomm-yt8521s kmod-motorcomm-yt8512c \
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
