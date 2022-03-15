@@ -146,6 +146,23 @@ tlink_sd_default () {
 	fi
 }
 
+tlink_init_4g() {
+	[ -e /dev/cdc-wdm0 ] && {
+		# QMI interface
+		echo "QMI module found!!!" > /dev/console
+		tlink_add_qmi_interface
+	} || {
+		echo "QMI module not found!!!" > /dev/console
+		tlink_add_4g_wan
+	}
+}
+
+tlink_init_5g() {
+	board_config_update
+	ucidef_set_interface "5g_wan" device "usb0" protocol "dhcp"
+	board_config_flush
+}
+
 tlink_default() {
 	# tlink_sd_default
 
@@ -156,14 +173,14 @@ tlink_default() {
 		echo "Data mount added"
 	fi
 
-	[ -e /dev/cdc-wdm0 ] && {
-		# QMI interface
-		echo "QMI module found!!!" > /dev/console
-		tlink_add_qmi_interface
-	} || {
-		echo "QMI module not found!!!" > /dev/console
-		tlink_add_4g_wan
-	}
+	case "$(board_name)" in
+		"kooiot,tlink-k2")
+			tlink_init_5g
+			;;
+		*)
+			tlink_init_4g
+			;;
+	esac
 
 	# ETH MAC for usb-eth mac been set in board.d/02_network
 	#case "$(board_name)" in
