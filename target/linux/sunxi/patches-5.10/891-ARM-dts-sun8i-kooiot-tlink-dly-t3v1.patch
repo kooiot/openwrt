@@ -75,13 +75,13 @@
 +		pcie_power {
 +			gpio-export,name = "pcie_power";
 +			gpio-export,output=<1>;
-+			gpios = <&pio 4 7 GPIO_ACTIVE_HIGH>; /* PE7 */ /* GPIO7 */
++			gpios = <&pio 4 2 GPIO_ACTIVE_HIGH>; /* PE2 */
 +		};
 +
 +		pcie_reset {
 +			gpio-export,name = "pcie_reset";
 +			gpio-export,output=<0>;
-+			gpios = <&pio 4 8 GPIO_ACTIVE_HIGH>; /* PE8 */ /* GPIO6 */
++			gpios = <&pio 4 3 GPIO_ACTIVE_HIGH>; /* PE3 */
 +		};
 +
 +		can_reset {
