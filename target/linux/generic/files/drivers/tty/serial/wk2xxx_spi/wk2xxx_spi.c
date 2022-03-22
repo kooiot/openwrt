@@ -394,8 +394,9 @@ static void wk2xxx_work(struct work_struct *w)
 			rx &=~WK2XXX_RXOUT_IEN;
 			wk2xxx_write_slave_reg(s->spi_wk,s->port.iobase,WK2XXX_SIER,rx);
 		}
-
+#ifdef _DEBUG_WK_IRQ
 		printk( "%s---work_irq_flag:%x---\n", __func__, work_irq_flag);
+#endif
 		if(work_irq_flag) {
 			wk2xxxirq_app(&s->port);
 			s->irq_fail = 1;
