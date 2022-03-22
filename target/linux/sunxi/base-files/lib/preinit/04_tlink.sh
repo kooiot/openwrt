@@ -70,12 +70,16 @@ do_kooiot_tlink_generic() {
 	"kooiot,tlink-x1s"|\
 	"kooiot,tlink-x3"|\
 	"kooiot,tlink-x2"|\
-	"kooiot,tlink-k1"|\
-	"kooiot,tlink-s1"|\
+	"kooiot,tlink-s1")
+		do_product_sn_kooiot_nvmem "0" "0050"
+		;;
 	"kooiot,tlink-m408"|\
 	"kooiot,tlink-m416"|\
 	"kooiot,tlink-r1")
 		do_product_sn_kooiot_emmc
+		;;
+	"kooiot,tlink-k1")
+		do_product_sn_kooiot_nvmem "4" "0050"
 		;;
 	"kooiot,tlink-k2")
 		do_product_sn_kooiot_nvmem "3" "0050"
