@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-t3-tlink-dly-t3v2.dtsi
-@@ -0,0 +1,512 @@
+@@ -0,0 +1,524 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -44,13 +44,25 @@
 +
 +		status {
 +			label = "green:status";
-+			gpios = <&pio 8 21 GPIO_ACTIVE_HIGH>; /* PI21 */
++			gpios = <&pio 1 2 GPIO_ACTIVE_LOW>; /* PB2 */
 +			linux,default-trigger = "heartbeat";
 +		};
 +
-+		alarm {
-+			label = "red:alarm";
-+			gpios = <&pio 1 2 GPIO_ACTIVE_LOW>; /* PB2 */
++		cloud {
++			label = "green:cloud";
++			gpios = <&pio 8 21 GPIO_ACTIVE_LOW>; /* PI21 */
++			default-state = "off";
++		};
++
++		bs {
++			label = "red:bs";
++			gpios = <&pio 3 20 GPIO_ACTIVE_LOW>; /* PD20 */
++			default-state = "off";
++		};
++
++		gs {
++			label = "green:gs";
++			gpios = <&pio 3 21 GPIO_ACTIVE_LOW>; /* PD21 */
 +			default-state = "off";
 +		};
 +	};
