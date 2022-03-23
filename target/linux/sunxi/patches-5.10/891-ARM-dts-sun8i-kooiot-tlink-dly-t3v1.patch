@@ -74,7 +74,7 @@
 +		reset {
 +			label = "reset";
 +			linux,code = <KEY_RESTART>;
-+			gpios = <&pio 4 5 GPIO_ACTIVE_LOW>; /* PE5 */
++			gpios = <&pio 4 11 GPIO_ACTIVE_LOW>; /* PE11 */
 +		};
 +	};
 +
