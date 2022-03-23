@@ -148,7 +148,7 @@
 +
 +		eth3_reset {
 +			gpio-export,name = "eth3_reset";
-+			gpio-export,output=<1>;
++			gpio-export,output=<0>;
 +			gpios = <&pio 7 2 GPIO_ACTIVE_HIGH>; /* PH2 */
 +		};
 +	};

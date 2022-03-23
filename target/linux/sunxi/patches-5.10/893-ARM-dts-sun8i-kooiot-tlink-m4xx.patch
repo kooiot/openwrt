@@ -53,13 +53,13 @@
 +
 +		uart1414@1 {
 +			compatible = "usb4e2,1414";
-+			reg = <2>;
++			reg = <1>;
 +			xr_485_mode;
 +		};
 +
 +		uart1414@2 {
 +			compatible = "usb4e2,1414";
-+			reg = <3>;
++			reg = <2>;
 +			xr_485_mode;
 +		};
 +	};
