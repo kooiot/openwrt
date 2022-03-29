@@ -158,9 +158,14 @@ tlink_init_4g() {
 }
 
 tlink_init_5g() {
-	board_config_update
-	ucidef_set_interface "5g_wan" device "usb0" protocol "dhcp"
-	board_config_flush
+	uci set network.5g_wan='interface'
+	uci set network.5g_wan.proto='dhcp'
+	uci set network.5g_wan.device='usb0'
+	uci set network.5g_wan.metric='10'
+	uci commit network
+
+	uci set 3ginfo.@3ginfo[0].device='/dev/ttyUSB3'
+	uci commit 3ginfo
 }
 
 tlink_default() {
