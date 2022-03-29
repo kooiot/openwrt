@@ -27,7 +27,7 @@
  #define DP83848_INT_EN_MASK		\
  	(DP83848_MISR_ANC_INT_EN |	\
  	 DP83848_MISR_DUP_INT_EN |	\
-@@ -66,6 +72,33 @@
+@@ -66,6 +72,36 @@
  	return phy_write(phydev, DP83848_MICR, control);
  }
  
@@ -45,12 +45,15 @@
 +
 +	val = phy_read(phydev, DP83848_PHYCR);
 +	if (val & DP83848_PHYCR_LED_CNFG) {
-+		phydev_info(phydev, "%s: correct led value: %x", __func__, val);
++		phydev_info(phydev, "%s: fix led value: %x", __func__, val);
 +		val &= ~DP83848_PHYCR_LED_CNFG;
-+		msleep(1);
++		msleep(10);
 +		phy_write(phydev, DP83848_PHYCR, val);
-+		msleep(1);
++		msleep(10);
 +		phy_write(phydev, DP83848_PHYCR, val);
++		msleep(10);
++		val = phy_read(phydev, DP83848_PHYCR);
++		phydev_info(phydev, "%s: fixed led value: %x", __func__, val);
 +	} else {
 +		phydev_info(phydev, "%s: led value: %x", __func__, val);
 +	}
@@ -61,7 +64,7 @@
  static int dp83848_config_init(struct phy_device *phydev)
  {
  	int val;
-@@ -95,6 +128,7 @@
+@@ -95,6 +131,7 @@
  		.phy_id_mask	= 0xfffffff0,			\
  		.name		= _name,			\
  		/* PHY_BASIC_FEATURES */			\
@@ -69,7 +72,7 @@
  								\
  		.soft_reset	= genphy_soft_reset,		\
  		.config_init	= _config_init,			\
-@@ -110,7 +144,7 @@
+@@ -110,7 +147,7 @@
  	DP83848_PHY_DRIVER(TI_DP83848C_PHY_ID, "TI DP83848C 10/100 Mbps PHY",
  			   NULL),
  	DP83848_PHY_DRIVER(NS_DP83848C_PHY_ID, "NS DP83848C 10/100 Mbps PHY",
