@@ -43,25 +43,25 @@
 +		compatible = "gpio-leds";
 +
 +		status {
-+			label = "green:status";
++			label = "kooiot:green:status";
 +			gpios = <&pio 1 2 GPIO_ACTIVE_LOW>; /* PB2 */
 +			linux,default-trigger = "heartbeat";
 +		};
 +
 +		cloud {
-+			label = "green:cloud";
++			label = "kooiot:green:cloud";
 +			gpios = <&pio 8 21 GPIO_ACTIVE_LOW>; /* PI21 */
 +			default-state = "off";
 +		};
 +
 +		bs {
-+			label = "red:bs";
++			label = "kooiot:red:bs";
 +			gpios = <&pio 3 20 GPIO_ACTIVE_LOW>; /* PD20 */
 +			default-state = "off";
 +		};
 +
 +		gs {
-+			label = "green:gs";
++			label = "kooiot:green:gs";
 +			gpios = <&pio 3 21 GPIO_ACTIVE_LOW>; /* PD21 */
 +			default-state = "off";
 +		};
