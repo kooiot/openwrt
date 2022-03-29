@@ -102,19 +102,19 @@
 +		compatible = "gpio-leds";
 +
 +		status {
-+			label = "green:status";
++			label = "kooiot:green:status";
 +			gpios = <&pio 2 0 GPIO_ACTIVE_HIGH>; /* PC0 */
 +			linux,default-trigger = "heartbeat";
 +		};
 +
 +		modem {
-+			label = "green:modem";
++			label = "kooiot:green:modem";
 +			gpios = <&pio 2 1 GPIO_ACTIVE_HIGH>; /* PC1 */
 +			default-state = "off";
 +		};
 +
 +		cloud {
-+			label = "green:cloud";
++			label = "kooiot:green:cloud";
 +			gpios = <&pio 2 2 GPIO_ACTIVE_HIGH>; /* PC2 */
 +			default-state = "off";
 +		};

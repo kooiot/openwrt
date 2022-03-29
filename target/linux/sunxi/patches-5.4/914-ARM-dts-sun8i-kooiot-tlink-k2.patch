@@ -53,25 +53,25 @@
 +		compatible = "gpio-leds";
 +
 +		status {
-+			label = "green:status";
++			label = "kooiot:green:status";
 +			gpios = <&pio 6 11 GPIO_ACTIVE_LOW>; /* PG11 */
 +			linux,default-trigger = "heartbeat";
 +		};
 +
 +		modem {
-+			label = "green:modem";
++			label = "kooiot:green:modem";
 +			gpios = <&pio 6 8 GPIO_ACTIVE_LOW>; /* PG8 */
 +			default-state = "off";
 +		};
 +
 +		csq {
-+			label = "green:csq";
++			label = "kooiot:green:csq";
 +			gpios = <&pio 6 9 GPIO_ACTIVE_LOW>; /* PG9 */
 +			default-state = "off";
 +		};
 +
 +		cloud {
-+			label = "green:cloud";
++			label = "kooiot:green:cloud";
 +			gpios = <&pio 6 10 GPIO_ACTIVE_LOW>; /* PG10 */
 +			default-state = "off";
 +		};
