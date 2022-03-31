@@ -87,23 +87,23 @@ tlink_csq_leds_single()
 {
 	if [ ${SHOW} -le 0 ]
 	then
-		echo "none" > /sys/class/leds/green:csq/trigger
-		echo 0 > /sys/class/leds/green:csq/brightness
+		echo "none" > /sys/class/leds/kooiot:green:csq/trigger
+		echo 0 > /sys/class/leds/kooiot:green:csq/brightness
 		return 0
 	fi
 
 	if [ $CSQ -ge 17 ]
 	then
-		echo "none" > /sys/class/leds/green:csq/trigger
-		echo 255 > /sys/class/leds/green:csq/brightness
+		echo "none" > /sys/class/leds/kooiot:green:csq/trigger
+		echo 255 > /sys/class/leds/kooiot:green:csq/brightness
 	else
-		echo "timer" > /sys/class/leds/green:csq/trigger
-		echo 500 > /sys/class/leds/green:csq/delay_on
+		echo "timer" > /sys/class/leds/kooiot:green:csq/trigger
+		echo 500 > /sys/class/leds/kooiot:green:csq/delay_on
 		if [ $CSQ -ge 10 ]
 		then
-			echo 2000 > /sys/class/leds/green:csq/delay_off
+			echo 2000 > /sys/class/leds/kooiot:green:csq/delay_off
 		else
-			echo 500 > /sys/class/leds/green:csq/delay_off
+			echo 500 > /sys/class/leds/kooiot:green:csq/delay_off
 		fi
 	fi
 }
