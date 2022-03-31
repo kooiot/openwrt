@@ -21,7 +21,7 @@ kooiot,tlink-r1)
 	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "wwan0"
 	;;
 kooiot,tlink-k2)
-	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "usb0"
+	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "wwan0"
 	;;
 kooiot,tlink-s1)
 	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "wwan0"

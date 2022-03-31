@@ -157,7 +157,7 @@ tlink_init_4g() {
 	}
 }
 
-tlink_init_5g() {
+tlink_add_5g_wan() {
 	uci set network.5g_wan='interface'
 	uci set network.5g_wan.proto='dhcp'
 	uci set network.5g_wan.device='usb0'
@@ -166,6 +166,20 @@ tlink_init_5g() {
 
 	uci set 3ginfo.@3ginfo[0].device='/dev/ttyUSB3'
 	uci commit 3ginfo
+
+	uci set system.led_modem.dev='usb0'
+	uci commit system
+}
+
+tlink_init_5g() {
+	[ -e /dev/cdc-wdm0 ] && {
+		# QMI interface
+		echo "QMI module found!!!" > /dev/console
+		tlink_add_qmi_interface
+	} || {
+		echo "QMI module not found!!!" > /dev/console
+		tlink_add_5g_wan
+	}
 }
 
 tlink_default() {
