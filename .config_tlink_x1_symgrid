@@ -2430,6 +2430,7 @@ CONFIG_PACKAGE_symlink=y
 CONFIG_SYMLINK_PROJECT_SYMGRID=y
 # CONFIG_SYMLINK_PROJECT_SYMID_FL is not set
 CONFIG_PACKAGE_symlink-psn=y
+CONFIG_PACKAGE_tlink-utility=y
 
 #
 # Languages
@@ -6193,6 +6194,7 @@ CONFIG_PACKAGE_sfdisk=y
 # CONFIG_PACKAGE_jupp is not set
 # CONFIG_PACKAGE_mg is not set
 # CONFIG_PACKAGE_nano is not set
+# CONFIG_PACKAGE_nano-full is not set
 # CONFIG_PACKAGE_nano-plus is not set
 # CONFIG_PACKAGE_vim is not set
 # CONFIG_PACKAGE_vim-full is not set
