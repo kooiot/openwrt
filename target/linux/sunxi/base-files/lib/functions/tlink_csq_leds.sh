@@ -39,6 +39,7 @@ tlink_csq_leds_default()
 	then
 		tlink_led_echo "green:bbs" 255
 		tlink_led_echo "green:bs" 255
+		tlink_led_echo "green:gs" 255
 		if [ $CSQ -ge 26 ]
 		then
 			tlink_led_echo "green:ggs" 255
