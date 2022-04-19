@@ -279,7 +279,7 @@ define Device/kooiot_tlink-x1
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
     tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
-    kmod-eeprom-at24 fdisk
+    kmod-eeprom-at24 fdisk blockd
   SOC := sun8i-h3
 endef
 TARGET_DEVICES += kooiot_tlink-x1
@@ -382,7 +382,7 @@ TARGET_DEVICES += kooiot_tlink-dj-a40i-e
 
 define Device/kooiot_tlink-dr4-a40i
   DEVICE_VENDOR := KooIoT
-  DEVICE_MODEL := ThingsLink DR3 A40i
+  DEVICE_MODEL := ThingsLink DR4-A40i
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-gpio \
     kmod-usb-net kmod-usb-net-rtl8152 \
@@ -410,7 +410,7 @@ TARGET_DEVICES += kooiot_tlink-dr4-a40i
 
 define Device/kooiot_tlink-nano-a40i
   DEVICE_VENDOR := KooIoT
-  DEVICE_MODEL := ThingsLink Nano A40i
+  DEVICE_MODEL := ThingsLink Nano-A40i
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-gpio \
     kmod-usb-net kmod-usb-net-rtl8152 \
@@ -438,7 +438,7 @@ TARGET_DEVICES += kooiot_tlink-nano-a40i
 
 define Device/kooiot_tlink-qh-x40
   DEVICE_VENDOR := KooIoT
-  DEVICE_MODEL := ThingsLink QH X40
+  DEVICE_MODEL := ThingsLink QH-X40
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-gpio \
     kmod-usb-net kmod-usb-net-rtl8152 \
@@ -475,7 +475,7 @@ define Device/kooiot_tlink-k1
     kmod-ledtrig-netdev kmod-ledtrig-gpio \
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
-    kmod-serial-wk2xxx-spi \
+    kmod-serial-wk2xxx-spi kmod-eeprom-at24 \
 	kmod-motorcomm-yt8521s kmod-motorcomm-yt8512c \
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
@@ -503,7 +503,8 @@ define Device/kooiot_tlink-k2
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
     tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage kmod-drm-sunxi \
-    usb-otg-sunxi kmod-usb-gadget-serial
+    usb-otg-sunxi kmod-usb-gadget-serial \
+	kmod-eeprom-at24
   SOC := sun8i-r40
 endef
 TARGET_DEVICES += kooiot_tlink-k2
