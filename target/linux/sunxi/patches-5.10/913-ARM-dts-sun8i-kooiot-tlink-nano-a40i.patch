@@ -10,7 +10,7 @@
  	sun8i-t3-cqa3t-bv3.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-nano-a40i.dts
-@@ -0,0 +1,519 @@
+@@ -0,0 +1,523 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -171,6 +171,10 @@
 +		enable-active-high;
 +		vin-supply = <&reg_vcc5v0>;
 +	};
++};
++
++&rtc {
++	status = "disabled"; // cpu rtc disabled
 +};
 +
 +&ahci {

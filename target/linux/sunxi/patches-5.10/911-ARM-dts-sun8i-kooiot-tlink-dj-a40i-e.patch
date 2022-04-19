@@ -10,7 +10,7 @@
  	sun8i-t3-cqa3t-bv3.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-dj-a40i-e.dts
-@@ -0,0 +1,559 @@
+@@ -0,0 +1,563 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -158,6 +158,10 @@
 +		gpio = <&pio 1 11 GPIO_ACTIVE_HIGH>; /* PB11 */
 +		enable-active-high;
 +	};
++};
++
++&rtc {
++	status = "disabled"; // cpu rtc disabled
 +};
 +
 +&ahci {
