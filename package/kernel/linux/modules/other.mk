@@ -720,7 +720,7 @@ define KernelPackage/rtc-rx8010
   SUBMENU:=$(OTHER_MENU)
   TITLE:=Epson RX8010SJ
   DEFAULT:=m if ALL_KMODS && RTC_SUPPORT
-  DEPENDS:=+kmod-i2c-core
+  DEPENDS:=+kmod-i2c-core +kmod-regmap-i2c
   KCONFIG:=CONFIG_RTC_DRV_RX8010 \
 	CONFIG_RTC_CLASS=y
   FILES:=$(LINUX_DIR)/drivers/rtc/rtc-rx8010.ko
@@ -756,7 +756,7 @@ define KernelPackage/rtc-sd3078
   SUBMENU:=$(OTHER_MENU)
   TITLE:=Shenzhen Wave Electronic Technology SD3077/3078
   DEFAULT:=m if ALL_KMODS && RTC_SUPPORT
-  DEPENDS:=+kmod-i2c-core
+  DEPENDS:=+kmod-i2c-core +kmod-regmap-i2c
   KCONFIG:=CONFIG_RTC_DRV_SD3078 \
 	CONFIG_RTC_CLASS=y
   FILES:=$(LINUX_DIR)/drivers/rtc/rtc-sd3078.ko
