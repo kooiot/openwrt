@@ -865,10 +865,12 @@ define Device/widora_neo-32m
   DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
 	kmod-gpio-button-hotplug kmod-leds-gpio \
 	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
-	kmod-usb-net-qmi-wwan kmod-usb-net-serial-option \
 	kmod-i2c-mt7628 kmod-rtc-rx8010 \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-sdhci-mt7620 \
-	uqmi fdisk
+	luci-app-freeioe luci-proto-qmi luci-proto-3g \
+	uqmi fdisk usbutils freeioe wwanleds
   SUPPORTED_DEVICES += widora-neo-32m
 endef
 TARGET_DEVICES += widora_neo-32m
@@ -881,9 +883,10 @@ define Device/kooiot_tlink-c1-16m
   DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
 	kmod-gpio-button-hotplug kmod-leds-gpio \
 	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
-	kmod-usb-serial kmod-usb-net-serial-option \
+	kmod-usb-serial kmod-usb-serial-option \
 	kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
-	uqmi fdisk
+	luci-app-freeioe luci-proto-qmi luci-proto-3g \
+	uqmi fdisk usbutils freeioe wwanleds strip-ioe
   SUPPORTED_DEVICES += tlink-c1-16m
 endef
 TARGET_DEVICES += kooiot_tlink-c1-16m
@@ -896,10 +899,11 @@ define Device/kooiot_tlink-c1-32m
   DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
 	kmod-gpio-button-hotplug kmod-leds-gpio \
 	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
-	kmod-usb-serial kmod-usb-net-serial-option \
+	kmod-usb-serial kmod-usb-serial-option \
 	kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-i2c-mt7628 kmod-rtc-rx8010 \
-	uqmi fdisk usbutils
+	luci-app-freeioe luci-proto-qmi luci-proto-3g \
+	uqmi fdisk usbutils freeioe wwanleds
   SUPPORTED_DEVICES += tlink-c1-32m
 endef
 TARGET_DEVICES += kooiot_tlink-c1-32m
@@ -912,10 +916,11 @@ define Device/kooiot_tlink-c2-16m
   DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
 	kmod-gpio-button-hotplug kmod-leds-gpio \
 	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
-	kmod-usb-serial kmod-usb-net-serial-option \
+	kmod-usb-serial kmod-usb-serial-option \
 	kmod-usb-serial-qualcomm \
 	kmod-usb-net-qmi-wwan kmod-usb-serial-cp210x \
-	uqmi fdisk usbutils
+	luci-app-freeioe luci-proto-qmi luci-proto-3g \
+	uqmi fdisk usbutils freeioe wwanleds strip-ioe
   SUPPORTED_DEVICES += tlink-c2-16m
 endef
 TARGET_DEVICES += kooiot_tlink-c2-16m
@@ -928,10 +933,11 @@ define Device/kooiot_tlink-c2-32m
   DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
 	kmod-gpio-button-hotplug kmod-leds-gpio \
 	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
-	kmod-usb-serial kmod-usb-net-serial-option \
+	kmod-usb-serial kmod-usb-serial-option \
 	kmod-usb-serial-qualcomm \
 	kmod-usb-net-qmi-wwan kmod-usb-serial-cp210x \
-	uqmi fdisk usbutils
+	luci-app-freeioe luci-proto-qmi luci-proto-3g \
+	uqmi fdisk usbutils freeioe wwanleds
   SUPPORTED_DEVICES += tlink-c2-32m
 endef
 TARGET_DEVICES += kooiot_tlink-c2-32m
@@ -944,10 +950,11 @@ define Device/kooiot_tlink-c3-32m
   DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
 	kmod-gpio-button-hotplug kmod-leds-gpio \
 	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
-	kmod-usb-serial kmod-usb-net-serial-option \
+	kmod-usb-serial kmod-usb-serial-option \
 	kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-i2c-mt7628 kmod-rtc-pcf8563 \
-	uqmi fdisk usbutils
+	luci-app-freeioe luci-proto-qmi luci-proto-3g \
+	uqmi fdisk usbutils freeioe wwanleds
   SUPPORTED_DEVICES += tlink-c3-32m
 endef
 TARGET_DEVICES += kooiot_tlink-c3-32m
@@ -960,10 +967,11 @@ define Device/kooiot_tlink-c35-16m
   DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
 	kmod-gpio-button-hotplug kmod-leds-gpio \
 	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
-	kmod-usb-serial kmod-usb-net-serial-option \
+	kmod-usb-serial kmod-usb-serial-option \
 	kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-i2c-mt7628 kmod-rtc-pcf8563 \
-	uqmi fdisk usbutils
+	luci-app-freeioe luci-proto-qmi luci-proto-3g \
+	uqmi fdisk usbutils freeioe wwanleds strip-ioe
   SUPPORTED_DEVICES += tlink-c35-16m
 endef
 TARGET_DEVICES += kooiot_tlink-c35-16m
@@ -976,10 +984,11 @@ define Device/kooiot_tlink-c35-32m
   DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
 	kmod-gpio-button-hotplug kmod-leds-gpio \
 	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
-	kmod-usb-serial kmod-usb-net-serial-option \
+	kmod-usb-serial kmod-usb-serial-option \
 	kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-i2c-mt7628 kmod-rtc-pcf8563 \
-	uqmi fdisk usbutils
+	luci-app-freeioe luci-proto-qmi luci-proto-3g \
+	uqmi fdisk usbutils freeioe wwanleds
   SUPPORTED_DEVICES += tlink-c35-32m
 endef
 TARGET_DEVICES += kooiot_tlink-c35-32m
