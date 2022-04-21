@@ -10,7 +10,7 @@
  	sun8i-t3-cqa3t-bv3.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-nano-a40i.dts
-@@ -0,0 +1,523 @@
+@@ -0,0 +1,542 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -171,6 +171,13 @@
 +		enable-active-high;
 +		vin-supply = <&reg_vcc5v0>;
 +	};
++
++	wifi_pwrseq: wifi_pwrseq {
++		compatible = "mmc-pwrseq-simple";
++		reset-gpios = <&pio 6 10 GPIO_ACTIVE_LOW>; /* PG10 WIFI_EN */
++		clocks = <&ccu CLK_OUTA>;
++		clock-names = "ext_clock";
++	};
 +};
 +
 +&rtc {
@@ -316,8 +323,20 @@
 +&mmc1 {
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&mmc1_pg_pins>;
++	vmmc-supply = <&reg_dldo2>;
++	vqmmc-supply = <&reg_dldo1>;
++	mmc-pwrseq = <&wifi_pwrseq>;
 +	bus-width = <4>;
++	non-removable;
 +	status = "okay";
++
++	brcmf: wifi@1 {
++		compatible = "brcm,bcm4329-fmac";
++		reg = <1>;
++		interrupt-parent = <&pio>;
++		interrupts = <7 0 IRQ_TYPE_LEVEL_LOW>; // PH0 / EINT0
++		interrupt-names = "host-wake";
++	};
 +};
 +
 +&mmc2 {
