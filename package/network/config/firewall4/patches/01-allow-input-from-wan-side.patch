@@ -1,0 +1,17 @@
+--- a/root/etc/config/firewall
++++ b/root/etc/config/firewall
+@@ -17,7 +17,13 @@
+ 	option name		wan
+ 	list   network		'wan'
+ 	list   network		'wan6'
+-	option input		REJECT
++	list   network		'4g_wan'
++	list   network		'4g_wan_4'
++	list   network		'4g_wan_6'
++	list   network		'5g_wan'
++	list   network		'5g_wan_4'
++	list   network		'5g_wan_6'
++	option input		ACCEPT
+ 	option output		ACCEPT
+ 	option forward		REJECT
+ 	option masq		1
