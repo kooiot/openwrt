@@ -2707,6 +2707,13 @@ CONFIG_PACKAGE_kmod-zd1211rw=m
 #
 # KooIoT
 #
+
+#
+# Customer
+#
+# CONFIG_PACKAGE_jw-package-1 is not set
+# end of Customer
+
 # CONFIG_PACKAGE_asw-iot-greengrass is not set
 # CONFIG_PACKAGE_bmr200_freeioe is not set
 CONFIG_PACKAGE_factory-tlink=m
