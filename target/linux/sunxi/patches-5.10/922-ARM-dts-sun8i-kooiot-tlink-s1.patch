@@ -88,7 +88,7 @@
 +		wifi_reset {
 +			gpio-export,name = "wifi_reset";
 +			gpio-export,output=<0>;
-+			gpios = <&pio 6 12 GPIO_ACTIVE_LOW>; // PG12 controls vcc_wifi (3.3v)
++			gpios = <&pio 6 12 GPIO_ACTIVE_HIGH>; // PG12 controls vcc_wifi (3.3v)
 +		};
 +	};
 +
