@@ -4,7 +4,7 @@ export_tlink_efuse_mac() {
 	local var="$1"
 	local offset="$2"
 	local nvmem_file="/sys/bus/nvmem/devices/sunxi-sid0/nvmem"
-	local mac_val oem nv1 mac_base
+	local mac_val oem nv1 mac_base mac1 mac2 sid chip0 chip3
 
 	[ -z "$var" -o -z "$offset" ] && return -1
 	[ -b ${nvmem_file} ] && return -2
@@ -40,6 +40,33 @@ export_tlink_efuse_mac() {
 	mac_val="${mac1:0:2}:${mac1:2:2}:${mac2:0:2}:${mac2:2:2}:${mac2:4:2}:${mac2:6:2}"
 
 	export "$var=${mac_val}"
+	return 0
+}
+
+tlink_gen_mac_emmc_serial() {
+	local offset="$1"
+	local serial_file="/sys/class/block/mmcblk1/device/serial"
+	local mac_base="b0c9"
+	local mac_val mac0_num mac0_val uid mac0 mac1 mac2 mac3
+
+	[ -z "$offset" ] && return 0
+	[ -b ${serial_file} ] && return 0
+
+	uid=$(cat ${serial_file})
+
+	mac0="${uid:2:2}"
+	mac1="${uid:4:2}"
+	mac2="${uid:6:2}"
+	mac3="${uid:8:2}"
+
+	mac0_num=$(printf %d 0x${mac0})
+	mac0_val=`expr ${mac0_num} + ${offset}`
+	mac0_val=$(( ${mac0_val} % 256 ))
+	mac0=$(printf '%02x' ${mac0_val})
+
+	mac_val="${mac_base:0:2}:${mac_base:2:2}:${mac3}:${mac2}:${mac1}:${mac0}"
+
+	echo "${mac_val}"
 	return 0
 }
 
@@ -104,7 +131,7 @@ EOF
 
 #test() {
 #	local mac
-#	read_tlink_efuse_mac mac 1
+#	export_tlink_efuse_mac mac 1
 #	echo "MAC ${mac}"
 #}
 #

@@ -28,6 +28,20 @@ tlink_setup_macs()
 	[ -n "$wan_mac" ] && ucidef_set_interface_macaddr "wan" $wan_mac
 }
 
+tlink_setup_interface_mac()
+{
+	local ifname=$1
+	local offset=$2
+	local lan_mac
+
+	. /lib/functions/tlink.sh
+
+	lan_mac=$(tlink_gen_mac_emmc_serial $offset)
+
+	# [ -n "$lan_mac" ] && echo "$lan_mac" > /dev/console
+	[ -n "$lan_mac" ] && ucidef_set_interface_macaddr "$ifname" "$lan_mac"
+}
+
 board_config_update
 
 case $(board_name) in
@@ -66,6 +80,10 @@ kooiot,tlink-m416)
 	ucidef_set_interface "lan1" device "eth1" protocol "static"
 	ucidef_set_interface "lan2" device "eth2" protocol "static"
 	ucidef_set_interface "lan3" device "eth3" protocol "static"
+	;;
+kooiot,tlink-s1)
+	ucidef_set_interface_lan "eth0"
+	tlink_setup_interface_mac "lan" 0
 	;;
 *)
 	ucidef_set_interface_lan "eth0"
