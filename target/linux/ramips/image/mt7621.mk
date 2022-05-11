@@ -318,6 +318,16 @@ define Device/cudy_wr2100
 endef
 TARGET_DEVICES += cudy_wr2100
 
+define Device/cudy_x6
+  $(Device/dsa-migration)
+  IMAGE_SIZE := 32256k
+  DEVICE_VENDOR := Cudy
+  DEVICE_MODEL := X6
+  UIMAGE_NAME := R13
+  DEVICE_PACKAGES := kmod-mt7915e
+endef
+TARGET_DEVICES += cudy_x6
+
 define Device/dlink_dir-8xx-a1
   $(Device/dsa-migration)
   IMAGE_SIZE := 16000k
@@ -1761,6 +1771,16 @@ define Device/wavlink_wl-wn531a6
   IMAGE_SIZE := 15040k
 endef
 TARGET_DEVICES += wavlink_wl-wn531a6
+
+define Device/wavlink_wl-wn533a8
+  $(Device/dsa-migration)
+  DEVICE_VENDOR := Wavlink
+  DEVICE_MODEL := WL-WN533A8
+  KERNEL_INITRAMFS_SUFFIX := -WN533A8$$(KERNEL_SUFFIX)
+  DEVICE_PACKAGES := kmod-mt7615e kmod-mt7615-firmware kmod-usb3
+  IMAGE_SIZE := 15040k
+endef
+TARGET_DEVICES += wavlink_wl-wn533a8
 
 define Device/wevo_11acnas
   $(Device/dsa-migration)
