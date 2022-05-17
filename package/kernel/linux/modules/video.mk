@@ -29,7 +29,7 @@ define KernelPackage/backlight
 		CONFIG_BACKLIGHT_OT200=n \
 		CONFIG_BACKLIGHT_PM8941_WLED=n
 	FILES:=$(LINUX_DIR)/drivers/video/backlight/backlight.ko
-	AUTOLOAD:=$(call AutoProbe,video backlight)
+	AUTOLOAD:=$(call AutoProbe,video backlight,1)
 endef
 
 define KernelPackage/backlight/description
@@ -44,7 +44,7 @@ define KernelPackage/backlight-pwm
 	DEPENDS:=+kmod-backlight
 	KCONFIG:=CONFIG_BACKLIGHT_PWM
 	FILES:=$(LINUX_DIR)/drivers/video/backlight/pwm_bl.ko
-	AUTOLOAD:=$(call AutoProbe,video pwm_bl)
+	AUTOLOAD:=$(call AutoProbe,video pwm_bl,1)
 endef
 
 define KernelPackage/backlight-pwm/description
@@ -293,6 +293,106 @@ define KernelPackage/drm-amdgpu/description
 endef
 
 $(eval $(call KernelPackage,drm-amdgpu))
+
+
+define KernelPackage/drm-sun8i
+  SUBMENU:=$(VIDEO_MENU)
+  TITLE:=SUN8I SOCs DRM support
+  DEPENDS:=@TARGET_sunxi @DISPLAY_SUPPORT \
+	  +kmod-drm +kmod-drm-kms-helper +kmod-lib-crc-ccitt
+  KCONFIG:= \
+    CONFIG_DRM_SUN4I \
+	CONFIG_MEDIA_CEC_SUPPORT=y \
+	CONFIG_DRM_FBDEV_EMULATION=y \
+	CONFIG_DRM_FBDEV_OVERALLOC=100 \
+	CONFIG_DRM_LOAD_EDID_FIRMWARE=y \
+	CONFIG_DRM_GEM_CMA_HELPER=y \
+	CONFIG_DRM_KMS_CMA_HELPER=y \
+	CONFIG_DRM_GEM_SHMEM_HELPER=y \
+	CONFIG_VIDEOMODE_HELPERS=y \
+	CONFIG_DRM_HDLCD \
+	CONFIG_DRM_MALI_DISPLAY \
+	CONFIG_DRM_LIMA \
+	CONFIG_DRM_SUN4I_BACKEND \
+	CONFIG_DRM_SUN8I_MIXER \
+	CONFIG_DRM_SUN8I_TCON_TOP
+  FILES:= \
+	$(LINUX_DIR)/drivers/gpu/drm/arm/mali-dp.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/scheduler/gpu-sched.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/lima/lima.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun4i-backend.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun4i-frontend.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun4i-drm.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun4i-tcon.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun4i_tv.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun6i_drc.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun8i_tcon_top.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun8i-mixer.ko
+  AUTOLOAD:=$(call AutoLoad,08,gpu-sched lima mali-dp sun4i-frontend sun4i-backend sun4i-drm sun4i-tcon sun4i_tv sun6i_drc sun8i_tcon-top sun8i-mixer,1)
+endef
+
+define KernelPackage/drm-sun8i/description
+  Direct Rendering Manager (DRM) support for SUN8I SOCs
+endef
+
+$(eval $(call KernelPackage,drm-sun8i))
+
+define KernelPackage/drm-sun8i-hdmi
+  SUBMENU:=$(VIDEO_MENU)
+  TITLE:=SUN8I SoCs HDMI DRM support
+  DEPENDS:=+kmod-sound-core kmod-drm-sun8i
+  KCONFIG:= \
+    CONFIG_DRM_SUN4I_HDMI \
+	CONFIG_DRM_SUN4I_HDMI_AUDIO=y \
+	CONFIG_DRM_SUN4I_HDMI_CEC=y \
+	CONFIG_DRM_SUN8I_DW_HDMI \
+	CONFIG_DRM_SUN4I_AUDIO \
+	CONFIG_DRM_DW_HDMI \
+	CONFIG_DRM_DW_HDMI_AHB_AUDIO \
+	CONFIG_DRM_DW_HDMI_I2S_AUDIO \
+	CONFIG_DRM_DW_HDMI_CEC
+  FILES:= \
+	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun4i-drm-hdmi.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun8i-drm-hdmi.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/bridge/synopsys/dw-hdmi.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/bridge/synopsys/dw-hdmi-cec.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/bridge/synopsys/dw-hdmi-i2s-audio.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/bridge/synopsys/dw-hdmi-ahb-audio.ko \
+	$(if $(CONFIG_LINUX_5_4),$(LINUX_DIR)/drivers/media/cec/cec.ko,$(LINUX_DIR)/drivers/media/cec/core/cec.ko)
+  AUTOLOAD:=$(call AutoLoad,08,sun4i-drm-hdmi sun8i-drm-hdmi,1)
+endef
+
+define KernelPackage/drm-sun8i-hdmi/description
+  Direct Rendering Manager (DRM) support for SUN8I SoCs HDMI
+endef
+
+$(eval $(call KernelPackage,drm-sun8i-hdmi))
+
+define KernelPackage/drm-sun8i-dsi
+  SUBMENU:=$(VIDEO_MENU)
+  TITLE:=SUN8I SoCs LVDS DRM support
+  DEPENDS:=+kmod-backlight-pwm kmod-drm-sun8i +kmod-pwm-sun8i
+  KCONFIG:= \
+	CONFIG_DRM_MIPI_DBI \
+	CONFIG_DRM_MIPI_DSI=y \
+	CONFIG_DRM_DW_MIPI_DSI \
+	CONFIG_DRM_SUN6I_DSI \
+	CONFIG_DRM_PANEL_LVDS \
+	CONFIG_DRM_PANEL_SIMPLE \
+	CONFIG_DRM_PANEL=y
+  FILES:= \
+	$(LINUX_DIR)/drivers/phy/allwinner/phy-sun6i-mipi-dphy.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/panel/panel-simple.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/panel/panel-lvds.ko
+  AUTOLOAD:=$(call AutoLoad,08,phy-sun6i-mipi-dphy sun6i_mipi_dsi panel-simple panel-lvds,1)
+endef
+
+define KernelPackage/drm-sun8i-dsi/description
+  Direct Rendering Manager (DRM) support for SUN8I SoCs
+endef
+
+$(eval $(call KernelPackage,drm-sun8i-dsi))
 
 
 define KernelPackage/drm-imx

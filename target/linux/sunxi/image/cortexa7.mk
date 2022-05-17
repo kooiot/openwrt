@@ -229,5 +229,323 @@ define Device/xunlong_orangepi-2
   DEVICE_MODEL := Orange Pi 2
   DEVICE_PACKAGES:=kmod-rtc-sunxi
   SOC := sun8i-h3
-endef
+ endef
 TARGET_DEVICES += xunlong_orangepi-2
+
+define Device/sipeed_lichee-zero-plus
+  DEVICE_VENDOR := SiPEED
+  DEVICE_MODEL := SiPEED lichee zero plus
+  DEVICE_PACKAGES:=kmod-rtc-sunxi
+  SOC := sun8i-s3
+endef
+TARGET_DEVICES += sipeed_lichee-zero-plus
+
+define Device/kooiot_tlink-s1
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink S1
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-rtc-sd3078 kmod-usb-net-asix \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+	luci-app-freeioe luci-proto-qmi luci-proto-3g \
+    kmod-xradio melsem-xr819-firmware wpad-basic-wolfssl \
+    tinc-freeioe-tunnel iperf3 \
+    uqmi fdisk usbutils freeioe wwanleds \
+    blockd usb-otg-sunxi kmod-eeprom-at24 fdisk
+  SOC := sun8i-s3
+endef
+TARGET_DEVICES += kooiot_tlink-s1
+
+define Device/sinlinx_sinlinx-sin-v3s
+  DEVICE_VENDOR := SINLINX
+  DEVICE_MODEL := SINLINX Sin V3s
+  DEVICE_PACKAGES:=kmod-rtc-sunxi
+  SOC := sun8i-v3s
+endef
+TARGET_DEVICES += sinlinx_sinlinx-sin-v3s
+
+define Device/kooiot_tlink-x1
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink X1
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
+    kmod-usb-net kmod-usb-net-rtl8152 \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-rtc-rx8010 kmod-usb-net-asix \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+    uqmi fdisk usbutils freeioe wwanleds \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    kmod-eeprom-at24 fdisk
+  SOC := sun8i-h3
+endef
+TARGET_DEVICES += kooiot_tlink-x1
+
+define Device/kooiot_tlink-x1s
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink X1s
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
+    kmod-usb-net kmod-usb-net-rtl8152 \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-rtc-sd3078 kmod-usb-net-asix \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+    uqmi fdisk usbutils freeioe wwanleds \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    kmod-eeprom-at24 fdisk
+  SOC := sun8i-h3
+endef
+TARGET_DEVICES += kooiot_tlink-x1s
+
+define Device/kooiot_tlink-x3
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink X3
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
+    kmod-usb-net kmod-usb-net-asix \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+    uqmi fdisk usbutils freeioe wwanleds \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+    tinc-freeioe-tunnel iperf3 ethtool \
+    kmod-rtc-sd3078 kmod-eeprom-at24 fdisk
+  SOC := sun8i-x3
+endef
+TARGET_DEVICES += kooiot_tlink-x3
+
+define Device/kooiot_tlink-r1
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink R1
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
+    kmod-usb-net kmod-usb-net-rtl8152 \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-rtc-hym8563 kmod-usb-net-asix \
+    kmod-net-rtl8723be fdisk
+  SOC := sun8i-h3
+endef
+TARGET_DEVICES += kooiot_tlink-r1
+
+define Device/kooiot_tlink-ok-a40i
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink OK-A40i
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi kmod-brcmfmac \
+    kmod-sun4i-emac kmod-rtc-rx8010 \
+    brcmfmac-firmware-43430a0-sdio wpad-basic-wolfssl \
+    kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+    uqmi fdisk usbutils freeioe wwanleds \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    blockd kmod-usb-storage kmod-drm-sunxi \
+	usb-otg-sunxi kmod-usb-gadget-serial
+  SOC := sun8i-r40
+endef
+TARGET_DEVICES += kooiot_tlink-ok-a40i
+
+define Device/kooiot_tlink-dj-a40i-e
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink DJ-A40i-E
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-gpio \
+    kmod-usb-net kmod-usb-net-rtl8152 \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+	kmod-usb-net-rndis kmod-usb-otg-sunxi \
+    kmod-eeprom-at24 kmod-rtc-pcf8563 \
+    kmod-usb-storage kmod-drm-sunxi \
+	kmod-backlight kmod-drm-sun8i \
+	kmod-drm-sun8i-dsi kmod-drm-sun8i-hdmi \
+	kmod-rtl8xxxu rtl8723bu-firmware \
+	kmod-input-core kmod-input-evdev \
+	kmod-sound-soc-sunxi kmod-backlight-pwm \
+	kmod-pwm-sun8i kmod-mmc usb-modeswitch \
+	usb-otg-sunxi kmod-usb-gadget-serial \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+	luci-app-ddns luci-app-mosquitto luci-app-ser2net \
+    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    uqmi umbim usbutils freeioe wwanleds \
+	blockd siridb-server mosquitto-nossl \
+	wpad-basic-wolfssl uclibcxx curl fdisk
+  SOC := sun8i-r40
+endef
+TARGET_DEVICES += kooiot_tlink-dj-a40i-e
+
+define Device/kooiot_tlink-dr4-a40i
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink DR3 A40i
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-gpio \
+    kmod-usb-net kmod-usb-net-rtl8152 \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+	kmod-usb-net-rndis kmod-usb-otg-sunxi \
+    kmod-eeprom-at24 kmod-rtc-pcf8563 \
+    kmod-usb-storage kmod-drm-sunxi \
+	kmod-backlight kmod-drm-sun8i \
+	kmod-drm-sun8i-dsi kmod-drm-sun8i-hdmi \
+	kmod-rtl8xxxu rtl8723bu-firmware \
+	kmod-input-core kmod-input-evdev \
+	kmod-sound-soc-sunxi kmod-backlight-pwm \
+	kmod-pwm-sun8i kmod-mmc usb-modeswitch \
+	usb-otg-sunxi kmod-usb-gadget-serial \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+	luci-app-ddns luci-app-mosquitto luci-app-ser2net \
+    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    uqmi umbim usbutils freeioe wwanleds \
+	blockd siridb-server mosquitto-nossl \
+	wpad-basic-wolfssl uclibcxx curl fdisk
+  SOC := sun8i-r40
+endef
+TARGET_DEVICES += kooiot_tlink-dr4-a40i
+
+define Device/kooiot_tlink-nano-a40i
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink Nano A40i
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-gpio \
+    kmod-usb-net kmod-usb-net-rtl8152 \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+	kmod-usb-net-rndis kmod-usb-otg-sunxi \
+    kmod-eeprom-at24 kmod-rtc-pcf8563 \
+    kmod-usb-storage kmod-drm-sunxi \
+	kmod-backlight kmod-drm-sun8i \
+	kmod-drm-sun8i-dsi kmod-drm-sun8i-hdmi \
+	kmod-rtl8xxxu rtl8723bu-firmware \
+	kmod-input-core kmod-input-evdev \
+	kmod-sound-soc-sunxi kmod-backlight-pwm \
+	kmod-pwm-sun8i kmod-mmc usb-modeswitch \
+	usb-otg-sunxi kmod-usb-gadget-serial \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+	luci-app-ddns luci-app-mosquitto luci-app-ser2net \
+    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    uqmi umbim usbutils freeioe wwanleds \
+	blockd siridb-server mosquitto-nossl \
+	wpad-basic-wolfssl uclibcxx curl fdisk
+  SOC := sun8i-r40
+endef
+TARGET_DEVICES += kooiot_tlink-nano-a40i
+
+define Device/kooiot_tlink-qh-x40
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink QH X40
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-gpio \
+    kmod-usb-net kmod-usb-net-rtl8152 \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+	kmod-usb-net-rndis kmod-usb-otg-sunxi \
+    kmod-eeprom-at24 kmod-rtc-pcf8563 \
+    kmod-usb-storage kmod-drm-sunxi \
+	kmod-backlight kmod-drm-sun8i kmod-sun4i-emac \
+	kmod-drm-sun8i-dsi kmod-drm-sun8i-hdmi \
+	kmod-rtl8723bs rtl8723bs-firmware \
+	kmod-input-core kmod-input-evdev \
+	kmod-sound-soc-sunxi kmod-backlight-pwm \
+	kmod-pwm-sun8i kmod-mmc usb-modeswitch \
+	usb-otg-sunxi kmod-usb-gadget-serial \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+	luci-app-ddns luci-app-mosquitto luci-app-ser2net \
+    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    uqmi umbim usbutils freeioe wwanleds \
+	blockd siridb-server mosquitto-nossl \
+	wpad-basic-wolfssl uclibcxx curl fdisk
+  SOC := sun8i-r40
+endef
+TARGET_DEVICES += kooiot_tlink-qh-x40
+
+define Device/kooiot_tlink-k1
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink K1
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
+    kmod-sun4i-emac kmod-rtc-rx8010 \
+    kmod-xradio melsem-xr819-firmware wpad-basic-wolfssl \
+    kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+    kmod-serial-wk2xxx-spi \
+	kmod-motorcomm-yt8521s kmod-motorcomm-yt8512c \
+    uqmi fdisk usbutils freeioe wwanleds \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    blockd kmod-usb-storage kmod-drm-sunxi \
+    usb-otg-sunxi kmod-usb-gadget-serial
+  SOC := sun8i-r40
+endef
+TARGET_DEVICES += kooiot_tlink-k1
+
+define Device/kooiot_tlink-k2
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink K2
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
+    kmod-sun4i-emac kmod-rtc-sd3078 \
+    kmod-xradio melsem-xr819-firmware wpad-basic-wolfssl \
+    kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+    kmod-usb-net-asix kmod-serial-wk2xxx-spi \
+	kmod-motorcomm-yt8521s kmod-motorcomm-yt8512c \
+    uqmi fdisk usbutils freeioe wwanleds \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    blockd kmod-usb-storage kmod-drm-sunxi \
+    usb-otg-sunxi kmod-usb-gadget-serial
+  SOC := sun8i-r40
+endef
+TARGET_DEVICES += kooiot_tlink-k2
+
+define Device/kooiot_tlink-m408
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink M408
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
+    kmod-sun4i-emac kmod-rtc-rx8025 \
+    wpad-basic-wolfssl \
+    kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+	kmod-serial-xr14xx-usb kmod-can kmod-can-mcp251x \
+    uqmi fdisk usbutils freeioe wwanleds \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    blockd kmod-usb-storage kmod-drm-sunxi \
+	usb-otg-sunxi kmod-usb-gadget-serial
+  SOC := sun8i-t3
+endef
+TARGET_DEVICES += kooiot_tlink-m408
+
+define Device/kooiot_tlink-m416
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink M416
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
+    kmod-sun4i-emac kmod-rtc-rx8025 \
+    wpad-basic-wolfssl \
+    kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+	kmod-serial-xr14xx-usb kmod-can kmod-can-mcp251x \
+    uqmi fdisk usbutils freeioe wwanleds \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    blockd kmod-usb-storage kmod-drm-sunxi \
+	usb-otg-sunxi kmod-usb-gadget-serial
+  SOC := sun8i-t3
+endef
+TARGET_DEVICES += kooiot_tlink-m416

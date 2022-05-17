@@ -237,6 +237,48 @@ define U-Boot/orangepi_2
   BUILD_DEVICES:=xunlong_orangepi-2
 endef
 
+define U-Boot/tlink_x1
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink X1
+  BUILD_DEVICES:=kooiot_tlink-x1
+endef
+
+define U-Boot/tlink_x1s
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink X1s
+  BUILD_DEVICES:=kooiot_tlink-x1s
+endef
+
+define U-Boot/tlink_x3
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink X3
+  BUILD_DEVICES:=kooiot_tlink-x3
+endef
+
+define U-Boot/tlink_r1
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink R1
+  BUILD_DEVICES:=kooiot_tlink-r1
+endef
+
+define U-Boot/Lichee_Zero_Plus
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=SiPEED LicheePi Zero Plus (S3)
+  BUILD_DEVICES:=sipeed_lichee-zero-plus
+endef
+
+define U-Boot/tlink_s1
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink S1
+  BUILD_DEVICES:=kooiot_tlink-s1
+endef
+
+define U-Boot/sinlinx_sin_v3s
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=SINLINX Sin V3s (V3s)
+  BUILD_DEVICES:=sinlinx_sinlinx-sin-v3s
+endef
+
 define U-Boot/pangolin
   BUILD_SUBTARGET:=cortexa7
   NAME:=Theobroma A31-yQ7 devboard
@@ -322,10 +364,84 @@ define U-Boot/orangepi_pc2
   ATF:=a64
 endef
 
+define U-Boot/tlink_rp_h6
+  BUILD_SUBTARGET:=cortexa53
+  NAME:=ThingsLink RP-H6
+  BUILD_DEVICES:=kooiot_tlink-rp-h6
+  DEPENDS:=+PACKAGE_u-boot-tlink_rp_h6:arm-trusted-firmware-sunxi-h6
+  UENV:=h6
+endef
+
 define U-Boot/Bananapi_M2_Ultra
   BUILD_SUBTARGET:=cortexa7
   NAME:=Bananapi M2 Ultra
   BUILD_DEVICES:=sinovoip_bananapi-m2-ultra
+  UENV:=display
+endef
+
+define U-Boot/tlink_ok_a40i
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink OK-A40i
+  BUILD_DEVICES:=kooiot_tlink-ok-a40i
+  UENV:=display
+endef
+
+define U-Boot/tlink_dj_a40i_e
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink DJ A40i E
+  BUILD_DEVICES:=kooiot_tlink-dj-a40i-e
+endef
+
+define U-Boot/tlink_qh_x40
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink QH X40
+  BUILD_DEVICES:=kooiot_tlink-qh-x40
+endef
+
+define U-Boot/tlink_dr4_a40i
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink DR4 A40i
+  BUILD_DEVICES:=kooiot_tlink-dr4-a40i
+endef
+
+define U-Boot/tlink_nano_a40i
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink Nano A40i
+  BUILD_DEVICES:=kooiot_tlink-nano-a40i
+endef
+
+define U-Boot/tlink_k1
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink K1
+  BUILD_DEVICES:=kooiot_tlink-k1
+  UENV:=display
+endef
+
+define U-Boot/tlink_k2
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink K2
+  BUILD_DEVICES:=kooiot_tlink-k2
+  UENV:=display
+endef
+
+define U-Boot/tlink_m408
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink M408
+  BUILD_DEVICES:=kooiot_tlink-m408
+  UENV:=display
+endef
+
+define U-Boot/tlink_m416
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink M416
+  BUILD_DEVICES:=kooiot_tlink-m416
+  UENV:=display
+endef
+
+define U-Boot/tlink_c4
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink C4
+  BUILD_DEVICES:=kooiot_tlink-c4
 endef
 
 define U-Boot/bananapi_m2_berry
@@ -364,6 +480,23 @@ UBOOT_TARGETS := \
 	nanopi_neo \
 	nanopi_neo_air \
 	nanopi_neo_plus2 \
+	tlink_x1 \
+	tlink_x1s \
+	tlink_x3 \
+	tlink_r1 \
+	tlink_rp_h6 \
+	tlink_ok_a40i \
+	tlink_qh_x40 \
+	tlink_dr4_a40i \
+	tlink_nano_a40i \
+	tlink_dj_a40i_e \
+	tlink_k1 \
+	tlink_k2 \
+	tlink_m408 \
+	tlink_m416 \
+	tlink_s1 \
+	Lichee_Zero_Plus \
+	sinlinx_sin_v3s \
 	nanopi_neo2 \
 	nanopi_r1 \
 	nanopi_r1s_h5 \

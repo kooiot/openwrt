@@ -10,6 +10,23 @@ sunxi_setup_interfaces()
 	local board="$1"
 
 	case "$board" in
+	kooiot,tlink-x1|\
+	kooiot,tlink-x1s|\
+	kooiot,tlink-x3|\
+	kooiot,tlink-r1)
+		ucidef_set_interfaces_lan_wan "eth0" "eth1"
+		;;
+	kooiot,tlink-k1)
+		ucidef_set_interface_lan "eth0 eth1"
+		;;
+	kooiot,tlink-k2|\
+	kooiot,tlink-m408|\
+	kooiot,tlink-m416)
+		ucidef_set_interface_lan "eth0"
+		ucidef_set_interface "lan1" device "eth1" protocol "static"
+		ucidef_set_interface "lan2" device "eth2" protocol "static"
+		ucidef_set_interface "lan3" device "eth3" protocol "static"
+		;;
 	friendlyarm,nanopi-r1|\
 	friendlyarm,nanopi-r1s-h5)
 		ucidef_set_interfaces_lan_wan "eth1" "eth0"
@@ -39,6 +56,15 @@ sunxi_setup_macs()
 	case "$board" in
 	friendlyarm,nanopi-r1s-h5)
 		lan_mac=$(get_mac_binary "/sys/bus/i2c/devices/0-0051/eeprom" 0xfa)
+		;;
+	kooiot,tlink-x1|\
+	kooiot,tlink-x1s|\
+	kooiot,tlink-x3)
+		lan_mac=$(get_mac_binary "/sys/bus/i2c/devices/0-0050/eeprom" 0x20)
+		wan_mac=$(macaddr_add $(get_mac_binary "/sys/bus/i2c/devices/0-0050/eeprom" 0x20) 1)
+		;;
+	kooiot,tlink-s1)
+		lan_mac=$(get_mac_binary "/sys/bus/i2c/devices/0-0050/eeprom" 0x20)
 		;;
 	esac
 

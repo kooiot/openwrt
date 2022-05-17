@@ -1,0 +1,316 @@
+--- /dev/null
++++ b/configs/tlink_ok_a40i_defconfig
+@@ -0,0 +1,31 @@
++CONFIG_ARM=y
++CONFIG_ARCH_SUNXI=y
++CONFIG_SPL=y
++CONFIG_MACH_SUN8I_R40=y
++CONFIG_DRAM_CLK=576
++CONFIG_DRAM_ZQ=3881979
++CONFIG_SUNXI_DRAM_DW_R40_DUAL_RANK=y
++CONFIG_MMC0_CD_PIN="PI11"
++CONFIG_MMC_SUNXI_SLOT_EXTRA=2
++CONFIG_USB1_VBUS_PIN="PI13"
++CONFIG_USB2_VBUS_PIN="PI13"
++CONFIG_AHCI=y
++CONFIG_NR_DRAM_BANKS=1
++# CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
++CONFIG_SPL_I2C_SUPPORT=y
++# CONFIG_CMD_FLASH is not set
++CONFIG_DEFAULT_DEVICE_TREE="sun8i-r40-tlink-ok-a40i"
++CONFIG_SCSI_AHCI=y
++CONFIG_MII=y
++CONFIG_SUN8I_EMAC=y
++CONFIG_AXP_GPIO=y
++CONFIG_AXP_DCDC3_VOLT=1200
++CONFIG_AXP_ALDO1_VOLT=3300
++CONFIG_AXP_ALDO2_VOLT=1800
++CONFIG_AXP_DLDO1_VOLT=3300
++CONFIG_AXP_DLDO4_VOLT=2500
++CONFIG_AXP_ELDO2_VOLT=1200
++CONFIG_AXP_ELDO3_VOLT=2800
++CONFIG_SCSI=y
++CONFIG_USB_ECHI_HCD=y
++CONFIG_USB_OCHI_HCD=y
++++ a/arch/arm/dts/Makefile
++++ b/arch/arm/dts/Makefile
+@@ -544,6 +544,7 @@
+ 	sun8i-h3-zeropi.dtb
+ dtb-$(CONFIG_MACH_SUN8I_R40) += \
+ 	sun8i-r40-bananapi-m2-ultra.dtb \
++	sun8i-r40-tlink-ok-a40i.dtb \
+ 	sun8i-v40-bananapi-m2-berry.dtb
+ dtb-$(CONFIG_MACH_SUN8I_V3S) += \
+ 	sun8i-v3s-licheepi-zero.dtb
+--- /dev/null
++++ b/arch/arm/dts/sun8i-r40-tlink-ok-a40i.dts
+@@ -0,0 +1,269 @@
++/*
++ * Copyright (C) 2020 Dirk Chang <dirk@kooiot.com>
++ *
++ */
++
++/dts-v1/;
++#include "sun8i-r40.dtsi"
++
++#include <dt-bindings/gpio/gpio.h>
++
++/ {
++	model = "ThingsLink OK-A40i";
++	compatible = "kooiot,tlink-ok-a40i", "allwinner,sun8i-r40";
++
++	aliases {
++		ethernet0 = &emac;
++		serial0 = &uart0;
++	};
++
++	chosen {
++		stdout-path = "serial0:115200n8";
++	};
++
++	connector {
++		compatible = "hdmi-connector";
++		type = "a";
++
++		port {
++			hdmi_con_in: endpoint {
++				remote-endpoint = <&hdmi_out_con>;
++			};
++		};
++	};
++
++	leds {
++		compatible = "gpio-leds";
++
++		pwr-led {
++			label = "red:pwr";
++			gpios = <&pio 8 14 GPIO_ACTIVE_HIGH>; /* PI14 */
++			default-state = "on";
++		};
++
++		user-led-blue {
++			label = "blue:user";
++			gpios = <&pio 8 15 GPIO_ACTIVE_HIGH>; /* PI15 */
++		};
++	};
++
++	reg_vcc5v0: vcc5v0 {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc5v0";
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++		gpio = <&pio 8 13 GPIO_ACTIVE_HIGH>; /* PI13 */
++		enable-active-high;
++	};
++
++	wifi_pwrseq: wifi_pwrseq {
++		compatible = "mmc-pwrseq-simple";
++		reset-gpios = <&pio 1 10 GPIO_ACTIVE_LOW>; /* PB10 WIFI_EN */
++		clocks = <&ccu CLK_OUTA>;
++		clock-names = "ext_clock";
++	};
++};
++
++&ahci {
++	ahci-supply = <&reg_dldo4>;
++	phy-supply = <&reg_eldo2>;
++	status = "okay";
++};
++
++&de {
++	status = "okay";
++};
++
++&ehci1 {
++	status = "okay";
++};
++
++&ehci2 {
++	status = "okay";
++};
++
++&gmac {
++	pinctrl-names = "default";
++	pinctrl-0 = <&gmac_mii_pins>;
++	phy-handle = <&phy1>;
++	phy-mode = "mii";
++	phy-supply = <&reg_dcdc1>;
++	status = "okay";
++};
++
++&gmac_mdio {
++	snps,reset-gpio = <&pio 7 22 GPIO_ACTIVE_LOW>; /* PH22 */
++	phy1: ethernet-phy@1 {
++		compatible = "ethernet-phy-ieee802.3-c22";
++		reg = <1>;
++	};
++};
++
++&hdmi {
++	status = "okay";
++};
++
++&hdmi_out {
++	hdmi_out_con: endpoint {
++		remote-endpoint = <&hdmi_con_in>;
++	};
++};
++
++&i2c0 {
++	status = "okay";
++
++	axp22x: pmic@34 {
++		compatible = "x-powers,axp221";
++		reg = <0x34>;
++		interrupt-parent = <&nmi_intc>;
++		interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
++	};
++};
++
++#include "axp22x.dtsi"
++
++&mmc0 {
++	vmmc-supply = <&reg_dcdc1>;
++	vqmmc-supply = <&reg_dcdc1>;
++	vdmmc-supply = <&reg_dcdc1>;
++	bus-width = <4>;
++	cd-gpios = <&pio 8 11 GPIO_ACTIVE_LOW>; /* PI11 */
++	status = "okay";
++};
++
++&mmc2 {
++	vmmc-supply = <&reg_dcdc1>;
++	vqmmc-supply = <&reg_aldo2>;
++	bus-width = <8>;
++	non-removable;
++	status = "okay";
++};
++
++&ohci1 {
++	status = "okay";
++};
++
++&ohci2 {
++	status = "okay";
++};
++
++&pio {
++	pinctrl-names = "default";
++	pinctrl-0 = <&clk_out_a_pin>;
++};
++
++&reg_aldo1 {
++	regulator-always-on;
++	regulator-min-microvolt = <3300000>;
++	regulator-max-microvolt = <3300000>;
++	regulator-name = "vcc-tvin";
++};
++
++&reg_aldo2 {
++	regulator-always-on;
++	regulator-min-microvolt = <1800000>;
++	regulator-max-microvolt = <1800000>;
++	regulator-name = "vcc-pc";
++};
++
++&reg_aldo3 {
++	regulator-always-on;
++	regulator-min-microvolt = <3000000>;
++	regulator-max-microvolt = <3000000>;
++	regulator-name = "avcc";
++};
++
++&reg_dc1sw {
++	regulator-min-microvolt = <3300000>;
++	regulator-max-microvolt = <3300000>;
++	regulator-name = "vcc-emac-phy";
++};
++
++&reg_dcdc1 {
++	regulator-always-on;
++	regulator-min-microvolt = <3300000>;
++	regulator-max-microvolt = <3300000>;
++	regulator-name = "vcc-3v3";
++};
++
++&reg_dcdc2 {
++	regulator-always-on;
++	regulator-min-microvolt = <1000000>;
++	regulator-max-microvolt = <1300000>;
++	regulator-name = "vdd-cpu";
++};
++
++&reg_dcdc3 {
++	regulator-always-on;
++	regulator-min-microvolt = <1000000>;
++	regulator-max-microvolt = <1300000>;
++	regulator-name = "vdd-sys";
++};
++
++&reg_dcdc5 {
++	regulator-always-on;
++	regulator-min-microvolt = <1500000>;
++	regulator-max-microvolt = <1500000>;
++	regulator-name = "vcc-dram";
++};
++
++&reg_dldo1 {
++	regulator-min-microvolt = <3300000>;
++	regulator-max-microvolt = <3300000>;
++	regulator-name = "vcc-wifi-io";
++};
++
++&reg_dldo2 {
++	regulator-min-microvolt = <3300000>;
++	regulator-max-microvolt = <3300000>;
++	regulator-name = "vcc-wifi";
++};
++
++&reg_dldo3 {
++	regulator-min-microvolt = <3300000>;
++	regulator-max-microvolt = <3300000>;
++	regulator-name = "vcc-wifi-2";
++};
++
++&reg_dldo4 {
++	regulator-min-microvolt = <2500000>;
++	regulator-max-microvolt = <2500000>;
++	regulator-name = "vdd2v5-sata";
++};
++
++&reg_eldo2 {
++	regulator-min-microvolt = <1200000>;
++	regulator-max-microvolt = <1200000>;
++	regulator-name = "vdd1v2-sata";
++};
++
++&reg_eldo3 {
++	regulator-always-on;
++	regulator-min-microvolt = <2800000>;
++	regulator-max-microvolt = <2800000>;
++	regulator-name = "vcc-pe";
++};
++
++&tcon_tv0 {
++	status = "okay";
++};
++
++&uart0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&uart0_pb_pins>;
++	status = "okay";
++};
++
++&uart3 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&uart3_pg_pins>, <&uart3_rts_cts_pg_pins>;
++	uart-has-rtscts;
++	status = "okay";
++};
++
++&usbphy {
++	usb0_id_det-gpios = <&pio 7 21 GPIO_ACTIVE_HIGH>; /* PH21 */
++	usb0_vbus_det-gpios = <&pio 7 17 GPIO_ACTIVE_HIGH>; /* PH17 */
++	usb0_vbus-supply = <&reg_vcc5v0>;
++	status = "okay";
++};

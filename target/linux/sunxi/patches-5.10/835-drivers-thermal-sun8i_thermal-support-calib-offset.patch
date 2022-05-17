@@ -1,0 +1,69 @@
+--- a/drivers/thermal/sun8i_thermal.c	2021-11-26 17:39:22.000000000 +0800
++++ b/drivers/thermal/sun8i_thermal.c	2021-12-24 13:55:50.647360211 +0800
+@@ -19,6 +19,7 @@
+ #include <linux/reset.h>
+ #include <linux/slab.h>
+ #include <linux/thermal.h>
++#include <linux/of.h>
+ 
+ #include "thermal_hwmon.h"
+ 
+@@ -216,6 +217,49 @@
+ 	return 0;
+ }
+ 
++static int sun8i_r40_ths_calibrate(struct ths_device *tmdev,
++				  u16 *caldata, int callen)
++{
++	int i;
++	u32 ret;
++	s32 offset;
++	struct device_node *of_node = tmdev->dev->of_node;
++
++	pr_info("%s: caldata[0]:%08x caldata[1]:%08x\n", __func__, caldata[0], caldata[1]);
++	pr_info("%s: caldata[0]:%u caldata[1]:%u\n", __func__, caldata[0], caldata[1]);
++
++	regmap_read(tmdev->regmap, SUN8I_THS_TEMP_CALIB, &ret);
++	pr_info("%s: ret:%x\n", __func__, ret);
++
++	
++	if (of_property_read_s32(of_node, "allwinner,calib-offset", &offset)) {
++		pr_info("%s: calib offset not exists at :%pOF\n", __func__, of_node);
++	} else {
++		pr_info("%s: calib offset %d at :%pOF\n", __func__, offset, of_node);
++		caldata[0] += offset;
++		caldata[1] += offset;
++	}
++
++	if (callen < 2 * tmdev->chip->sensor_num)
++		return -EINVAL;
++
++	for (i = 0; i < tmdev->chip->sensor_num; i++) {
++		if (caldata[i] == 0)
++			continue;
++		int offset = (i % 2) << 4;
++
++		regmap_update_bits(tmdev->regmap,
++				   SUN8I_THS_TEMP_CALIB + (4 * (i >> 1)),
++				   0xfff << offset,
++				   caldata[i] << offset);
++	}
++
++	regmap_read(tmdev->regmap, SUN8I_THS_TEMP_CALIB, &ret);
++	pr_info("%s: ret:%x\n", __func__, ret);
++
++	return 0;
++}
++
+ static int sun50i_h6_ths_calibrate(struct ths_device *tmdev,
+ 				   u16 *caldata, int callen)
+ {
+@@ -571,7 +615,7 @@
+ 	.has_mod_clk = true,
+ 	.has_bus_clk_reset = true,
+ 	.temp_data_base = SUN8I_THS_TEMP_DATA,
+-	.calibrate = sun8i_h3_ths_calibrate,
++	.calibrate = sun8i_r40_ths_calibrate,
+ 	.init = sun8i_h3_thermal_init,
+ 	.irq_ack = sun8i_h3_irq_ack,
+ 	.calc_temp = sun8i_ths_calc_temp,

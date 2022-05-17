@@ -1,0 +1,145 @@
+diff -uNra a/arch/arm/dts/Makefile b/arch/arm/dts/Makefile
+--- a/arch/arm/dts/Makefile	2021-12-08 11:00:23.681069991 +0800
++++ b/arch/arm/dts/Makefile	2021-12-08 11:12:04.977978422 +0800
+@@ -510,6 +510,8 @@
+ 	sun8i-r16-bananapi-m2m.dtb \
+ 	sun8i-r16-nintendo-nes-classic-edition.dtb \
+ 	sun8i-r16-parrot.dtb
++dtb-$(CONFIG_MACH_SUN8I_X3) += \
++	sun8i-x3-tlink-x3.dtb
+ dtb-$(CONFIG_MACH_SUN8I_A83T) += \
+ 	sun8i-a83t-allwinner-h8homlet-v2.dtb \
+ 	sun8i-a83t-bananapi-m3.dtb \
+diff -uNra a/configs/tlink_x3_defconfig b/configs/tlink_x3_defconfig
+--- a/configs/tlink_x3_defconfig	1970-01-01 08:00:00.000000000 +0800
++++ b/configs/tlink_x3_defconfig	2021-12-06 18:52:32.444015720 +0800
+@@ -0,0 +1,16 @@
++CONFIG_ARM=y
++CONFIG_ARCH_SUNXI=y
++CONFIG_SPL=y
++CONFIG_MACH_SUN8I_A33=y
++CONFIG_MACH_SUN8I_X3=y
++# CONFIG_SUNXI_DRAM_DDR3_1333=y
++CONFIG_DRAM_CLK=400
++CONFIG_DRAM_ZQ=15291
++CONFIG_DRAM_ODT_EN=y
++CONFIG_NR_DRAM_BANKS=1
++// CONFIG_MMC0_CD_PIN="PL9"
++CONFIG_MMC_SUNXI_SLOT_EXTRA=2
++# CONFIG_I2C0_ENABLE=y
++CONFIG_DEFAULT_DEVICE_TREE="sun8i-x3-tlink-x3"
++CONFIG_SUNXI_NO_PMIC=y
++# CONFIG_NETDEVICES is not set
+diff -uNra a/arch/arm/dts/sun8i-x3-tlink-x3.dts b/arch/arm/dts/sun8i-x3-tlink-x3.dts
+--- a/arch/arm/dts/sun8i-x3-tlink-x3.dts	1970-01-01 08:00:00.000000000 +0800
++++ b/arch/arm/dts/sun8i-x3-tlink-x3.dts	2021-12-06 19:07:48.356680975 +0800
+@@ -0,0 +1,109 @@
++/*
++ * Copyright 2021 Dirk Chang <dirk@kooiot.com>
++ */
++
++/dts-v1/;
++#include "sun8i-a33.dtsi"
++#include "sunxi-common-regulators.dtsi"
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/input/input.h>
++#include <dt-bindings/pinctrl/sun4i-a10.h>
++
++/ {
++	model = "ThingsLink X3";
++	compatible = "kooiot,tlink-x3", "allwinner,sun8i-a33";
++
++	aliases {
++		serial0 = &uart0;
++	};
++
++	chosen {
++		stdout-path = "serial0:115200n8";
++	};
++
++	reg_vcc1v1: vcc1v1 {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc1v1";
++		regulator-min-microvolt = <1100000>;
++		regulator-max-microvolt = <1100000>;
++	};
++};
++
++&cpu0 {
++	cpu-supply = <&reg_vcc1v1>;
++};
++
++&cpu0_opp_table {
++	opp-1104000000 {
++		opp-hz = /bits/ 64 <1104000000>;
++		opp-microvolt = <1320000>;
++		clock-latency-ns = <244144>; /* 8 32k periods */
++	};
++
++	opp-1200000000 {
++		opp-hz = /bits/ 64 <1200000000>;
++		opp-microvolt = <1320000>;
++		clock-latency-ns = <244144>; /* 8 32k periods */
++	};
++};
++
++&mmc0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&mmc0_pins_a>; //, <&mmc0_cd_pin_tlink>;
++	vmmc-supply = <&reg_vcc3v0>;
++	bus-width = <4>;
++	broken-cd;
++	// cd-gpios = <&r_pio 9 9 GPIO_ACTIVE_LOW>; /* PL9 */
++	status = "okay";
++};
++
++&mmc2 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&mmc2_8bit_pins>;
++	vmmc-supply = <&reg_vcc3v0>;
++	bus-width = <8>;
++	non-removable;
++	cap-mmc-hw-reset;
++	status = "okay";
++};
++
++&mmc2_8bit_pins {
++	/* Increase drive strength for DDR modes */
++	drive-strength = <40>;
++	/* eMMC is missing pull-ups */
++	// bias-pull-up;
++};
++/*
++&r_pio {
++	mmc0_cd_pin_tlink: mmc0_cd_pin@0 {
++		pins = "PL9";
++		function = "gpio_in";
++		bias-pull-up;
++	};
++};
++*/
++
++&ohci0 {
++	status = "okay";
++};
++
++&ehci0 {
++	status = "okay";
++};
++
++&uart0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&uart0_pins_b>;
++	status = "okay";
++};
++
++&usb_otg {
++	dr_mode = "host";
++	status = "okay";
++};
++
++&usbphy {
++	status = "okay";
++	usb1_vbus-supply = <&reg_vcc5v0>; /* USB1 VBUS is always on */
++};

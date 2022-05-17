@@ -42,7 +42,7 @@ I2C_RALINK_MODULES:= \
   CONFIG_I2C_RALINK:drivers/i2c/busses/i2c-ralink
 
 define KernelPackage/i2c-ralink
-  $(call i2c_defaults,$(I2C_RALINK_MODULES),59)
+  $(call i2c_defaults,$(I2C_RALINK_MODULES),59,1)
   TITLE:=Ralink I2C Controller
   DEPENDS:=+kmod-i2c-core @TARGET_ramips \
 	@!(TARGET_ramips_mt7621||TARGET_ramips_mt76x8)
@@ -59,7 +59,7 @@ I2C_MT7621_MODULES:= \
   CONFIG_I2C_MT7621:drivers/i2c/busses/i2c-mt7621
 
 define KernelPackage/i2c-mt7628
-  $(call i2c_defaults,$(I2C_MT7621_MODULES),59)
+  $(call i2c_defaults,$(I2C_MT7621_MODULES),59,1)
   TITLE:=MT7628/88 I2C Controller
   DEPENDS:=+kmod-i2c-core \
 	@(TARGET_ramips_mt76x8)
@@ -133,3 +133,18 @@ define KernelPackage/sound-mt7620/description
 endef
 
 $(eval $(call KernelPackage,sound-mt7620))
+
+define KernelPackage/gpio-mt7628-misc
+  SUBMENU:=Other modules
+  TITLE:=MediaTek MT7628 SOC GPIO Misc
+  DEPENDS:=@TARGET_ramips @GPIO_SUPPORT
+  KCONFIG:= CONFIG_GPIO_MT7628_MISC
+  FILES:= $(LINUX_DIR)/drivers/gpio/gpio-mt7628-misc.ko
+  AUTOLOAD:=$(call AutoLoad,gpio-mt7628-misc)
+endef
+
+define KernelPackage/gpio-mt7628-misc/description
+ Kernel modules for enable MediaTek MT7628 SOC GPIO misc support.
+endef
+
+$(eval $(call KernelPackage,gpio-mt7628-misc))

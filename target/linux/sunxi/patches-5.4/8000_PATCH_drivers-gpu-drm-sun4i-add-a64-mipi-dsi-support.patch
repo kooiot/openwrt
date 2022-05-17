@@ -1,0 +1,239 @@
+diff --git a/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c b/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c
+index c958ca9bae63..68b88a3dc4c5 100644
+--- a/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c
++++ b/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c
+@@ -1120,10 +1120,13 @@  static int sun6i_dsi_probe(struct platform_device *pdev)
+ 		return PTR_ERR(dsi->reset);
+ 	}
+ 
+-	dsi->mod_clk = devm_clk_get(dev, "mod");
+-	if (IS_ERR(dsi->mod_clk)) {
+-		dev_err(dev, "Couldn't get the DSI mod clock\n");
+-		return PTR_ERR(dsi->mod_clk);
++	if (of_device_is_compatible(dev->of_node,
++				    "allwinner,sun6i-a31-mipi-dsi")) {
++		dsi->mod_clk = devm_clk_get(dev, "mod");
++		if (IS_ERR(dsi->mod_clk)) {
++			dev_err(dev, "Couldn't get the DSI mod clock\n");
++			return PTR_ERR(dsi->mod_clk);
++		}
+ 	}
+ 
+ 	/*
+diff --git a/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c b/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c
+index 68b88a3dc4c5..2577b237d06a 100644
+--- a/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c
++++ b/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c
+@@ -1081,6 +1081,7 @@  static const struct component_ops sun6i_dsi_ops = {
+ static int sun6i_dsi_probe(struct platform_device *pdev)
+ {
+ 	struct device *dev = &pdev->dev;
++	const char *bus_clk_name = NULL;
+ 	struct sun6i_dsi *dsi;
+ 	struct resource *res;
+ 	void __iomem *base;
+@@ -1094,6 +1095,10 @@  static int sun6i_dsi_probe(struct platform_device *pdev)
+ 	dsi->host.ops = &sun6i_dsi_host_ops;
+ 	dsi->host.dev = dev;
+ 
++	if (of_device_is_compatible(dev->of_node,
++				    "allwinner,sun6i-a31-mipi-dsi"))
++		bus_clk_name = "bus";
++
+ 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+ 	base = devm_ioremap_resource(dev, res);
+ 	if (IS_ERR(base)) {
+@@ -1107,25 +1112,35 @@  static int sun6i_dsi_probe(struct platform_device *pdev)
+ 		return PTR_ERR(dsi->regulator);
+ 	}
+ 
+-	dsi->regs = devm_regmap_init_mmio_clk(dev, "bus", base,
+-					      &sun6i_dsi_regmap_config);
+-	if (IS_ERR(dsi->regs)) {
+-		dev_err(dev, "Couldn't create the DSI encoder regmap\n");
+-		return PTR_ERR(dsi->regs);
+-	}
+-
+ 	dsi->reset = devm_reset_control_get_shared(dev, NULL);
+ 	if (IS_ERR(dsi->reset)) {
+ 		dev_err(dev, "Couldn't get our reset line\n");
+ 		return PTR_ERR(dsi->reset);
+ 	}
+ 
++	dsi->regs = devm_regmap_init_mmio(dev, base, &sun6i_dsi_regmap_config);
++	if (IS_ERR(dsi->regs)) {
++		dev_err(dev, "Couldn't init regmap\n");
++		return PTR_ERR(dsi->regs);
++	}
++
++	dsi->bus_clk = devm_clk_get(dev, bus_clk_name);
++	if (IS_ERR(dsi->bus_clk)) {
++		dev_err(dev, "Couldn't get the DSI bus clock\n");
++		return PTR_ERR(dsi->bus_clk);
++	} else {
++		ret = regmap_mmio_attach_clk(dsi->regs, dsi->bus_clk);
++		if (ret)
++			return ret;
++	}
++
+ 	if (of_device_is_compatible(dev->of_node,
+ 				    "allwinner,sun6i-a31-mipi-dsi")) {
+ 		dsi->mod_clk = devm_clk_get(dev, "mod");
+ 		if (IS_ERR(dsi->mod_clk)) {
+ 			dev_err(dev, "Couldn't get the DSI mod clock\n");
+-			return PTR_ERR(dsi->mod_clk);
++			ret = PTR_ERR(dsi->mod_clk);
++			goto err_attach_clk;
+ 		}
+ 	}
+ 
+@@ -1164,6 +1179,9 @@  static int sun6i_dsi_probe(struct platform_device *pdev)
+ 	pm_runtime_disable(dev);
+ err_unprotect_clk:
+ 	clk_rate_exclusive_put(dsi->mod_clk);
++err_attach_clk:
++	if (!IS_ERR(dsi->bus_clk))
++		regmap_mmio_detach_clk(dsi->regs);
+ 	return ret;
+ }
+ 
+@@ -1177,6 +1195,9 @@  static int sun6i_dsi_remove(struct platform_device *pdev)
+ 	pm_runtime_disable(dev);
+ 	clk_rate_exclusive_put(dsi->mod_clk);
+ 
++	if (!IS_ERR(dsi->bus_clk))
++		regmap_mmio_detach_clk(dsi->regs);
++
+ 	return 0;
+ }
+ 
+diff --git a/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c b/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c
+index 2577b237d06a..4a024951aa11 100644
+--- a/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c
++++ b/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c
+@@ -1256,6 +1256,7 @@  static const struct dev_pm_ops sun6i_dsi_pm_ops = {
+ 
+ static const struct of_device_id sun6i_dsi_of_table[] = {
+ 	{ .compatible = "allwinner,sun6i-a31-mipi-dsi" },
++	{ .compatible = "allwinner,sun50i-a64-mipi-dsi" },
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(of, sun6i_dsi_of_table);
+diff --git a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
+index 27e48234f1c2..1db8378f59a4 100644
+--- a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
++++ b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
+@@ -382,6 +382,12 @@
+ 					#address-cells = <1>;
+ 					#size-cells = <0>;
+ 					reg = <1>;
++
++					tcon0_out_dsi: endpoint@1 {
++						reg = <1>;
++						remote-endpoint = <&dsi_in_tcon0>;
++						allwinner,tcon-channel = <1>;
++					};
+ 				};
+ 			};
+ 		};
+@@ -1014,6 +1020,37 @@
+ 			status = "disabled";
+ 		};
+
++		dsi: dsi@1ca0000 {
++			compatible = "allwinner,sun50i-a64-mipi-dsi";
++			reg = <0x01ca0000 0x1000>;
++			interrupts = <GIC_SPI 89 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&ccu CLK_BUS_MIPI_DSI>;
++			resets = <&ccu RST_BUS_MIPI_DSI>;
++			phys = <&dphy>;
++			phy-names = "dphy";
++			status = "disabled";
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			port {
++				dsi_in_tcon0: endpoint {
++					remote-endpoint = <&tcon0_out_dsi>;
++				};
++			};
++		};
++
++		dphy: d-phy@1ca1000 {
++			compatible = "allwinner,sun50i-a64-mipi-dphy",
++				     "allwinner,sun6i-a31-mipi-dphy";
++			reg = <0x01ca1000 0x1000>;
++			clocks = <&ccu CLK_BUS_MIPI_DSI>,
++				 <&ccu CLK_DSI_DPHY>;
++			clock-names = "bus", "mod";
++			resets = <&ccu RST_BUS_MIPI_DSI>;
++			status = "disabled";
++			#phy-cells = <0>;
++		};
++
+ 		hdmi: hdmi@1ee0000 {
+ 			compatible = "allwinner,sun50i-a64-dw-hdmi",
+ 				     "allwinner,sun8i-a83t-dw-hdmi";
+diff --git a/arch/arm64/boot/dts/allwinner/sun50i-a64-bananapi-m64.dts b/arch/arm64/boot/dts/allwinner/sun50i-a64-bananapi-m64.dts
+index 208373efee49..6beaecdd802a 100644
+--- a/arch/arm64/boot/dts/allwinner/sun50i-a64-bananapi-m64.dts
++++ b/arch/arm64/boot/dts/allwinner/sun50i-a64-bananapi-m64.dts
+@@ -45,6 +45,7 @@ 
+ #include "sun50i-a64.dtsi"
+ 
+ #include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/pwm/pwm.h>
+ 
+ / {
+ 	model = "BananaPi-M64";
+@@ -56,6 +57,14 @@ 
+ 		serial1 = &uart1;
+ 	};
+ 
++	backlight: backlight {
++		compatible = "pwm-backlight";
++		pwms = <&r_pwm 0 50000 PWM_POLARITY_INVERTED>;
++		brightness-levels = <1 2 4 8 16 32 64 128 255>;
++		default-brightness-level = <2>;
++		enable-gpios = <&pio 3 5 GPIO_ACTIVE_HIGH>; /* LCD-BL-EN: PD5 */
++	};
++
+ 	chosen {
+ 		stdout-path = "serial0:115200n8";
+ 	};
+@@ -116,6 +125,24 @@ 
+ 	status = "okay";
+ };
+ 
++&dphy {
++	status = "okay";
++};
++
++&dsi {
++	vcc-dsi-supply = <&reg_dldo1>;		/* VCC3V3-DSI */
++	status = "okay";
++
++	panel@0 {
++		compatible = "bananapi,s070wv20-ct16-icn6211";
++		reg = <0>;
++		enable-gpios = <&pio 3 7 GPIO_ACTIVE_HIGH>; /* LCD-PWR-EN: PD7 */
++		reset-gpios = <&pio 3 6 GPIO_ACTIVE_HIGH>; /* LCD-RST: PD6 */
++		vdd-supply = <&reg_dcdc1>;
++		backlight = <&backlight>;
++	};
++};
++
+ &ehci0 {
+ 	status = "okay";
+ };
+@@ -206,6 +233,10 @@ 
+ 	status = "okay";
+ };
+ 
++&r_pwm {
++	status = "okay";
++};
++
+ &r_rsb {
+ 	status = "okay";
+ 

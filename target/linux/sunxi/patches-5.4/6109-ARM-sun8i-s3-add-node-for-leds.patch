@@ -1,0 +1,44 @@
+From 154b28e1d3f649b7f734dc0474430899e8a50a5a Mon Sep 17 00:00:00 2001
+From: greedyhao <hao_kr@163.com>
+Date: Tue, 10 Sep 2019 15:42:39 +0800
+Subject: [PATCH 6109/6117] ARM:sun8i:s3:add node for leds
+
+---
+ .../boot/dts/sun8i-s3-lichee-zero-plus.dts    | 21 +++++++++++++++++++
+ 1 file changed, 21 insertions(+)
+
+diff --git a/arch/arm/boot/dts/sun8i-s3-lichee-zero-plus.dts b/arch/arm/boot/dts/sun8i-s3-lichee-zero-plus.dts
+index 9255f1e067a0..6f92335bb373 100644
+--- a/arch/arm/boot/dts/sun8i-s3-lichee-zero-plus.dts
++++ b/arch/arm/boot/dts/sun8i-s3-lichee-zero-plus.dts
+@@ -22,6 +22,27 @@
+ 		stdout-path = "serial0:115200n8";
+ 	};
+ 
++	leds {
++		compatible = "gpio-leds";
++		status = "disabled";
++
++		blue_led {
++			label = "licheepi:blue:usr";
++			gpios = <&pio 4 4 GPIO_ACTIVE_LOW>; /* PE4 */
++		};
++
++		green_led {
++			label = "licheepi:green:usr";
++			gpios = <&pio 4 7 GPIO_ACTIVE_LOW>; /* PE7 */
++			default-state = "on";
++		};
++
++		red_led {
++			label = "licheepi:red:usr";
++			gpios = <&pio 4 8 GPIO_ACTIVE_LOW>; /* PE8 */
++		};
++	};
++
+ 	reg_vcc3v3: vcc3v3 {
+ 		compatible = "regulator-fixed";
+ 		regulator-name = "vcc3v3";
+-- 
+2.30.2
+

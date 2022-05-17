@@ -534,6 +534,9 @@ static int gpio_keys_button_probe(struct platform_device *pdev,
 			bdata->gpiod = devm_gpiod_get_from_of_node(dev,
 				child, "gpios", 0, GPIOD_IN, desc);
 
+			// Correct the gpio which used for log
+			button->gpio = desc_to_gpio(bdata->gpiod);
+
 			prev = child;
 		}
 
@@ -602,8 +605,8 @@ static int gpio_keys_probe(struct platform_device *pdev)
 		if (!button->irq) {
 			bdata->irq = gpiod_to_irq(bdata->gpiod);
 			if (bdata->irq < 0) {
-				dev_err(&pdev->dev, "failed to get irq for gpio:%d\n",
-					button->gpio);
+				dev_err(&pdev->dev, "failed to get irq for gpio:%d error:%d\n",
+					button->gpio, bdata->irq);
 				continue;
 			}
 
@@ -620,8 +623,8 @@ static int gpio_keys_probe(struct platform_device *pdev)
 			irqflags, dev_name(&pdev->dev), bdata);
 		if (ret < 0) {
 			bdata->irq = 0;
-			dev_err(&pdev->dev, "failed to request irq:%d for gpio:%d\n",
-				bdata->irq, button->gpio);
+			dev_err(&pdev->dev, "failed to request irq:%d for gpio:%d error:%d\n",
+				bdata->irq, button->gpio, ret);
 			continue;
 		} else {
 			dev_dbg(&pdev->dev, "gpio:%d has irq:%d\n",

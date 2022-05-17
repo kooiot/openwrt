@@ -1,0 +1,66 @@
+diff --git a/drivers/thermal/sun8i_thermal.c b/drivers/thermal/sun8i_thermal.c
+index 23a5f4aa4be4..c5661d7c3e20 100644
+--- a/drivers/thermal/sun8i_thermal.c
++++ b/drivers/thermal/sun8i_thermal.c
+@@ -565,7 +565,7 @@  static const struct ths_thermal_chip sun8i_h3_ths = {
+ };
+ 
+ static const struct ths_thermal_chip sun8i_r40_ths = {
+-	.sensor_num = 3,
++	.sensor_num = 2,
+ 	.offset = 251086,
+ 	.scale = 1130,
+ 	.has_mod_clk = true,
+diff --git a/arch/arm/boot/dts/sun8i-r40.dtsi b/arch/arm/boot/dts/sun8i-r40.dtsi
+index 421dfbbfd7ee..8ccda5cb873f 100644
+--- a/arch/arm/boot/dts/sun8i-r40.dtsi
++++ b/arch/arm/boot/dts/sun8i-r40.dtsi
+@@ -46,6 +46,7 @@ 
+ #include <dt-bindings/clock/sun8i-r40-ccu.h>
+ #include <dt-bindings/reset/sun8i-r40-ccu.h>
+ #include <dt-bindings/reset/sun8i-de2.h>
++#include <dt-bindings/thermal/thermal.h>
+ 
+ / {
+ 	#address-cells = <1>;
+@@ -109,6 +110,22 @@ 
+ 		status = "disabled";
+ 	};
+ 
++	thermal-zones {
++		cpu_thermal: cpu0-thermal {
++			/* milliseconds */
++			polling-delay-passive = <0>;
++			polling-delay = <0>;
++			thermal-sensors = <&ths 0>;
++		};
++
++		gpu_thermal: gpu-thermal {
++			/* milliseconds */
++			polling-delay-passive = <0>;
++			polling-delay = <0>;
++			thermal-sensors = <&ths 1>;
++		};
++	};
++
+ 	soc {
+ 		compatible = "simple-bus";
+ 		#address-cells = <1>;
+@@ -421,6 +438,17 @@ 
+ 			clocks = <&osc24M>;
+ 		};
+ 
++		ths: thermal-sensor@1c24c00 {
++			compatible = "allwinner,sun8i-r40-ths";
++			reg = <0x01c24c00 0x100>;
++			clocks = <&ccu CLK_BUS_THS>, <&ccu CLK_THS>;
++			clock-names = "bus", "mod";
++			interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>;
++			resets = <&ccu RST_BUS_THS>;
++			/* TODO: add nvmem-cells for calibration */
++			#thermal-sensor-cells = <1>;
++		};
++
+ 		uart0: serial@1c28000 {
+ 			compatible = "snps,dw-apb-uart";
+ 			reg = <0x01c28000 0x400>;

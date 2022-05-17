@@ -1,0 +1,85 @@
+--- a/drivers/net/usb/asix_devices.c
++++ b/drivers/net/usb/asix_devices.c
+@@ -8,6 +8,9 @@
+  */
+ 
+ #include "asix.h"
++#ifdef CONFIG_MACH_SUN8I
++#include <linux/nvmem-consumer.h>
++#endif
+ 
+ #define PHY_MODE_MARVELL	0x0000
+ #define MII_MARVELL_LED_CTRL	0x0018
+@@ -674,6 +677,55 @@
+ 	return usbnet_resume(intf);
+ }
+ 
++#ifdef CONFIG_MACH_SUN8I
++/**
++ * Generate mac address from chipid as what u-boot does
++ */
++static int eth_hw_addr_nvmem_sun8i_chipid(struct device* dev, u8* buf)
++{
++	static u8 offset = 0;
++	struct nvmem_cell *cell;
++	ssize_t cell_size;
++	u32 *chipid;
++
++	dev_info(dev, "%s: usb device of_node:%pOF offset:%d\n", __func__, dev->of_node, offset);
++
++	cell = devm_nvmem_cell_get(dev, "chipid");
++	if (IS_ERR(cell)) {
++		dev_info(dev, "Failed to get chipid nvmem cell. %ld\n", (long)cell);
++		return -1;
++	};
++
++	chipid = (u32 *)nvmem_cell_read(cell, &cell_size);
++	devm_nvmem_cell_put(dev, cell);
++	if (cell_size < 16) {
++		kfree(chipid);
++		return -1;
++	}
++
++	dev_info(dev, "Using the MAC address generated from nvmem[chipid].\n");
++	chipid[3] = crc32_be(0, (unsigned char *)&chipid[1], 12) + offset;
++
++	/* Ensure the NIC specific bytes of the mac are not all 0 */
++	if ((chipid[3] & 0xffffff) == 0)
++		chipid[3] |= 0x800000;
++
++	/* Non OUI / registered MAC address */
++	buf[0] = 0xB0;
++	buf[1] = 0xC9;
++	buf[2] = (chipid[3] >> 24) & 0xff;
++	buf[3] = (chipid[3] >> 16) & 0xff;
++	buf[4] = (chipid[3] >>  8) & 0xff;
++	buf[5] = (chipid[3] >>  0) & 0xff;
++
++	kfree(chipid);
++
++	offset++;
++
++	return 0;
++}
++#endif
++
+ static int ax88772_bind(struct usbnet *dev, struct usb_interface *intf)
+ {
+ 	int ret, i;
+@@ -684,9 +736,14 @@
+ 	usbnet_get_endpoints(dev, intf);
+ 
+ 	/* Maybe the boot loader passed the MAC address via device tree */
+-	if (!eth_platform_get_mac_address(&dev->udev->dev, buf)) {
++	ret = eth_platform_get_mac_address(&dev->udev->dev, buf);
++#ifdef CONFIG_MACH_SUN8I
++	if (ret)
++		ret = eth_hw_addr_nvmem_sun8i_chipid(&dev->udev->dev, buf);
++#endif
++	if (!ret) {
+ 		netif_dbg(dev, ifup, dev->net,
+-			  "MAC address read from device tree");
++			  "MAC address read from device tree or chipid");
+ 	} else {
+ 		/* Try getting the MAC address from EEPROM */
+ 		if (dev->driver_info->data & FLAG_EEPROM_MAC) {

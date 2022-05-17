@@ -12,6 +12,18 @@ friendlyarm,nanopi-r1s-h5)
 	ucidef_set_led_netdev "wan" "WAN" "nanopi:green:wan" "eth0"
 	ucidef_set_led_netdev "lan" "LAN" "nanopi:green:lan" "eth1"
 	;;
+kooiot,tlink-x1|\
+kooiot,tlink-x1s|\
+kooiot,tlink-x3|\
+kooiot,tlink-k1|\
+kooiot,tlink-k2|\
+kooiot,tlink-r1)
+	ucidef_set_led_default "power" "power" "kooiot:blue:power" "1"
+	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "wwan0"
+	;;
+kooiot,tlink-s1)
+	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "wwan0"
+	;;
 esac
 
 board_config_flush

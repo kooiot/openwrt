@@ -61,7 +61,7 @@ define KernelPackage/sun4i-emac
   DEPENDS:=@TARGET_sunxi +kmod-of-mdio +kmod-libphy
   KCONFIG:=CONFIG_SUN4I_EMAC
   FILES:=$(LINUX_DIR)/drivers/net/ethernet/allwinner/sun4i-emac.ko
-  AUTOLOAD:=$(call AutoProbe,sun4i-emac)
+  AUTOLOAD:=$(call AutoLoad,50,sun4i-emac,1)
 endef
 
 $(eval $(call KernelPackage,sun4i-emac))
@@ -95,3 +95,60 @@ define KernelPackage/sound-soc-sunxi-spdif/description
 endef
 
 $(eval $(call KernelPackage,sound-soc-sunxi-spdif))
+
+define KernelPackage/usb-otg-sunxi
+  TITLE:=AllWinner built-in SoC USB OTG support
+  KCONFIG:= \
+	  CONFIG_USB_OTG=y \
+	  CONFIG_NOP_USB_XCEIV \
+	  CONFIG_USB_MUSB_HDRC \
+	  CONFIG_USB_MUSB_DUAL_ROLE=y \
+	  CONFIG_USB_MUSB_SUNXI \
+	  CONFIG_MUSB_PIO_ONLY=y
+  FILES:= \
+	  $(LINUX_DIR)/drivers/usb/phy/phy-generic.ko \
+	  $(LINUX_DIR)/drivers/usb/musb/musb_hdrc.ko \
+	  $(LINUX_DIR)/drivers/usb/musb/sunxi.ko
+  AUTOLOAD:=$(call AutoLoad,50,sunxi,1)
+  DEPENDS:=@TARGET_sunxi
+  $(call AddDepends/usb)
+endef
+
+define KernelPackage/usb-otg-sunxi/description
+  Kernel support for AllWinner built-in SoC USB OTG
+endef
+
+$(eval $(call KernelPackage,usb-otg-sunxi))
+
+define KernelPackage/input-touchscreen-goodix
+  SUBMENU:=$(INPUT_MODULES_MENU)
+  TITLE:=Goodix I2C touchscreen
+  KCONFIG:=CONFIG_TOUCHSCREEN_GOODIX
+  DEPENDS:=+kmod-input-evdev +kmod-i2c-core
+  FILES:=$(LINUX_DIR)/drivers/input/touchscreen/goodix.ko \
+	$(LINUX_DIR)/drivers/input/touchscreen/of_touchscreen.ko
+  AUTOLOAD:=$(call AutoProbe,goodix)
+endef
+
+define KernelPackage/input-touchscreen-goodix/description
+ Kernel modules for Goodix I2C touchscreen driver
+endef
+
+$(eval $(call KernelPackage,input-touchscreen-goodix))
+
+define KernelPackage/usb-hub-251xb
+  TITLE:=Support for USB 251XB Hub chips
+  KCONFIG:=CONFIG_USB_HUB_USB251XB
+  DEPENDS:=+kmod-i2c-core
+  FILES:=$(LINUX_DIR)/drivers/usb/misc/usb251xb.ko
+  AUTOLOAD:=$(call AutoLoad,54,usb251xb.ko,1)
+  $(call AddDepends/usb)
+endef
+
+define KernelPackage/usb-hub-251xb/description
+  USB HUB 251XB chips
+endef
+
+$(eval $(call KernelPackage,usb-hub-251xb))
+
+

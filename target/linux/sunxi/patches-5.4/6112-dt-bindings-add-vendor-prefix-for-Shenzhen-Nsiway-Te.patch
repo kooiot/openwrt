@@ -1,0 +1,26 @@
+From f4fc695e3d1df2afc248272e574270c4bf65d1f1 Mon Sep 17 00:00:00 2001
+From: greedyhao <hao_kr@163.com>
+Date: Thu, 12 Sep 2019 07:13:16 +0800
+Subject: [PATCH 6112/6117] dt-bindings: add vendor prefix for Shenzhen Nsiway
+ Techonology Co., Ltd.
+
+---
+ Documentation/devicetree/bindings/vendor-prefixes.yaml | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+index 6992bbbbffab..62297c507d1d 100644
+--- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
++++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+@@ -643,6 +643,8 @@ patternProperties:
+     description: Nordic Semiconductor
+   "^novtech,.*":
+     description: NovTech, Inc.
++  "^nsiway,.*":
++    description: Shenzhen Nsiway Technology Co., Ltd.
+   "^nutsboard,.*":
+     description: NutsBoard
+   "^nuvoton,.*":
+-- 
+2.30.2
+

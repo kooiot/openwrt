@@ -1,0 +1,131 @@
+#!/bin/sh
+
+. /lib/functions.sh
+
+[ "$ACTION" = add ] || [ "$ACTION" = remove ] || exit 0
+
+board=$(board_name)
+
+tlink_m408_xr_usb() {
+	case "$DEVICENAME" in
+		ttyXRUSB0)
+			rm /dev/ttyS5
+			ln -s /dev/$DEVICENAME /dev/ttyS5
+			;;
+		ttyXRUSB1)
+			rm /dev/ttyS6
+			ln -s /dev/$DEVICENAME /dev/ttyS6
+			;;
+		ttyXRUSB2)
+			rm /dev/ttyS7
+			ln -s /dev/$DEVICENAME /dev/ttyS7
+			;;
+		ttyXRUSB3)
+			rm /dev/ttyS8
+			ln -s /dev/$DEVICENAME /dev/ttyS8
+			;;
+	esac
+}
+
+tlink_m416_xr_usb() {
+	case "$DEVICENAME" in
+		ttyXRUSB0)
+			rm /dev/ttyS9
+			ln -s /dev/$DEVICENAME /dev/ttyS9
+			;;
+		ttyXRUSB1)
+			rm /dev/ttyS10
+			ln -s /dev/$DEVICENAME /dev/ttyS10
+			;;
+		ttyXRUSB2)
+			rm /dev/ttyS11
+			ln -s /dev/$DEVICENAME /dev/ttyS11
+			;;
+		ttyXRUSB3)
+			rm /dev/ttyS12
+			ln -s /dev/$DEVICENAME /dev/ttyS12
+			;;
+		ttyXRUSB4)
+			rm /dev/ttyS13
+			ln -s /dev/$DEVICENAME /dev/ttyS13
+			;;
+		ttyXRUSB5)
+			rm /dev/ttyS14
+			ln -s /dev/$DEVICENAME /dev/ttyS14
+			;;
+		ttyXRUSB6)
+			rm /dev/ttyS15
+			ln -s /dev/$DEVICENAME /dev/ttyS15
+			;;
+		ttyXRUSB7)
+			rm /dev/ttyS16
+			ln -s /dev/$DEVICENAME /dev/ttyS16
+			;;
+		ttyXRUSB8)
+			rm /dev/ttyS5
+			ln -s /dev/$DEVICENAME /dev/ttyS5
+			;;
+		ttyXRUSB9)
+			rm /dev/ttyS6
+			ln -s /dev/$DEVICENAME /dev/ttyS6
+			;;
+		ttyXRUSB10)
+			rm /dev/ttyS7
+			ln -s /dev/$DEVICENAME /dev/ttyS7
+			;;
+		ttyXRUSB11)
+			rm /dev/ttyS8
+			ln -s /dev/$DEVICENAME /dev/ttyS8
+			;;
+	esac
+}
+
+tlink_k1_wk_spi() {
+	case "$DEVICENAME" in
+		ttySWK0)
+			rm /dev/ttyS7
+			ln -s /dev/$DEVICENAME /dev/ttyS7
+			;;
+		ttySWK1)
+			rm /dev/ttyS8
+			ln -s /dev/$DEVICENAME /dev/ttyS8
+			;;
+	esac
+}
+
+tlink_k2_wk_spi() {
+	case "$DEVICENAME" in
+		ttySWK0)
+			rm /dev/ttyS7
+			ln -s /dev/$DEVICENAME /dev/ttyS7
+			;;
+		ttySWK1)
+			rm /dev/ttyS8
+			ln -s /dev/$DEVICENAME /dev/ttyS8
+			;;
+		ttySWK2)
+			rm /dev/ttyS9
+			ln -s /dev/$DEVICENAME /dev/ttyS9
+			;;
+		ttySWK3)
+			rm /dev/ttyS8
+			ln -s /dev/$DEVICENAME /dev/ttyS10
+			;;
+	esac
+}
+
+case $board in
+kooiot,tlink-m408)
+	tlink_m408_xr_usb
+	;;
+kooiot,tlink-m416)
+	tlink_m416_xr_usb
+	;;
+kooiot,tlink-k1)
+	tlink_k1_wk_spi
+	;;
+kooiot,tlink-k2)
+	tlink_k2_wk_spi
+	;;
+esac
+

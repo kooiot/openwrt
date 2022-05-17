@@ -1,0 +1,43 @@
+diff --git a/Documentation/devicetree/bindings/dma/allwinner,sun50i-a64-dma.yaml b/Documentation/devicetree/bindings/dma/allwinner,sun50i-a64-dma.yaml
+index 9e53472be194..372679dbd216 100644
+--- a/Documentation/devicetree/bindings/dma/allwinner,sun50i-a64-dma.yaml
++++ b/Documentation/devicetree/bindings/dma/allwinner,sun50i-a64-dma.yaml
+@@ -19,9 +19,12 @@  properties:
+     description: The cell is the request line number.
+ 
+   compatible:
+-    enum:
+-      - allwinner,sun50i-a64-dma
+-      - allwinner,sun50i-h6-dma
++    oneOf:
++      - const: allwinner,sun50i-a64-dma
++      - const: allwinner,sun50i-h6-dma
++      - items:
++          - const: allwinner,sun8i-r40-dma
++          - const: allwinner,sun50i-a64-dma
+ 
+   reg:
+     maxItems: 1
+diff --git a/arch/arm/boot/dts/sun8i-r40.dtsi b/arch/arm/boot/dts/sun8i-r40.dtsi
+index b82031b19893..d481fe7989b8 100644
+--- a/arch/arm/boot/dts/sun8i-r40.dtsi
++++ b/arch/arm/boot/dts/sun8i-r40.dtsi
+@@ -198,6 +198,18 @@  nmi_intc: interrupt-controller@1c00030 {
+ 			interrupts = <GIC_SPI 0 IRQ_TYPE_LEVEL_HIGH>;
+ 		};
+ 
++		dma: dma-controller@1c02000 {
++			compatible = "allwinner,sun8i-r40-dma",
++				     "allwinner,sun50i-a64-dma";
++			reg = <0x01c02000 0x1000>;
++			interrupts = <GIC_SPI 27 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&ccu CLK_BUS_DMA>;
++			dma-channels = <16>;
++			dma-requests = <31>;
++			resets = <&ccu RST_BUS_DMA>;
++			#dma-cells = <1>;
++		};
++
+		mmc0: mmc@1c0f000 {
+			compatible = "allwinner,sun8i-r40-mmc",
+				     "allwinner,sun50i-a64-mmc";
