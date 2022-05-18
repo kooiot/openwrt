@@ -50,6 +50,9 @@ tlink_add_qmi_interface() {
 	uci set network.4g_wan.auth='none'
 	uci set network.4g_wan.pdptype='ipv4'
 	uci commit network
+
+	uci set 3ginfo.@3ginfo[0].device='/dev/ttyUSB2'
+	uci commit 3ginfo
 }
 
 tlink_add_4g_wan() {
