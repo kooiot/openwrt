@@ -521,6 +521,7 @@ define Device/kooiot_tlink-m408
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-serial-xr14xx-usb kmod-can kmod-can-mcp251x \
+	kmod-can-bcm kmod-can-raw ip-full\
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
     tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
@@ -542,6 +543,7 @@ define Device/kooiot_tlink-m416
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-serial-xr14xx-usb kmod-can kmod-can-mcp251x \
+	kmod-can-bcm kmod-can-raw ip-full\
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
     tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
