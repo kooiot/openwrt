@@ -5,10 +5,10 @@
 include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
-PKG_VERSION:=2021.07
+PKG_VERSION:=2022.04
 PKG_RELEASE:=$(AUTORELEASE)
 
-PKG_HASH:=312b7eeae44581d1362c3a3f02c28d806647756c82ba8c72241c7cdbe68ba77e
+PKG_HASH:=68e065413926778e276ec3abd28bb32fa82abaa4a6898d570c1f48fbdb08bcd0
 
 PKG_MAINTAINER:=Tobias Maedel <openwrt@tbspace.de>
 
@@ -68,10 +68,23 @@ define U-Boot/rockpro64-rk3399
   ATF:=rk3399_bl31.elf
 endef
 
+## RK3568 boards
+
+define U-Boot/tlink-rk3568
+  BUILD_SUBTARGET:=armv8
+  NAME:=ThingsLink RK3568
+  BUILD_DEVICES:= \
+    kooiot_tlink-rk3568
+  DEPENDS:=+PACKAGE_u-boot-tlink-rk3568:arm-trusted-firmware-rkbin
+  PKG_BUILD_DEPENDS:=arm-trusted-firmware-rkbin
+  ATF:=rk3568_bl31.elf
+endef
+
 UBOOT_TARGETS := \
   nanopi-r4s-rk3399 \
   rock-pi-4-rk3399 \
   rockpro64-rk3399 \
+  tlink-rk3568 \
   nanopi-r2s-rk3328
 
 UBOOT_CONFIGURE_VARS += USE_PRIVATE_LIBGCC=yes
