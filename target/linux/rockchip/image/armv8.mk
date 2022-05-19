@@ -41,3 +41,12 @@ define Device/radxa_rock-pi-4a
   IMAGE/sysupgrade.img.gz := boot-common | boot-script | pine64-img | gzip | append-metadata
 endef
 TARGET_DEVICES += radxa_rock-pi-4a
+
+define Device/kooiot_tlink-rk3568
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink RK3568
+  SOC := rk3568
+  UBOOT_DEVICE_NAME := tlink-rk3568
+  IMAGE/sysupgrade.img.gz := boot-common | boot-script | pine64-img | gzip | append-metadata
+endef
+TARGET_DEVICES += kooiot_tlink-rk3568
