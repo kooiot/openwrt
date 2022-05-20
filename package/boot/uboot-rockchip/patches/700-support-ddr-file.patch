@@ -5,7 +5,7 @@
  	>$(MKIMAGEOUTPUT) $(if $(KBUILD_VERBOSE:0=), && cat $(MKIMAGEOUTPUT))
 
 +quiet_cmd_mkimage_ddr = MKIMAGE $@
-+cmd_mkimage_ddr = $(objtree)/tools/mkimage $(MKIMAGEFLAGS_$(@F)) -d ${DDR_FILE}:$< $@ \
++cmd_mkimage_ddr = $(objtree)/tools/mkimage $(MKIMAGEFLAGS_$(@F)) -d ${DDR_BLOB}:$< $@ \
 +	>$(MKIMAGEOUTPUT) $(if $(KBUILD_VERBOSE:0=), && cat $(MKIMAGEOUTPUT))
 +
  quiet_cmd_mkfitimage = MKIMAGE $@

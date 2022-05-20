@@ -1,5 +1,5 @@
 --- /dev/null
-+++ b/configs/tlink-rk3568_defconfig
++++ b/configs/tlink-r5_defconfig
 @@ -0,0 +1,59 @@
 +CONFIG_ARM=y
 +CONFIG_SKIP_LOWLEVEL_INIT=y
@@ -8,7 +8,7 @@
 +CONFIG_SPL_LIBCOMMON_SUPPORT=y
 +CONFIG_SPL_LIBGENERIC_SUPPORT=y
 +CONFIG_NR_DRAM_BANKS=2
-+CONFIG_DEFAULT_DEVICE_TREE="rk3568-evb"
++CONFIG_DEFAULT_DEVICE_TREE="rk3568-tlink-r5"
 +CONFIG_ROCKCHIP_RK3568=y
 +CONFIG_SPL_ROCKCHIP_BACK_TO_BROM=y
 +CONFIG_SPL_ROCKCHIP_COMMON_BOARD=y
@@ -23,7 +23,7 @@
 +CONFIG_FIT=y
 +CONFIG_FIT_VERBOSE=y
 +CONFIG_SPL_LOAD_FIT=y
-+CONFIG_DEFAULT_FDT_FILE="rockchip/rk3568-evb.dtb"
++CONFIG_DEFAULT_FDT_FILE="rockchip/rk3568-tlink-r5.dtb"
 +# CONFIG_DISPLAY_CPUINFO is not set
 +CONFIG_DISPLAY_BOARDINFO_LATE=y
 +# CONFIG_SPL_RAW_IMAGE_SUPPORT is not set
@@ -56,24 +56,12 @@
 +CONFIG_PWM_ROCKCHIP=y
 +CONFIG_SPL_RAM=y
 +CONFIG_DM_RESET=y
-+CONFIG_BAUDRATE=115200
++CONFIG_BAUDRATE=1500000
 +CONFIG_DEBUG_UART_SHIFT=2
 +CONFIG_SYSRESET=y
 +CONFIG_ERRNO_STR=y
---- a/arch/arm/dts/Makefile
-+++ b/arch/arm/dts/Makefile
-@@ -161,7 +161,8 @@
- 	rk3399pro-rock-pi-n10.dtb
- 
- dtb-$(CONFIG_ROCKCHIP_RK3568) += \
--	rk3568-evb.dtb
-+	rk3568-evb.dtb \
-+	rk3568-tlink-rk3568.dtb
- 
- dtb-$(CONFIG_ROCKCHIP_RV1108) += \
- 	rv1108-elgin-r1.dtb \
 --- /dev/null
-+++ b/arch/arm/dts/rk3568-tlink-rk3568.dts
++++ b/arch/arm/dts/rk3568-tlink-r5.dts
 @@ -0,0 +1,79 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
@@ -87,11 +75,11 @@
 +#include "rk3568.dtsi"
 +
 +/ {
-+	model = "KooIoT ThingsLink RK3568";
-+	compatible = "kooiot,tlink-rk3568", "rockchip,rk3568";
++	model = "ThingsLink R5";
++	compatible = "kooiot,tlink-r5", "rockchip,rk3568";
 +
 +	chosen: chosen {
-+		stdout-path = "serial2:115200n8";
++		stdout-path = "serial2:1500000n8";
 +	};
 +
 +	dc_12v: dc-12v {

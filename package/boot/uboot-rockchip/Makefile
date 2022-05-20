@@ -70,27 +70,29 @@ endef
 
 ## RK3568 boards
 
-define U-Boot/tlink-rockchip-r5
+define U-Boot/tlink-r5
   BUILD_SUBTARGET:=armv8
-  NAME:=ThingsLink R5 (RK3568)
+  NAME:=ThingsLink R5
   BUILD_DEVICES:= \
-    kooiot_tlink-rockchip-r5
+    kooiot_tlink-r5
   DEPENDS:=+PACKAGE_u-boot-tlink-r5:arm-trusted-firmware-rkbin
   PKG_BUILD_DEPENDS:=arm-trusted-firmware-rkbin
   ATF:=rk3568_bl31.elf
+  DDR_FILE:=rk3568_ddr_1560MHz.bin
 endef
 
 UBOOT_TARGETS := \
   nanopi-r4s-rk3399 \
   rock-pi-4-rk3399 \
   rockpro64-rk3399 \
-  tlink-rockchip-r5 \
+  tlink-r5 \
   nanopi-r2s-rk3328
 
 UBOOT_CONFIGURE_VARS += USE_PRIVATE_LIBGCC=yes
 
 UBOOT_MAKE_FLAGS += \
-  BL31=$(STAGING_DIR_IMAGE)/$(ATF)
+  BL31=$(STAGING_DIR_IMAGE)/$(ATF) \
+  DDR_BLOB=$(STAGING_DIR_IMAGE)/$(DDR_FILE)
 
 define Build/Configure
 	$(call Build/Configure/U-Boot)

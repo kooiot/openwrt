@@ -1,7 +1,7 @@
 new file mode 100644
 index 000000000..fac2db500
 --- /dev/null
-+++ b/arch/arm64/boot/dts/rockchip/rk3568-tlink-rk3568.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3568-tlink-r5.dts
 @@ -0,0 +1,878 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
@@ -17,7 +17,7 @@ index 000000000..fac2db500
 +
 +/ {
 +	model = "ThingsLink R5";
-+	compatible = "kooiot,tlink-rockchip-r5", "rockchip,rk3568";
++	compatible = "kooiot,tlink-r5", "rockchip,rk3568";
 +
 +	aliases {
 +		ethernet0 = &gmac0;
