@@ -28,7 +28,7 @@ index 000000000..fac2db500
 +	};
 +
 +	chosen: chosen {
-+		stdout-path = "serial2:115200n8";
++		stdout-path = "serial2:1500000n8";
 +	};
 +
 +	dc_12v: dc-12v {
