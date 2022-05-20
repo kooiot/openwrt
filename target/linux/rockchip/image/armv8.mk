@@ -50,3 +50,12 @@ define Device/kooiot_tlink-rk3568
   IMAGE/sysupgrade.img.gz := boot-common | boot-script | pine64-img | gzip | append-metadata
 endef
 TARGET_DEVICES += kooiot_tlink-rk3568
+
+define Device/kooiot_tlink-rockchip-r5
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink R5 (RK3568)
+  SOC := rk3568
+  UBOOT_DEVICE_NAME := tlink-rockchip-r5
+  IMAGE/sysupgrade.img.gz := boot-common | boot-script | pine64-img | gzip | append-metadata
+endef
+TARGET_DEVICES += kooiot_tlink-rockchip-r5
