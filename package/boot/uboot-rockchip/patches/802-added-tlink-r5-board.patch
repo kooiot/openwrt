@@ -23,7 +23,7 @@
 +CONFIG_FIT=y
 +CONFIG_FIT_VERBOSE=y
 +CONFIG_SPL_LOAD_FIT=y
-+CONFIG_DEFAULT_FDT_FILE="rockchip/rk3568-tlink-r5.dtb"
++CONFIG_DEFAULT_FDT_FILE="rockchip.dtb"
 +# CONFIG_DISPLAY_CPUINFO is not set
 +CONFIG_DISPLAY_BOARDINFO_LATE=y
 +# CONFIG_SPL_RAW_IMAGE_SUPPORT is not set
@@ -61,11 +61,37 @@
 +CONFIG_SYSRESET=y
 +CONFIG_ERRNO_STR=y
 --- /dev/null
++++ b/arch/arm/dts/rk3568-tlink-r5-u-boot.dtsi
+@@ -0,0 +1,23 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * (C) Copyright 2022 KooIoT.com
++ */
++
++#include "rk3568-u-boot.dtsi"
++
++/ {
++	chosen {
++		stdout-path = &uart2;
++		u-boot,spl-boot-order = "same-as-spl", &sdmmc0, &sdhci;
++	};
++};
++
++&sdmmc0 {
++	status = "okay";
++};
++
++&uart2 {
++	clock-frequency = <24000000>;
++	u-boot,dm-spl;
++	status = "okay";
++};
+--- /dev/null
 +++ b/arch/arm/dts/rk3568-tlink-r5.dts
 @@ -0,0 +1,79 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
-+ * Copyright (c) 2021 KooIoT.com
++ * Copyright (c) 2022 KooIoT.com
 + *
 + */
 +
@@ -75,7 +101,7 @@
 +#include "rk3568.dtsi"
 +
 +/ {
-+	model = "ThingsLink R5";
++	model = "KooIoT ThingsLink R5";
 +	compatible = "kooiot,tlink-r5", "rockchip,rk3568";
 +
 +	chosen: chosen {

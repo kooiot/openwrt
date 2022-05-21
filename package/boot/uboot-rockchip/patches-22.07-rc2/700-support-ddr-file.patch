@@ -1,0 +1,22 @@
+--- a/Makefile
++++ b/Makefile
+@@ -1033,6 +1033,10 @@
+ cmd_mkimage = $(objtree)/tools/mkimage $(MKIMAGEFLAGS_$(@F)) -d $< $@ \
+ 	>$(MKIMAGEOUTPUT) $(if $(KBUILD_VERBOSE:0=), && cat $(MKIMAGEOUTPUT))
+
++quiet_cmd_mkimage_ddr = MKIMAGE $@
++cmd_mkimage_ddr = $(objtree)/tools/mkimage $(MKIMAGEFLAGS_$(@F)) -d ${DDR_BLOB}:$< $@ \
++	>$(MKIMAGEOUTPUT) $(if $(KBUILD_VERBOSE:0=), && cat $(MKIMAGEOUTPUT))
++
+ quiet_cmd_mkfitimage = MKIMAGE $@
+ cmd_mkfitimage = $(objtree)/tools/mkimage $(MKIMAGEFLAGS_$(@F)) \
+ 	-f $(U_BOOT_ITS) -p $(CONFIG_FIT_EXTERNAL_OFFSET) $@ \
+@@ -1485,7 +1489,7 @@
+ else
+ MKIMAGEFLAGS_idbloader.img = -n $(CONFIG_SYS_SOC) -T rksd
+ idbloader.img: spl/u-boot-spl.bin FORCE
+-	$(call if_changed,mkimage)
++	$(call if_changed,mkimage_ddr)
+ endif
+
+ ifeq ($(CONFIG_ARM64),y)

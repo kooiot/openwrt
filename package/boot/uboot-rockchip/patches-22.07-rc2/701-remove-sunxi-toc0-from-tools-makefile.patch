@@ -1,0 +1,12 @@
+--- a/tools/Makefile
++++ b/tools/Makefile
+@@ -96,8 +96,7 @@
+ 
+ # Cryptographic helpers and image types that depend on openssl/libcrypto
+ LIBCRYPTO_OBJS-$(CONFIG_TOOLS_LIBCRYPTO) := \
+-			lib/fdt-libcrypto.o \
+-			sunxi_toc0.o
++			lib/fdt-libcrypto.o
+ 
+ ROCKCHIP_OBS = lib/rc4.o rkcommon.o rkimage.o rksd.o rkspi.o
+ 
