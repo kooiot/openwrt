@@ -23,7 +23,7 @@
 +CONFIG_FIT=y
 +CONFIG_FIT_VERBOSE=y
 +CONFIG_SPL_LOAD_FIT=y
-+CONFIG_DEFAULT_FDT_FILE="rockchip.dtb"
++CONFIG_DEFAULT_FDT_FILE="rockchip/rk3568-tlink-r5.dtb"
 +# CONFIG_DISPLAY_CPUINFO is not set
 +CONFIG_DISPLAY_BOARDINFO_LATE=y
 +# CONFIG_SPL_RAW_IMAGE_SUPPORT is not set
@@ -102,7 +102,7 @@
 +
 +/ {
 +	model = "KooIoT ThingsLink R5";
-+	compatible = "kooiot,tlink-r5", "rockchip,rk3568";
++	compatible = "kooiot,rk3568-tlink-r5", "rockchip,rk3568";
 +
 +	chosen: chosen {
 +		stdout-path = "serial2:1500000n8";
