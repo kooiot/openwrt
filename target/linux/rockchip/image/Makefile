@@ -25,6 +25,10 @@ define Build/boot-script
 	mkimage -A arm -O linux -T script -C none -a 0 -e 0 -d $(if $(1),$(1),mmc).bootscript $@.boot/boot.scr
 endef
 
+define Build/boot-script-rk
+	 $(CP) $(STAGING_DIR_IMAGE)/$(UBOOT_DEVICE_NAME)-boot.scr $@.boot/boot.scr
+endef
+
 define Build/pine64-img
 	# Creates the final SD/eMMC images, 
 	# combining boot partition, root partition as well as the u-boot bootloader

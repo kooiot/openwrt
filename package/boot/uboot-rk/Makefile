@@ -63,6 +63,7 @@ define Build/InstallDev
 	$(INSTALL_DIR) $(STAGING_DIR_IMAGE)
 	$(CP) $(PKG_BUILD_DIR)/idbloader.img $(STAGING_DIR_IMAGE)/$(BUILD_VARIANT)-idbloader.img
 	$(CP) $(PKG_BUILD_DIR)/u-boot.itb $(STAGING_DIR_IMAGE)/$(BUILD_VARIANT)-u-boot.itb
+	$(CP) $(PKG_BUILD_DIR)/boot.scr $(STAGING_DIR_IMAGE)/$(BUILD_VARIANT)-boot.scr
 endef
 
 define Build/AA_Compile
@@ -83,9 +84,15 @@ define Build/idbloader-image
 		-d  $(STAGING_DIR_IMAGE)/$(DDR_FILE):$(PKG_BUILD_DIR)/spl/u-boot-spl.bin $(PKG_BUILD_DIR)/idbloader.img
 endef
 
+define Build/build-bootscript
+	$(PKG_BUILD_DIR)/tools/mkimage -A arm -O linux -T script -C none -a 0 -e 0 -d ./mmc.bootscript $(PKG_BUILD_DIR)/boot.scr
+endef
+
+
 define Build/Compile
 	$(call Build/Compile/U-Boot)
 	$(call Build/idbloader-image)
+	$(call Build/build-bootscript)
 endef
 
 define Package/u-boot/install/default

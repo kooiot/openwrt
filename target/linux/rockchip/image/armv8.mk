@@ -47,7 +47,7 @@ define Device/kooiot_tlink-rk3568
   DEVICE_MODEL := ThingsLink RK3568
   SOC := rk3568
   UBOOT_DEVICE_NAME := tlink-rk3568
-  IMAGE/sysupgrade.img.gz := boot-common | boot-script | pine64-img | gzip | append-metadata
+  IMAGE/sysupgrade.img.gz := boot-common | boot-script-rk | pine64-img | gzip | append-metadata
 endef
 TARGET_DEVICES += kooiot_tlink-rk3568
 
