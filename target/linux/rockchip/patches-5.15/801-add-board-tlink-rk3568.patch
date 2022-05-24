@@ -1,8 +1,6 @@
-new file mode 100644
-index 000000000..fac2db500
 --- /dev/null
 +++ b/arch/arm64/boot/dts/rockchip/rk3568-tlink-rk3568.dts
-@@ -0,0 +1,878 @@
+@@ -0,0 +1,887 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (c) 2022 KooIoT.com
@@ -596,6 +594,15 @@ index 000000000..fac2db500
 +			};
 +		};
 +	};
++};
++
++&i2c5 {
++    status = "okay";
++    sd3077: sd3077@32 {
++        compatible = "whwave,sd3078";
++        reg = <0x32>;
++        status = "okay";
++    };
 +};
 +
 +&i2s0_8ch {

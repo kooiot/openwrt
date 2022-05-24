@@ -48,6 +48,17 @@ define Device/kooiot_tlink-rk3568
   SOC := rk3568
   UBOOT_DEVICE_NAME := tlink-rk3568
   IMAGE/sysupgrade.img.gz := boot-common | boot-script-rk | pine64-img | gzip | append-metadata
+  DEVICE_PACKAGES:=kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-rtc-sd3078 kmod-usb-net-asix \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+	luci-app-freeioe luci-proto-qmi luci-proto-3g \
+    wpad-basic-wolfssl \
+    tinc-freeioe-tunnel iperf3 \
+    uqmi fdisk usbutils freeioe wwanleds \
+    blockd kmod-eeprom-at24 fdisk
 endef
 TARGET_DEVICES += kooiot_tlink-rk3568
 
@@ -57,5 +68,16 @@ define Device/kooiot_tlink-r5
   SOC := rk3568
   UBOOT_DEVICE_NAME := tlink-r5
   IMAGE/sysupgrade.img.gz := boot-common | boot-script | pine64-img | gzip | append-metadata
+  DEVICE_PACKAGES:=kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-rtc-sd3078 kmod-usb-net-asix \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+	luci-app-freeioe luci-proto-qmi luci-proto-3g \
+    wpad-basic-wolfssl \
+    tinc-freeioe-tunnel iperf3 \
+    uqmi fdisk usbutils freeioe wwanleds \
+    blockd kmod-eeprom-at24 fdisk
 endef
 TARGET_DEVICES += kooiot_tlink-r5
