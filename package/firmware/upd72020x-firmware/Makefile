@@ -11,13 +11,13 @@ PKG_SOURCE_PROTO:=git
 PKG_SOURCE_DATE:=2019-07-09
 PKG_SOURCE_URL:=https://github.com/denisandroid/uPD72020x-Firmware.git
 PKG_SOURCE_VERSION:=1cf8542aa64d816301ea286a8937d9b09ebcbc99
-# PKG_MIRROR_HASH:=
+PKG_MIRROR_HASH:=548923a5bd3e5b6eb455aa4df12c0f6adf0261e954f4d6da144d9de25118d5eb
 
 PKG_MAINTAINER:=Dirk Chang <dirk@kooiot.com>
 
 include $(INCLUDE_DIR)/package.mk
 
-define Package/upd72020x-firmware-
+define Package/upd72020x-firmware
   SECTION:=firmware
   CATEGORY:=Firmware
   TITLE:=uPD72020x firmware files
