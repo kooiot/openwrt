@@ -7,6 +7,10 @@ STOP=90
 RTC_DEV=/dev/rtc0
 HWCLOCK=/sbin/hwclock
 
+if [ -e "/dev/rtc1" ]; then
+	RTC_DEV=/dev/rtc1
+fi
+
 boot() {
 	start && exit 0
 
