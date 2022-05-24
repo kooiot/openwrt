@@ -5,13 +5,13 @@
 include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
-PKG_VERSION:=2017.09
+PKG_VERSION:=rk-2017.09
 PKG_RELEASE:=$(AUTORELEASE)
 
 PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL:=https://github.com/150balbes/u-boot-rk
-PKG_SOURCE_VERSION:=547cd07e0993658e6aaa1626cb16021365f64cda
-PKG_MIRROR_HASH:=07adeb7d7fdc7e9f355f0169691ed822737593845768bd135186450e0528bd7a
+PKG_SOURCE_URL:=https://gitlab.com/firefly-linux/u-boot.git
+PKG_SOURCE_VERSION:=fc354ea827411c1cc35ddf76162aed02f7a9c7d5
+PKG_MIRROR_HASH:=ce5f21172c25563f218f0b4bb1c66d2b9737e6b83a0e59d68d3e2a2fd3fce06c
 
 PKG_MAINTAINER:=Dirk Chang <dirk@kooiot.com>
 
@@ -34,6 +34,7 @@ define U-Boot/tlink-rk3568
   DEPENDS:=+PACKAGE_u-boot-tlink-rk3568:arm-trusted-firmware-rkbin
   PKG_BUILD_DEPENDS:=arm-trusted-firmware-rkbin
   ATF:=rk3568_bl31.elf
+  TEE_FILE:=rk3568_bl32.bin
   DDR_FILE:=rk3568_ddr_1560MHz.bin
   UBOOT_SOC_PLAT:=rk3568
 endef
@@ -54,6 +55,8 @@ define Build/Configure
 
 	rm -f $(PKG_BUILD_DIR)/bl31.elf
 	$(CP) $(STAGING_DIR_IMAGE)/$(ATF) $(PKG_BUILD_DIR)/bl31.elf
+	rm -f $(PKG_BUILD_DIR)/tee.bin
+	$(CP) $(STAGING_DIR_IMAGE)/$(TEE_FILE) $(PKG_BUILD_DIR)/tee.bin
 
 	$(CP) -f ./py_files/make_fit_atf.py $(PKG_BUILD_DIR)/arch/arm/mach-rockchip/
 	$(CP) -f ./py_files/decode_bl31.py $(PKG_BUILD_DIR)/arch/arm/mach-rockchip/
