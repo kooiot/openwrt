@@ -54,6 +54,7 @@ define Device/kooiot_tlink-rk3568
     kmod-rtc-sd3078 kmod-usb-net-asix \
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+	kmod-usb-xhci-pci-renesas upd72020x-firmware \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
     wpad-basic-wolfssl \
     tinc-freeioe-tunnel iperf3 \
@@ -74,6 +75,7 @@ define Device/kooiot_tlink-r5
     kmod-rtc-sd3078 kmod-usb-net-asix \
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+	kmod-usb-xhci-pci-renesas upd72020x-firmware \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
     wpad-basic-wolfssl \
     tinc-freeioe-tunnel iperf3 \
