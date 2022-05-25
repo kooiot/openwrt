@@ -42,6 +42,27 @@ define Device/radxa_rock-pi-4a
 endef
 TARGET_DEVICES += radxa_rock-pi-4a
 
+define Device/firefly_firefly-roc-pc
+  DEVICE_VENDOR := Firefly
+  DEVICE_MODEL := Roc PC (RK3568)
+  SOC := rk3568
+  UBOOT_DEVICE_NAME := firefly-rk3568
+  IMAGE/sysupgrade.img.gz := boot-common | boot-script-rk | pine64-img | gzip | append-metadata
+  DEVICE_PACKAGES:=kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-rtc-hym8563 kmod-usb-net-asix \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+	kmod-can kmod-can-rockchip-canfd \
+	luci-app-freeioe luci-proto-qmi luci-proto-3g \
+    wpad-basic-wolfssl \
+    tinc-freeioe-tunnel iperf3 \
+    uqmi fdisk usbutils freeioe wwanleds \
+    blockd kmod-eeprom-at24 fdisk
+endef
+TARGET_DEVICES += firefly_firefly-roc-pc
+
 define Device/kooiot_tlink-rk3568
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink RK3568
@@ -55,6 +76,7 @@ define Device/kooiot_tlink-rk3568
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-usb-xhci-pci-renesas upd72020x-firmware \
+	kmod-can kmod-can-rockchip-canfd \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
     wpad-basic-wolfssl \
     tinc-freeioe-tunnel iperf3 \
@@ -76,6 +98,7 @@ define Device/kooiot_tlink-r5
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-usb-xhci-pci-renesas upd72020x-firmware \
+	mmod-can-rockchip-canfd \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
     wpad-basic-wolfssl \
     tinc-freeioe-tunnel iperf3 \
