@@ -1,0 +1,20 @@
+--- a/drivers/net/can/Kconfig
++++ b/drivers/net/can/Kconfig
+@@ -175,6 +175,7 @@
+ source "drivers/net/can/mscan/Kconfig"
+ source "drivers/net/can/peak_canfd/Kconfig"
+ source "drivers/net/can/rcar/Kconfig"
++source "drivers/net/can/rockchip/Kconfig"
+ source "drivers/net/can/sja1000/Kconfig"
+ source "drivers/net/can/softing/Kconfig"
+ source "drivers/net/can/spi/Kconfig"
+--- a/drivers/net/can/Makefile
++++ b/drivers/net/can/Makefile
+@@ -9,6 +9,7 @@
+ 
+ obj-y				+= dev/
+ obj-y				+= rcar/
++obj-y				+= rockchip/
+ obj-y				+= spi/
+ obj-y				+= usb/
+ obj-y				+= softing/
