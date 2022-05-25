@@ -39,8 +39,22 @@ define U-Boot/tlink-rk3568
   UBOOT_SOC_PLAT:=rk3568
 endef
 
+define U-Boot/firefly-rk3568
+  BUILD_SUBTARGET:=armv8
+  NAME:=Firefly RK3568
+  BUILD_DEVICES:= \
+    firefly_roc-pc
+  DEPENDS:=+PACKAGE_u-boot-firefly-rk3568:arm-trusted-firmware-rkbin
+  PKG_BUILD_DEPENDS:=arm-trusted-firmware-rkbin
+  ATF:=rk3568_bl31.elf
+  TEE_FILE:=rk3568_bl32.bin
+  DDR_FILE:=rk3568_ddr_1560MHz.bin
+  UBOOT_SOC_PLAT:=rk3568
+endef
+
 UBOOT_TARGETS := \
-  tlink-rk3568
+  tlink-rk3568 \
+  firefly-rk3568
 
 UBOOT_CONFIGURE_VARS += USE_PRIVATE_LIBGCC=yes
 
