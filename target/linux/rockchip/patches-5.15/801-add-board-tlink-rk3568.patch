@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/arch/arm64/boot/dts/rockchip/rk3568-tlink-rk3568.dts
-@@ -0,0 +1,798 @@
+@@ -0,0 +1,827 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (c) 2022 KooIoT.com
@@ -156,6 +156,26 @@
 +		regulator-min-microvolt = <5000000>;
 +		regulator-max-microvolt = <5000000>;
 +		vin-supply = <&dc_12v>;
++	};
++
++	vcc3v3_gmac0: vcc3v3-gmac0-regulator {
++		compatible = "regulator-fixed";
++		enable-active-high;
++		gpio = <&gpio2 RK_PD2 GPIO_ACTIVE_HIGH>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&vcc3v3_gmac0_en>;
++		regulator-name = "vcc3v3_gmac0";
++		regulator-always-on;
++	};
++
++	vcc3v3_gmac1: vcc3v3-gmac1-regulator {
++		compatible = "regulator-fixed";
++		enable-active-high;
++		gpio = <&gpio2 RK_PD0 GPIO_ACTIVE_HIGH>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&vcc3v3_gmac1_en>;
++		regulator-name = "vcc3v3_gmac1";
++		regulator-always-on;
 +	};
 +
 +	leds {
@@ -605,6 +625,15 @@
 +	usb {
 +		vcc5v0_host_en: vcc5v0-host-en {
 +			rockchip,pins = <0 RK_PC6 RK_FUNC_GPIO &pcfg_pull_up>;
++		};
++	};
++
++	usb {
++		vcc3v3_gmac0_en: vcc3v3-gmac0-en {
++			rockchip,pins = <2 RK_PD2 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++		vcc3v3_gmac1_en: vcc3v3-gmac1-en {
++			rockchip,pins = <2 RK_PD0 RK_FUNC_GPIO &pcfg_pull_none>;
 +		};
 +	};
 +

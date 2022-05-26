@@ -1,6 +1,38 @@
 --- a/arch/arm64/boot/dts/rockchip/rk3568.dtsi
 +++ b/arch/arm64/boot/dts/rockchip/rk3568.dtsi
-@@ -372,6 +372,11 @@
+@@ -56,6 +56,7 @@
+ 			compatible = "arm,cortex-a55";
+ 			reg = <0x0 0x0>;
+ 			clocks = <&scmi_clk 0>;
++			#cooling-cells = <2>;
+ 			enable-method = "psci";
+ 			operating-points-v2 = <&cpu0_opp_table>;
+ 		};
+@@ -64,6 +65,7 @@
+ 			device_type = "cpu";
+ 			compatible = "arm,cortex-a55";
+ 			reg = <0x0 0x100>;
++			#cooling-cells = <2>;
+ 			enable-method = "psci";
+ 			operating-points-v2 = <&cpu0_opp_table>;
+ 		};
+@@ -72,6 +74,7 @@
+ 			device_type = "cpu";
+ 			compatible = "arm,cortex-a55";
+ 			reg = <0x0 0x200>;
++			#cooling-cells = <2>;
+ 			enable-method = "psci";
+ 			operating-points-v2 = <&cpu0_opp_table>;
+ 		};
+@@ -80,6 +83,7 @@
+ 			device_type = "cpu";
+ 			compatible = "arm,cortex-a55";
+ 			reg = <0x0 0x300>;
++			#cooling-cells = <2>;
+ 			enable-method = "psci";
+ 			operating-points-v2 = <&cpu0_opp_table>;
+ 		};
+@@ -372,6 +376,11 @@
  	pmugrf: syscon@fdc20000 {
  		compatible = "rockchip,rk3568-pmugrf", "syscon", "simple-mfd";
  		reg = <0x0 0xfdc20000 0x0 0x10000>;
@@ -12,7 +44,7 @@
  	};
  
  	pipegrf: syscon@fdc50000 {
-@@ -467,6 +472,50 @@
+@@ -467,6 +478,50 @@
  		status = "disabled";
  	};
  
@@ -63,7 +95,7 @@
  	pmu: power-management@fdd90000 {
  		compatible = "rockchip,rk3568-pmu", "syscon", "simple-mfd";
  		reg = <0x0 0xfdd90000 0x0 0x1000>;
-@@ -574,6 +623,53 @@
+@@ -574,6 +627,53 @@
  		status = "disabled";
  	};
  
@@ -117,7 +149,7 @@
  	vpu: video-codec@fdea0400 {
  		compatible = "rockchip,rk3328-vpu";
  		reg = <0x0 0xfdea0000 0x0 0x800>;
-@@ -894,6 +990,53 @@
+@@ -894,6 +994,53 @@
  		};
  	};
  
@@ -171,7 +203,7 @@
  	sdmmc0: mmc@fe2b0000 {
  		compatible = "rockchip,rk3568-dw-mshc", "rockchip,rk3288-dw-mshc";
  		reg = <0x0 0xfe2b0000 0x0 0x4000>;
-@@ -945,6 +1088,62 @@
+@@ -945,6 +1092,62 @@
  		clock-names = "core", "bus", "axi", "block", "timer";
  		status = "disabled";
  	};
@@ -234,10 +266,55 @@
  
  	dmac0: dmac@fe530000 {
  		compatible = "arm,pl330", "arm,primecell";
-@@ -1228,6 +1427,26 @@
+@@ -1228,6 +1431,71 @@
  		status = "disabled";
  	};
- 
+
++	thermal_zones: thermal-zones {
++		cpu_thermal: cpu-thermal {
++			polling-delay-passive = <100>;
++			polling-delay = <1000>;
++
++			thermal-sensors = <&tsadc 0>;
++
++			trips {
++				cpu_alert0: cpu_alert0 {
++					temperature = <70000>;
++					hysteresis = <2000>;
++					type = "passive";
++				};
++				cpu_alert1: cpu_alert1 {
++					temperature = <75000>;
++					hysteresis = <2000>;
++					type = "passive";
++				};
++				cpu_crit: cpu_crit {
++					temperature = <95000>;
++					hysteresis = <2000>;
++					type = "critical";
++				};
++			};
++
++			cooling-maps {
++				map0 {
++					trip = <&cpu_alert0>;
++					cooling-device =
++						<&cpu0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
++						<&cpu1 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
++						<&cpu2 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
++						<&cpu3 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++				};
++			};
++		};
++
++		gpu_thermal: gpu-thermal {
++			polling-delay-passive = <20>; /* milliseconds */
++			polling-delay = <1000>; /* milliseconds */
++
++			thermal-sensors = <&tsadc 1>;
++		};
++	};
++
 +	tsadc: tsadc@fe710000 {
 +		compatible = "rockchip,rk3568-tsadc";
 +		reg = <0x0 0xfe710000 0x0 0x100>;
@@ -261,7 +338,7 @@
  	saradc: saradc@fe720000 {
  		compatible = "rockchip,rk3568-saradc", "rockchip,rk3399-saradc";
  		reg = <0x0 0xfe720000 0x0 0x100>;
-@@ -1240,6 +1459,138 @@
+@@ -1240,6 +1508,138 @@
  		status = "disabled";
  	};
  
