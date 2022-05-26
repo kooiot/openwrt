@@ -5,7 +5,7 @@ if [ "$(id -u)" != "0" ]; then
    exit 0
 fi
 
-BOARD_NAME=`cat /tmp/sysinfo/board_name  | sed "s/\,/_/g"`
+BOARD_NAME=`cat /tmp/sysinfo/board_name  | sed "s/.*\,\(.*\)$/\1/"`
 
 
 echo ""
@@ -25,8 +25,8 @@ if [ ! -b ${EMMC_DISK} ]; then
 	EMMC_DISK="/dev/mmcblk2"
 fi
 
-EMMC_FIRST_SECTOR=2048
-EMMC_BOOTFS_SIZE=$((20 * 1024 * 1024))
+EMMC_FIRST_SECTOR=32768
+EMMC_BOOTFS_SIZE=$((30 * 1024 * 1024))
 EMMC_ROOTFS_SIZE=$((256 * 1024 * 1024))
 EMMC_DATA_FIRST_SECTOR=$(( 600 * 1024 ))
 
@@ -43,8 +43,13 @@ if [ ! -d ${BOOT_DIR} ]; then
 	mount /dev/mmcblk0p1 ${BOOT_DIR}
 fi
 
-if [ ! -f ${BOOT_DIR}/${BOARD_NAME}-u-boot-with-spl.bin ]; then
-    echo "Error: ${BOARD_NAME}-u-boot-with-spl.bin not found."
+if [ ! -f ${BOOT_DIR}/${BOARD_NAME}-idbloader.img ]; then
+    echo "Error: ${BOARD_NAME}-idbloader.img not found."
+    exit 1
+fi
+
+if [ ! -f ${BOOT_DIR}/${BOARD_NAME}-u-boot.itb ]; then
+    echo "Error: ${BOARD_NAME}-idbloader.img not found."
     exit 1
 fi
 
@@ -82,12 +87,16 @@ sleep 1
 
 echo "Creating new filesystem on EMMC ..."
 echo -e "o\nw" | fdisk ${EMMC_DISK} > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+	echo "ERROR: Failed to create filesystem on eMMC(fdisk)"
+    exit 1
+fi
 sync
 echo "  New filesystem created on $EMMC_DISK"
 sleep 1
 partx -s ${EMMC_DISK} > /dev/null 2>&1
 if [ $? -ne 0 ]; then
-    echo "ERROR: Failed to create filesystem on eMMC"
+	echo "ERROR: Failed to create filesystem on eMMC(partx)"
     exit 1
 fi
 sleep 1
@@ -144,9 +153,14 @@ echo "  linux partition formated."
 #************************************************************************
 echo ""
 echo "Instaling u-boot to EMMC ..."
-dd if=${BOOT_DIR}/${BOARD_NAME}-u-boot-with-spl.bin of=${EMMC_DISK} bs=1k seek=8 > /dev/null 2>&1
+dd if=${BOOT_DIR}/${BOARD_NAME}-idbloader.img of=${EMMC_DISK} bs=1k seek=64 > /dev/null 2>&1
 if [ $? -ne 0 ]; then
-    echo "ERROR installing u-boot."
+	echo "ERROR installing u-boot (idbloader.img)"
+    exit 1
+fi
+dd if=${BOOT_DIR}/${BOARD_NAME}-u-boot.itb of=${EMMC_DISK} bs=1k seek=16384 > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+	echo "ERROR installing u-boot (u-boot.itb)"
     exit 1
 fi
 sync
@@ -182,8 +196,8 @@ if [ -f ${BOOT_DIR}/boot-emmc.scr ]; then
 else
 	cp -pf ${BOOT_DIR}/boot.scr ${BOOTFS_DIR}/
 fi
-cp -pf ${BOOT_DIR}/uImage ${BOOTFS_DIR}/
-cp -pf ${BOOT_DIR}/dtb ${BOOTFS_DIR}/
+cp -pf ${BOOT_DIR}/kernal.img ${BOOTFS_DIR}/
+cp -pf ${BOOT_DIR}/rockchip.dtb ${BOOTFS_DIR}/
 
 # UMOUNT
 if ! umount $BOOTFS_DIR; then

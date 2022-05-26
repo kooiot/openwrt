@@ -26,7 +26,8 @@ define Build/boot-script
 endef
 
 define Build/boot-script-rk
-	 $(CP) $(STAGING_DIR_IMAGE)/$(UBOOT_DEVICE_NAME)-boot.scr $@.boot/boot.scr
+	$(CP) $(STAGING_DIR_IMAGE)/$(UBOOT_DEVICE_NAME)-boot.scr $@.boot/boot.scr
+	echo $$(stat -c%s $(IMAGE_ROOTFS)) > $@.boot/rootfs.size
 endef
 
 define Build/pine64-img
