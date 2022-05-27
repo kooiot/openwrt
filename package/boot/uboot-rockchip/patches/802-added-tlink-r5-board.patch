@@ -56,7 +56,7 @@
 +CONFIG_PWM_ROCKCHIP=y
 +CONFIG_SPL_RAM=y
 +CONFIG_DM_RESET=y
-+CONFIG_BAUDRATE=1500000
++CONFIG_BAUDRATE=115200
 +CONFIG_DEBUG_UART_SHIFT=2
 +CONFIG_SYSRESET=y
 +CONFIG_ERRNO_STR=y
@@ -105,7 +105,7 @@
 +	compatible = "kooiot,rk3568-tlink-r5", "rockchip,rk3568";
 +
 +	chosen: chosen {
-+		stdout-path = "serial2:1500000n8";
++		stdout-path = "serial2:115200n8";
 +	};
 +
 +	dc_12v: dc-12v {

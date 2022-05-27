@@ -81,6 +81,7 @@ define U-Boot/tlink-r5
   PKG_BUILD_DEPENDS:=arm-trusted-firmware-rkbin
   ATF:=rk3568_bl31.elf
   DDR_FILE:=rk3568_ddr_1560MHz.bin
+  BUILD_BOOTSCRIPT:=$(1)
 endef
 
 UBOOT_TARGETS := \
@@ -116,6 +117,11 @@ define Build/InstallDev
 	$(INSTALL_DIR) $(STAGING_DIR_IMAGE)
 	$(CP) $(PKG_BUILD_DIR)/idbloader.img $(STAGING_DIR_IMAGE)/$(BUILD_VARIANT)-idbloader.img
 	$(CP) $(PKG_BUILD_DIR)/u-boot.itb $(STAGING_DIR_IMAGE)/$(BUILD_VARIANT)-u-boot.itb
+
+ifneq ($(BUILD_BOOTSCRIPT),)
+	$(PKG_BUILD_DIR)/tools/mkimage -A arm -O linux -T script -C none -a 0 -e 0 -d ./mmc.bootscript \
+		$(STAGING_DIR_IMAGE)/$(BUILD_VARIANT)-boot.scr
+endif
 endef
 
 define Package/u-boot/install/default
