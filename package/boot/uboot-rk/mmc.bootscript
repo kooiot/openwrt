@@ -1,6 +1,9 @@
+mmc list
 part uuid mmc ${devnum}:2 uuid
+echo "BOOT FROM MMC: ${devnum}"
+
 setenv bootargs "console=ttyS0,115200 console=tty1 earlycon=uart8250,mmio32,0xfe660000 root=PARTUUID=${uuid} rw rootwait"
-echo "Boot Args: ${bootargs}"
+echo "BOOT ARGS: ${bootargs}"
 
 load mmc ${devnum}:1 ${fdt_addr_r} rockchip.dtb
 load mmc ${devnum}:1 ${kernel_addr_r} kernel.img

@@ -5,13 +5,13 @@
 include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
-PKG_VERSION:=rk-2017.09
+PKG_VERSION:=rk-2022.04.28
 PKG_RELEASE:=$(AUTORELEASE)
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://gitlab.com/firefly-linux/u-boot.git
 PKG_SOURCE_VERSION:=fc354ea827411c1cc35ddf76162aed02f7a9c7d5
-PKG_MIRROR_HASH:=ce5f21172c25563f218f0b4bb1c66d2b9737e6b83a0e59d68d3e2a2fd3fce06c
+PKG_MIRROR_HASH:=c6e3cf815d9e32c053ccbccca05aedab9085f424f1652706618a6d792b8a850a
 
 PKG_MAINTAINER:=Dirk Chang <dirk@kooiot.com>
 
