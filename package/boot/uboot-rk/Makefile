@@ -43,7 +43,7 @@ define U-Boot/firefly-rk3568
   BUILD_SUBTARGET:=armv8
   NAME:=Firefly RK3568
   BUILD_DEVICES:= \
-    firefly_roc-pc
+    firefly_firefly-roc-pc
   DEPENDS:=+PACKAGE_u-boot-firefly-rk3568:arm-trusted-firmware-rkbin
   PKG_BUILD_DEPENDS:=arm-trusted-firmware-rkbin
   ATF:=rk3568_bl31.elf
