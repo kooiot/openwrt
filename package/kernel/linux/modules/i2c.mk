@@ -114,7 +114,7 @@ $(eval $(call KernelPackage,i2c-designware-pci))
 
 
 I2C_FUSB30X_MODULES:= \
-  CONFIG_FUSB30X:drivers/staging/fusb30x
+  CONFIG_FUSB_30X:drivers/staging/fusb30x/fusb30x
 
 define KernelPackage/i2c-fusb30x
   $(call i2c_defaults,$(I2C_FUSB30X_MODULES),59)
