@@ -113,6 +113,22 @@ endef
 $(eval $(call KernelPackage,i2c-designware-pci))
 
 
+I2C_FUSB30X_MODULES:= \
+  CONFIG_FUSB30X:drivers/staging/fusb30x
+
+define KernelPackage/i2c-fusb30x
+  $(call i2c_defaults,$(I2C_FUSB30X_MODULES),59)
+  TITLE:=Fairchild FUSB30X Type-C chip driver
+  DEPENDS:=+kmod-i2c-core 
+endef
+
+define KernelPackage/i2c-fusb30x/description
+ This is a driver for the Fairchild FUSB302 Type-C chip.
+endef
+
+$(eval $(call KernelPackage,i2c-fusb30x))
+
+
 I2C_GPIO_MODULES:= \
   CONFIG_I2C_GPIO:drivers/i2c/busses/i2c-gpio
 

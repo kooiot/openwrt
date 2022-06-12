@@ -28,7 +28,7 @@
 +	};
 +
 +	chosen: chosen {
-+		stdout-path = "serial2:1500000n8";
++		stdout-path = "serial0:115200n8";
 +	};
 +
 +	dc_12v: dc-12v {

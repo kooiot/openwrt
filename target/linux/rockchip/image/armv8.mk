@@ -54,6 +54,7 @@ define Device/firefly_firefly-roc-pc
     kmod-rtc-hym8563 kmod-usb-net-asix \
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+	kmod-i2c-fusb30x \
 	kmod-can kmod-can-rockchip-canfd \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
     wpad-basic-wolfssl \
