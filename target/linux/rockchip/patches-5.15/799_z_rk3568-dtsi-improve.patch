@@ -45,3 +45,227 @@
  			gpio-controller;
  			#gpio-cells = <2>;
  			interrupt-controller;
+--- a/arch/arm64/boot/dts/rockchip/rk3568.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3568.dtsi
+@@ -208,7 +208,7 @@
+ 			reg = <0x0 0x100>;
+ 		};
+ 	};
+- 
++
+ 	sata1: sata@fc400000 {
+ 		compatible = "snps,dwc-ahci";
+ 		reg = <0 0xfc400000 0 0x1000>;
+@@ -393,6 +393,11 @@
+ 		reg = <0x0 0xfdc60000 0x0 0x10000>;
+ 	};
+ 
++	pipe_phy_grf0: syscon@fdc70000 {
++		compatible = "rockchip,rk3568-pipe-phy-grf", "syscon";
++		reg = <0x0 0xfdc70000 0x0 0x1000>;
++	};
++
+ 	sata0: sata@fc000000 {
+ 		compatible = "snps,dwc-ahci";
+ 		reg = <0 0xfc000000 0 0x1000>;
+@@ -446,6 +451,9 @@
+ 		reg = <0x0 0xfdd20000 0x0 0x1000>;
+ 		#clock-cells = <1>;
+ 		#reset-cells = <1>;
++		assigned-clocks = <&cru PLL_GPLL>, <&pmucru PLL_PPLL>;
++		assigned-clock-rates = <1200000000>, <200000000>;
++		rockchip,grf = <&grf>;
+ 	};
+ 
+ 	i2c0: i2c@fdd40000 {
+@@ -613,6 +621,44 @@
+ 		};
+ 	};
+ 
++	gpu: gpu@fde60000 {
++		compatible = "rockchip,rk3568-mali", "arm,mali-bifrost";
++		reg = <0x0 0xfde60000 0x0 0x4000>;
++
++		interrupts = <GIC_SPI 40 IRQ_TYPE_LEVEL_HIGH>,
++			     <GIC_SPI 41 IRQ_TYPE_LEVEL_HIGH>,
++			     <GIC_SPI 39 IRQ_TYPE_LEVEL_HIGH>;
++		interrupt-names = "job", "mmu", "gpu";
++		clocks = <&scmi_clk 1>, <&cru CLK_GPU>;
++		clock-names = "core", "bus";
++		operating-points-v2 = <&gpu_opp_table>;
++		#cooling-cells = <2>;
++		power-domains = <&power RK3568_PD_GPU>;
++		status = "disabled";
++	};
++
++	vpu: video-codec@fdea0400 {
++		compatible = "rockchip,rk3328-vpu";
++		reg = <0x0 0xfdea0000 0x0 0x800>;
++		interrupts = <GIC_SPI 139 IRQ_TYPE_LEVEL_HIGH>;
++		interrupt-names = "vdpu";
++		clocks = <&cru ACLK_VPU>, <&cru HCLK_VPU>;
++		clock-names = "aclk", "hclk";
++		iommus = <&vdpu_mmu>;
++		power-domains = <&power RK3568_PD_VPU>;
++	};
++
++	vdpu_mmu: iommu@fdea0800 {
++		compatible = "rockchip,rk3568-iommu";
++		reg = <0x0 0xfdea0800 0x0 0x40>;
++		interrupts = <GIC_SPI 138 IRQ_TYPE_LEVEL_HIGH>;
++		interrupt-names = "vdpu_mmu";
++		clock-names = "aclk", "iface";
++		clocks = <&cru ACLK_VPU>, <&cru HCLK_VPU>;
++		power-domains = <&power RK3568_PD_VPU>;
++		#iommu-cells = <0>;
++	};
++
+ 	sdmmc2: mmc@fe000000 {
+ 		compatible = "rockchip,rk3568-dw-mshc", "rockchip,rk3288-dw-mshc";
+ 		reg = <0x0 0xfe000000 0x0 0x4000>;
+@@ -674,28 +720,6 @@
+ 		};
+ 	};
+ 
+-	vpu: video-codec@fdea0400 {
+-		compatible = "rockchip,rk3328-vpu";
+-		reg = <0x0 0xfdea0000 0x0 0x800>;
+-		interrupts = <GIC_SPI 139 IRQ_TYPE_LEVEL_HIGH>;
+-		interrupt-names = "vdpu";
+-		clocks = <&cru ACLK_VPU>, <&cru HCLK_VPU>;
+-		clock-names = "aclk", "hclk";
+-		iommus = <&vdpu_mmu>;
+-		power-domains = <&power RK3568_PD_VPU>;
+-	};
+-
+-	vdpu_mmu: iommu@fdea0800 {
+-		compatible = "rockchip,rk3568-iommu";
+-		reg = <0x0 0xfdea0800 0x0 0x40>;
+-		interrupts = <GIC_SPI 138 IRQ_TYPE_LEVEL_HIGH>;
+-		interrupt-names = "vdpu_mmu";
+-		clock-names = "aclk", "iface";
+-		clocks = <&cru ACLK_VPU>, <&cru HCLK_VPU>;
+-		power-domains = <&power RK3568_PD_VPU>;
+-		#iommu-cells = <0>;
+-	};
+-
+ 	qos_gpu: qos@fe128000 {
+ 		compatible = "rockchip,rk3568-qos", "syscon";
+ 		reg = <0x0 0xfe128000 0x0 0x20>;
+@@ -776,11 +800,6 @@
+ 		reg = <0x0 0xfe190000 0x0 0x20>;
+ 	};
+ 
+-	pipe_phy_grf0: syscon@fdc70000 {
+-		compatible = "rockchip,rk3568-pipe-phy-grf", "syscon";
+-		reg = <0x0 0xfdc70000 0x0 0x1000>;
+-	};
+-
+ 	qos_pcie3x1: qos@fe190080 {
+ 		compatible = "rockchip,rk3568-qos", "syscon";
+ 		reg = <0x0 0xfe190080 0x0 0x20>;
+@@ -1092,7 +1111,7 @@
+ 		clock-names = "core", "bus", "axi", "block", "timer";
+ 		status = "disabled";
+ 	};
+- 
++
+ 	spdif: spdif@fe460000 {
+ 		compatible = "rockchip,rk3568-spdif";
+ 		reg = <0x0 0xfe460000 0x0 0x1000>;
+@@ -1281,6 +1300,14 @@
+ 		status = "disabled";
+ 	};
+ 
++	wdt: watchdog@fe600000 {
++		compatible = "rockchip,rk3568-wdt", "snps,dw-wdt";
++		reg = <0x0 0xfe600000 0x0 0x100>;
++		interrupts = <GIC_SPI 149 IRQ_TYPE_LEVEL_HIGH>;
++		clocks = <&cru TCLK_WDT_NS>, <&cru PCLK_WDT_NS>;
++		clock-names = "tclk", "pclk";
++	};
++
+ 	spi0: spi@fe610000 {
+ 		compatible = "rockchip,rk3568-spi", "rockchip,rk3066-spi";
+ 		reg = <0x0 0xfe610000 0x0 0x1000>;
+@@ -1518,6 +1545,33 @@
+ 			polling-delay = <1000>; /* milliseconds */
+ 
+ 			thermal-sensors = <&tsadc 1>;
++
++			trips {
++				gpu_threshold: gpu-threshold {
++					temperature = <70000>;
++					hysteresis = <2000>;
++					type = "passive";
++				};
++				gpu_target: gpu-target {
++					temperature = <75000>;
++					hysteresis = <2000>;
++					type = "passive";
++				};
++				gpu_crit: gpu-crit {
++					temperature = <95000>;
++					hysteresis = <2000>;
++					type = "critical";
++				};
++			};
++
++			cooling-maps {
++				map0 {
++					trip = <&gpu_target>;
++					cooling-device =
++						<&gpu THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++				};
++			};
++
+ 		};
+ 	};
+ 
+--- a/arch/arm64/boot/dts/rockchip/rk3568.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3568.dtsi
+@@ -141,6 +141,44 @@
+ 			opp-microvolt = <1150000 1150000 1150000>;
+ 		};
+ 	};
++	display_subsystem: display-subsystem {
++		compatible = "rockchip,display-subsystem";
++		// ports = <&vop_out>;
++	};
++
++	gpu_opp_table: opp-table-1 {
++		compatible = "operating-points-v2";
++
++		opp-200000000 {
++			opp-hz = /bits/ 64 <200000000>;
++			opp-microvolt = <825000>;
++		};
++
++		opp-300000000 {
++			opp-hz = /bits/ 64 <300000000>;
++			opp-microvolt = <825000>;
++		};
++
++		opp-400000000 {
++			opp-hz = /bits/ 64 <400000000>;
++			opp-microvolt = <825000>;
++		};
++
++		opp-600000000 {
++			opp-hz = /bits/ 64 <600000000>;
++			opp-microvolt = <825000>;
++		};
++
++		opp-700000000 {
++			opp-hz = /bits/ 64 <700000000>;
++			opp-microvolt = <900000>;
++		};
++
++		opp-800000000 {
++			opp-hz = /bits/ 64 <800000000>;
++			opp-microvolt = <1000000>;
++		};
++	};
+ 
+ 	firmware {
+ 		scmi: scmi {
