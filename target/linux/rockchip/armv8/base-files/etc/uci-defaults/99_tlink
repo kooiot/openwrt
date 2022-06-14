@@ -189,7 +189,7 @@ tlink_default() {
 	fi
 
 	case "$(board_name)" in
-		"kooiot,tlink-k2")
+		"kooiot,tlink-rk3568")
 			tlink_init_5g
 			;;
 		*)
