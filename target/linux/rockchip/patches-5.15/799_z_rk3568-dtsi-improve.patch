@@ -269,3 +269,13 @@
  
  	firmware {
  		scmi: scmi {
+@@ -358,6 +358,9 @@
+ 		#interrupt-cells = <3>;
+ 		#address-cells = <2>;
+ 		#size-cells = <2>;
++ 		mbi-alias = <0x0 0xfd410000>;
++ 		mbi-ranges = <296 24>;
++ 		msi-controller;
+ 
+ 		its: interrupt-controller@fd440000 {
+ 			compatible = "arm,gic-v3-its";
