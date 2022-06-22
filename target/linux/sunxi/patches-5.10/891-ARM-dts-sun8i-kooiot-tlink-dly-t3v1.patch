@@ -482,8 +482,8 @@
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&i2c4_pins>;
 +	status = "okay";
-+	rx8025: rx8025@32 {
-+		compatible = "epson,rx8025";
++	rx8025t: rx8025t@32 {
++		compatible = "epson,rx8025t";
 +		reg = <0x32>;
 +		status = "okay";
 +	};

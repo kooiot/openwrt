@@ -513,7 +513,7 @@ define Device/kooiot_tlink-m408
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink M408
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
-    kmod-sun4i-emac kmod-rtc-rx8025 \
+    kmod-sun4i-emac kmod-rtc-rx8025t \
     wpad-basic-wolfssl \
     kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
@@ -535,7 +535,7 @@ define Device/kooiot_tlink-m416
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink M416
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
-    kmod-sun4i-emac kmod-rtc-rx8025 \
+    kmod-sun4i-emac kmod-rtc-rx8025t \
     wpad-basic-wolfssl \
     kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \

@@ -724,6 +724,25 @@ endef
 
 $(eval $(call KernelPackage,rtc-rx8025))
 
+
+define KernelPackage/rtc-rx8025t
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=Epson RX-8025T
+  DEFAULT:=m if ALL_KMODS && RTC_SUPPORT
+  DEPENDS:=+kmod-i2c-core
+  KCONFIG:=CONFIG_RTC_DRV_RX8025T \
+	CONFIG_RTC_CLASS=y
+  FILES:=$(LINUX_DIR)/drivers/rtc/rtc-rx8025t.ko
+  AUTOLOAD:=$(call AutoLoad,50,rtc-rx8025t,1)
+endef
+
+define KernelPackage/rtc-rx8025t/description
+ Kernel module for Epson RX-8025T I2C RTC chip
+endef
+
+$(eval $(call KernelPackage,rtc-rx8025t))
+
+
 define KernelPackage/rtc-s35390a
   SUBMENU:=$(OTHER_MENU)
   TITLE:=Seico S-35390A
