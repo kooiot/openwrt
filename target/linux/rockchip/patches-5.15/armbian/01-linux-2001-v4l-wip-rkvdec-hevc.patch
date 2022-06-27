@@ -3513,11 +3513,11 @@ index da32a6350344..4fb05e8b5a54 100644
 @@ -1218,6 +1255,7 @@ static int rkvdec_probe(struct platform_device *pdev)
  {
  	struct rkvdec_dev *rkvdec;
- 	struct resource *res;
-+	const struct rkvdec_variant *variant;
  	unsigned int i;
++	const struct rkvdec_variant *variant;
  	int ret, irq;
- 
+
+	rkvdec = devm_kzalloc(&pdev->dev, sizeof(*rkvdec), GFP_KERNEL);
 @@ -1243,6 +1281,12 @@ static int rkvdec_probe(struct platform_device *pdev)
  	if (ret)
  		return ret;
