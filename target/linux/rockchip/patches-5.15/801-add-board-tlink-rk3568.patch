@@ -348,12 +348,12 @@
 +		};
 +	};
 +
-+	cooling-maps {
++	/* cooling-maps {
 +		map1 {
 +			trip = <&cpu_hot>;
 +			// cooling-device = <&fan THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
 +		};
-+	};
++	}; */
 +};
 +
 +&gmac0 {
