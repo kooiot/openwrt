@@ -509,6 +509,29 @@ define Device/kooiot_tlink-k2
 endef
 TARGET_DEVICES += kooiot_tlink-k2
 
+define Device/kooiot_tlink-k2x
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink K2X
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
+    kmod-sun4i-emac kmod-rtc-sd3078 \
+    kmod-xradio melsem-xr819-firmware wpad-basic-wolfssl \
+    kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+    kmod-usb-net-asix kmod-serial-wk2xxx-spi \
+	kmod-motorcomm-yt8521s kmod-motorcomm-yt8512c \
+    uqmi fdisk usbutils freeioe wwanleds \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    blockd kmod-usb-storage kmod-drm-sunxi \
+    usb-otg-sunxi kmod-usb-gadget-serial \
+	kmod-eeprom-at24
+  SOC := sun8i-r40
+endef
+TARGET_DEVICES += kooiot_tlink-k2x
+
 define Device/kooiot_tlink-m408
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink M408

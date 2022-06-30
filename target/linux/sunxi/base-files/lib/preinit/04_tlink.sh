@@ -90,6 +90,9 @@ do_kooiot_tlink_generic() {
 	"kooiot,tlink-k2")
 		do_product_sn_kooiot_nvmem "3" "0050"
 		;;
+	"kooiot,tlink-k2x")
+		do_product_sn_kooiot_nvmem "2" "0050"
+		;;
 	esac
 
 }

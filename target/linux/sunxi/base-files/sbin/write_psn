@@ -90,6 +90,12 @@ case "$(board_name)" in
 			NVMEM_PATH="/sys/bus/i2c/devices/3-0050/3-00501/nvmem"
 		fi
 		;;
+	"kooiot,tlink-k2x")
+		NVMEM_PATH="/sys/bus/i2c/devices/2-0050/eeprom"
+		if [ ! -f ${NVMEM_PATH} ]; then
+			NVMEM_PATH="/sys/bus/i2c/devices/2-0050/2-00500/nvmem"
+		fi
+		;;
 	"*")
 		NVMEM_PATH="/sys/bus/i2c/devices/0-0050/eeprom"
 		if [ ! -f ${NVMEM_PATH} ]; then
