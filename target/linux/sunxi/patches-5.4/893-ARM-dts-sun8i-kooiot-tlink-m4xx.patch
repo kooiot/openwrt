@@ -11,7 +11,7 @@
  	sun8i-t3-cqa3t-bv3.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-t3-tlink-m408.dts
-@@ -0,0 +1,12 @@
+@@ -0,0 +1,56 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -23,10 +23,54 @@
 +/ {
 +	model = "ThingsLink M408";
 +	compatible = "kooiot,tlink-m408", "allwinner,sun8i-t3", "allwinner,sun8i-r40";
++
++	gpio_export {
++		do_en {
++			gpio-export,name = "do_en";
++			gpio-export,output=<1>;
++			gpios = <&pio 4 0 GPIO_ACTIVE_LOW>; /* PE0 / GPIO0 */
++		};
++
++		do_1 {
++			gpio-export,name = "do_1";
++			gpio-export,output=<1>;
++			gpios = <&pio 4 10 GPIO_ACTIVE_LOW>; /* PE10 / GPIO4 */
++		};
++
++		do_2 {
++			gpio-export,name = "do_2";
++			gpio-export,output=<1>;
++			gpios = <&pio 4 9 GPIO_ACTIVE_LOW>; /* PE9 / GPIO5 */
++		};
++
++		di_1 {
++			gpio-export,name = "di_1";
++			gpio-export,output=<1>;
++			gpios = <&pio 4 8 GPIO_ACTIVE_LOW>; /* PE8 / GPIO6 */
++		};
++
++		di_2 {
++			gpio-export,name = "di_2";
++			gpio-export,output=<1>;
++			gpios = <&pio 4 7 GPIO_ACTIVE_LOW>; /* PE7 / GPIO7 */
++		};
++
++		di_3 {
++			gpio-export,name = "di_3";
++			gpio-export,output=<1>;
++			gpios = <&pio 4 6 GPIO_ACTIVE_LOW>; /* PE6 / GPIO8 */
++		};
++
++		di_4 {
++			gpio-export,name = "di_4";
++			gpio-export,output=<1>;
++			gpios = <&pio 4 5 GPIO_ACTIVE_LOW>; /* PE5 / GPIO9 */
++		};
++	};
 +};
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-t3-tlink-m416.dts
-@@ -0,0 +1,37 @@
+@@ -0,0 +1,45 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -38,6 +82,14 @@
 +/ {
 +	model = "ThingsLink M416";
 +	compatible = "kooiot,tlink-m416", "allwinner,sun8i-t3", "allwinner,sun8i-r40";
++
++	gpio_export {
++		usb_reset {
++			gpio-export,name = "usb_reset";
++			gpio-export,output=<1>;
++			gpios = <&pio 4 0 GPIO_ACTIVE_LOW>; /* PE0 */
++		};
++	};
 +};
 +
 +&ehci0 {

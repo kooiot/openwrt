@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-t3-tlink-dly-t3v2.dtsi
-@@ -0,0 +1,524 @@
+@@ -0,0 +1,518 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -44,25 +44,25 @@
 +
 +		status {
 +			label = "kooiot:green:status";
-+			gpios = <&pio 1 2 GPIO_ACTIVE_LOW>; /* PB2 */
++			gpios = <&pio 1 2 GPIO_ACTIVE_LOW>; /* PB2 / RUN */
 +			linux,default-trigger = "heartbeat";
 +		};
 +
 +		cloud {
 +			label = "kooiot:green:cloud";
-+			gpios = <&pio 8 21 GPIO_ACTIVE_LOW>; /* PI21 */
++			gpios = <&pio 8 21 GPIO_ACTIVE_LOW>; /* PI21 / CLOUD */
 +			default-state = "off";
 +		};
 +
 +		bs {
 +			label = "kooiot:red:bs";
-+			gpios = <&pio 3 20 GPIO_ACTIVE_LOW>; /* PD20 */
++			gpios = <&pio 3 20 GPIO_ACTIVE_LOW>; /* PD20 / SIGN_R */
 +			default-state = "off";
 +		};
 +
 +		gs {
 +			label = "kooiot:green:gs";
-+			gpios = <&pio 3 21 GPIO_ACTIVE_LOW>; /* PD21 */
++			gpios = <&pio 3 21 GPIO_ACTIVE_LOW>; /* PD21 / SIGN_G */
 +			default-state = "off";
 +		};
 +	};
@@ -74,7 +74,7 @@
 +		reset {
 +			label = "reset";
 +			linux,code = <KEY_RESTART>;
-+			gpios = <&pio 4 11 GPIO_ACTIVE_LOW>; /* PE11 */
++			gpios = <&pio 4 11 GPIO_ACTIVE_LOW>; /* PE11 / FG */
 +		};
 +	};
 +
@@ -87,25 +87,19 @@
 +		pcie_power {
 +			gpio-export,name = "pcie_power";
 +			gpio-export,output=<1>;
-+			gpios = <&pio 4 2 GPIO_ACTIVE_HIGH>; /* PE2 */
++			gpios = <&pio 4 2 GPIO_ACTIVE_HIGH>; /* PE2 / 4G_PWR */
 +		};
 +
 +		pcie_reset {
 +			gpio-export,name = "pcie_reset";
 +			gpio-export,output=<0>;
-+			gpios = <&pio 4 3 GPIO_ACTIVE_HIGH>; /* PE3 */
++			gpios = <&pio 4 3 GPIO_ACTIVE_HIGH>; /* PE3 / 4G_RST */
 +		};
 +
 +		can_reset {
 +			gpio-export,name = "can_reset";
 +			gpio-export,output=<1>;
-+			gpios = <&pio 4 1 GPIO_ACTIVE_LOW>; /* PE1 */
-+		};
-+
-+		usb_reset {
-+			gpio-export,name = "usb_reset";
-+			gpio-export,output=<1>;
-+			gpios = <&pio 7 3 GPIO_ACTIVE_LOW>; /* PH3 */
++			gpios = <&pio 4 1 GPIO_ACTIVE_LOW>; /* PE1 / RST_CAN */
 +		};
 +	};
 +

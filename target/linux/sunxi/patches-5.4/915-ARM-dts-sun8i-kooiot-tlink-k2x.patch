@@ -284,7 +284,7 @@
 +		type = <0>;
 +		enable_dma = <0>;
 +		irq_gpio=<&pio 8 15 IRQ_TYPE_LEVEL_LOW>; /* PI15 */
-+		status = "okay";
++		status = "disabled";
 +	};
 +
 +	mcp2515: mcp2515@0 {
@@ -297,7 +297,7 @@
 +		spi-max-frequency = <10000000>;
 +		gpio-controller;
 +		#gpio-cells = <2>;
-+		status = "disabled";
++		status = "okay";
 +	};
 +};
 +
