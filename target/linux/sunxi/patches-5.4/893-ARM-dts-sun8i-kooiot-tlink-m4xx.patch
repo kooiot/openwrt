@@ -45,25 +45,25 @@
 +
 +		di_1 {
 +			gpio-export,name = "di_1";
-+			gpio-export,output=<1>;
++			gpio-export,direction_may_change = <1>;
 +			gpios = <&pio 4 8 GPIO_ACTIVE_LOW>; /* PE8 / GPIO6 */
 +		};
 +
 +		di_2 {
 +			gpio-export,name = "di_2";
-+			gpio-export,output=<1>;
++			gpio-export,direction_may_change = <1>;
 +			gpios = <&pio 4 7 GPIO_ACTIVE_LOW>; /* PE7 / GPIO7 */
 +		};
 +
 +		di_3 {
 +			gpio-export,name = "di_3";
-+			gpio-export,output=<1>;
++			gpio-export,direction_may_change = <1>;
 +			gpios = <&pio 4 6 GPIO_ACTIVE_LOW>; /* PE6 / GPIO8 */
 +		};
 +
 +		di_4 {
 +			gpio-export,name = "di_4";
-+			gpio-export,output=<1>;
++			gpio-export,direction_may_change = <1>;
 +			gpios = <&pio 4 5 GPIO_ACTIVE_LOW>; /* PE5 / GPIO9 */
 +		};
 +	};
