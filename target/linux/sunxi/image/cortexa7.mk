@@ -522,6 +522,7 @@ define Device/kooiot_tlink-k2x
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
     kmod-usb-net-asix kmod-serial-wk2xxx-spi \
 	kmod-can kmod-can-mcp251x \
+	kmod-can-bcm kmod-can-raw ip-full\
 	kmod-motorcomm-yt8521s kmod-motorcomm-yt8512c \
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \

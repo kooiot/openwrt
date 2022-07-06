@@ -10,7 +10,7 @@
 	sun8i-r40-tlink-nano-a40i.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k2x.dts
-@@ -0,0 +1,585 @@
+@@ -0,0 +1,583 @@
 +/*
 + * Copyright (C) 2022 Dirk Chang <dirk@kooiot.com>
 + *
@@ -273,7 +273,7 @@
 +
 +&spi2 {
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&spi2_pc_pins>, <&spi_irq_pins>;
++	pinctrl-0 = <&spi2_pc_pins>, <&spi2_irq_pins>;
 +	status = "okay";
 +
 +	spi2_serial: spi2-serial@0 {
@@ -284,7 +284,7 @@
 +		type = <0>;
 +		enable_dma = <0>;
 +		irq_gpio=<&pio 8 15 IRQ_TYPE_LEVEL_LOW>; /* PI15 */
-+		status = "okay";
++		status = "disabled";
 +	};
 +
 +	mcp2515: mcp2515@0 {
@@ -295,9 +295,7 @@
 +		interrupts = <8 15 IRQ_TYPE_LEVEL_LOW>; /* PI15/EINT27 */
 +		vdd-supply = <&reg_vcc_wifi_3v3>; /* VCC-WIFI */
 +		spi-max-frequency = <10000000>;
-+		gpio-controller;
-+		#gpio-cells = <2>;
-+		status = "disabled";
++		status = "okay";
 +	};
 +};
 +
@@ -404,7 +402,7 @@
 +		function = "spi2";
 +	};
 +
-+	spi_irq_pins: spi-irq-pins {
++	spi2_irq_pins: spi2-irq-pins {
 +		pins = "PI15";
 +		function = "irq";
 +	};
