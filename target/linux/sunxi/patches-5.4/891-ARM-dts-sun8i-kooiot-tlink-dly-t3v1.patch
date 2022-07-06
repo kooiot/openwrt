@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-t3-tlink-dly-t3v2.dtsi
-@@ -0,0 +1,518 @@
+@@ -0,0 +1,514 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -493,7 +493,7 @@
 +	pinctrl-0 = <&spi2_pc_pins>, <&spi2_irq_pins>;
 +	status = "okay";
 +
-+	mcp2515_can1: mcp2515-can1@0 {
++	mcp2515_can0: mcp2515@0 {
 +		compatible = "microchip,mcp2515";
 +		reg = <0>;
 +		clocks = <&can_clk10m>;
@@ -501,12 +501,10 @@
 +		interrupts = <7 13 IRQ_TYPE_LEVEL_LOW>; /* PH13/EINT13 */
 +		vdd-supply = <&reg_dcdc1>;
 +		spi-max-frequency = <10000000>;
-+		gpio-controller;
-+		#gpio-cells = <2>;
 +		status = "okay";
 +	};
 +
-+	mcp2515_can2: mcp2515-can2@1 {
++	mcp2515_can1: mcp2515@1 {
 +		compatible = "microchip,mcp2515";
 +		reg = <1>;
 +		clocks = <&can_clk10m>;
@@ -514,8 +512,6 @@
 +		interrupts = <7 12 IRQ_TYPE_LEVEL_LOW>; /* PH12/EINT12 */
 +		vdd-supply = <&reg_dcdc1>;
 +		spi-max-frequency = <10000000>;
-+		gpio-controller;
-+		#gpio-cells = <2>;
 +		status = "okay";
 +	};
 +};
