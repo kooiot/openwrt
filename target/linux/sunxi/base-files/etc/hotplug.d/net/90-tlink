@@ -1,0 +1,19 @@
+#!/bin/sh
+
+. /lib/functions.sh
+
+board=$(board_name)
+
+tlink_srm821_dialup() {
+	logger "usb0 ethernet detected..."
+	echo -ne "AT+CGDCONT=1,\"IPV4V6\",\"cmnet\"\r\n" > /dev/ttyUSB1
+	echo -ne "AT^NDISDUP=1,1\r\n" > /dev/ttyUSB1
+}
+
+[ "$ACTION" = add -a "$INTERFACE" = usb0 ] && {
+	case $board in
+		kooiot,tlink-k2x)
+			tlink_srm821_dialup
+			;;
+	esac
+}
