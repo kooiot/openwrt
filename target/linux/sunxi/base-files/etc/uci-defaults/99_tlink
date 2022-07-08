@@ -161,13 +161,21 @@ tlink_init_4g() {
 }
 
 tlink_add_5g_wan() {
+	# detect port by lsusb
+	local AT_PORT_INFO='dev/ttyUSB3'
+	lsusb -d 2dee:4d52 > /dev/null
+	if [ $? -eq 0 ]
+	then
+		AT_PORT_INFO='/dev/ttyUSB2'
+	fi
+
 	uci set network.5g_wan='interface'
 	uci set network.5g_wan.proto='dhcp'
 	uci set network.5g_wan.device='usb0'
 	uci set network.5g_wan.metric='10'
 	uci commit network
 
-	uci set 3ginfo.@3ginfo[0].device='/dev/ttyUSB3'
+	uci set 3ginfo.@3ginfo[0].device=${AT_PORT_INFO}
 	uci commit 3ginfo
 
 	uci set system.led_modem.dev='usb0'
@@ -196,6 +204,7 @@ tlink_default() {
 	fi
 
 	case "$(board_name)" in
+		"kooiot,tlink-k2x"|\
 		"kooiot,tlink-k2")
 			tlink_init_5g
 			;;
