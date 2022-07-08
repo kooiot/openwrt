@@ -1,0 +1,25 @@
+#!/bin/sh
+
+. /lib/functions.sh
+
+board=$(board_name)
+
+tlink_usb0_dialup() {
+	lsusb -d 2dee:4d52 > /dev/null
+	if [ $? -eq 0 ]; then
+		logger "MEIG SRM811 detected..."
+		sleep 2
+		echo -ne "AT^NDISDUP=1,0\r\n" > /dev/ttyUSB1
+		sleep 1
+		echo -ne "AT+CGDCONT=1,\"IPV4V6\",\"cmnet\"\r\n" > /dev/ttyUSB1
+		echo -ne "AT^NDISDUP=1,1\r\n" > /dev/ttyUSB1
+	fi
+}
+
+[ "$ACTION" = add -a "$INTERFACE" = usb0 ] && {
+	case $board in
+		kooiot,tlink-rk3568)
+			tlink_usb0_dialup
+			;;
+	esac
+}
