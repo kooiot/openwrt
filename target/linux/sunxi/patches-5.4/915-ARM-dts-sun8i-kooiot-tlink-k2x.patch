@@ -10,7 +10,7 @@
  	sun8i-s3-olinuxino.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k2x.dts
-@@ -0,0 +1,588 @@
+@@ -0,0 +1,589 @@
 +/*
 + * Copyright (C) 2022 Dirk Chang <dirk@kooiot.com>
 + *
@@ -233,9 +233,6 @@
 +&emac_mdio {
 +	status = "okay";
 +	phy-supply = <&reg_vdd_io_3v3>;
-+	// reset-gpios = <&pio 7 27 GPIO_ACTIVE_LOW>; /* PH27 */
-+	// reset-assert-us = <10000>;
-+	// reset-deassert-us = <1000000>;
 +	allwinner,emac-fix-phy-id = <0x128>;
 +
 +	emac_phy: ethernet-phy@3 {
@@ -243,6 +240,10 @@
 +		reg = <3>;
 +		motorcomm,led0 = <0x331>;
 +		motorcomm,led1 = <0x30>;
++
++		reset-gpios = <&pio 7 27 GPIO_ACTIVE_LOW>; /* PH27 */
++		reset-assert-us = <10000>;
++		reset-deassert-us = <1000000>;
 +	};
 +};
 +
@@ -352,7 +353,7 @@
 +&mmc1 {
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&mmc1_pg_pins>;
-+	vmmc-supply = <&reg_dldo1>;
++	vmmc-supply = <&reg_vcc_wifi_3v3>;
 +	vqmmc-supply = <&reg_aldo1>;
 +	mmc-pwrseq = <&wifi_pwrseq>;
 +	bus-width = <4>;
