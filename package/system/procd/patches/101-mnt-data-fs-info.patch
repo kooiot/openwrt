@@ -1,0 +1,10 @@
+--- a/system.c
++++ b/system.c
+@@ -338,6 +338,7 @@
+ 	const char *fslist[] = {
+ 		"/",    "root",
+ 		"/tmp", "tmp",
++		"/mnt/data", "data",
+ 	};
+ 
+ 	if (sysinfo(&info))
