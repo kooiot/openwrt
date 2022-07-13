@@ -80,7 +80,7 @@ define Device/kooiot_tlink-rk3568
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-usb-net-cdc-eem kmod-usb-net-cdc-ether \
 	kmod-usb-net-cdc-mbim kmod-usb-net-rndis \
-	kmod-usb-xhci-pci-renesas upd72020x-firmware \
+	kmod-usb-xhci-pci upd72020x-firmware \
 	kmod-i2c-fusb30x \
 	kmod-can kmod-can-rockchip-canfd \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \

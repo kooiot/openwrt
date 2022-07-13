@@ -1801,6 +1801,22 @@ endef
 $(eval $(call KernelPackage,usb-xhci-mtk))
 
 
+define KernelPackage/usb-xhci-pci
+  TITLE:=Support for xHCI PCI controller
+  DEPENDS:=+kmod-usb-xhci-pci-renesas
+  KCONFIG:=CONFIG_USB_XHCI_PCI
+  FILES:=$(LINUX_DIR)/drivers/usb/host/xhci-pci.ko
+  AUTOLOAD:=$(call AutoLoad,55,xhci-pci,1)
+  $(call AddDepends/usb)
+endef
+
+define KernelPackage/usb-xhci-pci/description
+  Kernel support for the xHCI PCI controller.
+endef
+
+$(eval $(call KernelPackage,usb-xhci-pci))
+
+
 define KernelPackage/usb-xhci-pci-renesas
   TITLE:=Support for additional Renesas xHCI controller with firmware
   KCONFIG:=CONFIG_USB_XHCI_PCI_RENESAS
