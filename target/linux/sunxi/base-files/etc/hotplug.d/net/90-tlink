@@ -5,7 +5,7 @@
 board=$(board_name)
 
 tlink_usb0_dialup() {
-	lsusb -d 2dee:4d52 > /dev/null
+	lsusb -d "2dee:4d52" > /dev/null
 	if [ $? -eq 0 ]; then
 		logger "MEIG SRM811 detected..."
 		sleep 2
@@ -13,10 +13,30 @@ tlink_usb0_dialup() {
 		sleep 1
 		echo -ne "AT+CGDCONT=1,\"IPV4V6\",\"cmnet\"\r\n" > /dev/ttyUSB1
 		echo -ne "AT^NDISDUP=1,1\r\n" > /dev/ttyUSB1
+
+		# echo -ne "AT^NDISDUP=1,1,\"cmnet\",\"username\",\"passwd\",1\r\n" > /dev/ttyUSB1
+	else
+		logger "MEIG SRM811 not detected..."
+	fi
+
+	lsusb -d "2c7c:0900" > /dev/null
+	if [ $? -eq 0 ]; then
+		logger "Quectel RM500U-CN detected..."
+		sleep 2
+
+		echo -ne "AT+QCFG="usbnet",5\r\n" > /dev/ttyUSB3
+		echo -ne "AT+QCFG="nat",0\r\n" > /dev/ttyUSB3
+		echo -ne "AT+QNETDEVCTL=1,1,1" > /dev/ttyUSB3
+
+		# AT+QICSGP=2,"IP","","quectel","123456",1
+		# echo -ne "AT+QICSGP=1,"IP","cmnet","quectel","123456",1\r\n" > /dev/ttyUSB3
+	else
+		logger "Quectel RM500U-CN not detected..."
 	fi
 }
 
 [ "$ACTION" = add -a "$INTERFACE" = usb0 ] && {
+	logger "USB0 interface detected..."
 	case $board in
 		kooiot,tlink-k2x)
 			tlink_usb0_dialup
