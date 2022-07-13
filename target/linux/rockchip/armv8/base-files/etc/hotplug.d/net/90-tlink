@@ -13,6 +13,7 @@ tlink_usb0_dialup() {
 		sleep 1
 		echo -ne "AT+CGDCONT=1,\"IPV4V6\",\"cmnet\"\r\n" > /dev/ttyUSB1
 		echo -ne "AT^NDISDUP=1,1\r\n" > /dev/ttyUSB1
+
 		# echo -ne "AT^NDISDUP=1,1,\"cmnet\",\"username\",\"passwd\",1\r\n" > /dev/ttyUSB1
 	else
 		logger "MEIG SRM811 not detected..."
@@ -25,6 +26,7 @@ tlink_usb0_dialup() {
 
 		echo -ne "AT+QCFG="usbnet",5\r\n" > /dev/ttyUSB3
 		echo -ne "AT+QCFG="nat",0\r\n" > /dev/ttyUSB3
+		echo -ne "AT+QNETDEVCTL=1,1,1" > /dev/ttyUSB3
 
 		# AT+QICSGP=2,"IP","","quectel","123456",1
 		# echo -ne "AT+QICSGP=1,"IP","cmnet","quectel","123456",1\r\n" > /dev/ttyUSB3
