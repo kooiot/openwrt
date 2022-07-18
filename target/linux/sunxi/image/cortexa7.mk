@@ -525,8 +525,9 @@ define Device/kooiot_tlink-k2x
 	kmod-can-bcm kmod-can-raw ip-full\
 	kmod-motorcomm-yt8521s kmod-motorcomm-yt8512c \
     uqmi fdisk usbutils freeioe wwanleds \
-    luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+	luci-proto-qmi luci-proto-3g luci-proto-ncm \
+	luci-app-freeioe tinc-freeioe-tunnel \
+	ser2net shellinabox iperf3 ethtool minicom \
     blockd kmod-usb-storage kmod-drm-sunxi \
     usb-otg-sunxi kmod-usb-gadget-serial \
 	kmod-eeprom-at24
