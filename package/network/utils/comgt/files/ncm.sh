@@ -27,6 +27,7 @@ proto_ncm_setup() {
 	local interface="$1"
 
 	local manufacturer initialize setmode connect finalize devname devpath ifpath
+	local pdptype_num
 
 	local device ifname  apn auth username password pincode delay mode pdptype profile $PROTO_DEFAULT_OPTIONS
 	json_get_vars device ifname apn auth username password pincode delay mode pdptype profile $PROTO_DEFAULT_OPTIONS
@@ -37,6 +38,14 @@ proto_ncm_setup() {
 
 	pdptype=$(echo "$pdptype" | awk '{print toupper($0)}')
 	[ "$pdptype" = "IP" -o "$pdptype" = "IPV6" -o "$pdptype" = "IPV4V6" ] || pdptype="IP"
+
+	if [ "$pdptype" = "IPV4V6" ]; then
+		pdptype_num=3
+	elif [ "$pdptype" = "IPV6" ]; then
+		pdptype_num=2
+	else
+		pdptype_num=1
+	fi
 
 	[ -n "$ctl_device" ] && device=$ctl_device
 
@@ -94,7 +103,7 @@ proto_ncm_setup() {
 	[ $? -ne 0 ] && {
 		echo "Unsupported modem"
 		proto_notify_error "$interface" UNSUPPORTED_MODEM
-		proto_set_available "$interface" 0
+		# proto_set_available "$interface" 0 // May retry to get manufacturer later
 		return 1
 	}
 
@@ -155,6 +164,7 @@ proto_ncm_setup() {
 
 	echo "Setting up $ifname"
 	proto_init_update "$ifname" 1
+	proto_set_keep 1
 	proto_add_data
 	json_add_string "manufacturer" "$manufacturer"
 	proto_close_data
