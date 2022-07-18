@@ -39,7 +39,7 @@ tlink_usb0_dialup() {
 	logger "USB0 interface detected..."
 	case $board in
 		kooiot,tlink-rk3568)
-			tlink_usb0_dialup
+			# tlink_usb0_dialup
 			;;
 	esac
 }

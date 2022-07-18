@@ -155,23 +155,26 @@ tlink_init_4g() {
 
 tlink_add_5g_wan() {
 	# detect port by lsusb
-	local AT_PORT_INFO='dev/ttyUSB2'
-	#
-	# lsusb -d 2dee:4d52 > /dev/null
-	# if [ $? -eq 0 ]
-	# then
-	#	AT_PORT_INFO='/dev/ttyUSB2' # USB2-AT USB1-MODEM
-	# fi
-	# lsusb -d 2c7c:0900 > /dev/null
-	# if [ $? -eq 0 ]
-	# then
-	#	AT_PORT_INFO='/dev/ttyUSB2' # USB2-AT USB3-MODEM
-	# fi
+	local AT_PORT_INFO='/dev/ttyUSB2'
+	local AT_PORT
+	lsusb -d "2dee:4d52" > /dev/null
+	if [ $? -eq 0 ]
+	then
+		AT_PORT='/dev/ttyUSB1' # USB2-AT USB1-MODEM
+	fi
+	lsusb -d "2c7c:0900" > /dev/null
+	if [ $? -eq 0 ]
+	then
+		AT_PORT='/dev/ttyUSB3' # USB2-AT USB3-MODEM
+	fi
 
 	uci set network.5g_wan='interface'
-	uci set network.5g_wan.proto='dhcp'
-	uci set network.5g_wan.device='usb0'
+	uci set network.5g_wan.proto='ncm'
+	uci set network.5g_wan.device=${AT_PORT}
 	uci set network.5g_wan.metric='10'
+	uci set network.5g_wan.apn='cmnet'
+	uci set network.5g_wan.pdptype='ipv4'
+	uci set network.5g_wan.delay='10'
 	uci commit network
 
 	uci set 3ginfo.@3ginfo[0].device=${AT_PORT_INFO}

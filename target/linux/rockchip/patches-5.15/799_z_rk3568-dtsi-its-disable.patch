@@ -1,0 +1,46 @@
+--- a/arch/arm64/boot/dts/rockchip/rk3568.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3568.dtsi
+@@ -358,13 +358,9 @@
+ 		#interrupt-cells = <3>;
+ 		#address-cells = <2>;
+ 		#size-cells = <2>;
+-
+-		its: interrupt-controller@fd440000 {
+-			compatible = "arm,gic-v3-its";
+-			reg = <0x0 0xfd440000 0x0 0x20000>;
+-			msi-controller;
+-			#msi-cells = <1>;
+-		};
++		mbi-alias = <0x0 0xfd410000>;
++		mbi-ranges = <296 64>;
++		msi-controller;
+ 	};
+ 
+ 	usb_host0_ehci: usb@fd800000 {
+@@ -923,7 +919,7 @@
+ 		num-ib-windows = <6>;
+ 		num-ob-windows = <2>;
+ 		max-link-speed = <2>;
+-		msi-map = <0x0 &its 0x0 0x1000>;
++		msi-map = <0x0 &gic 0x0 0x1000>;
+ 		num-lanes = <1>;
+ 		phys = <&combphy2 PHY_TYPE_PCIE>;
+ 		phy-names = "pcie-phy";
+@@ -974,7 +970,7 @@
+ 		num-ib-windows = <6>;
+ 		num-ob-windows = <2>;
+ 		max-link-speed = <3>;
+-		msi-map = <0x1000 &its 0x1000 0x1000>;
++		msi-map = <0x1000 &gic 0x1000 0x1000>;
+ 		num-lanes = <1>;
+ 		phys = <&pcie30phy>;
+ 		phy-names = "pcie-phy";
+@@ -1026,7 +1022,7 @@
+ 		num-ib-windows = <6>;
+ 		num-ob-windows = <2>;
+ 		max-link-speed = <3>;
+-		msi-map = <0x2000 &its 0x2000 0x1000>;
++		msi-map = <0x2000 &gic 0x2000 0x1000>;
+ 		num-lanes = <2>;
+ 		phys = <&pcie30phy>;
+ 		phy-names = "pcie-phy";
