@@ -25,38 +25,3 @@
  	battery_power_supply: battery-power-supply {
  		compatible = "x-powers,axp221-battery-power-supply";
  		status = "disabled";
---- a/arch/arm/boot/dts/sun8i-r40-bananapi-m2-ultra.dts
-+++ b/arch/arm/boot/dts/sun8i-r40-bananapi-m2-ultra.dts
-@@ -99,6 +99,17 @@
- 		};
- 	};
- 
-+	gpio_export {
-+		compatible = "gpio-export";
-+		#size-cells = <0>;
-+
-+		axp_gpio_1 {
-+			gpio-export,name = "axpio_gpio_1";
-+			gpio-export,output=<1>;
-+			gpios = <&axp_gpio 1 GPIO_ACTIVE_HIGH>; /* GPIO */
-+		};
-+	};
-+
- 	reg_vcc5v0: vcc5v0 {
- 		compatible = "regulator-fixed";
- 		regulator-name = "vcc5v0";
-@@ -207,6 +218,14 @@
- 	bus-width = <4>;
- 	non-removable;
- 	status = "okay";
-+
-+	ap6212: sdio_wifi@1 {
-+		compatible = "brcm,bcm4329-fmac";
-+		reg = <1>;
-+		interrupt-parent = <&axp_gpio>;
-+		interrupts = <0 IRQ_TYPE_LEVEL_LOW>; /* GPIO0 */
-+		interrupt-names = "host-wake";
-+	};
- };
- 
- &mmc2 {
