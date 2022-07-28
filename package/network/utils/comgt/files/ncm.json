@@ -74,5 +74,28 @@
 		"connect": "AT+CGACT=1,${profile}",
 		"finalize": "AT+CGDATA=\\\"M-MBIM\\\",${profile},1",
 		"disconnect": "AT+CGACT=0,${profile}"
+	},
+	"quectel": {
+		"initialize": [
+			"AT",
+			"AT+QCFG=\\\"usbnet\\\",5",
+			"AT+QCFG=\\\"nat\\\",0",
+			"AT"
+		],
+		"configure": [
+			"AT+QICSGP=${profile},${pdptype_num},\\\"${apn}\\\"${username:+,\\\"$username\\\"}${password:+,\\\"$password\\\"}${auth:+,$auth}"
+		],
+		"connect": "AT+QNETDEVCTL=${profile},1,1",
+		"disconnect": "AT+QNETDEVCTL=${profile},0,0"
+	},
+	"meig": {
+		"initialize": [
+			"AT",
+			"ATE1",
+			"AT+CGDCONT=${profile},\\\"${pdptype}\\\"${apn:+,\\\"$apn\\\"}"
+		],
+		"connect_1": "AT^NDISDUP=${profile},1${apn:+,\\\"$apn\\\"}${username:+,\\\"$username\\\"}${password:+,\\\"$password\\\"}${auth:+,$auth}",
+		"connect": "AT^NDISDUP=${profile},1",
+		"disconnect": "AT^NDISDUP=${profile},0"
 	}
 }
