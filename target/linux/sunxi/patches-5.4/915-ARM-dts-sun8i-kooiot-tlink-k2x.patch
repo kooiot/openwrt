@@ -10,7 +10,7 @@
  	sun8i-s3-olinuxino.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k2x.dts
-@@ -0,0 +1,589 @@
+@@ -0,0 +1,605 @@
 +/*
 + * Copyright (C) 2022 Dirk Chang <dirk@kooiot.com>
 + *
@@ -340,6 +340,22 @@
 +};
 +
 +#include "axp22x.dtsi"
++
++&ac_power_supply {
++	status = "okay";
++};
++
++&battery_power_supply {
++	status = "okay";
++};
++
++&reg_drivevbus {
++	status = "okay";
++};
++
++/* &axp_led {
++	status = "okay";
++}; */
 +
 +/* SD Card */
 +&mmc0 {
