@@ -325,8 +325,9 @@ define Device/kooiot_tlink-k2
     kmod-serial-wk2xxx-spi \
 	kmod-motorcomm-yt8521s kmod-motorcomm-yt8512c \
     uqmi fdisk usbutils freeioe wwanleds \
-    luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    luci-app-freeioe tinc-freeioe-tunnel \
+	luci-proto-qmi luci-proto-3g luci-proto-ncm \
+	ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage kmod-drm-sunxi \
     usb-otg-sunxi kmod-usb-gadget-serial
   SOC := sun8i-r40
