@@ -55,6 +55,7 @@ CONFIG_TARGET_sunxi_cortexa7=y
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_friendlyarm_zeropi is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-k1 is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-k2 is not set
+# CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-k2x is not set
 CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-m408=y
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-m416 is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-r1 is not set
