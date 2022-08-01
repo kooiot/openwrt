@@ -1,0 +1,13 @@
+--- a/drivers/watchdog/sunxi_wdt.c
++++ b/drivers/watchdog/sunxi_wdt.c
+@@ -268,6 +268,10 @@
+ 	dev_info(dev, "Watchdog enabled (timeout=%d sec, nowayout=%d)",
+ 		 sunxi_wdt->wdt_dev.timeout, nowayout);
+ 
++	if (of_property_read_bool(dev->of_node, "sunxi,start-on-init")) {
++		dev_info(dev, "Watchdog started on init", sunxi_wdt->wdt_dev.timeout, nowayout);
++		sunxi_wdt_start(&sunxi_wdt->wdt_dev);
++	}
+ 	return 0;
+ }
+ 
