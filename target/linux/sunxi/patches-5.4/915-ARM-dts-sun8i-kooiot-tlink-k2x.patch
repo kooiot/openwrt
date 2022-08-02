@@ -10,7 +10,7 @@
  	sun8i-s3-olinuxino.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k2x.dts
-@@ -0,0 +1,605 @@
+@@ -0,0 +1,609 @@
 +/*
 + * Copyright (C) 2022 Dirk Chang <dirk@kooiot.com>
 + *
@@ -393,6 +393,10 @@
 +	vqmmc-supply = <&reg_aldo2>;
 +	bus-width = <8>;
 +	non-removable;
++	status = "okay";
++};
++
++&ohci0 {
 +	status = "okay";
 +};
 +

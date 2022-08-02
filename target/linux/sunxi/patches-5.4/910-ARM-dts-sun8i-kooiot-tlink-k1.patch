@@ -238,10 +238,18 @@
 +};
 +
 +&otg_sram {
-+	status = "okay";
++	status = "disabled";
 +};
 +
 +&usb_otg {
++	status = "disabled";
++};
++
++&ehci0 {
++	status = "okay";
++};
++
++&ohci0 {
 +	status = "okay";
 +};
 +
@@ -249,7 +257,15 @@
 +	status = "okay";
 +};
 +
++&ohci1 {
++	status = "okay";
++};
++
 +&ehci2 {
++	status = "okay";
++};
++
++&ohci2 {
 +	status = "okay";
 +};
 +
@@ -423,14 +439,6 @@
 +	vqmmc-supply = <&reg_aldo2>;
 +	bus-width = <8>;
 +	non-removable;
-+	status = "okay";
-+};
-+
-+&ohci1 {
-+	status = "okay";
-+};
-+
-+&ohci2 {
 +	status = "okay";
 +};
 +
