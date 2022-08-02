@@ -22,11 +22,11 @@ tlink_mount_data() {
 	fi
 
 	if [ -b "/dev/mmcblk1p4"]; then
-		echo "EMC not initialized!!!" > /dev/console
+		echo "EMC not initialized!!!" > /dev/kmsg
 		return
 	fi
 	if [ -b "/dev/mmcblk1p5"]; then
-		echo "EMC not initialized!!!" > /dev/console
+		echo "EMC not initialized!!!" > /dev/kmsg
 		return
 	fi
 
@@ -130,8 +130,8 @@ tlink_auto_start_install() {
 
 	sync
 	
-	echo "This is an BOOT SD!!!!" > /dev/console
-	echo "You need to restart device mannually!!" > /dev/console
+	echo "This is an BOOT SD!!!!" > /dev/kmsg
+	echo "You need to restart device mannually!!" > /dev/kmsg
 }
 
 tlink_sd_default () {
@@ -152,10 +152,10 @@ tlink_sd_default () {
 tlink_init_4g() {
 	[ -e /dev/cdc-wdm0 ] && {
 		# QMI interface
-		echo "QMI module found!!!" > /dev/console
+		echo "QMI module found!!!" > /dev/kmsg
 		tlink_add_qmi_interface
 	} || {
-		echo "QMI module not found!!!" > /dev/console
+		echo "QMI module not found!!!" > /dev/kmsg
 		tlink_add_4g_wan
 	}
 }
@@ -163,15 +163,17 @@ tlink_init_4g() {
 tlink_add_5g_wan() {
 	# detect port by lsusb
 	local AT_PORT_INFO='/dev/ttyUSB2'
-	local AT_PORT
+	local AT_PORT='/dev/ttyUSB3'
 	lsusb -d "2dee:4d52" > /dev/null
 	if [ $? -eq 0 ]
 	then
+		echo "MEIGLink SRM821 found!" > /dev/kmsg
 		AT_PORT='/dev/ttyUSB1' # USB2-AT USB1-MODEM
 	fi
 	lsusb -d "2c7c:0900" > /dev/null
 	if [ $? -eq 0 ]
 	then
+		echo "Quectel RM500U-CN found!" > /dev/kmsg
 		AT_PORT='/dev/ttyUSB3' # USB2-AT USB3-MODEM
 	fi
 
@@ -194,10 +196,10 @@ tlink_add_5g_wan() {
 tlink_init_5g() {
 	[ -e /dev/cdc-wdm0 ] && {
 		# QMI interface
-		echo "QMI module found!!!" > /dev/console
+		echo "QMI (5G) module found!!!" > /dev/kmsg
 		tlink_add_qmi_interface
 	} || {
-		echo "QMI module not found!!!" > /dev/console
+		echo "Initial 5G configuration...." > /dev/kmsg
 		tlink_add_5g_wan
 	}
 }
@@ -209,7 +211,7 @@ tlink_default() {
 	if ( grep -qs '/mnt/data' /etc/config/fstab || \
 		tlink_mount_data )
 	then
-		echo "Data mount added"
+		echo "Data parition mount point added" > /dev/kmsg
 	fi
 
 	case "$(board_name)" in
