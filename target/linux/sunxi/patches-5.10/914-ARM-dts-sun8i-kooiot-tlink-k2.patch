@@ -10,7 +10,7 @@
 	sun8i-r40-tlink-nano-a40i.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k2.dts
-@@ -0,0 +1,609 @@
+@@ -0,0 +1,613 @@
 +/*
 + * Copyright (C) 2022 Dirk Chang <dirk@kooiot.com>
 + *
@@ -212,6 +212,14 @@
 +	};
 +};
 +
++&ohci0 {
++	status = "okay";
++};
++
++&ohci1 {
++	status = "okay";
++};
++
 +&ehci1 {
 +	status = "okay";
 +
@@ -224,6 +232,10 @@
 +};
 +
 +&ehci2 {
++	status = "okay";
++};
++
++&ohci2 {
 +	status = "okay";
 +};
 +
@@ -369,14 +381,6 @@
 +	vqmmc-supply = <&reg_dldo3 &reg_dldo4>;
 +	bus-width = <8>;
 +	non-removable;
-+	status = "okay";
-+};
-+
-+&ohci1 {
-+	status = "okay";
-+};
-+
-+&ohci2 {
 +	status = "okay";
 +};
 +
