@@ -11,7 +11,7 @@
  	sun8i-a83t-bananapi-m3.dtb \
 --- a/configs/tlink_x3_defconfig
 +++ b/configs/tlink_x3_defconfig
-@@ -0,0 +1,16 @@
+@@ -0,0 +1,18 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
 +CONFIG_SPL=y
@@ -28,9 +28,11 @@
 +CONFIG_DEFAULT_DEVICE_TREE="sun8i-x3-tlink-x3"
 +CONFIG_SUNXI_NO_PMIC=y
 +# CONFIG_NETDEVICES is not set
++CONFIG_WDT=y
++CONFIG_WDT_SUNXI=y
 --- a/arch/arm/dts/sun8i-x3-tlink-x3.dts
 +++ b/arch/arm/dts/sun8i-x3-tlink-x3.dts
-@@ -0,0 +1,125 @@
+@@ -0,0 +1,129 @@
 +/*
 + * Copyright 2021 Dirk Chang <dirk@kooiot.com>
 + */
@@ -155,4 +157,8 @@
 +&usbphy {
 +	status = "okay";
 +	usb1_vbus-supply = <&reg_vcc5v0>; /* USB1 VBUS is always on */
++};
++
++&wdt0 {
++	sunxi,start-on-init;
 +};
