@@ -10,7 +10,7 @@
  	sun8i-a83t-cubietruck-plus.dtb \
 --- a/arch/arm/boot/dts/sun8i-x3-tlink-x3.dts
 +++ b/arch/arm/boot/dts/sun8i-x3-tlink-x3.dts
-@@ -0,0 +1,276 @@
+@@ -0,0 +1,280 @@
 +/*
 + * Copyright 2021 Dirk Chang <dirk@kooiot.com>
 + */
@@ -286,4 +286,8 @@
 +		reg = <0x32>;
 +		status = "okay";
 +	};
++};
++
++&wdt0 {
++	sunxi,start-on-init;
 +};
