@@ -10,7 +10,7 @@
  	sun8i-s3-olinuxino.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k1.dts
-@@ -0,0 +1,643 @@
+@@ -0,0 +1,651 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
