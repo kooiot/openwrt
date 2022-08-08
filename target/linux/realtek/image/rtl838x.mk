@@ -65,6 +65,30 @@ define Device/engenius_ews2910p
 endef
 TARGET_DEVICES += engenius_ews2910p
 
+define Device/hpe_1920-8g
+  $(Device/hpe_1920)
+  SOC := rtl8380
+  DEVICE_MODEL := 1920-8G (JG920A)
+  H3C_DEVICE_ID := 0x00010023
+endef
+TARGET_DEVICES += hpe_1920-8g
+
+define Device/hpe_1920-16g
+  $(Device/hpe_1920)
+  SOC := rtl8382
+  DEVICE_MODEL := 1920-16G (JG923A)
+  H3C_DEVICE_ID := 0x00010026
+endef
+TARGET_DEVICES += hpe_1920-16g
+
+define Device/hpe_1920-24g
+  $(Device/hpe_1920)
+  SOC := rtl8382
+  DEVICE_MODEL := 1920-24G (JG924A)
+  H3C_DEVICE_ID := 0x00010027
+endef
+TARGET_DEVICES += hpe_1920-24g
+
 define Device/inaba_aml2-17gp
   SOC := rtl8382
   IMAGE_SIZE := 13504k
@@ -113,6 +137,26 @@ define Device/netgear_gs310tp-v1
   DEVICE_PACKAGES += lua-rs232
 endef
 TARGET_DEVICES += netgear_gs310tp-v1
+
+define Device/panasonic_m16eg-pn28160k
+  SOC := rtl8382
+  IMAGE_SIZE := 16384k
+  DEVICE_VENDOR := Panasonic
+  DEVICE_MODEL := Switch-M16eG
+  DEVICE_VARIANT := PN28160K
+  DEVICE_PACKAGES := kmod-i2c-mux-pca954x
+endef
+TARGET_DEVICES += panasonic_m16eg-pn28160k
+
+define Device/panasonic_m24eg-pn28240k
+  SOC := rtl8382
+  IMAGE_SIZE := 16384k
+  DEVICE_VENDOR := Panasonic
+  DEVICE_MODEL := Switch-M24eG
+  DEVICE_VARIANT := PN28240K
+  DEVICE_PACKAGES := kmod-i2c-mux-pca954x
+endef
+TARGET_DEVICES += panasonic_m24eg-pn28240k
 
 define Device/panasonic_m8eg-pn28080k
   SOC := rtl8380
