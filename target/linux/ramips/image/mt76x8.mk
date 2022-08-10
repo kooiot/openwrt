@@ -893,7 +893,7 @@ TARGET_DEVICES += widora_neo-32m
 define Device/kooiot_tlink-c1-16m
   IMAGE_SIZE := 16064k
   DEVICE_VENDOR := KooIoT
-  DEVICE_MODEL := ThingsLink C1 (16M)
+  DEVICE_MODEL := ThingsLink C1
   DEVICE_VARIANT := 16M
   DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
 	kmod-gpio-button-hotplug kmod-leds-gpio \
@@ -909,7 +909,7 @@ TARGET_DEVICES += kooiot_tlink-c1-16m
 define Device/kooiot_tlink-c1-32m
   IMAGE_SIZE := 32448k
   DEVICE_VENDOR := KooIoT
-  DEVICE_MODEL := ThingsLink C1 (32M)
+  DEVICE_MODEL := ThingsLink C1
   DEVICE_VARIANT := 32M
   DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
 	kmod-gpio-button-hotplug kmod-leds-gpio \
@@ -926,7 +926,7 @@ TARGET_DEVICES += kooiot_tlink-c1-32m
 define Device/kooiot_tlink-c2-16m
   IMAGE_SIZE := 16064k
   DEVICE_VENDOR := KooIoT
-  DEVICE_MODEL := ThingsLink C2 (16M)
+  DEVICE_MODEL := ThingsLink C2
   DEVICE_VARIANT := 16M
   DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
 	kmod-gpio-button-hotplug kmod-leds-gpio \
@@ -943,7 +943,7 @@ TARGET_DEVICES += kooiot_tlink-c2-16m
 define Device/kooiot_tlink-c2-32m
   IMAGE_SIZE := 32448k
   DEVICE_VENDOR := KooIoT
-  DEVICE_MODEL := ThingsLink C2 (32M)
+  DEVICE_MODEL := ThingsLink C2
   DEVICE_VARIANT := 32M
   DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
 	kmod-gpio-button-hotplug kmod-leds-gpio \
@@ -957,10 +957,27 @@ define Device/kooiot_tlink-c2-32m
 endef
 TARGET_DEVICES += kooiot_tlink-c2-32m
 
+define Device/kooiot_tlink-c2-v2
+  IMAGE_SIZE := 32448k
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink C2 V2
+  DEVICE_VARIANT := 32M
+  DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
+	kmod-gpio-button-hotplug kmod-leds-gpio \
+	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
+	kmod-usb-serial kmod-usb-serial-option \
+	kmod-usb-serial-qualcomm \
+	kmod-usb-net-qmi-wwan kmod-usb-serial-cp210x \
+	luci-app-freeioe luci-proto-qmi luci-proto-3g \
+	uqmi fdisk usbutils freeioe wwanleds
+  SUPPORTED_DEVICES += tlink-c2-v2
+endef
+TARGET_DEVICES += kooiot_tlink-c2-v2
+
 define Device/kooiot_tlink-c3-32m
   IMAGE_SIZE := 32448k
   DEVICE_VENDOR := KooIoT
-  DEVICE_MODEL := ThingsLink C3 (32M)
+  DEVICE_MODEL := ThingsLink C3
   DEVICE_VARIANT := 32M
   DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
 	kmod-gpio-button-hotplug kmod-leds-gpio \
@@ -977,7 +994,7 @@ TARGET_DEVICES += kooiot_tlink-c3-32m
 define Device/kooiot_tlink-c35-16m
   IMAGE_SIZE := 16064k
   DEVICE_VENDOR := KooIoT
-  DEVICE_MODEL := ThingsLink C35 (16M)
+  DEVICE_MODEL := ThingsLink C35
   DEVICE_VARIANT := 16M
   DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
 	kmod-gpio-button-hotplug kmod-leds-gpio \
@@ -994,7 +1011,7 @@ TARGET_DEVICES += kooiot_tlink-c35-16m
 define Device/kooiot_tlink-c35-32m
   IMAGE_SIZE := 32448k
   DEVICE_VENDOR := KooIoT
-  DEVICE_MODEL := ThingsLink C35 (32M)
+  DEVICE_MODEL := ThingsLink C35
   DEVICE_VARIANT := 32M
   DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
 	kmod-gpio-button-hotplug kmod-leds-gpio \

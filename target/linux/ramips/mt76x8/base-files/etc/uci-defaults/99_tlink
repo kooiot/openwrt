@@ -51,7 +51,8 @@ tlink_default() {
 		echo "QMI module not found!!!" > /dev/console
 		case "$(board_name)" in
 		"kooiot,tlink-c2-16m" | \
-		"kooiot,tlink-c2-32m")
+		"kooiot,tlink-c2-32m" | \
+		"kooiot,tlink-c2-v2")
 			tlink_add_4g_wan 3 2
 			;;
 		*)
@@ -77,6 +78,7 @@ case "$(board_name)" in
 "kooiot,tlink-c1-32m" | \
 "kooiot,tlink-c2-16m" | \
 "kooiot,tlink-c2-32m" | \
+"kooiot,tlink-c2-v2" | \
 "kooiot,tlink-c3-16m" | \
 "kooiot,tlink-c3-32m" | \
 "kooiot,tlink-c35-16m" | \

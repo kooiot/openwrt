@@ -18,7 +18,7 @@
 		bootargs = "console=ttyS0,57600";
 	};
 
-	leds {
+	leds: leds {
 		compatible = "gpio-leds";
 
 		/* WLED_AN function is not GPIO. So it will not be mapped to leds
@@ -63,7 +63,7 @@
 		};
 	};
 
-	gpio_export {
+	gpio_export: gpio-export {
 		compatible = "gpio-export";
 		#size-cells = <0>;
 

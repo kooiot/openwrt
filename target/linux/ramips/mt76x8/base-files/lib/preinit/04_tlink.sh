@@ -82,6 +82,7 @@ do_kooiot_tlink_generic() {
 	"kooiot,tlink-c1-32m" | \
 	"kooiot,tlink-c2-16m" | \
 	"kooiot,tlink-c2-32m" | \
+	"kooiot,tlink-c2-v2" | \
 	"kooiot,tlink-c3-16m" | \
 	"kooiot,tlink-c3-32m" | \
 	"kooiot,tlink-c35-16m" | \

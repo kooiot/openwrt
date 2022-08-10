@@ -4,18 +4,25 @@
 
 board=$(board_name)
 
+logger -t hotplug $(env)
+
 tlink_c2_usb_serial() {
-	CP210_PID="10c4/ea60/100"
+	CH341_PID="1a86:7523"
 	SYMLINK="ttyS2"
 
-	if [ "${PRODUCT}" = "${CP210_PID}" ]; then
+	vid=$(cat /sys$DEVPATH/../idVendor)
+	pid=$(cat /sys$DEVPATH/../idProduct)
+
+	echo "${vid}:${pid}" > /dev/kmsg
+
+	if [ "${vid}:${pid}" = "${CH341_PID}" ]; then
 		if [ "${ACTION}" = "bind" ]; then
 			DEVICE_NAME=$(ls /sys/${DEVPATH} | grep tty)
 			if [ -z ${DEVICE_NAME} ]; then
 				logger -t hotplug "Warning DEVICE_NAME is empty"
 				exit
 			fi
-			logger -t hotplug "Device name of cp210 is ${DEVICE_NAME}"
+			logger -t hotplug "Device name of ch341 is ${DEVICE_NAME}"
 			rm -f /dev/${SYMLINK}
 			ln -s /dev/${DEVICE_NAME} /dev/${SYMLINK}
 			logger -t hotplug "Symlink from /dev/${DEVICE_NAME} to /dev/${SYMLINK} created"
@@ -28,16 +35,8 @@ tlink_c2_usb_serial() {
 	fi
 }
 
-tlink_c2_v2_usb_serial() {
-	logger -t hotplug "${PRODUCT} ${ACTION}"
-}
-
 case $board in
-	kooiot,tlink-c2-16m |\
-	kooiot,tlink-c2-32m)
-		tlink_c2_usb_serial
-		;;
 	kooiot,tlink-c2-v2)
-		tlink_c2_v2_usb_serial
+		tlink_c2_usb_serial
 		;;
 esac
