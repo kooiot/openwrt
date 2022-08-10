@@ -155,7 +155,7 @@ tlink_init_4g() {
 		echo "QMI module found!!!" > /dev/kmsg
 		tlink_add_qmi_interface
 	} || {
-		echo "QMI module not found!!!" > /dev/kmsg
+		echo "Initial 4G configuration...." > /dev/kmsg
 		tlink_add_4g_wan
 	}
 }
@@ -196,7 +196,7 @@ tlink_add_5g_wan() {
 tlink_init_5g() {
 	[ -e /dev/cdc-wdm0 ] && {
 		# QMI interface
-		echo "QMI (5G) module found!!!" > /dev/kmsg
+		echo "QMI module found!!!" > /dev/kmsg
 		tlink_add_qmi_interface
 	} || {
 		echo "Initial 5G configuration...." > /dev/kmsg
