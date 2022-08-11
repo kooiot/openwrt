@@ -1,7 +1,17 @@
 diff -uNra a/include/configs/sunxi-common.h b/include/configs/sunxi-common.h
 --- a/include/configs/sunxi-common.h	2021-12-06 18:39:35.038127434 +0800
 +++ b/include/configs/sunxi-common.h	2021-12-06 19:15:32.413875179 +0800
-@@ -144,7 +144,7 @@
+@@ -102,6 +102,9 @@
+
+ #define PHYS_SDRAM_0			CONFIG_SYS_SDRAM_BASE
+ #define PHYS_SDRAM_0_SIZE		0x80000000 /* 2 GiB */
++#ifdef CONFIG_MACH_SUN8I_X3
++#define PHYS_SDRAM_0_SIZE		0x8000000 /* 128 MB */
++#endif
+
+ #ifdef CONFIG_AHCI
+ #define CONFIG_SYS_64BIT_LBA
+@@ -144,7 +147,7 @@
  #define CONFIG_SYS_MMC_MAX_DEVICE	4
  #endif
  
@@ -10,7 +20,7 @@ diff -uNra a/include/configs/sunxi-common.h b/include/configs/sunxi-common.h
  /* 64MB of malloc() pool */
  #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + (64 << 20))
  #else
-@@ -308,7 +308,7 @@
+@@ -308,7 +311,7 @@
   * 32M uncompressed kernel, 16M compressed kernel, 1M fdt,
   * 1M script, 1M pxe and the ramdisk at the end.
   */
