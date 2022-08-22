@@ -219,6 +219,9 @@ tlink_default() {
 		"kooiot,tlink-k2")
 			tlink_init_5g
 			;;
+		"kooiot,tlink-x3")
+			tlink_add_qmi_interface
+			;;
 		*)
 			tlink_init_4g
 			;;
