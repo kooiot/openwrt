@@ -33,14 +33,14 @@
 +
 +		do_1 {
 +			gpio-export,name = "do_1";
-+			gpio-export,output=<1>;
-+			gpios = <&pio 4 10 GPIO_ACTIVE_LOW>; /* PE10 / GPIO4 */
++			gpio-export,output=<0>;
++			gpios = <&pio 4 10 GPIO_ACTIVE_HIGH>; /* PE10 / GPIO4 */
 +		};
 +
 +		do_2 {
 +			gpio-export,name = "do_2";
-+			gpio-export,output=<1>;
-+			gpios = <&pio 4 9 GPIO_ACTIVE_LOW>; /* PE9 / GPIO5 */
++			gpio-export,output=<0>;
++			gpios = <&pio 4 9 GPIO_ACTIVE_HIGH>; /* PE9 / GPIO5 */
 +		};
 +
 +		di_1 {
