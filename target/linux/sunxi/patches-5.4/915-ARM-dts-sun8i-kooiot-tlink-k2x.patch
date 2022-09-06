@@ -10,7 +10,7 @@
  	sun8i-s3-olinuxino.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k2x.dts
-@@ -0,0 +1,609 @@
+@@ -0,0 +1,615 @@
 +/*
 + * Copyright (C) 2022 Dirk Chang <dirk@kooiot.com>
 + *
@@ -29,8 +29,8 @@
 +	compatible = "kooiot,tlink-k2x", "allwinner,sun8i-r40";
 +
 +	aliases {
-+		ethernet0 = &gmac;
-+		ethernet1 = &emac;
++		ethernet0 = &emac;
++		ethernet1 = &gmac;
 +		serial0 = &uart0;
 +		serial1 = &uart2;
 +		serial2 = &uart3;
@@ -123,15 +123,27 @@
 +		};
 +
 +		pcie_disable {
-+			gpio-export,name = "pcie_disable";
++			gpio-export,name = "pcie_disable"; /* fly-mode */
 +			gpio-export,output=<1>;
 +			gpios = <&pio 1 5 GPIO_ACTIVE_HIGH>; /* PB5 */
++		};
++
++		pcie_wakeup_in {
++			gpio-export,name = "pcie_wakeup_in"; /* DEVSLP0/DEVSLP pin38 */
++			gpio-export,output=<1>;
++			gpios = <&pio 8 8 GPIO_ACTIVE_HIGH>; /* PI8 */
 +		};
 +
 +		ex_uart_reset {
 +			gpio-export,name = "ex_uart_reset";
 +			gpio-export,output=<1>;
 +			gpios = <&pio 8 9 GPIO_ACTIVE_LOW>; /* PI9 */
++		};
++
++		can_reset {
++			gpio-export,name = "can_reset";
++			gpio-export,output=<1>;
++			gpios = <&pio 8 5 GPIO_ACTIVE_LOW>; /* PI5 */
 +		};
 +
 +		ap_reset {
@@ -144,12 +156,6 @@
 +			gpio-export,name = "sata_en"; /* SATA0_ACTn/GPIO_9 */
 +			gpio-export,output=<1>;
 +			gpios = <&pio 8 7 GPIO_ACTIVE_HIGH>; /* PI7 */
-+		};
-+
-+		sata_sleep {
-+			gpio-export,name = "sata_sleep"; /* DEVSLP0/DEVSLP */
-+			gpio-export,output=<0>;
-+			gpios = <&pio 8 8 GPIO_ACTIVE_HIGH>; /* PI8 */
 +		};
 +	};
 +
@@ -171,8 +177,8 @@
 +		regulator-always-on;
 +		regulator-min-microvolt = <5000000>;
 +		regulator-max-microvolt = <5000000>;
-+		gpio = <&pio 8 16 GPIO_ACTIVE_HIGH>; /* PI16 */
-+		enable-active-high;
++		// gpio = <&pio 8 16 GPIO_ACTIVE_HIGH>; /* PI16 */
++		// enable-active-high;
 +	};
 +
 +	wifi_pwrseq: wifi_pwrseq {
@@ -205,7 +211,7 @@
 +};
 +
 +&ths {
-+	status = "disabled";
++	status = "okay";
 +	// allwinner,calib-offset=<(-512)>;
 +};
 +
@@ -284,16 +290,16 @@
 +		poll_mode = <0>;
 +		type = <0>;
 +		enable_dma = <0>;
-+		irq_gpio=<&pio 8 15 IRQ_TYPE_LEVEL_LOW>; /* PI15 */
-+		status = "disabled";
++		irq_gpio=<&pio 8 15 IRQ_TYPE_LEVEL_LOW>; /* PI15/EINT27 */
++		status = "okay";
 +	};
 +
 +	mcp2515: mcp2515@0 {
 +		compatible = "microchip,mcp2515";
-+		reg = <0>;
++		reg = <1>;
 +		clocks = <&can_clk8m>;
 +		interrupt-parent = <&pio>;
-+		interrupts = <8 15 IRQ_TYPE_LEVEL_LOW>; /* PI15/EINT27 */
++		interrupts = <7 2 IRQ_TYPE_LEVEL_LOW>; /* PH2/EINT2 */
 +		vdd-supply = <&reg_vcc_wifi_3v3>; /* VCC-WIFI */
 +		spi-max-frequency = <10000000>;
 +		status = "okay";
@@ -419,12 +425,12 @@
 +	vcc-pg-supply = <&reg_vcc_wifi_3v3>;
 +
 +	spi2_pc_pins: spi2-pc-pins {
-+		pins = "PC19", "PC20", "PC21", "PC22";
++		pins = "PC19", "PC20", "PC21", "PC22", "PB13";
 +		function = "spi2";
 +	};
 +
 +	spi2_irq_pins: spi2-irq-pins {
-+		pins = "PI15";
++		pins = "PI15", "PH2";
 +		function = "irq";
 +	};
 +

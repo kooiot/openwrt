@@ -82,7 +82,7 @@
 +			};
 +
 +			ths_calibration: thermal-sensor-calibration@40 {
-+				reg = <0x40 4>;
++				reg = <0x48 4>;
 +			};
 +		};
 +
