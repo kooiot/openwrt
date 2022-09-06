@@ -381,6 +381,12 @@ define U-Boot/tlink_c4
   BUILD_DEVICES:=kooiot_tlink-c4
 endef
 
+define U-Boot/bananapi_m2_berry
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=Bananapi M2 Berry
+  BUILD_DEVICES:=sinovoip_bananapi-m2-berry
+endef
+
 UBOOT_TARGETS := \
 	a64-olinuxino \
 	a64-olinuxino-emmc \
@@ -392,6 +398,7 @@ UBOOT_TARGETS := \
 	A20-OLinuXino_MICRO \
 	bananapi_m2_plus_h3 \
 	Bananapi \
+	bananapi_m2_berry \
 	Bananapi_M2_Ultra \
 	Bananapro \
 	Cubieboard \
