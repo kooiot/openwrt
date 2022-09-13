@@ -1,0 +1,23 @@
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c
+@@ -532,6 +532,8 @@
+ 	plat->bus_id = of_alias_get_id(np, "ethernet");
+ 	if (plat->bus_id < 0)
+ 		plat->bus_id = 0;
++	else
++		dev_info(&pdev->dev, "Got alias ethernet%d node:%pOF\n", plat->bus_id, np);
+ 
+ 	/* Default to phy auto-detection */
+ 	plat->phy_addr = -1;
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+@@ -4755,6 +4755,9 @@
+ 			goto error_mdio_register;
+ 		}
+ 	}
++	if (priv->plat->bus_id > 0) {
++		sprintf(ndev->name, "eth%d", priv->plat->bus_id);
++	}
+ 
+ 	ret = stmmac_phy_setup(priv);
+ 	if (ret) {
