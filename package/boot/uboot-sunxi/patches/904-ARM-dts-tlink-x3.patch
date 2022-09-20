@@ -11,10 +11,11 @@
  	sun8i-a83t-bananapi-m3.dtb \
 --- a/configs/tlink_x3_defconfig
 +++ b/configs/tlink_x3_defconfig
-@@ -0,0 +1,18 @@
+@@ -0,0 +1,19 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
 +CONFIG_SPL=y
++CONFIG_SYS_CLK_FREQ=768000000
 +CONFIG_MACH_SUN8I_A33=y
 +CONFIG_MACH_SUN8I_X3=y
 +# CONFIG_SUNXI_DRAM_DDR3_1333=y
