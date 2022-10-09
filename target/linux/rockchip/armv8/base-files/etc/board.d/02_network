@@ -15,10 +15,6 @@ rockchip_setup_interfaces()
 	kooiot,tlink-rk35681)
 		ucidef_set_interface_lan "eth0"
 		ucidef_set_interface "lan1" device "eth1" protocol "static"
-		ucidef_set_interface "lan2" device "eth2" protocol "static"
-		ucidef_set_interface "lan3" device "eth3" protocol "static"
-		ucidef_set_interface "lan4" device "eth4" protocol "static"
-		ucidef_set_interface "lan5" device "eth5" protocol "static"
 		;;
 	kooiot,tlink-rk3568)
 		ucidef_set_interface_lan_wan "eth0" "eth1"

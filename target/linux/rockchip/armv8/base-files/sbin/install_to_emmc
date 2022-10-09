@@ -49,7 +49,7 @@ if [ ! -f ${BOOT_DIR}/${BOARD_NAME}-idbloader.img ]; then
 fi
 
 if [ ! -f ${BOOT_DIR}/${BOARD_NAME}-u-boot.itb ]; then
-    echo "Error: ${BOARD_NAME}-idbloader.img not found."
+    echo "Error: ${BOARD_NAME}-u-boot.itb not found."
     exit 1
 fi
 
