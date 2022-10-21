@@ -1,0 +1,77 @@
+--- a/arch/arm64/boot/dts/rockchip/rk3568-firefly-roc-pc.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3568-firefly-roc-pc.dts
+@@ -96,15 +96,18 @@
+ 		vin-supply = <&vcc3v3_sys>;
+ 	};
+ 
+-	pcie30_3v3: gpio-regulator {
+-		compatible = "regulator-gpio";
++	pcie30_3v3: pcie30-3v3 {
++		compatible = "regulator-fixed";
+ 		regulator-name = "pcie30_3v3";
+-		regulator-min-microvolt = <100000>;
++		regulator-min-microvolt = <3300000>;
+ 		regulator-max-microvolt = <3300000>;
+-		gpios = <&gpio0 RK_PD4 GPIO_ACTIVE_HIGH>;
+-		gpios-states = <0x1>;
+-		states = <100000 0x0
+-			  3300000 0x1>;
++		regulator-always-on;
++		regulator-boot-on;
++		pinctrl-names = "default";
++		pinctrl-0 = <&vcc3v3_pcie30_en>;
++		gpio = <&gpio0 RK_PD4 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++		vin-supply = <&vcc5v0_sys>;
+ 	};
+ 
+ 	vcc3v3_bu: vcc3v3-bu {
+@@ -294,6 +297,10 @@
+ //	};
+ };
+ 
++&combphy0 {
++	status = "okay";
++};
++
+ &combphy1 {
+ 	status = "okay";
+ };
+@@ -687,16 +694,18 @@
+ 	};
+ };
+ 
+-//&pcie30phy {
+-//       status = "okay";
+-//};
+-
+-//&pcie3x2 {
+-//        reset-gpios = <&gpio2 RK_PD6 GPIO_ACTIVE_HIGH>;
+-//        vpcie3v3-supply = <&pcie30_3v3>;
++&pcie30phy {
++     status = "okay";
++};
+ 
+-//       status = "okay";
+-//};
++&pcie3x2 {
++    pinctrl-names = "default";
++    pinctrl-0 = <&pcie30x2m1_pins>;
++    reset-gpios = <&gpio2 RK_PD6 GPIO_ACTIVE_HIGH>;
++    vpcie3v3-supply = <&pcie30_3v3>;
++
++    status = "okay";
++};
+ 
+ &gic {
+     status = "okay";
+@@ -745,6 +754,9 @@
+ 		pcie_pi6c_oe_en: pcie-pi6c-oe-en {
+ 			rockchip,pins = <3 RK_PA7 RK_FUNC_GPIO &pcfg_pull_none>;
+ 		};
++		vcc3v3_pcie30_en: vcc3v3_pcie30_en {
++			rockchip,pins = <0 RK_PD4 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
+ 	};
+ 
+ 	pmic {

@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/arch/arm64/boot/dts/rockchip/rk3568-tlink-rk3568.dts
-@@ -0,0 +1,961 @@
+@@ -0,0 +1,973 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (c) 2022 KooIoT.com
@@ -209,14 +209,6 @@
 +			pinctrl-names = "default";
 +			pinctrl-0 = <&led_modem_pin>;
 +		};
-+
-+		modem2 {
-+			label = "kooiot:green:modem";
-+			gpios = <&gpio0 RK_PA6 GPIO_ACTIVE_LOW>;
-+			default-state = "off";
-+			pinctrl-names = "default";
-+			pinctrl-0 = <&led_modem2_pin>;
-+		};
 +	};
 +
 +	gpio_export {
@@ -293,6 +285,14 @@
 +			gpios = <&gpio3 RK_PB6 GPIO_ACTIVE_LOW>;
 +			pinctrl-names = "default";
 +			pinctrl-0 = <&pcie20_card_power_off_pin>;
++		};
++
++		sata_en {
++			gpio-export,name = "sata_en";
++			gpio-export,output=<1>;
++			gpios = <&gpio0 RK_PA6 GPIO_ACTIVE_HIGH>;
++			pinctrl-names = "default";
++			pinctrl-0 = <&m2_sata_en_pin>;
 +		};
 +	};
 +};
@@ -664,9 +664,10 @@
 +
 +&pcie3x2 {
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&pcie30x2m2_pins>;
++	pinctrl-0 = <&pcie30x2m1_pins>;
 +	reset-gpios = <&gpio2 RK_PD6 GPIO_ACTIVE_HIGH>;
 +	vpcie3v3-supply = <&vcc_3v3>;
++	num-lanes = <1>;
 +	status = "okay";
 +};
 +
@@ -675,6 +676,7 @@
 +	pinctrl-0 = <&pcie30x1m2_pins>;
 +	reset-gpios = <&gpio1 RK_PA2 GPIO_ACTIVE_HIGH>;
 +	vpcie3v3-supply = <&vcc_3v3>;
++	num-lanes = <1>;
 +	status = "okay";
 +};
 +
@@ -682,13 +684,23 @@
 +    status = "okay";
 +};
 +
++/* conflict with pcie2x1 */
++&sata2 {
++	// compatible = "rockchip,rk-ahci";
++	status = "okay";
++};
++
++/* conflict with sata */
++/*
 +&pcie2x1 {
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&pcie20m2_pins>;
-+	reset-gpios = <&gpio2 RK_PD7 GPIO_ACTIVE_HIGH>;
++	//reset-gpios = <&gpio2 RK_PD7 GPIO_ACTIVE_HIGH>;
++	reset-gpios = <&gpio1 RK_PB2 GPIO_ACTIVE_HIGH>; // pin 50 of m.2 for nvme disk is reset
 +	vpcie3v3-supply = <&pcie20_3v3>;
 +	status = "okay";
 +};
++*/
 +
 +&pinctrl {
 +	usb5g { /* U8300 */
@@ -728,6 +740,9 @@
 +		pcie20_pi6c_oe_en: pcie20-pi6c-oe-en {
 +			rockchip,pins = <1 RK_PB3 RK_FUNC_GPIO &pcfg_pull_none>;
 +		};
++		m2_sata_en_pin: m2_sata_en-pin {
++			rockchip,pins = <0 RK_PA6 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
 +	};
 +
 +	pmic {
@@ -760,9 +775,6 @@
 +	    };
 +		led_modem_pin: led-modem-pin {
 +			rockchip,pins = <1 RK_PA0 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+		led_modem2_pin: led-modem2-pin {
-+			rockchip,pins = <0 RK_PA6 RK_FUNC_GPIO &pcfg_pull_none>;
 +		};
 +		led_a2_pin: led-a2-pin {
 +			rockchip,pins = <1 RK_PA2 RK_FUNC_GPIO &pcfg_pull_none>;
