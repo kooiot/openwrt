@@ -17,13 +17,17 @@ kooiot,tlink-x1s|\
 kooiot,tlink-x3|\
 kooiot,tlink-x2|\
 kooiot,tlink-k1|\
-kooiot,tlink-k2x|\
 kooiot,tlink-r1)
 	ucidef_set_led_default "power" "power" "kooiot:blue:power" "1"
 	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "wwan0"
 	;;
 kooiot,tlink-k2)
 	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "wwan0"
+	;;
+kooiot,tlink-k2x)
+	ucidef_set_led_default "power" "power" "kooiot:blue:power" "1"
+	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "wwan0"
+	ucidef_set_led_netdev "wifi" "wifi" "kooiot:green:wifi" "wlan0"
 	;;
 kooiot,tlink-s1)
 	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "wwan0"

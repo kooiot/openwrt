@@ -114,7 +114,8 @@ case $(board_name) in
 	kooiot,tlink-m416)
 		tlink_csq_leds_mixed
 		;;
-	kooiot,tlink-k2)
+	kooiot,tlink-k2|\
+	kooiot,tlink-k2x)
 		tlink_csq_leds_single
 		;;
 	*)

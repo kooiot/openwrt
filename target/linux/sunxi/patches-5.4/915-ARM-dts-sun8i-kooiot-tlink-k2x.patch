@@ -64,20 +64,20 @@
 +			linux,default-trigger = "heartbeat";
 +		};
 +
-+		modem {
-+			label = "kooiot:green:modem";
++		wifi {
++			label = "kooiot:green:wifi";
 +			gpios = <&pio 6 11 GPIO_ACTIVE_HIGH>; /* PG11 */
 +			default-state = "off";
 +		};
 +
-+		gs {
-+			label = "kooiot:green:gs";
++		modem {
++			label = "kooiot:green:modem";
 +			gpios = <&pio 6 8 GPIO_ACTIVE_HIGH>; /* PG8 */
 +			default-state = "off";
 +		};
 +
-+		bs {
-+			label = "kooiot:green:bs";
++		csq {
++			label = "kooiot:green:csq";
 +			gpios = <&pio 6 9 GPIO_ACTIVE_HIGH>; /* PG9 */
 +			default-state = "off";
 +		};
