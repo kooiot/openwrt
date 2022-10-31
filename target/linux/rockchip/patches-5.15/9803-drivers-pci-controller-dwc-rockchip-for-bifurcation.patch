@@ -1,0 +1,31 @@
+--- a/drivers/pci/controller/dwc/pcie-dw-rockchip.c
++++ b/drivers/pci/controller/dwc/pcie-dw-rockchip.c
+@@ -57,6 +57,7 @@
+ 	struct gpio_desc		*rst_gpio;
+ 	struct regulator                *vpcie3v3;
+ 	struct irq_domain		*irq_domain;
++	bool				bifurcation;
+ };
+ 
+ static int rockchip_pcie_readl_apb(struct rockchip_pcie *rockchip,
+@@ -251,6 +252,10 @@
+ 		return dev_err_probe(dev, PTR_ERR(rockchip->phy),
+ 				     "missing PHY\n");
+ 
++	if (rockchip->bifurcation)
++		ret = phy_set_mode_ext(rockchip->phy, PHY_MODE_PCIE,
++				       PHY_MODE_PCIE_BIFURCATION);
++
+ 	ret = phy_init(rockchip->phy);
+ 	if (ret < 0)
+ 		return ret;
+@@ -327,6 +332,9 @@
+ 		}
+ 	}
+ 
++	if (device_property_read_bool(dev, "rockchip,bifurcation"))
++		rockchip->bifurcation = true;
++
+ 	ret = rockchip_pcie_phy_init(rockchip);
+ 	if (ret)
+ 		goto disable_regulator;

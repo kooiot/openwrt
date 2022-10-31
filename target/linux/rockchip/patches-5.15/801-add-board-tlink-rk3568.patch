@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/arch/arm64/boot/dts/rockchip/rk3568-tlink-rk3568.dts
-@@ -0,0 +1,973 @@
+@@ -0,0 +1,969 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (c) 2022 KooIoT.com
@@ -662,21 +662,23 @@
 +	status = "okay";
 +};
 +
-+&pcie3x2 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&pcie30x2m1_pins>;
-+	reset-gpios = <&gpio2 RK_PD6 GPIO_ACTIVE_HIGH>;
-+	vpcie3v3-supply = <&vcc_3v3>;
-+	num-lanes = <1>;
-+	status = "okay";
-+};
-+
 +&pcie3x1 {
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&pcie30x1m2_pins>;
 +	reset-gpios = <&gpio1 RK_PA2 GPIO_ACTIVE_HIGH>;
 +	vpcie3v3-supply = <&vcc_3v3>;
 +	num-lanes = <1>;
++	rockchip,bifurcation;
++	status = "okay";
++};
++
++&pcie3x2 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pcie30x2m1_pins>;
++	reset-gpios = <&gpio2 RK_PD6 GPIO_ACTIVE_HIGH>;
++	vpcie3v3-supply = <&vcc_3v3>;
++	num-lanes = <1>;
++	rockchip,bifurcation;
 +	status = "okay";
 +};
 +
@@ -685,13 +687,14 @@
 +};
 +
 +/* conflict with pcie2x1 */
++/*
 +&sata2 {
 +	// compatible = "rockchip,rk-ahci";
 +	status = "okay";
 +};
++*/
 +
 +/* conflict with sata */
-+/*
 +&pcie2x1 {
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&pcie20m2_pins>;
@@ -700,7 +703,6 @@
 +	vpcie3v3-supply = <&pcie20_3v3>;
 +	status = "okay";
 +};
-+*/
 +
 +&pinctrl {
 +	usb5g { /* U8300 */
@@ -794,12 +796,6 @@
 +		led_a7_pin: led-a7-pin {
 +			rockchip,pins = <1 RK_PA7 RK_FUNC_GPIO &pcfg_pull_none>;
 +		};
-+		/omit-if-no-ref/
-+		emmc_clk_fix: emmc-clk-fix {
-+			rockchip,pins =
-+				/* emmc_clkout */
-+				<1 RK_PC5 1 &pcfg_pull_up_drv_level_0>;
-+		};
 +	};
 +};
 +
@@ -831,7 +827,7 @@
 +	vmmc-supply = <&vcc_3v3>;
 +	vqmmc-supply = <&vccio_flash>;
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&emmc_clk_fix &emmc_cmd &emmc_bus8 &emmc_rstnout &emmc_datastrobe>;
++	pinctrl-0 = <&emmc_clk &emmc_cmd &emmc_bus8 &emmc_rstnout &emmc_datastrobe>;
 +	status = "okay";
 +};
 +
