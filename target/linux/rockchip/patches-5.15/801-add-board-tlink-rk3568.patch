@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/arch/arm64/boot/dts/rockchip/rk3568-tlink-rk3568.dts
-@@ -0,0 +1,969 @@
+@@ -0,0 +1,959 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (c) 2022 KooIoT.com
@@ -225,8 +225,8 @@
 +
 +		pcie_reset {
 +			gpio-export,name = "pcie_reset";
-+			gpio-export,output=<1>;
-+			gpios = <&gpio0 RK_PC4 GPIO_ACTIVE_LOW>;
++			gpio-export,output=<0>;
++			gpios = <&gpio0 RK_PC4 GPIO_ACTIVE_HIGH>;
 +			pinctrl-names = "default";
 +			pinctrl-0 = <&pcie_reset_pin>;
 +		};
@@ -249,7 +249,7 @@
 +
 +		pcie_card_power_off {
 +			gpio-export,name = "pcie_card_power_off";
-+			gpio-export,output=<0>;
++			gpio-export,output=<1>;
 +			gpios = <&gpio1 RK_PA1 GPIO_ACTIVE_LOW>;
 +			pinctrl-names = "default";
 +			pinctrl-0 = <&pcie_card_power_off_pin>;
@@ -263,9 +263,17 @@
 +			pinctrl-0 = <&pcie20_power_pin>;
 +		};
 +
++		pcie20_reset {
++			gpio-export,name = "pcie20_reset";
++			gpio-export,output=<0>;
++			gpios = <&gpio2 RK_PD7 GPIO_ACTIVE_HIGH>;
++			pinctrl-names = "default";
++			pinctrl-0 = <&pcie20_reset_pin>;
++		};
++
 +		pcie20_on_off {
 +			gpio-export,name = "pcie20_on_off";
-+			gpio-export,output=<0>;
++			gpio-export,output=<1>;
 +			gpios = <&gpio3 RK_PC1 GPIO_ACTIVE_HIGH>;
 +			pinctrl-names = "default";
 +			pinctrl-0 = <&pcie20_on_off_pin>;
@@ -281,7 +289,7 @@
 +
 +		pcie20_card_power_off {
 +			gpio-export,name = "pcie20_card_power_off";
-+			gpio-export,output=<0>;
++			gpio-export,output=<1>;
 +			gpios = <&gpio3 RK_PB6 GPIO_ACTIVE_LOW>;
 +			pinctrl-names = "default";
 +			pinctrl-0 = <&pcie20_card_power_off_pin>;
@@ -658,6 +666,10 @@
 +	};
 +};
 +
++&gic {
++    status = "okay";
++};
++
 +&pcie30phy {
 +	status = "okay";
 +};
@@ -666,7 +678,7 @@
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&pcie30x1m2_pins>;
 +	reset-gpios = <&gpio1 RK_PA2 GPIO_ACTIVE_HIGH>;
-+	vpcie3v3-supply = <&vcc_3v3>;
++	vpcie3v3-supply = <&pcie20_3v3>;
 +	num-lanes = <1>;
 +	rockchip,bifurcation;
 +	status = "okay";
@@ -676,14 +688,10 @@
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&pcie30x2m1_pins>;
 +	reset-gpios = <&gpio2 RK_PD6 GPIO_ACTIVE_HIGH>;
-+	vpcie3v3-supply = <&vcc_3v3>;
++	vpcie3v3-supply = <&pcie20_3v3>;
 +	num-lanes = <1>;
 +	rockchip,bifurcation;
 +	status = "okay";
-+};
-+
-+&gic {
-+    status = "okay";
 +};
 +
 +/* conflict with pcie2x1 */
@@ -777,24 +785,6 @@
 +	    };
 +		led_modem_pin: led-modem-pin {
 +			rockchip,pins = <1 RK_PA0 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+		led_a2_pin: led-a2-pin {
-+			rockchip,pins = <1 RK_PA2 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+		led_a3_pin: led-a3-pin {
-+			rockchip,pins = <1 RK_PA3 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+		led_a4_pin: led-a4-pin {
-+			rockchip,pins = <1 RK_PA4 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+		led_a5_pin: led-a5-pin {
-+			rockchip,pins = <1 RK_PA5 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+		led_a6_pin: led-a6-pin {
-+			rockchip,pins = <1 RK_PA6 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+		led_a7_pin: led-a7-pin {
-+			rockchip,pins = <1 RK_PA7 RK_FUNC_GPIO &pcfg_pull_none>;
 +		};
 +	};
 +};
@@ -964,9 +954,9 @@
 +
 +&usbhost_dwc3 {
 +	status = "okay";
++	extcon = <&u2phy0>;
 +};
 +
 +&usbhost30 {
 +	status = "okay";
-+	extcon = <&u2phy0>;
 +};
