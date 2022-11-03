@@ -167,7 +167,11 @@ define BuildKernel
 		) \
 		YACC=$(STAGING_DIR_HOST)/bin/bison \
 		$$@
+ifneq ($(strip $(CONFIG_EXTERNAL_KERNEL_CONFIG)),"")
+	cp -a $(LINUX_DIR)/.config $(_EXT_KERNEL_CONFIG_PATH)
+else
 	$(call LINUX_RECONF_DIFF,$(LINUX_DIR)/.config) > $(LINUX_RECONFIG_TARGET)
+endif
 
   install: $(LINUX_DIR)/.image
 	+$(MAKE) -C image compile install TARGET_BUILD=

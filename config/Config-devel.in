@@ -83,6 +83,10 @@ menuconfig DEVEL
 		string "Use external kernel tree" if DEVEL
 		default ""
 
+	config EXTERNAL_KERNEL_CONFIG
+		string "Use external kernel config" if DEVEL
+		default ""
+
 	config KERNEL_GIT_CLONE_URI
 		string "Enter git repository to clone" if DEVEL
 		default ""

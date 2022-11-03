@@ -205,6 +205,18 @@ LINUX_CONF_CMD = $(SCRIPT_DIR)/kconfig.pl $(call __linux_confcmd,$(LINUX_KCONFIG
 LINUX_RECONF_CMD = $(SCRIPT_DIR)/kconfig.pl $(call __linux_confcmd,$(LINUX_RECONFIG_LIST))
 LINUX_RECONF_DIFF = $(SCRIPT_DIR)/kconfig.pl - '>' $(call __linux_confcmd,$(filter-out $(LINUX_RECONFIG_TARGET),$(LINUX_RECONFIG_LIST))) $(1) $(GENERIC_PLATFORM_DIR)/config-filter
 
+ifneq ($(call qstrip,$(CONFIG_EXTERNAL_KERNEL_CONFIG)),)
+  EXT_KERNEL_CONFIG_FIRST_CHAR := $(shell path=$(CONFIG_EXTERNAL_KERNEL_CONFIG); echo $${path:0:1})
+  ifeq ($(EXT_KERNEL_CONFIG_FIRST_CHAR),/)
+	_EXT_KERNEL_CONFIG_PATH := $(CONFIG_EXTERNAL_KERNEL_CONFIG)
+  else
+	_EXT_KERNEL_CONFIG_PATH := $(TOPDIR)/$(CONFIG_EXTERNAL_KERNEL_CONFIG)
+  endif
+  LINUX_CONF_CMD = cat $(_EXT_KERNEL_CONFIG_PATH)
+  LINUX_RECONF_CMD = $(LINUX_CONF_CMD)
+  LINUX_RECONF_DIFF =
+endif
+
 ifeq ($(DUMP),1)
   BuildTarget=$(BuildTargets/DumpCurrent)
 
