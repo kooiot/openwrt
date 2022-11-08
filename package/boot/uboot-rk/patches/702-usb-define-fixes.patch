@@ -1,0 +1,40 @@
+--- a/arch/arm/mach-rockchip/boot_mode.c
++++ b/arch/arm/mach-rockchip/boot_mode.c
+@@ -243,10 +243,12 @@
+ 
+ 	if (dev_type == IF_TYPE_MMC) {
+ 		storage_node = dev_desc->bdev->parent->node.np->full_name;
++#if CONFIG_IS_ENABLED(CMD_USB)
+ 	} else if (dev_type == IF_TYPE_USB) {
+ 		struct udevice *usb_bus;
+ 		usb_bus = usb_get_bus(dev_desc->bdev);
+ 		storage_node = usb_bus->node.np->full_name;
++#endif
+ 	} else if (dev_type == IF_TYPE_SCSI) {
+ 		struct udevice *sata_dev = dev_desc->bdev;
+ 		struct udevice *sata_bus;
+--- a/include/configs/rk3568_common.h
++++ b/include/configs/rk3568_common.h
+@@ -67,9 +67,11 @@
+ #define CONFIG_SYS_NONCACHED_MEMORY	(1 << 20)	/* 1 MiB */
+ 
+ #ifndef CONFIG_SPL_BUILD
++#ifdef CONFIG_CMD_USB
+ /* usb mass storage */
+ #define CONFIG_USB_FUNCTION_MASS_STORAGE
+ #define CONFIG_ROCKUSB_G_DNL_PID	0x350a
++#endif
+ 
+ #define ENV_MEM_LAYOUT_SETTINGS \
+ 	"scriptaddr=0x00c00000\0" \
+@@ -91,8 +93,10 @@
+ #endif
+ 
+ /* rockchip ohci host driver */
++#ifdef CONFIG_CMD_USB
+ #define CONFIG_USB_OHCI_NEW
+ #define CONFIG_SYS_USB_OHCI_MAX_ROOT_PORTS	1
++#endif
+ 
+ #define CONFIG_LIB_HW_RAND
+ 
