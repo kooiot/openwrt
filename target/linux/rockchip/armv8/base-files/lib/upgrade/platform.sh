@@ -35,6 +35,21 @@ platform_copy_config() {
 	fi
 }
 
+platform_pre_upgrade() {
+	if [ -f /etc/init.d/symlink ]; then
+		echo "Wait SymLink App quited..."
+		sleep 10
+	fi
+
+	case "$(rootfs_type)" in
+		"overlay")
+			echo "Erasing overlay....."
+			umount /overlay
+			dd if=/dev/zero of=/dev/loop0 bs=1M count=1
+			;;
+	esac
+}
+
 platform_do_upgrade() {
 	local diskdev partdev diff
 

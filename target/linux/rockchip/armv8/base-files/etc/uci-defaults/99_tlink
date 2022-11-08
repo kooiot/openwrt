@@ -1,0 +1,229 @@
+#!/bin/sh
+#
+# Copyright (C) 2022 KooIoT.com
+#
+
+. /lib/functions.sh
+. /lib/functions/tlink.sh
+
+tlink_mount_data() {
+	data_blk_p="/dev/mmcblk1p3"
+	if [ ! -b $data_blk_p ]; then
+		if [ -b "/dev/mmcblk2p3" ]; then
+			data_blk_p="/dev/mmcblk2p3"
+		fi
+	fi
+
+	if [ -b "/dev/mmcblk1p4"]; then
+		echo "EMC not initialized!!!" > /dev/kmsg
+		return
+	fi
+	if [ -b "/dev/mmcblk1p5"]; then
+		echo "EMC not initialized!!!" > /dev/kmsg
+		return
+	fi
+
+	rule_name=$(uci add fstab mount)
+	uci batch <<EOF
+set fstab.$rule_name.target='/mnt/data'
+set fstab.$rule_name.device='$data_blk_p'
+set fstab.$rule_name.fstype='ext4'
+set fstab.$rule_name.options='rw,async'
+set fstab.$rule_name.enabled='1'
+set fstab.$rule_name.enabled_fsck='1'
+EOF
+	uci commit fstab
+}
+
+tlink_add_qmi_interface() {
+	uci set network.4g_wan='interface'
+	uci set network.4g_wan.proto='qmi'
+	uci set network.4g_wan.device='/dev/cdc-wdm0'
+	uci set network.4g_wan.metric='10'
+	uci set network.4g_wan.auth='none'
+	uci set network.4g_wan.pdptype='ipv4'
+	uci commit network
+
+	uci set 3ginfo.@3ginfo[0].device='/dev/ttyUSB2'
+	uci commit 3ginfo
+}
+
+tlink_add_4g_wan() {
+	local AT_PORT
+	local AT_PORT_INFO
+	case "$(board_name)" in
+		"kooiot,tlink-m408"|\
+		"kooiot,tlink-m416")
+		AT_PORT='/dev/ttyUSB0'
+		AT_PORT_INFO='/dev/ttyUSB5'
+		;;
+		*)
+		AT_PORT='/dev/ttyUSB2'
+		AT_PORT_INFO='/dev/ttyUSB1'
+		;;
+	esac
+
+	uci set network.4g_wan='interface'
+	uci set network.4g_wan.service='umts'
+	uci set network.4g_wan.proto='3g'
+	uci set network.4g_wan.device=${AT_PORT}
+	uci set network.4g_wan.ipv6='auto'
+	uci set network.4g_wan.apn='3gnet'
+	uci set network.4g_wan.metric='10'
+	uci commit network
+
+	uci set 3ginfo.@3ginfo[0].device=${AT_PORT_INFO}
+	uci commit 3ginfo
+
+	uci set system.led_modem.dev='3g-4g_wan'
+	uci commit system
+}
+
+# WAN is eth1 which is usb-eth has not unique MAC
+tlink_set_wan_mac() {
+	local MACADDR
+
+	export_tlink_efuse_mac MACADDR 2 || {
+		return
+	}
+
+	uci set network.wan.macaddr=${MACADDR}
+	uci set network.wan6.macaddr=${MACADDR}
+	uci commit network
+
+	return
+}
+
+tlink_check_boot() {
+	mkdir -p /tmp/boot_p1
+	mount /dev/mmcblk0p1 /tmp/boot_p1
+	if [ -f /tmp/boot_p1/u-boot-sunxi-with-spl.bin ]; then
+		umount /tmp/boot_p1
+		return 0
+	fi
+	umount /tmp/boot_p1
+	return 1
+}
+
+tlink_auto_start_install() {
+	echo "sleep 3" > /sbin/boot_sd_install
+	echo "install_to_emmc -f" >> /sbin/boot_sd_install
+	echo "if [ \$? -ne 0 ]; then" >> /sbin/boot_sd_install
+	echo "    echo \"Failed to install firmware to eMMC\"" >> /sbin/boot_sd_install
+	echo "else" >> /sbin/boot_sd_install
+	echo "    echo \"Install firmware to eMMC is done!!\"" >> /sbin/boot_sd_install
+	echo "    echo \"System halt now!!\"" >> /sbin/boot_sd_install
+	echo "    sync" >> /sbin/boot_sd_install
+	echo "    halt" >> /sbin/boot_sd_install
+	echo "fi" >> /sbin/boot_sd_install
+	chmod a+x /sbin/boot_sd_install
+
+	echo "boot_sd_install > /dev/console 2>&1  &" > /etc/rc.local
+	echo "exit 0" >> /etc/rc.local
+
+	sync
+	
+	echo "This is an BOOT SD!!!!" > /dev/kmsg
+	echo "You need to restart device mannually!!" > /dev/kmsg
+}
+
+tlink_sd_default () {
+	local partdev
+
+	. /lib/upgrade/common.sh
+
+	if export_bootdevice && export_partdevice partdev 0; then
+		if [ "$partdev" = "mmcblk0" ]; then
+			if tlink_check_boot; then
+				tlink_auto_start_install
+				return
+			fi
+		fi
+	fi
+}
+
+tlink_init_4g() {
+	[ -e /dev/cdc-wdm0 ] && {
+		# QMI interface
+		echo "QMI module found!!!" > /dev/kmsg
+		tlink_add_qmi_interface
+	} || {
+		echo "Initial 4G ppp configuration!!!" > /dev/kmsg
+		tlink_add_4g_wan
+	}
+}
+
+tlink_add_5g_wan() {
+	# detect port by lsusb
+	local AT_PORT_INFO='/dev/ttyUSB2'
+	local AT_PORT='/dev/ttyUSB3'
+	lsusb -d "2dee:4d52" > /dev/null
+	if [ $? -eq 0 ]
+	then
+		echo "MEIGLink SRM821 found!" > /dev/kmsg
+		AT_PORT='/dev/ttyUSB1' # USB2-AT USB1-MODEM
+	fi
+	lsusb -d "2c7c:0900" > /dev/null
+	if [ $? -eq 0 ]
+	then
+		echo "Quectel RM500U-CN found!" > /dev/kmsg
+		AT_PORT='/dev/ttyUSB3' # USB2-AT USB3-MODEM
+	fi
+
+	uci set network.5g_wan='interface'
+	uci set network.5g_wan.proto='ncm'
+	uci set network.5g_wan.device=${AT_PORT}
+	uci set network.5g_wan.metric='10'
+	uci set network.5g_wan.apn='cmnet'
+	uci set network.5g_wan.pdptype='ipv4'
+	uci set network.5g_wan.delay='10'
+	uci commit network
+
+	uci set 3ginfo.@3ginfo[0].device=${AT_PORT_INFO}
+	uci commit 3ginfo
+
+	uci set system.led_modem.dev='usb0'
+	uci commit system
+}
+
+tlink_init_5g() {
+	[ -e /dev/cdc-wdm0 ] && {
+		# QMI interface
+		echo "QMI module found!!!" > /dev/kmsg
+		tlink_add_qmi_interface
+	} || {
+		echo "Initial 5G configuration...." > /dev/kmsg
+		tlink_add_5g_wan
+	}
+}
+
+tlink_default() {
+	# tlink_sd_default
+
+	# data partition mount
+	if ( grep -qs '/mnt/data' /etc/config/fstab || \
+		tlink_mount_data )
+	then
+		echo "Data parition mount point added" > /dev/kmsg
+	fi
+
+	case "$(board_name)" in
+		"kooiot,tlink-rk3568")
+			tlink_init_5g
+			;;
+		*)
+			tlink_init_4g
+			;;
+	esac
+
+	# set ttylogin (for ttyS0, default will promote console with password)
+	# set system.@system[0].ttylogin='1'
+	# uci commit system
+}
+
+case "$(board_name)" in
+"kooiot,tlink-r5"|\
+"kooiot,tlink-rk3568")
+	tlink_default
+	;;
+esac

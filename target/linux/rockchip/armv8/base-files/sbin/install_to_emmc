@@ -1,0 +1,230 @@
+#!/bin/sh
+
+if [ "$(id -u)" != "0" ]; then
+   echo "Script must be run as root !"
+   exit 0
+fi
+
+BOARD_NAME=`cat /tmp/sysinfo/board_name  | sed "s/.*\,\(.*\)$/\1/"`
+
+
+echo ""
+date
+echo -e "\033[36m==============================="
+echo "Installing OpenWRT system to eMMC"
+echo "Board Name: $BOARD_NAME"
+echo -e "===============================\033[37m"
+echo ""
+
+FORCE_INSTALL=${1}
+
+EMMC_DISK="/dev/mmcblk1"
+
+# If blk1 not there try blk2 (in R40 borads)
+if [ ! -b ${EMMC_DISK} ]; then
+	EMMC_DISK="/dev/mmcblk2"
+fi
+
+EMMC_FIRST_SECTOR=32768
+EMMC_BOOTFS_SIZE=$((64 * 1024 * 1024))
+EMMC_ROOTFS_SIZE=$((256 * 1024 * 1024))
+EMMC_DATA_FIRST_SECTOR=$(( 800 * 1024 ))
+
+BOOT_DIR="/tmp/boot"
+BOOTFS_DIR="/tmp/_boot"
+
+if [ ! -b ${EMMC_DISK}boot0 ]; then
+    echo "Error: EMMC not found."
+    exit 1
+fi
+
+if [ ! -d ${BOOT_DIR} ]; then
+	mkdir ${BOOT_DIR}
+	mount /dev/mmcblk0p1 ${BOOT_DIR}
+fi
+
+if [ ! -f ${BOOT_DIR}/${BOARD_NAME}-idbloader.img ]; then
+    echo "Error: ${BOARD_NAME}-idbloader.img not found."
+    exit 1
+fi
+
+if [ ! -f ${BOOT_DIR}/${BOARD_NAME}-u-boot.itb ]; then
+    echo "Error: ${BOARD_NAME}-u-boot.itb not found."
+    exit 1
+fi
+
+if [ ! -f ${BOOT_DIR}/rootfs.size ]; then
+    echo "Error: rootfs.size not found."
+    exit 1
+fi
+ROOTFS_SIZE=`cat ${BOOT_DIR}/rootfs.size`
+ROOTFS_SIZE=$(( (${ROOTFS_SIZE} + 511) / 512 ))
+
+
+umount ${EMMC_DISK}* > /dev/null 2>&1
+
+#----------------------------------------------------------
+if [ "-f" = "$FORCE_INSTALL" ]; then
+	echo "Force install to eMMC"
+else
+	echo ""
+	echo -n "WARNING: EMMC WILL BE ERASED !, Continue (y/N)?  "
+	read -n 1 ANSWER
+
+	if [ ! "${ANSWER}" = "y" ] ; then
+		echo "."
+		echo "Canceled.."
+		exit 0
+	fi
+	echo ""
+fi
+#----------------------------------------------------------
+
+echo "Erasing EMMC ..."
+dd if=/dev/zero of=${EMMC_DISK} bs=1M count=32 > /dev/null 2>&1
+sync
+sleep 1
+
+echo "Creating new filesystem on EMMC ..."
+echo -e "o\nw" | fdisk ${EMMC_DISK} > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+	echo "ERROR: Failed to create filesystem on eMMC(fdisk)"
+    exit 1
+fi
+sync
+echo "  New filesystem created on $EMMC_DISK"
+sleep 1
+partx -s ${EMMC_DISK} > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+	echo "ERROR: Failed to create filesystem on eMMC(partx)"
+    exit 1
+fi
+sleep 1
+
+echo "Partitioning EMMC ..."
+
+sbootfs=$(( $EMMC_FIRST_SECTOR ))
+ebootfs=$(( $EMMC_BOOTFS_SIZE / 512 + $sbootfs - 1 ))
+srootfs=$(( $ebootfs + 1 + 2048 ))
+erootfs=$(( $EMMC_ROOTFS_SIZE / 512 + $srootfs -1 ))
+sdatafs=$(( $EMMC_DATA_FIRST_SECTOR ))
+edatafs=""
+
+echo "BOOTFS: "$sbootfs" - "$ebootfs
+echo "ROOTFS: "$srootfs" - "$erootfs
+echo "DATAFS: "$sdatafs" - "$edatafs
+
+echo "  Creating eMMC partitions"
+echo -e "n\np\n1\n$sbootfs\n$ebootfs\nn\np\n2\n$srootfs\n$erootfs\nn\np\n3\n$sdatafs\n$edatafs\nt\n1\n83\nt\n2\n83\nt\n3\n83\nw" | fdisk ${EMMC_DISK} > /dev/null 2>&1
+echo $?
+echo "  OK."
+sync
+sleep 2
+partx -s ${EMMC_DISK} > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to create partitions"
+    exit 1
+fi
+sleep 1
+
+echo "Formating boot(ext4) partition ..."
+dd if=/dev/zero of=${EMMC_DISK}p1 bs=1M count=1 oflag=direct > /dev/null 2>&1
+sync
+sleep 1
+mkfs.ext4 -L boot ${EMMC_DISK}p1 > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+	echo "  ERROR formating boot(ext4) partition."
+    exit 1
+fi
+echo "  boot(ext4) partition formated."
+
+echo "Formating data partition (ext4), please wait ..."
+dd if=/dev/zero of=${EMMC_DISK}p3 bs=1M count=1 oflag=direct > /dev/null 2>&1
+sync
+sleep 1
+
+mkfs.ext4 -L data ${EMMC_DISK}p3 > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+	echo "ERROR formating ext4 partition."
+	exit 1
+fi
+echo "  linux partition formated."
+
+#************************************************************************
+echo ""
+echo "Instaling u-boot to EMMC ..."
+dd if=${BOOT_DIR}/${BOARD_NAME}-idbloader.img of=${EMMC_DISK} seek=64 > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+	echo "ERROR installing u-boot (idbloader.img)"
+    exit 1
+fi
+dd if=${BOOT_DIR}/${BOARD_NAME}-u-boot.itb of=${EMMC_DISK} seek=16384 > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+	echo "ERROR installing u-boot (u-boot.itb)"
+    exit 1
+fi
+sync
+#************************************************************************
+
+
+# -------------------------------------------------------------------
+
+umount $BOOTFS_DIR > /dev/null 2>&1
+if [ ! -d $BOOTFS_DIR ]; then
+    mkdir -p $BOOTFS_DIR
+fi
+rm $BOOTFS_DIR/* > /dev/null 2>&1
+sync
+
+# ================
+# MOUNT PARTITIONS
+# ================
+
+echo ""
+echo "Mounting EMMC partitions..."
+
+if ! mount ${EMMC_DISK}p1 $BOOTFS_DIR; then
+    echo "ERROR mounting boot partitions..."
+    exit 1
+fi
+echo "boot partitions mounted to $BOOTFS_DIR"
+
+# copy bootfs
+
+if [ -f ${BOOT_DIR}/boot-emmc.scr ]; then
+	cp -pf ${BOOT_DIR}/boot-emmc.scr ${BOOTFS_DIR}/boot.scr
+else
+	cp -pf ${BOOT_DIR}/boot.scr ${BOOTFS_DIR}/
+fi
+cp -pf ${BOOT_DIR}/kernel.img ${BOOTFS_DIR}/
+cp -pf ${BOOT_DIR}/rockchip.dtb ${BOOTFS_DIR}/
+
+# UMOUNT
+if ! umount $BOOTFS_DIR; then
+  echo "ERROR unmounting boot partition."
+  exit 1
+fi
+rm -rf $BOOTFS_DIR/* > /dev/null 2>&1
+rmdir $BOOTFS_DIR > /dev/null 2>&1
+
+sync
+
+#-----------------------------------------------------------------------------------------------
+echo ""
+echo "Copying file system to EMMC ..."
+echo ""
+
+#-----------------------------------------------------------------------------------------
+dd if=/dev/mmcblk0p2 of=${EMMC_DISK}p2 bs=512 count=${ROOTFS_SIZE}
+dd if=/dev/zero of=${EMMC_DISK}p2 bs=512 seek=${ROOTFS_SIZE} count=512
+#-----------------------------------------------------------------------------------------
+sync
+
+
+echo ""
+echo -e "\033[36m*******************************"
+echo "Linux system installed to EMMC."
+echo -e "*******************************\033[37m"
+echo ""
+
+exit 0
