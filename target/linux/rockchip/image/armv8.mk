@@ -84,7 +84,7 @@ define Device/kooiot_tlink-rk3568
 	kmod-i2c-fusb30x \
 	kmod-can kmod-can-rockchip-canfd \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    wpad-basic-wolfssl \
+	kmod-xradio armbian-firmware-xr819 wpad-basic-wolfssl \
     tinc-freeioe-tunnel iperf3 \
     uqmi fdisk usbutils freeioe wwanleds \
     blockd kmod-eeprom-at24 fdisk

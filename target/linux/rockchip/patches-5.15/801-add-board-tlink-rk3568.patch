@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/arch/arm64/boot/dts/rockchip/rk3568-tlink-rk3568.dts
-@@ -0,0 +1,959 @@
+@@ -0,0 +1,1024 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (c) 2022 KooIoT.com
@@ -20,8 +20,11 @@
 +	aliases {
 +		ethernet0 = &gmac0;
 +		ethernet1 = &gmac1;
++		ethernet2 = &pcie3x2_eth;
++		ethernet3 = &pcie3x1_eth;
 +		mmc0 = &sdmmc0;
 +		mmc1 = &sdhci;
++		mmc2 = &sdmmc2;
 +
 +		serial0 = &uart2;
 +		serial1 = &uart0;
@@ -301,6 +304,14 @@
 +			gpios = <&gpio0 RK_PA6 GPIO_ACTIVE_HIGH>;
 +			pinctrl-names = "default";
 +			pinctrl-0 = <&m2_sata_en_pin>;
++		};
++
++		wifi_reset {
++			gpio-export,name = "wifi_reset";
++			gpio-export,output=<1>;
++			gpios = <&gpio3 RK_PD5 GPIO_ACTIVE_LOW>;
++			pinctrl-names = "default";
++			pinctrl-0 = <&wifi_reset_pin>;
 +		};
 +	};
 +};
@@ -682,6 +693,16 @@
 +	num-lanes = <1>;
 +	rockchip,bifurcation;
 +	status = "okay";
++
++	/* root port 00.0 */
++	pci@0,0 {
++		reg = <0x0 0 0 0 0>;
++		status = "okay";
++		/* endpoint 11:00.0 */
++		pcie3x1_eth: pci@0,0 {
++			reg = <0x110000 0 0 0 0>;
++		};
++	};
 +};
 +
 +&pcie3x2 {
@@ -692,6 +713,16 @@
 +	num-lanes = <1>;
 +	rockchip,bifurcation;
 +	status = "okay";
++
++	/* root port 00.0 */
++	pci@0,0 {
++		reg = <0x0 0 0 0 0>;
++		status = "okay";
++		/* endpoint 21:00.0 */
++		pcie3x2_eth: pci@0,0 {
++			reg = <0x210000 0 0 0 0>;
++		};
++	};
 +};
 +
 +/* conflict with pcie2x1 */
@@ -758,6 +789,15 @@
 +	pmic {
 +		pmic_int: pmic-int {
 +			rockchip,pins = <0 RK_PA3 RK_FUNC_GPIO &pcfg_pull_up>;
++		};
++	};
++
++	wifi {
++		wifi_int: wifi-int {
++			rockchip,pins = <3 RK_PD4 RK_FUNC_GPIO &pcfg_pull_up>;
++		};
++		wifi_reset_pin: wifi-reset-pin {
++			rockchip,pins = <3 RK_PD5 RK_FUNC_GPIO &pcfg_pull_up>;
 +		};
 +	};
 +
@@ -834,6 +874,31 @@
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&sdmmc0_bus4 &sdmmc0_clk &sdmmc0_cmd &sdmmc0_det>;
 +	status = "okay";
++};
++
++&sdmmc2 {
++	max-frequency = <150000000>;
++	bus-width = <4>;
++	non-removable;
++	cap-sd-highspeed;
++	cap-sdio-irq;
++	disable-wp;
++	sd-uhs-sdr104;
++	keep-power-in-suspend;
++	pinctrl-names = "default";
++	pinctrl-0 = <&sdmmc2m0_bus4 &sdmmc2m0_clk &sdmmc2m0_cmd &wifi_int>;
++	status = "okay";
++
++	xr819: sdio_wifi@1 {
++		reg = <1>;
++		compatible = "xradio,xr819";
++		// pinctrl-names = "default";
++		// pinctrl-0 = <&wifi_int>;
++		interrupt-parent = <&gpio3>;
++		interrupts = <RK_PD4 IRQ_TYPE_EDGE_RISING>;
++		interrupt-names = "host-wake";
++		local-mac-address = [dc 44 6d c0 ff ee];
++	};
 +};
 +
 +&tsadc {
