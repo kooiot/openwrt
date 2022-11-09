@@ -306,3 +306,31 @@ define KernelPackage/can-xilinx-can/description
 endef
 
 $(eval $(call KernelPackage,can-xilinx-can))
+
+define KernelPackage/can-rockchip-can
+  TITLE:=Rockchip CAN
+  KCONFIG:=CONFIG_CAN_ROCKCHIP
+  FILES:=$(LINUX_DIR)/drivers/net/can/rockchip/rockchip_can.ko
+  AUTOLOAD:=$(call AutoProbe,rockchip_can)
+  $(call AddDepends/can,@TARGET_rockchip)
+endef
+
+define KernelPackage/can-rockchip-can/description
+ Rockchip CAN driver. This driver supports Rockchip chips
+endef
+
+$(eval $(call KernelPackage,can-rockchip-can))
+
+define KernelPackage/can-rockchip-can-fd
+  TITLE:=Rockchip CAN FD
+  KCONFIG:=CONFIG_CANFD_ROCKCHIP
+  FILES:=$(LINUX_DIR)/drivers/net/can/rockchip/rockchip_canfd.ko
+  AUTOLOAD:=$(call AutoProbe,rockchip_canfd)
+  $(call AddDepends/can,@TARGET_rockchip)
+endef
+
+define KernelPackage/can-rockchip-can-fd/description
+ Rockchip CAN FD driver. This driver supports Rockchip chips
+endef
+
+$(eval $(call KernelPackage,can-rockchip-can-fd))
