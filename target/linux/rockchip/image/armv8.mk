@@ -199,8 +199,9 @@ define Device/firefly_firefly-roc-pc
 	kmod-i2c-fusb30x \
 	kmod-can kmod-can-rockchip-canfd \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    wpad-basic-wolfssl \
-    tinc-freeioe-tunnel iperf3 \
+	kmod-brcmfmac kmod-ikconfig kmod-ata-ahci-platform \
+	firefly-roc-pc-firmware wpad-basic-wolfssl \
+	tinc-freeioe-tunnel iperf3 \
     uqmi fdisk usbutils freeioe wwanleds \
     blockd kmod-eeprom-at24 fdisk
 endef
