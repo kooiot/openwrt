@@ -119,25 +119,25 @@
 +		pcie_card_power_off {
 +			gpio-export,name = "pcie_card_power_off";
 +			gpio-export,output=<1>;
-+			gpios = <&pio 1 7 GPIO_ACTIVE_HIGH>; /* PB7 */
++			gpios = <&pio 1 7 GPIO_ACTIVE_LOW>; /* PB7 */
 +		};
 +
 +		pcie_disable {
 +			gpio-export,name = "pcie_disable"; /* fly-mode */
 +			gpio-export,output=<1>;
-+			gpios = <&pio 1 5 GPIO_ACTIVE_HIGH>; /* PB5 */
++			gpios = <&pio 1 5 GPIO_ACTIVE_LOW>; /* PB5 */
++		};
++
++		pcie_on_off {
++			gpio-export,name = "pcie_on_off"; /* DEVSLP0/DEVSLP pin38 */
++			gpio-export,output=<1>;
++			gpios = <&pio 8 8 GPIO_ACTIVE_HIGH>; /* PI8 */
 +		};
 +
 +		sata_en {
 +			gpio-export,name = "sata_en"; /* SATA0_ACTn/GPIO_9 pin10 */
 +			gpio-export,output=<1>;
 +			gpios = <&pio 8 7 GPIO_ACTIVE_HIGH>; /* PI7 */
-+		};
-+
-+		pcie_on_off {
-+			gpio-export,name = "pcie_on_off"; /* DEVSLP0/DEVSLP pin38 */
-+			gpio-export,output=<0>;
-+			gpios = <&pio 8 8 GPIO_ACTIVE_HIGH>; /* PI8 */
 +		};
 +
 +		ex_uart_reset {
