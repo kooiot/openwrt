@@ -10,7 +10,7 @@
 	sun8i-r40-tlink-nano-a40i.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k2x.dts
-@@ -0,0 +1,610 @@
+@@ -0,0 +1,616 @@
 +/*
 + * Copyright (C) 2022 Dirk Chang <dirk@kooiot.com>
 + *
@@ -64,20 +64,20 @@
 +			linux,default-trigger = "heartbeat";
 +		};
 +
-+		modem {
-+			label = "kooiot:green:modem";
++		wifi {
++			label = "kooiot:green:wifi";
 +			gpios = <&pio 6 11 GPIO_ACTIVE_HIGH>; /* PG11 */
 +			default-state = "off";
 +		};
 +
-+		gs {
-+			label = "kooiot:green:gs";
++		modem {
++			label = "kooiot:green:modem";
 +			gpios = <&pio 6 8 GPIO_ACTIVE_HIGH>; /* PG8 */
 +			default-state = "off";
 +		};
 +
-+		bs {
-+			label = "kooiot:green:bs";
++		csq {
++			label = "kooiot:green:csq";
 +			gpios = <&pio 6 9 GPIO_ACTIVE_HIGH>; /* PG9 */
 +			default-state = "off";
 +		};
@@ -116,22 +116,28 @@
 +			gpios = <&pio 1 6 GPIO_ACTIVE_LOW>; /* PB6 */
 +		};
 +
-+		pcie_on_off {
-+			gpio-export,name = "pcie_on_off";
++		pcie_card_power_off {
++			gpio-export,name = "pcie_card_power_off";
 +			gpio-export,output=<1>;
-+			gpios = <&pio 1 7 GPIO_ACTIVE_HIGH>; /* PB7 */
++			gpios = <&pio 1 7 GPIO_ACTIVE_LOW>; /* PB7 */
 +		};
 +
 +		pcie_disable {
 +			gpio-export,name = "pcie_disable"; /* fly-mode */
 +			gpio-export,output=<1>;
-+			gpios = <&pio 1 5 GPIO_ACTIVE_HIGH>; /* PB5 */
++			gpios = <&pio 1 5 GPIO_ACTIVE_LOW>; /* PB5 */
 +		};
 +
-+		pcie_wakeup_in {
-+			gpio-export,name = "pcie_wakeup_in"; /* DEVSLP0/DEVSLP pin38 */
++		pcie_on_off {
++			gpio-export,name = "pcie_on_off"; /* DEVSLP0/DEVSLP pin38 */
 +			gpio-export,output=<1>;
 +			gpios = <&pio 8 8 GPIO_ACTIVE_HIGH>; /* PI8 */
++		};
++
++		sata_en {
++			gpio-export,name = "sata_en"; /* SATA0_ACTn/GPIO_9 pin10 */
++			gpio-export,output=<1>;
++			gpios = <&pio 8 7 GPIO_ACTIVE_HIGH>; /* PI7 */
 +		};
 +
 +		ex_uart_reset {
@@ -150,12 +156,6 @@
 +			gpio-export,name = "ap_reset";
 +			/* gpio-export,output=<1>; */
 +			gpios = <&pio 1 11 GPIO_ACTIVE_LOW>; /* PB11 */
-+		};
-+
-+		sata_en {
-+			gpio-export,name = "sata_en"; /* SATA0_ACTn/GPIO_9 */
-+			gpio-export,output=<1>;
-+			gpios = <&pio 8 7 GPIO_ACTIVE_HIGH>; /* PI7 */
 +		};
 +	};
 +
@@ -204,6 +204,12 @@
 +		regulator-max-microvolt = <3300000>;
 +		vin-supply = <&reg_dldo1 &reg_dldo2 &reg_dldo3>;
 +	};
++};
++
++&ahci {
++	ahci-supply = <&reg_dldo4>;
++	phy-supply = <&reg_dc5ldo>;
++	status = "okay";
 +};
 +
 +&rtc {
