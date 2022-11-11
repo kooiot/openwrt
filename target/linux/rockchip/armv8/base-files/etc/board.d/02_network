@@ -1,6 +1,7 @@
 
 . /lib/functions/uci-defaults.sh
 . /lib/functions/system.sh
+. /lib/functions/tlink.sh
 
 rockchip_setup_interfaces()
 {
@@ -93,7 +94,7 @@ rockchip_setup_macs()
 	friendlyarm,nanopi-r2s|\
 	friendlyarm,nanopi-r5s|\
 	sharevdi,guangmiao-g4c)
-		wan_mac=$(generate_mac_from_mmc_cid)
+		wan_mac=$(generate_mac_from_mmc_cid mmcblk1)
 		lan_mac=$(macaddr_add "$wan_mac" +1)
 		;;
 	friendlyarm,nanopi-r4s|\
@@ -105,6 +106,13 @@ rockchip_setup_macs()
 	xunlong,orangepi-r1-plus-lts)
 		lan_mac=$(cat /sys/class/net/eth1/address)
 		wan_mac=$(macaddr_add "$lan_mac" -1)
+		;;
+	kooiot,tlink-rk3568)
+		local mmc_cid_mac=$(generate_mac_from_mmc_cid mmcblk1)
+		lan_mac=$(tlink_mac_mask "$mmc_cid_mac")
+		[ -n "$lan_mac" ] && ucidef_set_interface_macaddr "lan1" $(macaddr_add "$lan_mac" 1)
+		[ -n "$lan_mac" ] && ucidef_set_interface_macaddr "lan2" $(macaddr_add "$lan_mac" 2)
+		[ -n "$lan_mac" ] && ucidef_set_interface_macaddr "lan3" $(macaddr_add "$lan_mac" 3)
 		;;
 	esac
 
