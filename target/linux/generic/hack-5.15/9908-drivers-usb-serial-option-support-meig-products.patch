@@ -5,9 +5,9 @@
  #define FIBOCOM_PRODUCT_MC61533		0x4d12
  
 +/* MeiG products */
-+#define MEIG_VENDOR_ID				0x2DEE
++#define MEIG_VENDOR_ID					0x2DEE
 +#define MEIG_PRODUCT_SRM811_RNDIS		0x4D51
-+#define MEIG_PRODUCT_SRM811_NCM			0x4D52
++#define MEIG_PRODUCT_SRM811_NCM		0x4D52
 +
  
  /* Device flags */
