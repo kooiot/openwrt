@@ -119,5 +119,14 @@
 		],
 		"connect": "AT+ZGACT=1,${profile}",
 		"disconnect": "AT+ZGACT=0,${profile}"
+	},
+	"fibocom": {
+		"initialize": [
+			"AT",
+			"ATE1",
+			"AT+CGDCONT=${profile},\\\"${pdptype}\\\"${apn:+,\\\"$apn\\\"}"
+		],
+		"connect": "AT+GTRNDIS=1,${profile}",
+		"disconnect": "AT+GTRNDIS=0,${profile}"
 	}
 }
