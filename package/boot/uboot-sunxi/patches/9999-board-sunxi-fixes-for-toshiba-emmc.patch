@@ -1,0 +1,11 @@
+--- a/board/sunxi/board.c
++++ b/board/sunxi/board.c
+@@ -509,7 +509,7 @@
+ 		for (pin = SUNXI_GPC(0); pin <= SUNXI_GPC(10); pin++) {
+ 			sunxi_gpio_set_cfgpin(pin, SUN8I_S3_GPC_SDC2);
+ 			sunxi_gpio_set_pull(pin, SUNXI_GPIO_PULL_UP);
+-			sunxi_gpio_set_drv(pin, 2);
++			sunxi_gpio_set_drv(pin, 1);
+ 		}
+ #elif defined(CONFIG_MACH_SUN8I) || defined(CONFIG_MACH_SUN50I)
+ 		/* SDC2: PC5-PC6, PC8-PC16 */
