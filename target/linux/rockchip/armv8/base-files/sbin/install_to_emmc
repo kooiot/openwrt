@@ -197,7 +197,10 @@ else
 	cp -pf ${BOOT_DIR}/boot.scr ${BOOTFS_DIR}/
 fi
 cp -pf ${BOOT_DIR}/kernel.img ${BOOTFS_DIR}/
-cp -pf ${BOOT_DIR}/rockchip.dtb ${BOOTFS_DIR}/
+# Copy rockchip.dtb if exists or dtb get fit into kernel
+if [ -f ${BOOT_DIR}/rockchip.dtb ]; then
+	cp -pf ${BOOT_DIR}/rockchip.dtb ${BOOTFS_DIR}/
+fi
 
 # UMOUNT
 if ! umount $BOOTFS_DIR; then
