@@ -163,38 +163,6 @@ endef
 $(eval $(call KernelPackage,misdn))
 
 
-define KernelPackage/isdn4linux
-  SUBMENU:=$(NETWORK_SUPPORT_MENU)
-  TITLE:=Old ISDN4Linux (deprecated)
-  DEPENDS:=+kmod-ppp
-  KCONFIG:= \
-	CONFIG_ISDN=y \
-    CONFIG_ISDN_I4L \
-    CONFIG_ISDN_PPP=y \
-    CONFIG_ISDN_PPP_VJ=y \
-    CONFIG_ISDN_MPP=y \
-    CONFIG_IPPP_FILTER=y \
-    CONFIG_ISDN_PPP_BSDCOMP \
-    CONFIG_ISDN_CAPI_MIDDLEWARE=y \
-    CONFIG_ISDN_CAPI_CAPIFS_BOOL=y \
-    CONFIG_ISDN_AUDIO=y \
-    CONFIG_ISDN_TTY_FAX=y \
-    CONFIG_ISDN_X25=y \
-    CONFIG_ISDN_DIVERSION
-  FILES:= \
-    $(LINUX_DIR)/drivers/isdn/divert/dss1_divert.ko \
-	$(LINUX_DIR)/drivers/isdn/i4l/isdn.ko \
-	$(LINUX_DIR)/drivers/isdn/i4l/isdn_bsdcomp.ko
-  AUTOLOAD:=$(call AutoLoad,40,isdn isdn_bsdcomp dss1_divert)
-endef
-
-define KernelPackage/isdn4linux/description
-  This driver allows you to use an ISDN adapter for networking
-endef
-
-$(eval $(call KernelPackage,isdn4linux))
-
-
 define KernelPackage/ipip
   SUBMENU:=$(NETWORK_SUPPORT_MENU)
   TITLE:=IP-in-IP encapsulation
@@ -247,10 +215,8 @@ $(eval $(call KernelPackage,ipsec))
 IPSEC4-m = \
 	ipv4/ah4 \
 	ipv4/esp4 \
-	ipv4/xfrm4_tunnel \
 	ipv4/ipcomp \
-
-IPSEC4-m += $(ifeq ($$(strip $$(call CompareKernelPatchVer,$$(KERNEL_PATCHVER),le,5.2))),ipv4/xfrm4_mode_beet ipv4/xfrm4_mode_transport ipv4/xfrm4_mode_tunnel)
+	ipv4/xfrm4_tunnel
 
 define KernelPackage/ipsec4
   SUBMENU:=$(NETWORK_SUPPORT_MENU)
@@ -260,9 +226,6 @@ define KernelPackage/ipsec4
 	CONFIG_INET_AH \
 	CONFIG_INET_ESP \
 	CONFIG_INET_IPCOMP \
-	CONFIG_INET_XFRM_MODE_BEET \
-	CONFIG_INET_XFRM_MODE_TRANSPORT \
-	CONFIG_INET_XFRM_MODE_TUNNEL \
 	CONFIG_INET_XFRM_TUNNEL \
 	CONFIG_INET_ESP_OFFLOAD=n
   FILES:=$(foreach mod,$(IPSEC4-m),$(LINUX_DIR)/net/$(mod).ko)
@@ -275,9 +238,6 @@ define KernelPackage/ipsec4/description
  - ah4
  - esp4
  - ipcomp4
- - xfrm4_mode_beet
- - xfrm4_mode_transport
- - xfrm4_mode_tunnel
  - xfrm4_tunnel
 endef
 
@@ -287,10 +247,8 @@ $(eval $(call KernelPackage,ipsec4))
 IPSEC6-m = \
 	ipv6/ah6 \
 	ipv6/esp6 \
-	ipv6/xfrm6_tunnel \
 	ipv6/ipcomp6 \
-
-IPSEC6-m += $(ifeq ($$(strip $$(call CompareKernelPatchVer,$$(KERNEL_PATCHVER),le,5.2))),ipv6/xfrm6_mode_beet ipv6/xfrm6_mode_transport ipv6/xfrm6_mode_tunnel)
+	ipv6/xfrm6_tunnel
 
 define KernelPackage/ipsec6
   SUBMENU:=$(NETWORK_SUPPORT_MENU)
@@ -300,9 +258,6 @@ define KernelPackage/ipsec6
 	CONFIG_INET6_AH \
 	CONFIG_INET6_ESP \
 	CONFIG_INET6_IPCOMP \
-	CONFIG_INET6_XFRM_MODE_BEET \
-	CONFIG_INET6_XFRM_MODE_TRANSPORT \
-	CONFIG_INET6_XFRM_MODE_TUNNEL \
 	CONFIG_INET6_XFRM_TUNNEL \
 	CONFIG_INET6_ESP_OFFLOAD=n
   FILES:=$(foreach mod,$(IPSEC6-m),$(LINUX_DIR)/net/$(mod).ko)
@@ -315,9 +270,6 @@ define KernelPackage/ipsec6/description
  - ah6
  - esp6
  - ipcomp6
- - xfrm6_mode_beet
- - xfrm6_mode_transport
- - xfrm6_mode_tunnel
  - xfrm6_tunnel
 endef
 
@@ -1470,3 +1422,19 @@ define KernelPackage/wireguard/description
 endef
 
 $(eval $(call KernelPackage,wireguard))
+
+
+define KernelPackage/netconsole
+  SUBMENU:=$(NETWORK_SUPPORT_MENU)
+  TITLE:=Network console logging support
+  KCONFIG:=CONFIG_NETCONSOLE \
+	  CONFIG_NETCONSOLE_DYNAMIC=n
+  FILES:=$(LINUX_DIR)/drivers/net/netconsole.ko
+  AUTOLOAD:=$(call AutoProbe,netconsole)
+endef
+
+define KernelPackage/netconsole/description
+  Network console logging support.
+endef
+
+$(eval $(call KernelPackage,netconsole))
