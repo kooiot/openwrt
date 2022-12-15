@@ -83,7 +83,7 @@
 			"AT"
 		],
 		"configure": [
-			"AT+QICSGP=${profile},${pdptype_num},\\\"${apn}\\\"${username:+,\\\"$username\\\"}${password:+,\\\"$password\\\"}${auth:+,$auth}"
+			"AT+QICSGP=${profile},${context_type},\\\"${apn}\\\",\\\"${username}\\\",\\\"${password}\\\",\\\"${auth}\\\""
 		],
 		"connect": "AT+QNETDEVCTL=${profile},1,1",
 		"disconnect": "AT+QNETDEVCTL=${profile},0,0"
@@ -97,6 +97,22 @@
 		"connect_1": "AT^NDISDUP=${profile},1${apn:+,\\\"$apn\\\"}${username:+,\\\"$username\\\"}${password:+,\\\"$password\\\"}${auth:+,$auth}",
 		"connect": "AT^NDISDUP=${profile},1",
 		"disconnect": "AT^NDISDUP=${profile},0"
+	},
+	"quectel_master_branch": {
+		"initialize": [
+			"AT+CFUN=1"
+		],
+		"configure": [
+			"at+qicsgp=${profile},${context_type},\\\"${apn}\\\",\\\"${username}\\\",\\\"${password}\\\",0"
+		],
+		"modes": {
+			"lte": "AT+QCFG=\\\"nwscanmode\\\",3",
+			"umts": "AT+QCFG=\\\"nwscanmode\\\",2",
+			"gsm": "AT+QCFG=\\\"nwscanmode\\\",1",
+			"auto": "AT+QCFG=\\\"nwscanmode\\\",0"
+		},
+		"connect": "AT+qnetdevctl=1,${profile},1",
+		"disconnect": "AT+qnetdevctl=0,${profile},0"
 	},
 	"\"zte": {
 		"initialize": [

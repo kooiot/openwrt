@@ -38,6 +38,7 @@ ath79_setup_interfaces()
 	dlink,dap-3320-a1|\
 	dlink,dir-505|\
 	engenius,eap1200h|\
+	engenius,eap1750h|\
 	engenius,eap600|\
 	engenius,ecb1200|\
 	engenius,ecb1750|\
@@ -76,6 +77,7 @@ ath79_setup_interfaces()
 	tplink,cpe210-v3|\
 	tplink,cpe510-v2|\
 	tplink,cpe510-v3|\
+	tplink,cpe605-v1|\
 	tplink,cpe610-v1|\
 	tplink,cpe610-v2|\
 	tplink,cpe710-v1|\
