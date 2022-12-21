@@ -98,6 +98,15 @@
 		"connect": "AT^NDISDUP=${profile},1",
 		"disconnect": "AT^NDISDUP=${profile},0"
 	},
+	"fibocom": {
+		"initialize": [
+			"AT",
+			"ATE1",
+			"AT+CGDCONT=${profile},\\\"${pdptype}\\\"${apn:+,\\\"$apn\\\"}"
+		],
+		"connect": "AT+GTRNDIS=1,${profile}",
+		"disconnect": "AT+GTRNDIS=0,${profile}"
+	},
 	"quectel_master_branch": {
 		"initialize": [
 			"AT+CFUN=1"
