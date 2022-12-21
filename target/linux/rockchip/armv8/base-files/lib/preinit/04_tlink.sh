@@ -68,7 +68,7 @@ do_kooiot_tlink_generic() {
 	case "$(board_name)" in
 	"kooiot,tlink-r5"|\
 	"kooiot,tlink-rk3568")
-		do_product_sn_kooiot_nvmem "0" "0050"
+		do_product_sn_kooiot "0" "0050"
 		;;
 	"kooiot,tlink-m408"|\
 	"kooiot,tlink-m416")
