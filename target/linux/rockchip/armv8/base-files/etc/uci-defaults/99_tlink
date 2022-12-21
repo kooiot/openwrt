@@ -173,8 +173,8 @@ tlink_add_5g_wan() {
 	if [ $? -eq 0 ]
 	then
 		echo "Fibocom FM650-CN found!" > /dev/kmsg
-		AT_PORT='/dev/ttyUSB1' # USB0-AT USB1-MODEM
-		AT_PORT_INFO='/dev/ttyUSB0'
+		AT_PORT='/dev/ttyUSB0' # USB0-MODEM USB1-AT
+		AT_PORT_INFO='/dev/ttyUSB1'
 	fi
 
 	uci set network.5g_wan='interface'
