@@ -1447,35 +1447,20 @@ endef
 
 $(eval $(call KernelPackage,sfc-falcon))
 
-define KernelPackage/motorcomm-yt8521s
+define KernelPackage/motorcomm-phy
   SUBMENU:=$(NETWORK_DEVICES_MENU)
-  TITLE:=Motorcomm YT8521S phy support
+  TITLE:=Motorcomm PHYs support
   DEPENDS:=+kmod-libphy
-  KCONFIG:=CONFIG_MOTORCOMM_PHY CONFIG_MOTORCOMM_YT8521S
-  FILES:=$(LINUX_DIR)/drivers/net/phy/motorcomm/yt8521s.ko
-  AUTOLOAD:=$(call AutoLoad,15,yt8521s,1)
+  KCONFIG:=CONFIG_MOTORCOMM_PHY
+  FILES:=$(LINUX_DIR)/drivers/net/phy/motorcomm.ko
+  AUTOLOAD:=$(call AutoLoad,15,motorcomm,1)
 endef
 
-define KernelPackage/motorcomm-yt8521s/description
- Motorcomm YT8521S phy support
+define KernelPackage/motorcomm-phy/description
+ Motorcomm PHYs support
 endef
 
-$(eval $(call KernelPackage,motorcomm-yt8521s))
-
-define KernelPackage/motorcomm-yt8512c
-  SUBMENU:=$(NETWORK_DEVICES_MENU)
-  TITLE:=Motorcomm YT8512C phy support
-  DEPENDS:=+kmod-libphy
-  KCONFIG:=CONFIG_MOTORCOMM_PHY CONFIG_MOTORCOMM_YT8512C
-  FILES:=$(LINUX_DIR)/drivers/net/phy/motorcomm/yt8512c.ko
-  AUTOLOAD:=$(call AutoLoad,15,yt8512c,1)
-endef
-
-define KernelPackage/motorcomm-yt8512c/description
- Motorcomm YT8512c phy support
-endef
-
-$(eval $(call KernelPackage,motorcomm-yt8512c))
+$(eval $(call KernelPackage,motorcomm-phy))
 
 define KernelPackage/dp83848-phy
   SUBMENU:=$(NETWORK_DEVICES_MENU)
