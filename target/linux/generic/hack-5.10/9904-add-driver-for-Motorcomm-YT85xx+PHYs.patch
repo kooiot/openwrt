@@ -5,6 +5,7 @@ Subject: [PATCH] Add yt8531c support.
 Adapted from orangepi-xunlong/openwrt - 600-Add-yt8531c-support.patch by schwar3kat
 ---
  drivers/net/phy/Kconfig       |    5 +
+ drivers/net/phy/Makefile      |    1 +
  drivers/net/phy/motorcomm.c   | 1540 +++++++++++++++++++++++++++++++++
  drivers/net/phy/yt8614-phy.h  |  491 +++++++++++
  include/linux/motorcomm_phy.h |  119 +++
@@ -30,6 +31,16 @@ index ce030fcb1..ff4861847 100644
  config NATIONAL_PHY
  	tristate "National Semiconductor PHYs"
  	help
+--- a/drivers/net/phy/Makefile
++++ b/drivers/net/phy/Makefile
+@@ -86,6 +86,7 @@
+ obj-$(CONFIG_MICROCHIP_PHY)	+= microchip.o
+ obj-$(CONFIG_MICROCHIP_T1_PHY)	+= microchip_t1.o
+ obj-$(CONFIG_MICROSEMI_PHY)	+= mscc/
++obj-$(CONFIG_MOTORCOMM_PHY)	+= motorcomm.o
+ obj-$(CONFIG_NATIONAL_PHY)	+= national.o
+ obj-$(CONFIG_NXP_TJA11XX_PHY)	+= nxp-tja11xx.o
+ obj-$(CONFIG_QSEMI_PHY)		+= qsemi.o
 diff --git a/drivers/net/phy/motorcomm.c b/drivers/net/phy/motorcomm.c
 new file mode 100644
 index 000000000..74eef3dfa
