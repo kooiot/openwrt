@@ -1,0 +1,45 @@
+--- a/include/linux/phy.h
++++ b/include/linux/phy.h
+@@ -1552,8 +1552,10 @@
+ int phy_driver_register(struct phy_driver *new_driver, struct module *owner);
+ int phy_drivers_register(struct phy_driver *new_driver, int n,
+ 			 struct module *owner);
++void phy_error(struct phy_device *phydev);
+ void phy_state_machine(struct work_struct *work);
+ void phy_queue_state_machine(struct phy_device *phydev, unsigned long jiffies);
++void phy_trigger_machine(struct phy_device *phydev);
+ void phy_mac_interrupt(struct phy_device *phydev);
+ void phy_start_machine(struct phy_device *phydev);
+ void phy_stop_machine(struct phy_device *phydev);
+--- a/drivers/net/phy/phy.c
++++ b/drivers/net/phy/phy.c
+@@ -449,10 +449,11 @@
+  *
+  * @phydev: the phy_device struct
+  */
+-static void phy_trigger_machine(struct phy_device *phydev)
++void phy_trigger_machine(struct phy_device *phydev)
+ {
+ 	phy_queue_state_machine(phydev, 0);
+ }
++EXPORT_SYMBOL(phy_trigger_machine);
+ 
+ static void phy_abort_cable_test(struct phy_device *phydev)
+ {
+@@ -958,7 +959,7 @@
+  * Must not be called from interrupt context, or while the
+  * phydev->lock is held.
+  */
+-static void phy_error(struct phy_device *phydev)
++void phy_error(struct phy_device *phydev)
+ {
+ 	WARN_ON(1);
+ 
+@@ -968,6 +969,7 @@
+ 
+ 	phy_trigger_machine(phydev);
+ }
++EXPORT_SYMBOL(phy_error);
+ 
+ /**
+  * phy_disable_interrupts - Disable the PHY interrupts from the PHY side
