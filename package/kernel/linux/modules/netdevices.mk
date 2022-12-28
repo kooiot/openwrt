@@ -1447,20 +1447,20 @@ endef
 
 $(eval $(call KernelPackage,sfc-falcon))
 
-define KernelPackage/motorcomm-phy
+define KernelPackage/phy-motorcomm
   SUBMENU:=$(NETWORK_DEVICES_MENU)
-  TITLE:=Motorcomm PHYs support
+  TITLE:=Motorcomm Ethernet PHY driver
   DEPENDS:=+kmod-libphy
   KCONFIG:=CONFIG_MOTORCOMM_PHY
   FILES:=$(LINUX_DIR)/drivers/net/phy/motorcomm.ko
   AUTOLOAD:=$(call AutoLoad,15,motorcomm,1)
 endef
 
-define KernelPackage/motorcomm-phy/description
- Motorcomm PHYs support
+define KernelPackage/phy-motorcomm/description
+ Motorcomm Ethernet PHY driver
 endef
 
-$(eval $(call KernelPackage,motorcomm-phy))
+$(eval $(call KernelPackage,phy-motorcomm))
 
 define KernelPackage/dp83848-phy
   SUBMENU:=$(NETWORK_DEVICES_MENU)
