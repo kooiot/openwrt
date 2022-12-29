@@ -23,6 +23,7 @@ endef
 define Build/boot-script
 	# Make an U-boot image and copy it to the boot partition
 	mkimage -A arm -O linux -T script -C none -a 0 -e 0 -d $(if $(1),$(1),mmc).bootscript $@.boot/boot.scr
+	echo $$(stat -c%s $(IMAGE_ROOTFS)) > $@.boot/rootfs.size
 endef
 
 define Build/boot-script-rk
@@ -58,7 +59,7 @@ define Build/pine64-bin
 	# Generate a new partition table in $@ with 32 MiB of alignment
 	# padding for the idbloader, uboot and trust image to fit:
 	# http://opensource.rock-chips.com/wiki_Boot_option#Boot_flow
-	PADDING=1 $(SCRIPT_DIR)/gen_image_generic.sh \
+	$(SCRIPT_DIR)/gen_image_generic.sh \
 		$@ \
 		$(CONFIG_TARGET_KERNEL_PARTSIZE) $@.boot \
 		$(CONFIG_TARGET_ROOTFS_PARTSIZE) $(IMAGE_ROOTFS) \

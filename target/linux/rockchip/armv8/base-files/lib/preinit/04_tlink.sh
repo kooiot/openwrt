@@ -74,6 +74,9 @@ do_kooiot_tlink_generic() {
 	"kooiot,tlink-m416")
 		do_product_sn_kooiot_emmc
 		;;
+	*)
+		do_product_sn_kooiot_emmc
+		;;
 	esac
 
 }

@@ -44,13 +44,22 @@ if [ ! -d ${BOOT_DIR} ]; then
 fi
 
 if [ ! -f ${BOOT_DIR}/${BOARD_NAME}-idbloader.img ]; then
-    echo "Error: ${BOARD_NAME}-idbloader.img not found."
-    exit 1
+	if [ ! -f ${BOOT_DIR}/${BOARD_NAME}-idbloader.bin ]; then
+		echo "Error: ${BOARD_NAME}-idbloader.img(bin) not found."
+		exit 1
+	fi
 fi
 
 if [ ! -f ${BOOT_DIR}/${BOARD_NAME}-u-boot.itb ]; then
-    echo "Error: ${BOARD_NAME}-u-boot.itb not found."
-    exit 1
+	if [ ! -f ${BOOT_DIR}/${BOARD_NAME}-uboot.img ]; then
+		echo "Error: ${BOARD_NAME}-u-boot.itb(uboot.img) not found."
+		exit 1
+	else
+		if [ ! -f ${BOOT_DIR}/${BOARD_NAME}-trust.bin ]; then
+			echo "Error: ${BOARD_NAME}-trust.bin not found."
+			exit 1
+		fi
+	fi
 fi
 
 if [ ! -f ${BOOT_DIR}/rootfs.size ]; then
@@ -153,15 +162,34 @@ echo "  linux partition formated."
 #************************************************************************
 echo ""
 echo "Instaling u-boot to EMMC ..."
-dd if=${BOOT_DIR}/${BOARD_NAME}-idbloader.img of=${EMMC_DISK} seek=64 > /dev/null 2>&1
-if [ $? -ne 0 ]; then
-	echo "ERROR installing u-boot (idbloader.img)"
-    exit 1
+if [ -f ${BOOT_DIR}/${BOARD_NAME}-u-boot.itb ]; then
+	dd if=${BOOT_DIR}/${BOARD_NAME}-idbloader.img of=${EMMC_DISK} seek=64 > /dev/null 2>&1
+	if [ $? -ne 0 ]; then
+		echo "ERROR installing u-boot (idbloader.img)"
+		exit 1
+	fi
+	dd if=${BOOT_DIR}/${BOARD_NAME}-u-boot.itb of=${EMMC_DISK} seek=16384 > /dev/null 2>&1
+	if [ $? -ne 0 ]; then
+		echo "ERROR installing u-boot (u-boot.itb)"
+		exit 1
+	fi
 fi
-dd if=${BOOT_DIR}/${BOARD_NAME}-u-boot.itb of=${EMMC_DISK} seek=16384 > /dev/null 2>&1
-if [ $? -ne 0 ]; then
-	echo "ERROR installing u-boot (u-boot.itb)"
-    exit 1
+if [ -f ${BOOT_DIR}/${BOARD_NAME}-uboot.img ]; then
+	dd if=${BOOT_DIR}/${BOARD_NAME}-idbloader.bin of=${EMMC_DISK} seek=64 > /dev/null 2>&1
+	if [ $? -ne 0 ]; then
+		echo "ERROR installing u-boot (idbloader.bin)"
+		exit 1
+	fi
+	dd if=${BOOT_DIR}/${BOARD_NAME}-uboot.img of=${EMMC_DISK} seek=16384 > /dev/null 2>&1
+	if [ $? -ne 0 ]; then
+		echo "ERROR installing u-boot (uboot.img)"
+		exit 1
+	fi
+	dd if=${BOOT_DIR}/${BOARD_NAME}-trust.bin of=${EMMC_DISK} seek=24576 > /dev/null 2>&1
+	if [ $? -ne 0 ]; then
+		echo "ERROR installing u-boot (trust.bin)"
+		exit 1
+	fi
 fi
 sync
 #************************************************************************
