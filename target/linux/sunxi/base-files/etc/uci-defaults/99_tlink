@@ -159,8 +159,8 @@ tlink_init_4g() {
 
 tlink_add_5g_wan() {
 	# detect port by lsusb
-	local AT_PORT_INFO='/dev/ttyUSB2'
-	local AT_PORT='/dev/ttyUSB3'
+	local AT_PORT_INFO='/dev/ttyUSB1'
+	local AT_PORT='/dev/ttyUSB0'
 	lsusb -d "2dee:4d52" > /dev/null
 	if [ $? -eq 0 ]
 	then
