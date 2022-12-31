@@ -8,7 +8,9 @@ rockchip_setup_interfaces()
 	local board="$1"
 
 	case "$board" in
+	ariaboard,photonicat|\
 	ezpro,mrkaio-m68s|\
+	hinlink,opc-h66k|\
 	friendlyarm,nanopi-r2c|\
 	friendlyarm,nanopi-r2s|\
 	friendlyarm,nanopi-r4s|\
@@ -32,7 +34,8 @@ rockchip_setup_interfaces()
 		ucidef_set_interface_lan_wan "eth0" "eth1"
 		;;
 	fastrhino,r66s|\
-	firefly,rk3568-roc-pc)
+	firefly,rk3568-roc-pc|\
+	radxa,e25)
 		ucidef_set_interfaces_lan_wan 'eth0' 'eth1'
 		;;
 	fastrhino,r68s)
@@ -47,6 +50,13 @@ rockchip_setup_interfaces()
 	esac
 }
 
+generate_mac_from_mmc_cid()
+{
+	local sd_hash=$(sha256sum /sys/class/block/mmcblk*/device/cid | head -n 1)
+	local mac_base=$(macaddr_canonicalize "$(echo "${sd_hash}" | dd bs=1 count=12 2>/dev/null)")
+	echo "$(macaddr_unsetbit_mc "$(macaddr_setbit_la "${mac_base}")")"
+}
+
 nanopi_r4s_get_mac()
 {
 	local interface=$1
@@ -59,7 +69,7 @@ nanopi_r4s_get_mac()
 			address=$(macaddr_setbit_la "$address")
 		fi
 	else
-		address=$(macaddr_generate_from_mmc_cid mmcblk1)
+		address=$(generate_mac_from_mmc_cid)
 		if [ "$interface" = "lan" ]; then
 			address=$(macaddr_add "$address" 1)
 		fi
@@ -76,20 +86,19 @@ rockchip_setup_macs()
 	local label_mac=""
 
 	case "$board" in
+	ariaboard,photonicat|\
 	ezpro,mrkaio-m68s|\
+	hinlink,opc-h66k|\
 	hinlink,opc-h68k|\
 	fastrhino,r66s|\
 	fastrhino,r68s|\
 	firefly,rk3568-roc-pc|\
 	friendlyarm,nanopi-r2c|\
+	friendlyarm,nanopi-r2s|\
 	friendlyarm,nanopi-r5s|\
 	sharevdi,guangmiao-g4c)
-		wan_mac=$(generate_mac_from_mmc_cid mmcblk1)
+		wan_mac=$(generate_mac_from_mmc_cid)
 		lan_mac=$(macaddr_add "$wan_mac" +1)
-		;;
-	friendlyarm,nanopi-r2s)
-		wan_mac=$(macaddr_generate_from_mmc_cid mmcblk0)
-		lan_mac=$(macaddr_add "$wan_mac" 1)
 		;;
 	friendlyarm,nanopi-r4s|\
 	friendlyarm,nanopi-r4se)
@@ -102,7 +111,7 @@ rockchip_setup_macs()
 		wan_mac=$(macaddr_add "$lan_mac" -1)
 		;;
 	kooiot,tlink-rk3568)
-		local mmc_cid_mac=$(generate_mac_from_mmc_cid mmcblk1)
+		local mmc_cid_mac=$(generate_mac_from_mmc_cid)
 		lan_mac=$(tlink_mac_mask "$mmc_cid_mac")
 		[ -n "$lan_mac" ] && ucidef_set_interface_macaddr "lan1" $(macaddr_add "$lan_mac" 1)
 		[ -n "$lan_mac" ] && ucidef_set_interface_macaddr "lan2" $(macaddr_add "$lan_mac" 2)
