@@ -1,0 +1,22 @@
+--- a/system.c
++++ b/system.c
+@@ -137,6 +137,19 @@
+ 		blobmsg_add_string(&b, "hostname", utsname.nodename);
+ 	}
+ 
++	if ((f = fopen("/etc/build_version", "r")) != NULL)
++	{
++		if (fgets(line, sizeof(line), f))
++		{
++			val = strtok(line, "\t\n");
++
++			if (val)
++				blobmsg_add_string(&b, "build_version", val);
++		}
++
++		fclose(f);
++	}
++
+ 	if ((f = fopen("/proc/cpuinfo", "r")) != NULL)
+ 	{
+ 		while(fgets(line, sizeof(line), f))
