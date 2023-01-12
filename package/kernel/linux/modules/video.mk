@@ -399,6 +399,7 @@ define KernelPackage/drm-sun8i-dsi
 	$(LINUX_DIR)/drivers/phy/allwinner/phy-sun6i-mipi-dphy.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/panel/panel-simple.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/drm_dp_aux_bus.ko@gt5.10 \
 	$(LINUX_DIR)/drivers/gpu/drm/panel/panel-lvds.ko
   AUTOLOAD:=$(call AutoLoad,08,phy-sun6i-mipi-dphy sun6i_mipi_dsi panel-simple panel-lvds,1)
 endef

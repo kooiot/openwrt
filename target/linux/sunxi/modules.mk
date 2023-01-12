@@ -125,7 +125,7 @@ define KernelPackage/input-touchscreen-goodix
   KCONFIG:=CONFIG_TOUCHSCREEN_GOODIX
   DEPENDS:=+kmod-input-evdev +kmod-i2c-core
   FILES:=$(LINUX_DIR)/drivers/input/touchscreen/goodix.ko \
-	$(LINUX_DIR)/drivers/input/touchscreen/of_touchscreen.ko
+	$(LINUX_DIR)/drivers/input/touchscreen/of_touchscreen.ko@lt5.13
   AUTOLOAD:=$(call AutoProbe,goodix)
 endef
 

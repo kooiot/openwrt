@@ -1,0 +1,122 @@
+--- a/arch/arm/boot/dts/sun8i-r40.dtsi
++++ b/arch/arm/boot/dts/sun8i-r40.dtsi
+@@ -244,6 +244,21 @@
+ 					reg = <0x000000 0x80000>;
+ 				};
+ 			};
++
++			sram_d: sram@10000 {
++				compatible = "mmio-sram";
++				reg = <0x00010000 0x1000>;
++				#address-cells = <1>;
++				#size-cells = <1>;
++				ranges = <0 0x00010000 0x1000>;
++
++				otg_sram: sram-section@0 {
++					compatible = "allwinner,sun7i-r40-sram-d",
++						     "allwinner,sun4i-a10-sram-d";
++					reg = <0x0000 0x1000>;
++					status = "disabled";
++				};
++			};
+ 		};
+ 
+ 		nmi_intc: interrupt-controller@1c00030 {
+@@ -379,6 +394,20 @@
+ 			#size-cells = <0>;
+ 		};
+ 
++		usb_otg: usb@1c13000 {
++			compatible = "allwinner,sun4i-a10-musb";
++			reg = <0x01c13000 0x0400>;
++			clocks = <&ccu CLK_BUS_OTG>;
++			interrupts = <GIC_SPI 38 IRQ_TYPE_LEVEL_HIGH>;
++			interrupt-names = "mc";
++			phys = <&usbphy 0>;
++			phy-names = "usb";
++			extcon = <&usbphy 0>;
++			allwinner,sram = <&otg_sram 1>;
++			dr_mode = "otg";
++			status = "disabled";
++		};
++
+ 		usbphy: phy@1c13400 {
+ 			compatible = "allwinner,sun8i-r40-usb-phy";
+ 			reg = <0x01c13400 0x14>,
+@@ -427,6 +456,45 @@
+ 			#size-cells = <0>;
+ 		};
+ 
++		ehci0: usb@1c14000 {
++			compatible = "allwinner,sun8i-r40-ehci", "generic-ehci";
++			reg = <0x01c14000 0x100>;
++			interrupts = <GIC_SPI 39 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&ccu CLK_BUS_EHCI0>;
++			resets = <&ccu RST_BUS_EHCI0>;
++			phys = <&usbphy 0>;
++			phy-names = "usb";
++			status = "disabled";
++		};
++
++		ohci0: usb@1c14400 {
++			compatible = "allwinner,sun8i-r40-ohci", "generic-ohci";
++			reg = <0x01c14400 0x100>;
++			interrupts = <GIC_SPI 40 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&ccu CLK_BUS_OHCI0>,
++				 <&ccu CLK_USB_OHCI0>;
++			resets = <&ccu RST_BUS_OHCI0>;
++			phys = <&usbphy 0>;
++			phy-names = "usb";
++			status = "disabled";
++		};
++
++		sid: eeprom@1c1b000 {
++			compatible = "allwinner,sun8i-h3-sid";
++			reg = <0x1c1b000 0x400>;
++			#address-cells = <1>;
++			#size-cells = <1>;
++
++			/* Data cells */
++			chipid: chipid@00 {
++				reg = <0x00 0x10>;
++			};
++
++			ths_calibration: thermal-sensor-calibration@40 {
++				reg = <0x40 4>;
++			};
++		};
++
+ 		ahci: sata@1c18000 {
+ 			compatible = "allwinner,sun8i-r40-ahci";
+ 			reg = <0x01c18000 0x1000>;
+@@ -716,6 +784,12 @@
+ 				function = "uart4";
+ 			};
+ 
++ 			/omit-if-no-ref/
++			uart4_ph_pins: uart4-ph-pins {
++				pins = "PH4", "PH5";
++				function = "uart4";
++			};
++
+ 			/omit-if-no-ref/
+ 			uart5_ph_pins: uart5-ph-pins {
+ 				pins = "PH6", "PH7";
+@@ -781,7 +855,8 @@
+ 			clock-names = "bus", "mod";
+ 			interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>;
+ 			resets = <&ccu RST_BUS_THS>;
+-			/* TODO: add nvmem-cells for calibration */
++			nvmem-cells = <&ths_calibration>;
++			nvmem-cell-names = "calibration";
+ 			#thermal-sensor-cells = <1>;
+ 		};
+ 
+@@ -969,6 +1044,7 @@
+ 			clocks = <&ccu CLK_BUS_GPU>, <&ccu CLK_GPU>;
+ 			clock-names = "bus", "core";
+ 			resets = <&ccu RST_BUS_GPU>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		gmac: ethernet@1c50000 {

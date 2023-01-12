@@ -1,0 +1,219 @@
+--- a/drivers/gpio/Makefile
++++ b/drivers/gpio/Makefile
+@@ -13,6 +13,7 @@
+ 
+ # Device drivers. Generally keep list sorted alphabetically
+ obj-$(CONFIG_GPIO_GENERIC)	+= gpio-generic.o
++obj-$(CONFIG_GPIO_EXPORT)	+= gpio-export.o
+ 
+ # directly supported by gpio-generic
+ gpio-generic-$(CONFIG_GPIO_GENERIC)	+= gpio-mmio.o
+--- a/drivers/gpio/Kconfig
++++ b/drivers/gpio/Kconfig
+@@ -73,6 +73,10 @@
+ 	depends on HAS_IOMEM # Only for IOMEM drivers
+ 	tristate
+ 
++config GPIO_EXPORT
++	bool "GPIO sysfs export"
++	depends on GPIO_SYSFS && OF_GPIO
++
+ # put drivers in the right section, in alphabetical order
+ 
+ # This symbol is selected by both I2C and SPI expanders
+--- /dev/null
++++ b/drivers/gpio/gpio-export.c
+@@ -0,0 +1,193 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * GPIO export driver
++ *
++ * Copyright (C) 2020 dirk.chang<dirk@kooiot.com>
++ */
++#include <linux/err.h>
++#include <linux/gpio.h>
++#include <linux/gpio/consumer.h>
++#include <linux/kernel.h>
++#include <linux/module.h>
++#include <linux/of.h>
++#include <linux/platform_device.h>
++#include <linux/property.h>
++#include <linux/slab.h>
++
++struct gpio_export_data {
++	const char *name;
++	struct gpio_desc *gpiod;
++};
++
++struct gpio_export_priv {
++	int num_gpio;
++	struct gpio_export_data export[];
++};
++
++static inline int sizeof_gpio_export_priv(int num_gpio)
++{
++	return sizeof(struct gpio_export_priv) +
++		(sizeof(struct gpio_export_data) * num_gpio);
++}
++
++static struct gpio_export_priv *gpio_export_create(struct platform_device *pdev)
++{
++	struct device *dev = &pdev->dev;
++	struct fwnode_handle *child;
++	struct gpio_export_priv *priv;
++	int count;
++
++	count = device_get_child_node_count(dev);
++	if (!count)
++		return ERR_PTR(-ENODEV);
++
++	priv = devm_kzalloc(dev, sizeof_gpio_export_priv(count), GFP_KERNEL);
++	if (!priv)
++		return ERR_PTR(-ENOMEM);
++
++	device_for_each_child_node(dev, child) {
++		struct gpio_export_data *export_dat = &priv->export[priv->num_gpio];
++		const char *name = NULL;
++		u32 output;
++		bool dmc;
++		enum gpiod_flags flags = GPIOD_ASIS;
++		unsigned gpio;
++
++		if (!fwnode_property_read_string(child, "gpio-export,name",
++						 &name)) {
++			export_dat->name = name;
++		} else {
++			export_dat->name = NULL;
++		}
++
++		fwnode_property_read_u32(child, "gpio-export,output", &output);
++		if (!output) {
++			flags |= GPIOD_OUT_LOW;
++		} else {
++			flags |= GPIOD_OUT_HIGH;
++		}
++		dmc = fwnode_property_read_bool(child, "gpio-export,direction_may_change");
++
++
++		/*
++		 * Acquire gpiod from DT with uninitialized label, which
++		 * will be updated after LED class device is registered,
++		 * Only then the final LED name is known.
++		 */
++		export_dat->gpiod = devm_fwnode_get_gpiod_from_child(dev, NULL, child,
++							     flags,
++							     NULL);
++		if (IS_ERR(export_dat->gpiod)) {
++			fwnode_handle_put(child);
++			return ERR_CAST(export_dat->gpiod);
++		}
++
++		/*
++		gpio = gpio_chip_hwgpio(export_dat->gpiod);
++		if (IS_ERR(gpio)) {
++			fwnode_handle_put(child);
++			return ERR_CAST(gpio);
++		}
++		*/
++		__gpiod_export(export_dat->gpiod, dmc, name);
++		//gpio_export_with_name(gpio, dmc, name);
++
++		gpiod_set_consumer_name(export_dat->gpiod, export_dat->name);
++		priv->num_gpio++;
++	}
++
++	dev_info(&pdev->dev, "%d gpio(s) exported\n", priv->num_gpio);
++
++	return priv;
++}
++
++static const struct of_device_id of_gpio_export_match[] = {
++	{ .compatible = "gpio-export-new", },
++	{},
++};
++
++MODULE_DEVICE_TABLE(of, of_gpio_export_match);
++
++struct gpio_export {
++	const char* name;
++	unsigned gpio;
++	bool active_low;
++};
++static struct gpio_desc *gpio_export_get_gpiod(struct device *dev, int idx,
++					    const struct gpio_export *template)
++{
++	struct gpio_desc *gpiod;
++	unsigned long flags = GPIOF_OUT_INIT_LOW;
++	int ret;
++
++	/*
++	 * This means the LED does not come from the device tree
++	 * or ACPI, so let's try just getting it by index from the
++	 * device, this will hit the board file, if any and get
++	 * the GPIO from there.
++	 */
++	gpiod = devm_gpiod_get_index(dev, NULL, idx, flags);
++	if (!IS_ERR(gpiod)) {
++		gpiod_set_consumer_name(gpiod, template->name);
++		return gpiod;
++	}
++	if (PTR_ERR(gpiod) != -ENOENT)
++		return gpiod;
++
++	/*
++	 * This is the legacy code path for platform code that
++	 * still uses GPIO numbers. Ultimately we would like to get
++	 * rid of this block completely.
++	 */
++
++	/* skip export that aren't available */
++	if (!gpio_is_valid(template->gpio))
++		return ERR_PTR(-ENOENT);
++
++	if (template->active_low)
++		flags |= GPIOF_ACTIVE_LOW;
++
++	ret = devm_gpio_request_one(dev, template->gpio, flags,
++				    template->name);
++	if (ret < 0)
++		return ERR_PTR(ret);
++
++	gpiod = gpio_to_desc(template->gpio);
++	if (!gpiod)
++		return ERR_PTR(-EINVAL);
++
++	return gpiod;
++}
++
++static int gpio_export_probe(struct platform_device *pdev)
++{
++	struct gpio_export_priv *priv;
++
++	// dev_info(&pdev->dev, "DIRK: %s start\n", __func__);
++
++	priv = gpio_export_create(pdev);
++	if (IS_ERR(priv)) {
++		// dev_err(&pdev->dev, "DIRK: %s failed %d\n", __func__, PTR_ERR(priv));
++		return PTR_ERR(priv);
++	}
++
++	platform_set_drvdata(pdev, priv);
++
++	// dev_info(&pdev->dev, "DIRK: %s end\n", __func__);
++	return 0;
++}
++
++static struct platform_driver gpio_export_driver = {
++	.probe		= gpio_export_probe,
++	.driver		= {
++		.name	= "gpio-export-new",
++		.of_match_table = of_gpio_export_match,
++	},
++};
++
++module_platform_driver(gpio_export_driver);
++
++MODULE_AUTHOR("Dirk Chang <dirk@kooiot.com>");
++MODULE_DESCRIPTION("GPIO Export driver");
++MODULE_LICENSE("GPL");
++MODULE_ALIAS("platform:gpio-export");
