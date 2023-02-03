@@ -101,9 +101,9 @@ tlink_csq_leds_single()
 		echo 500 > /sys/class/leds/kooiot:green:csq/delay_on
 		if [ $CSQ -ge 10 ]
 		then
-			echo 2000 > /sys/class/leds/kooiot:green:csq/delay_off
-		else
 			echo 500 > /sys/class/leds/kooiot:green:csq/delay_off
+		else
+			echo 2000 > /sys/class/leds/kooiot:green:csq/delay_off
 		fi
 	fi
 }
