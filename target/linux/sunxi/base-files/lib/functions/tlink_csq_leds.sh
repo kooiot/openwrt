@@ -78,7 +78,7 @@ tlink_csq_leds_mixed()
 		then
 			tlink_led_echo "green:gs" 255
 		else
-			tlink_led_echo "green:bs" 0
+			tlink_led_echo "red:bs" 0
 		fi
 	fi
 }
