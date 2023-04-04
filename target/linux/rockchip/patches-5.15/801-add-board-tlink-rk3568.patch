@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/arch/arm64/boot/dts/rockchip/rk3568-tlink-rk3568.dts
-@@ -0,0 +1,1043 @@
+@@ -0,0 +1,1149 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (c) 2022 KooIoT.com
@@ -35,6 +35,8 @@
 +		serial5 = &uart7;
 +		serial6 = &uart8;
 +		serial7 = &uart9;
++
++		rtc0 = &sd3077;
 +	};
 +
 +	chosen: chosen {
@@ -194,24 +196,89 @@
 +		//enable-active-high;
 +	};
 +
++	sdio_pwrseq: sdio-pwrseq {
++		compatible = "mmc-pwrseq-simple";
++		clocks = <&rk809 1>;
++		clock-names = "ext_clock";
++		pinctrl-names = "default";
++		pinctrl-0 = <&wifi_enable_h>;
++		/*
++			* On the module itself this is one of these (depending
++			* on the actual card populated):
++			* - SDIO_RESET_L_WL_REG_ON
++			* - PDN (power down when low)
++		*/
++		reset-gpios = <&gpio3 RK_PD5 GPIO_ACTIVE_LOW>;
++	};
++
++	vccio_wifi: vccio-wifi {
++		compatible = "regulator-fixed";
++		regulator-name = "vccio_wifi";
++		regulator-always-on;
++		regulator-boot-on;
++		regulator-min-microvolt = <1800000>;
++		regulator-max-microvolt = <1800000>;
++		vin-supply = <&vcc5v0_sys>;
++	};
++
 +	leds {
 +		compatible = "gpio-leds";
 +		status = "okay";
 +
 +		status {
-+			label = "kooiot:green:statsu";
++			label = "kooiot:yellow:status";
 +			linux,default-trigger = "heartbeat";
-+			gpios = <&gpio0 RK_PB7 GPIO_ACTIVE_LOW>;
++			gpios = <&gpio0 RK_PD5 GPIO_ACTIVE_LOW>;
 +			pinctrl-names = "default";
 +			pinctrl-0 = <&led_status_pin>;
 +		};
 +
++		bs {
++			label = "kooiot:yellow:bs";
++			gpios = <&gpio3 RK_PA0 GPIO_ACTIVE_LOW>;
++			default-state = "off";
++			pinctrl-names = "default";
++			pinctrl-0 = <&led_bs_pin>;
++		};
++
++		gs {
++			label = "kooiot:green:gs";
++			gpios = <&gpio3 RK_PA1 GPIO_ACTIVE_LOW>;
++			default-state = "off";
++			pinctrl-names = "default";
++			pinctrl-0 = <&led_gs_pin>;
++		};
++
 +		modem {
-+			label = "kooiot:green:modem";
-+			gpios = <&gpio1 RK_PA0 GPIO_ACTIVE_LOW>;
++			label = "kooiot:yellow:modem";
++			gpios = <&gpio3 RK_PA2 GPIO_ACTIVE_LOW>;
 +			default-state = "off";
 +			pinctrl-names = "default";
 +			pinctrl-0 = <&led_modem_pin>;
++		};
++
++		cloud {
++			label = "kooiot:green:cloud";
++			gpios = <&gpio1 RK_PA4 GPIO_ACTIVE_LOW>;
++			default-state = "off";
++			pinctrl-names = "default";
++			pinctrl-0 = <&led_cloud_pin>;
++		};
++
++		wifi {
++			label = "kooiot:yellow:wifi";
++			gpios = <&gpio1 RK_PA6 GPIO_ACTIVE_LOW>;
++			default-state = "off";
++			pinctrl-names = "default";
++			pinctrl-0 = <&led_wifi_pin>;
++		};
++
++		bt {
++			label = "kooiot:green:bt";
++			gpios = <&gpio1 RK_PA7 GPIO_ACTIVE_LOW>;
++			default-state = "off";
++			pinctrl-names = "default";
++			pinctrl-0 = <&led_bt_pin>;
 +		};
 +	};
 +
@@ -458,6 +525,10 @@
 +		vcc8-supply = <&vcc3v3_sys>;
 +		vcc9-supply = <&vcc3v3_sys>;
 +		wakeup-source;
++
++		rtc {
++			status = "disabled";
++		};
 +
 +		regulators {
 +			vdd_logic: DCDC_REG1 {
@@ -757,6 +828,15 @@
 +};
 +
 +&pinctrl {
++	sdio-pwrseq {
++		wifi_enable_h: wifi-enable-h {
++			rockchip,pins = <3 RK_PD5 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++		wifi_host_wake_l: wifi-host-wake-l {
++			rockchip,pins = <3 RK_PD4 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++	};
++
 +	usb5g { /* U8300 */
 +		pcie_power_pin: pcie-power-pin {
 +			rockchip,pins = <0 RK_PC2 RK_FUNC_GPIO &pcfg_pull_none>;
@@ -834,10 +914,25 @@
 +
 +	leds {
 +	    led_status_pin: led-status-pin {
-+			rockchip,pins = <0 RK_PB7 RK_FUNC_GPIO &pcfg_pull_none>;
++			rockchip,pins = <0 RK_PD6 RK_FUNC_GPIO &pcfg_pull_none>;
 +	    };
++		led_bs_pin: led-bs-pin {
++			rockchip,pins = <3 RK_PA0 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++		led_gs_pin: led-gs-pin {
++			rockchip,pins = <3 RK_PA1 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
 +		led_modem_pin: led-modem-pin {
-+			rockchip,pins = <1 RK_PA0 RK_FUNC_GPIO &pcfg_pull_none>;
++			rockchip,pins = <3 RK_PA2 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++		led_cloud_pin: led-cloud-pin {
++			rockchip,pins = <1 RK_PA4 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++		led_wifi_pin: led-wifi-pin {
++			rockchip,pins = <1 RK_PA6 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++		led_bt_pin: led-bt-pin {
++			rockchip,pins = <1 RK_PA7 RK_FUNC_GPIO &pcfg_pull_none>;
 +		};
 +	};
 +
@@ -897,26 +992,31 @@
 +
 +&sdmmc2 {
 +	max-frequency = <150000000>;
++	// max-frequency = <100000000>;
++	supports-sdio;
 +	bus-width = <4>;
-+	non-removable;
++	disable-wp;
 +	cap-sd-highspeed;
 +	cap-sdio-irq;
-+	disable-wp;
-+	sd-uhs-sdr104;
 +	keep-power-in-suspend;
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&sdmmc2m0_bus4 &sdmmc2m0_clk &sdmmc2m0_cmd &wifi_int>;
-+	status = "okay";
++	pinctrl-0 = <&sdmmc2m0_bus4 &sdmmc2m0_cmd &sdmmc2m0_clk>;
++	sd-uhs-sdr104;
++	mmc-pwrseq = <&sdio_pwrseq>;
++	vmmc-supply = <&vccio_wifi>;
++	non-removable;
++	status = "disabled";
 +
-+	xr819: sdio_wifi@1 {
++	brcmf: wifi@1 {
 +		reg = <1>;
-+		compatible = "xradio,xr819";
-+		// pinctrl-names = "default";
-+		// pinctrl-0 = <&wifi_int>;
++		// compatible = "brcm,bcm4329-fmac";
++		compatible = "brcm,bcm43455-fmac";
 +		interrupt-parent = <&gpio3>;
-+		interrupts = <RK_PD4 IRQ_TYPE_EDGE_RISING>;
++		interrupts = <RK_PD4 GPIO_ACTIVE_HIGH>;
 +		interrupt-names = "host-wake";
-+		local-mac-address = [dc 44 6d c0 ff ee];
++		brcm,drive-strength = <5>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&wifi_host_wake_l>;
 +	};
 +};
 +
@@ -969,17 +1069,23 @@
 +};
 +
 +&can0 {
-+    status = "okay";
++	assigned-clocks = <&cru CLK_CAN0>;
++	assigned-clock-rates = <100000000>;
++	status = "disabled";
 +};
 +
 +&can1 {
++	assigned-clocks = <&cru CLK_CAN1>;
++	assigned-clock-rates = <100000000>;
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&can1m1_pins>;
-+    status = "okay";
++	status = "okay";
 +};
 +
 +&can2 {
-+    status = "okay";
++	assigned-clocks = <&cru CLK_CAN2>;
++	assigned-clock-rates = <100000000>;
++	status = "okay";
 +};
 +
 +&u2phy0_host {
