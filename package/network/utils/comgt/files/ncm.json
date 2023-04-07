@@ -145,13 +145,16 @@
 		"connect": "AT+ZGACT=1,${profile}",
 		"disconnect": "AT+ZGACT=0,${profile}"
 	},
-	"fibocom": {
-		"initialize": [
-			"AT",
-			"ATE1",
-			"AT+CGDCONT=${profile},\\\"${pdptype}\\\"${apn:+,\\\"$apn\\\"}"
+	"\"mikrotik\"": {
+		"configure": [
+			"AT+CFUN=4",
+			"AT+ZGDCONT=${profile},\\\"${pdptype}\\\",\\\"${apn}\\\",0",
+			"AT+ZDHCPLEASE=10",
+			"AT+CFUN=1"
 		],
-		"connect": "AT+GTRNDIS=1,${profile}",
-		"disconnect": "AT+GTRNDIS=0,${profile}"
+		"waitforconnect": "\\\"+ZCONSTAT: 1,${context_type}\\\",\\\"+ZGIPDNS: ${context_type}\\\"",
+		"connect": "AT+ZGACT=1,${context_type}",
+		"finalize": "AT+ZDHCPLEASE=0",
+		"disconnect": "AT+ZGACT=0,1"
 	}
 }
