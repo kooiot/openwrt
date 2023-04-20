@@ -16,6 +16,7 @@
 		ethernet1 = &gmac1;
 		mmc0 = &sdmmc0;
 		mmc1 = &sdhci;
+		serial0 = &uart2;
 	};
 
 	chosen: chosen {
@@ -44,7 +45,6 @@
 			label = "blue:work";
 			gpios = <&gpio1 RK_PB2 GPIO_ACTIVE_HIGH>;
 			linux,default-trigger = "heartbeat";
-
 		};
 
 		led-user {
@@ -601,6 +601,9 @@
 		wifi_enable_h: wifi-enable-h {
 			rockchip,pins = <3 RK_PD5 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
+		wifi_host_wake_l: wifi-host-wake-l {
+			rockchip,pins = <3 RK_PD4 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
 	};
 
 	usb {
@@ -719,6 +722,18 @@
 	mmc-pwrseq = <&sdio_pwrseq>;
 	non-removable;
 	status = "okay";
+
+	brcmf: wifi@1 {
+		reg = <1>;
+		// compatible = "brcm,bcm4329-fmac";
+		compatible = "brcm,bcm43455-fmac";
+		interrupt-parent = <&gpio3>;
+		interrupts = <RK_PD4 GPIO_ACTIVE_HIGH>;
+		interrupt-names = "host-wake";
+		brcm,drive-strength = <5>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&wifi_host_wake_l>;
+	};
 };
 
 &tsadc {
