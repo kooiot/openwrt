@@ -19,10 +19,10 @@
 +	compatible = "kooiot,tlink-rk3568", "rockchip,rk3568";
 +
 +	aliases {
-+		ethernet0 = &pcie3x1_eth;
-+		ethernet1 = &pcie3x2_eth;
-+		ethernet2 = &gmac0;
-+		ethernet3 = &gmac1;
++		ethernet0 = &gmac0;
++		ethernet1 = &gmac1;
++		ethernet2 = &pcie3x1_eth;
++		ethernet3 = &pcie3x2_eth;
 +		mmc0 = &sdmmc0;
 +		mmc1 = &sdhci;
 +		mmc2 = &sdmmc2;
