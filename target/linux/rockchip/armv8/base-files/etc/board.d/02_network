@@ -29,14 +29,14 @@ rockchip_setup_interfaces()
 	hinlink,opc-h69k)
 		ucidef_set_interfaces_lan_wan 'eth1 eth2 eth3' 'eth0'
 		;;
-	kooiot,tlink-r5|\
-	kooiot,tlink-rk3568)
+	kooiot,tlink-r4x|\
+	kooiot,tlink-r7)
 		ucidef_set_interface_lan "eth0"
 		ucidef_set_interface "lan1" device "eth1" protocol "static"
 		ucidef_set_interface "lan2" device "eth2" protocol "static"
 		ucidef_set_interface "lan3" device "eth3" protocol "static"
 		;;
-	kooiot,tlink-rk3568-1)
+	kooiot,tlink-r4x-1)
 		ucidef_set_interface_lan_wan "eth0" "eth1"
 		;;
 	fastrhino,r66s|\
@@ -116,7 +116,8 @@ rockchip_setup_macs()
 		lan_mac=$(cat /sys/class/net/eth1/address)
 		wan_mac=$(macaddr_add "$lan_mac" -1)
 		;;
-	kooiot,tlink-rk3568)
+	kooiot,tlink-r4x|\
+	kooiot,tlink-r7)
 		local mmc_cid_mac=$(macaddr_generate_from_mmc_cid mmcblk1)
 		lan_mac=$(tlink_mac_mask "$mmc_cid_mac")
 		[ -n "$lan_mac" ] && ucidef_set_interface_macaddr "lan1" $(macaddr_add "$lan_mac" 1)

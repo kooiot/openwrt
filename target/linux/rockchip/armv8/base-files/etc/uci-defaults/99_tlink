@@ -215,7 +215,8 @@ tlink_default() {
 	fi
 
 	case "$(board_name)" in
-		"kooiot,tlink-rk3568")
+		"kooiot,tlink-r4x"|\
+		"kooiot,tlink-r7")
 			tlink_init_5g
 			;;
 		*)
@@ -229,8 +230,8 @@ tlink_default() {
 }
 
 case "$(board_name)" in
-"kooiot,tlink-r5"|\
-"kooiot,tlink-rk3568")
+"kooiot,tlink-r4x"|\
+"kooiot,tlink-r7")
 	tlink_default
 	;;
 esac

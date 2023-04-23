@@ -26,12 +26,25 @@ endef
 
 ## RK3568 boards
 
-define U-Boot/tlink-rk3568
+define U-Boot/tlink-r4x
   BUILD_SUBTARGET:=armv8
   NAME:=ThingsLink RK3568
   BUILD_DEVICES:= \
-    kooiot_tlink-rk3568
-  DEPENDS:=+PACKAGE_u-boot-tlink-rk3568:arm-trusted-firmware-rkbin
+    kooiot_tlink-r4x
+  DEPENDS:=+PACKAGE_u-boot-tlink-r4x:arm-trusted-firmware-rkbin
+  PKG_BUILD_DEPENDS:=arm-trusted-firmware-rkbin
+  ATF:=rk3568_bl31.elf
+  TEE_FILE:=rk3568_bl32.bin
+  DDR_FILE:=rk3568_ddr_1560MHz.bin
+  UBOOT_SOC_PLAT:=rk3568
+endef
+
+define U-Boot/tlink-r7
+  BUILD_SUBTARGET:=armv8
+  NAME:=ThingsLink RK3568
+  BUILD_DEVICES:= \
+    kooiot_tlink-r7
+  DEPENDS:=+PACKAGE_u-boot-tlink-r7:arm-trusted-firmware-rkbin
   PKG_BUILD_DEPENDS:=arm-trusted-firmware-rkbin
   ATF:=rk3568_bl31.elf
   TEE_FILE:=rk3568_bl32.bin
