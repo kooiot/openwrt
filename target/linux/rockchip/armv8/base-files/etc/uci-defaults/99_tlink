@@ -161,20 +161,22 @@ tlink_add_5g_wan() {
 	if [ $? -eq 0 ]
 	then
 		echo "MEIGLink SRM821 found!" > /dev/kmsg
+		AT_PORT_INFO='/dev/ttyUSB2'
 		AT_PORT='/dev/ttyUSB1' # USB2-AT USB1-MODEM
 	fi
 	lsusb -d "2c7c:0900" > /dev/null
 	if [ $? -eq 0 ]
 	then
 		echo "Quectel RM500U-CN found!" > /dev/kmsg
+		AT_PORT_INFO='/dev/ttyUSB2'
 		AT_PORT='/dev/ttyUSB3' # USB2-AT USB3-MODEM
 	fi
 	lsusb -d "2c7c:0a05" > /dev/null
 	if [ $? -eq 0 ]
 	then
 		echo "Fibocom FM650-CN found!" > /dev/kmsg
-		AT_PORT='/dev/ttyUSB0' # USB0-MODEM USB1-AT
 		AT_PORT_INFO='/dev/ttyUSB1'
+		AT_PORT='/dev/ttyUSB0' # USB0-MODEM USB1-AT
 	fi
 
 	uci set network.5g_wan='interface'

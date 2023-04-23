@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/arch/arm64/boot/dts/rockchip/rk3568-tlink-rk3568.dts
-@@ -0,0 +1,1149 @@
+@@ -0,0 +1,1182 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (c) 2022 KooIoT.com
@@ -209,6 +209,7 @@
 +			* - PDN (power down when low)
 +		*/
 +		reset-gpios = <&gpio3 RK_PD5 GPIO_ACTIVE_LOW>;
++		post-power-on-delay-ms = <100>;
 +	};
 +
 +	vccio_wifi: vccio-wifi {
@@ -218,7 +219,39 @@
 +		regulator-boot-on;
 +		regulator-min-microvolt = <1800000>;
 +		regulator-max-microvolt = <1800000>;
-+		vin-supply = <&vcc5v0_sys>;
++		vin-supply = <&vcc5v0_ext>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&vccio_wifi_en>;
++		gpio = <&gpio0 RK_PD6 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++	};
++
++	// EXT board 5v regulator
++	vcc5v0_ext: vcc5v0-ext-regulator {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc5v0_ext";
++		regulator-boot-on;
++		regulator-always-on;
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&vcc5v0_ext_en>;
++		gpio = <&gpio4 RK_PD0 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++	};
++
++	// EXT board 3.3v regulator
++	vcc3v3_ext: vcc3v3-ext-regulator {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc3v3_ext";
++		regulator-boot-on;
++		regulator-always-on;
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&vcc3v3_ext_en>;
++		gpio = <&gpio4 RK_PD1 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
 +	};
 +
 +	leds {
@@ -378,20 +411,13 @@
 +			pinctrl-0 = <&pcie20_card_power_off_pin>;
 +		};
 +
++		/* SATA ACTn/GPIO9 for led */
 +		sata_en {
 +			gpio-export,name = "sata_en";
-+			gpio-export,output=<1>;
++			// gpio-export,output=<1>; // Input GPIO
 +			gpios = <&gpio0 RK_PA6 GPIO_ACTIVE_HIGH>;
 +			pinctrl-names = "default";
 +			pinctrl-0 = <&m2_sata_en_pin>;
-+		};
-+
-+		wifi_reset {
-+			gpio-export,name = "wifi_reset";
-+			gpio-export,output=<1>;
-+			gpios = <&gpio3 RK_PD5 GPIO_ACTIVE_LOW>;
-+			pinctrl-names = "default";
-+			pinctrl-0 = <&wifi_reset_pin>;
 +		};
 +	};
 +};
@@ -810,14 +836,13 @@
 +};
 +
 +/* conflict with pcie2x1 */
-+/*
 +&sata2 {
 +	// compatible = "rockchip,rk-ahci";
 +	status = "okay";
 +};
-+*/
 +
 +/* conflict with sata */
++/*
 +&pcie2x1 {
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&pcie20m2_pins>;
@@ -826,17 +851,9 @@
 +	vpcie3v3-supply = <&pcie20_3v3>;
 +	status = "okay";
 +};
++*/
 +
 +&pinctrl {
-+	sdio-pwrseq {
-+		wifi_enable_h: wifi-enable-h {
-+			rockchip,pins = <3 RK_PD5 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+		wifi_host_wake_l: wifi-host-wake-l {
-+			rockchip,pins = <3 RK_PD4 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+	};
-+
 +	usb5g { /* U8300 */
 +		pcie_power_pin: pcie-power-pin {
 +			rockchip,pins = <0 RK_PC2 RK_FUNC_GPIO &pcfg_pull_none>;
@@ -886,8 +903,11 @@
 +	};
 +
 +	wifi {
-+		wifi_int: wifi-int {
-+			rockchip,pins = <3 RK_PD4 RK_FUNC_GPIO &pcfg_pull_up>;
++		wifi_enable_h: wifi-enable-h {
++			rockchip,pins = <3 RK_PD5 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++		wifi_host_wake_l: wifi-host-wake-l {
++			rockchip,pins = <3 RK_PD4 RK_FUNC_GPIO &pcfg_pull_none>;
 +		};
 +		wifi_reset_pin: wifi-reset-pin {
 +			rockchip,pins = <3 RK_PD5 RK_FUNC_GPIO &pcfg_pull_up>;
@@ -903,6 +923,18 @@
 +		};
 +	};
 +
++	ext {
++		vcc5v0_ext_en: vcc5v0-ext-en {
++			rockchip,pins = <4 RK_PD0 RK_FUNC_GPIO &pcfg_pull_up>;
++		};
++		vcc3v3_ext_en: vcc3v3-ext-en {
++			rockchip,pins = <4 RK_PD1 RK_FUNC_GPIO &pcfg_pull_up>;
++		};
++		vccio_wifi_en: vcc1v8-ext-en {
++			rockchip,pins = <0 RK_PD6 RK_FUNC_GPIO &pcfg_pull_up>;
++		};
++	};
++
 +	gmac {
 +		gmac0_int: gmac0-int {
 +			rockchip,pins = <2 RK_PD2 RK_FUNC_GPIO &pcfg_pull_none>;
@@ -914,7 +946,7 @@
 +
 +	leds {
 +	    led_status_pin: led-status-pin {
-+			rockchip,pins = <0 RK_PD6 RK_FUNC_GPIO &pcfg_pull_none>;
++			rockchip,pins = <0 RK_PD5 RK_FUNC_GPIO &pcfg_pull_none>;
 +	    };
 +		led_bs_pin: led-bs-pin {
 +			rockchip,pins = <3 RK_PA0 RK_FUNC_GPIO &pcfg_pull_none>;
@@ -996,6 +1028,7 @@
 +	supports-sdio;
 +	bus-width = <4>;
 +	disable-wp;
++	cap-mmc-highspeed;
 +	cap-sd-highspeed;
 +	cap-sdio-irq;
 +	keep-power-in-suspend;
@@ -1005,7 +1038,7 @@
 +	mmc-pwrseq = <&sdio_pwrseq>;
 +	vmmc-supply = <&vccio_wifi>;
 +	non-removable;
-+	status = "disabled";
++	status = "okay";
 +
 +	brcmf: wifi@1 {
 +		reg = <1>;
