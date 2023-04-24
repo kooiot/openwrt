@@ -70,6 +70,16 @@ tlink_gen_mac_emmc_serial() {
 	return 0
 }
 
+tlink_mac_mask() {
+	local mac="$1"
+	local mac_base="b0c9"
+
+	mac_val="${mac_base:0:2}:${mac_base:2:2}:${mac:6:11}"
+
+	echo "${mac_val}"
+	return 0
+}
+
 gpio_out() {
 	local gpio_pin
 	local value

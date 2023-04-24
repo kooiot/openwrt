@@ -109,7 +109,10 @@ tlink_csq_leds_single()
 }
 
 case $(board_name) in
-	kooiot,tlink-rk3568)
+	kooiot,tlink-r4x)
+		tlink_csq_leds_mixed
+		;;
+	kooiot,tlink-r7)
 		tlink_csq_leds_mixed
 		;;
 	*)

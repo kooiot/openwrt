@@ -138,12 +138,12 @@ define Package/station-p2-firmware/install
 endef
 $(eval $(call BuildPackage,station-p2-firmware))
 
-Package/tlink-rk3568-firmware = $(call Package/firmware-default,Broadcom FullMac SDIO firmware)
-define Package/tlink-rk3568-firmware/install
+Package/tlink-r4x-firmware = $(call Package/firmware-default,Broadcom FullMac SDIO firmware)
+define Package/tlink-r4x-firmware/install
 	$(INSTALL_DIR) $(1)/lib/firmware/brcm
 	$(INSTALL_DATA) ./files/broadcom/AP6275S/bt/BCM4362A2.hcd $(1)/lib/firmware/brcm/BCM4362A2.hcd
 	$(INSTALL_DATA) ./files/broadcom/AP6275S/wifi/clm_bcm43752a2_ag.blob $(1)/lib/firmware/brcm/brcmfmac43752-sdio.clm_blob
-	$(INSTALL_DATA) ./files/broadcom/AP6275S/wifi/fw_bcm43752a2_ag_apsta.bin $(1)/lib/firmware/brcm/brcmfmac43752-sdio.kooiot,tlink-rk3568.bin
-	$(INSTALL_DATA) ./files/broadcom/AP6275S/wifi/nvram_ap6275s.txt $(1)/lib/firmware/brcm/brcmfmac43752-sdio.kooiot,tlink-rk3568.txt
+	$(INSTALL_DATA) ./files/broadcom/AP6275S/wifi/fw_bcm43752a2_ag_apsta.bin $(1)/lib/firmware/brcm/brcmfmac43752-sdio.kooiot,tlink-r4x.bin
+	$(INSTALL_DATA) ./files/broadcom/AP6275S/wifi/nvram_ap6275s.txt $(1)/lib/firmware/brcm/brcmfmac43752-sdio.kooiot,tlink-r4x.txt
 endef
-$(eval $(call BuildPackage,tlink-rk3568-firmware))
+$(eval $(call BuildPackage,tlink-r4x-firmware))

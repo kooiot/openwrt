@@ -1,10 +1,11 @@
 --- a/arch/arm/dts/Makefile
 +++ b/arch/arm/dts/Makefile
-@@ -58,6 +58,7 @@
+@@ -58,6 +58,8 @@
  	rk3399-puma-ddr1600.dtb \
  	rk3399-puma-ddr1866.dtb \
  	rk3568-firefly.dtb \
-+	rk3568-tlink-rk3568.dtb \
++	rk3568-tlink-r4x.dtb \
++	rk3568-tlink-r7.dtb \
  	rv1108-evb.dtb
  dtb-$(CONFIG_ARCH_MESON) += \
  	meson-gxbb-odroidc2.dtb

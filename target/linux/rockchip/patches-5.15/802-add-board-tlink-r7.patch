@@ -1,5 +1,5 @@
 --- /dev/null
-+++ b/arch/arm64/boot/dts/rockchip/rk3568-tlink-rk3568.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3568-tlink-r7.dts
 @@ -0,0 +1,1182 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
@@ -15,8 +15,8 @@
 +#include "rk3568.dtsi"
 +
 +/ {
-+	model = "ThingsLink RK3568";
-+	compatible = "kooiot,tlink-rk3568", "rockchip,rk3568";
++	model = "ThingsLink R7";
++	compatible = "kooiot,tlink-r7", "rockchip,rk3568";
 +
 +	aliases {
 +		ethernet0 = &gmac0;

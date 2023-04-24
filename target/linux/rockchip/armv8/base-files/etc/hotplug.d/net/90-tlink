@@ -38,7 +38,8 @@ tlink_usb0_dialup() {
 [ "$ACTION" = add -a "$INTERFACE" = usb0 ] && {
 	logger "USB0 interface detected..."
 	case $board in
-		kooiot,tlink-rk3568)
+		kooiot,tlink-r4x|\
+		kooiot,tlink-r7)
 			# tlink_usb0_dialup
 			;;
 	esac

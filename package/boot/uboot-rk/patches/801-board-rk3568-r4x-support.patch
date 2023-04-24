@@ -1,5 +1,5 @@
 --- /dev/null
-+++ b/configs/tlink-rk3568_defconfig
++++ b/configs/tlink-r4x_defconfig
 @@ -0,0 +1,177 @@
 +CONFIG_ARM=y
 +CONFIG_SYS_SOC_T=rk3568
@@ -20,13 +20,13 @@
 +CONFIG_SPL_NAND_SUPPORT=y
 +CONFIG_SPL_SPI_FLASH_SUPPORT=y
 +CONFIG_SPL_SPI_SUPPORT=y
-+CONFIG_DEFAULT_DEVICE_TREE="rk3568-tlink-rk3568"
++CONFIG_DEFAULT_DEVICE_TREE="rk3568-tlink-r4x"
 +CONFIG_DEBUG_UART=y
 +CONFIG_FIT=y
 +CONFIG_FIT_IMAGE_POST_PROCESS=y
 +CONFIG_FIT_HW_CRYPTO=y
 +CONFIG_SPL_LOAD_FIT=y
-+CONFIG_DEFAULT_FDT_FILE="rockchip/rk3568-tlink-rk3568.dtb"
++CONFIG_DEFAULT_FDT_FILE="rockchip/rk3568-tlink-r4x.dtb"
 +CONFIG_SPL_FIT_IMAGE_POST_PROCESS=y
 +CONFIG_SPL_FIT_HW_CRYPTO=y
 +# CONFIG_SPL_SYS_DCACHE_OFF is not set
@@ -179,7 +179,7 @@
 +CONFIG_OPTEE_V2=y
 +CONFIG_OPTEE_ALWAYS_USE_SECURITY_PARTITION=y
 --- /dev/null
-+++ b/arch/arm/dts/rk3568-tlink-rk3568.dts
++++ b/arch/arm/dts/rk3568-tlink-r4x.dts
 @@ -0,0 +1,106 @@
 +/*
 + * SPDX-License-Identifier:     GPL-2.0+
@@ -193,8 +193,8 @@
 +#include <dt-bindings/input/input.h>
 +
 +/ {
-+	model = "KooIoT ThingsLink RK3568";
-+	compatible = "kooiot,tlink-rk3568", "rockchip,rk3568";
++	model = "KooIoT ThingsLink R4x";
++	compatible = "kooiot,tlink-r4x", "rockchip,rk3568";
 +
 +	adc-keys {
 +		compatible = "adc-keys";

@@ -70,25 +70,10 @@ define U-Boot/rockpro64-rk3399
   ATF:=rk3399_bl31.elf
 endef
 
-## RK3568 boards
-
-define U-Boot/tlink-r5
-  BUILD_SUBTARGET:=armv8
-  NAME:=ThingsLink R5
-  BUILD_DEVICES:= \
-    kooiot_tlink-r5
-  DEPENDS:=+PACKAGE_u-boot-tlink-r5:arm-trusted-firmware-rkbin
-  PKG_BUILD_DEPENDS:=arm-trusted-firmware-rkbin
-  ATF:=rk3568_bl31.elf
-  DDR_FILE:=rk3568_ddr_1560MHz.bin
-  BUILD_BOOTSCRIPT:=$(1)
-endef
-
 UBOOT_TARGETS := \
   nanopi-r4s-rk3399 \
   rock-pi-4-rk3399 \
   rockpro64-rk3399 \
-  tlink-r5 \
   nanopi-r2s-rk3328
 
 UBOOT_CONFIGURE_VARS += USE_PRIVATE_LIBGCC=yes

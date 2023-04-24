@@ -66,11 +66,11 @@ define Device/firefly_firefly-roc-pc
 endef
 TARGET_DEVICES += firefly_firefly-roc-pc
 
-define Device/kooiot_tlink-rk3568
+define Device/kooiot_tlink-r4x
   DEVICE_VENDOR := KooIoT
-  DEVICE_MODEL := ThingsLink RK3568
+  DEVICE_MODEL := ThingsLink R4x
   SOC := rk3568
-  UBOOT_DEVICE_NAME := tlink-rk3568
+  UBOOT_DEVICE_NAME := tlink-r4x
   IMAGE/sysupgrade.img.gz := boot-common | boot-script-rk | pine64-img | gzip | append-metadata
   DEVICE_PACKAGES:=kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
@@ -84,18 +84,18 @@ define Device/kooiot_tlink-rk3568
 	kmod-i2c-fusb30x \
 	kmod-can kmod-can-rockchip-canfd \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
-	kmod-xradio armbian-firmware-xr819 wpad-basic-wolfssl \
+	kmod-brcmfmac tlink-r4x-firmware wpad-basic-mbedtls \
     tinc-freeioe-tunnel iperf3 \
     uqmi fdisk usbutils freeioe wwanleds \
     blockd kmod-eeprom-at24 fdisk
 endef
-TARGET_DEVICES += kooiot_tlink-rk3568
+TARGET_DEVICES += kooiot_tlink-r4x
 
-define Device/kooiot_tlink-r5
+define Device/kooiot_tlink-r7
   DEVICE_VENDOR := KooIoT
-  DEVICE_MODEL := ThingsLink R5
+  DEVICE_MODEL := ThingsLink R7
   SOC := rk3568
-  UBOOT_DEVICE_NAME := tlink-r5
+  UBOOT_DEVICE_NAME := tlink-r7
   IMAGE/sysupgrade.img.gz := boot-common | boot-script-rk | pine64-img | gzip | append-metadata
   DEVICE_PACKAGES:=kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
@@ -103,12 +103,16 @@ define Device/kooiot_tlink-r5
     kmod-rtc-sd3078 kmod-usb-net-asix \
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
-	kmod-usb-xhci-pci-renesas upd72020x-firmware \
-	mmod-can-rockchip-canfd \
+	kmod-usb-net-cdc-eem kmod-usb-net-cdc-ether \
+	kmod-usb-net-cdc-mbim kmod-usb-net-rndis \
+	kmod-usb-xhci-pci upd72020x-firmware \
+	kmod-i2c-fusb30x \
+	kmod-can kmod-can-rockchip-canfd \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    wpad-basic-wolfssl \
+	kmod-brcmfmac tlink-r4x-firmware wpad-basic-mbedtls \
     tinc-freeioe-tunnel iperf3 \
     uqmi fdisk usbutils freeioe wwanleds \
     blockd kmod-eeprom-at24 fdisk
 endef
-TARGET_DEVICES += kooiot_tlink-r5
+TARGET_DEVICES += kooiot_tlink-r7
+
