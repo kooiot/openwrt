@@ -12,14 +12,14 @@
 #include "rk3568.dtsi"
 
 / {
-	model = "ThingsLink R5";
-	compatible = "kooiot,tlink-r5", "rockchip,rk3568";
+	model = "ThingsLink R7";
+	compatible = "kooiot,tlink-r7", "rockchip,rk3568";
 
 	aliases {
 		ethernet0 = &gmac0;
 		ethernet1 = &gmac1;
-		ethernet2 = &rtl8111s_2;
-		ethernet3 = &rtl8111s_1;
+		ethernet2 = &rtl8111s_1;
+		ethernet3 = &rtl8111s_2;
 		mmc0 = &sdmmc0;
 		mmc1 = &sdhci;
 		mmc2 = &sdmmc2;
@@ -32,6 +32,8 @@
 		serial5 = &uart7;
 		serial6 = &uart8;
 		serial7 = &uart9;
+
+		rtc0 = &sd3077;
 	};
 
 	chosen: chosen {
@@ -191,24 +193,122 @@
 		//enable-active-high;
 	};
 
+	sdio_pwrseq: sdio-pwrseq {
+		compatible = "mmc-pwrseq-simple";
+		clocks = <&rk809 1>;
+		clock-names = "ext_clock";
+		pinctrl-names = "default";
+		pinctrl-0 = <&wifi_enable_h>;
+		/*
+			* On the module itself this is one of these (depending
+			* on the actual card populated):
+			* - SDIO_RESET_L_WL_REG_ON
+			* - PDN (power down when low)
+		*/
+		reset-gpios = <&gpio3 RK_PD5 GPIO_ACTIVE_LOW>;
+		post-power-on-delay-ms = <100>;
+	};
+
+	vccio_wifi: vccio-wifi {
+		compatible = "regulator-fixed";
+		regulator-name = "vccio_wifi";
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		vin-supply = <&vcc5v0_ext>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&vccio_wifi_en>;
+		gpio = <&gpio0 RK_PD6 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+	};
+
+	// EXT board 5v regulator
+	vcc5v0_ext: vcc5v0-ext-regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc5v0_ext";
+		regulator-boot-on;
+		regulator-always-on;
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&vcc5v0_ext_en>;
+		gpio = <&gpio4 RK_PD0 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+	};
+
+	// EXT board 3.3v regulator
+	vcc3v3_ext: vcc3v3-ext-regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc3v3_ext";
+		regulator-boot-on;
+		regulator-always-on;
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&vcc3v3_ext_en>;
+		gpio = <&gpio4 RK_PD1 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+	};
+
 	leds {
 		compatible = "gpio-leds";
 		status = "okay";
 
 		status {
-			label = "kooiot:green:statsu";
+			label = "kooiot:yellow:status";
 			linux,default-trigger = "heartbeat";
-			gpios = <&gpio0 RK_PB7 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio0 RK_PD5 GPIO_ACTIVE_LOW>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&led_status_pin>;
 		};
 
+		bs {
+			label = "kooiot:yellow:bs";
+			gpios = <&gpio3 RK_PA0 GPIO_ACTIVE_LOW>;
+			default-state = "off";
+			pinctrl-names = "default";
+			pinctrl-0 = <&led_bs_pin>;
+		};
+
+		gs {
+			label = "kooiot:green:gs";
+			gpios = <&gpio3 RK_PA1 GPIO_ACTIVE_LOW>;
+			default-state = "off";
+			pinctrl-names = "default";
+			pinctrl-0 = <&led_gs_pin>;
+		};
+
 		modem {
-			label = "kooiot:green:modem";
-			gpios = <&gpio1 RK_PA0 GPIO_ACTIVE_LOW>;
+			label = "kooiot:yellow:modem";
+			gpios = <&gpio3 RK_PA2 GPIO_ACTIVE_LOW>;
 			default-state = "off";
 			pinctrl-names = "default";
 			pinctrl-0 = <&led_modem_pin>;
+		};
+
+		cloud {
+			label = "kooiot:green:cloud";
+			gpios = <&gpio1 RK_PA4 GPIO_ACTIVE_LOW>;
+			default-state = "off";
+			pinctrl-names = "default";
+			pinctrl-0 = <&led_cloud_pin>;
+		};
+
+		wifi {
+			label = "kooiot:yellow:wifi";
+			gpios = <&gpio1 RK_PA6 GPIO_ACTIVE_LOW>;
+			default-state = "off";
+			pinctrl-names = "default";
+			pinctrl-0 = <&led_wifi_pin>;
+		};
+
+		bt {
+			label = "kooiot:green:bt";
+			gpios = <&gpio1 RK_PA7 GPIO_ACTIVE_LOW>;
+			default-state = "off";
+			pinctrl-names = "default";
+			pinctrl-0 = <&led_bt_pin>;
 		};
 	};
 
@@ -308,20 +408,13 @@
 			pinctrl-0 = <&pcie20_card_power_off_pin>;
 		};
 
+		/* SATA ACTn/GPIO9 for led */
 		sata_en {
 			gpio-export,name = "sata_en";
-			gpio-export,output=<1>;
+			// gpio-export,output=<1>; // Input GPIO
 			gpios = <&gpio0 RK_PA6 GPIO_ACTIVE_HIGH>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&m2_sata_en_pin>;
-		};
-
-		wifi_reset {
-			gpio-export,name = "wifi_reset";
-			gpio-export,output=<1>;
-			gpios = <&gpio3 RK_PD5 GPIO_ACTIVE_LOW>;
-			pinctrl-names = "default";
-			pinctrl-0 = <&wifi_reset_pin>;
 		};
 	};
 };
@@ -455,6 +548,10 @@
 		vcc8-supply = <&vcc3v3_sys>;
 		vcc9-supply = <&vcc3v3_sys>;
 		wakeup-source;
+
+		rtc {
+			status = "disabled";
+		};
 
 		regulators {
 			vdd_logic: DCDC_REG1 {
@@ -702,7 +799,6 @@
 	reset-gpios = <&gpio1 RK_PA2 GPIO_ACTIVE_HIGH>;
 	vpcie3v3-supply = <&pcie20_3v3>;
 	num-lanes = <1>;
-	rockchip,bifurcation;
 	status = "okay";
 
 	pcie@10 {
@@ -711,8 +807,10 @@
 		#size-cells = <2>;
 
 		rtl8111s_1: pcie-eth@10,0 {
-			compatible = "pci10ec,8111s";
+			compatible = "pci10ec,8111h";
 			reg = <0x000000 0 0 0 0>;
+
+			realtek,led-data = <0x78>;
 		};
 	};
 };
@@ -723,7 +821,6 @@
 	reset-gpios = <&gpio2 RK_PD6 GPIO_ACTIVE_HIGH>;
 	vpcie3v3-supply = <&pcie20_3v3>;
 	num-lanes = <1>;
-	rockchip,bifurcation;
 	status = "okay";
 
 	pcie@20 {
@@ -732,21 +829,22 @@
 		#size-cells = <2>;
 
 		rtl8111s_2: pcie-eth@20,0 {
-			compatible = "pci10ec,8111s";
+			compatible = "pci10ec,8111h";
 			reg = <0x000000 0 0 0 0>;
+
+			realtek,led-data = <0x78>;
 		};
 	};
 };
 
 /* conflict with pcie2x1 */
-/*
 &sata2 {
 	// compatible = "rockchip,rk-ahci";
 	status = "okay";
 };
-*/
 
 /* conflict with sata */
+/*
 &pcie2x1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pcie20m2_pins>;
@@ -755,6 +853,7 @@
 	vpcie3v3-supply = <&pcie20_3v3>;
 	status = "okay";
 };
+*/
 
 &pinctrl {
 	usb5g { /* U8300 */
@@ -806,8 +905,11 @@
 	};
 
 	wifi {
-		wifi_int_pin: wifi-int-pin {
-			rockchip,pins = <3 RK_PD4 RK_FUNC_GPIO &pcfg_pull_up>;
+		wifi_enable_h: wifi-enable-h {
+			rockchip,pins = <3 RK_PD5 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+		wifi_host_wake_l: wifi-host-wake-l {
+			rockchip,pins = <3 RK_PD4 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 		wifi_reset_pin: wifi-reset-pin {
 			rockchip,pins = <3 RK_PD5 RK_FUNC_GPIO &pcfg_pull_up>;
@@ -823,6 +925,18 @@
 		};
 	};
 
+	ext {
+		vcc5v0_ext_en: vcc5v0-ext-en {
+			rockchip,pins = <4 RK_PD0 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+		vcc3v3_ext_en: vcc3v3-ext-en {
+			rockchip,pins = <4 RK_PD1 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+		vccio_wifi_en: vcc1v8-ext-en {
+			rockchip,pins = <0 RK_PD6 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+	};
+
 	gmac {
 		gmac0_int: gmac0-int {
 			rockchip,pins = <2 RK_PD2 RK_FUNC_GPIO &pcfg_pull_none>;
@@ -834,10 +948,25 @@
 
 	leds {
 	    led_status_pin: led-status-pin {
-			rockchip,pins = <0 RK_PB7 RK_FUNC_GPIO &pcfg_pull_none>;
+			rockchip,pins = <0 RK_PD5 RK_FUNC_GPIO &pcfg_pull_none>;
 	    };
+		led_bs_pin: led-bs-pin {
+			rockchip,pins = <3 RK_PA0 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+		led_gs_pin: led-gs-pin {
+			rockchip,pins = <3 RK_PA1 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
 		led_modem_pin: led-modem-pin {
-			rockchip,pins = <1 RK_PA0 RK_FUNC_GPIO &pcfg_pull_none>;
+			rockchip,pins = <3 RK_PA2 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+		led_cloud_pin: led-cloud-pin {
+			rockchip,pins = <1 RK_PA4 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+		led_wifi_pin: led-wifi-pin {
+			rockchip,pins = <1 RK_PA6 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+		led_bt_pin: led-bt-pin {
+			rockchip,pins = <1 RK_PA7 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
 
@@ -910,17 +1039,20 @@
 	keep-power-in-suspend;
 	pinctrl-names = "default";
 	pinctrl-0 = <&sdmmc2m0_bus4 &sdmmc2m0_clk &sdmmc2m0_cmd>;
+	mmc-pwrseq = <&sdio_pwrseq>;
+	vmmc-supply = <&vccio_wifi>;
 	status = "okay";
 
-	xr819: sdio_wifi@1 {
+	brcmf: wifi@1 {
 		reg = <1>;
-		compatible = "xradio,xr819";
-		pinctrl-names = "default";
-		pinctrl-0 = <&wifi_int_pin>;
+		// compatible = "brcm,bcm4329-fmac";
+		compatible = "brcm,bcm43455-fmac";
 		interrupt-parent = <&gpio3>;
-		interrupts = <RK_PD4 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <RK_PD4 GPIO_ACTIVE_HIGH>;
 		interrupt-names = "host-wake";
-		local-mac-address = [dc 44 6d c0 ff ee];
+		brcm,drive-strength = <5>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&wifi_host_wake_l>;
 	};
 };
 
@@ -973,17 +1105,23 @@
 };
 
 &can0 {
-    status = "okay";
+	assigned-clocks = <&cru CLK_CAN0>;
+	assigned-clock-rates = <100000000>;
+	status = "disabled";
 };
 
 &can1 {
+	assigned-clocks = <&cru CLK_CAN1>;
+	assigned-clock-rates = <100000000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&can1m1_pins>;
-    status = "okay";
+	status = "okay";
 };
 
 &can2 {
-    status = "okay";
+	assigned-clocks = <&cru CLK_CAN2>;
+	assigned-clock-rates = <100000000>;
+	status = "okay";
 };
 
 &usb2phy0_host {

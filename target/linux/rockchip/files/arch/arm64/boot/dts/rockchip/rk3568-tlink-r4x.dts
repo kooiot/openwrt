@@ -12,8 +12,8 @@
 #include "rk3568.dtsi"
 
 / {
-	model = "ThingsLink RK3568";
-	compatible = "kooiot,tlink-rk3568", "rockchip,rk3568";
+	model = "ThingsLink R4x";
+	compatible = "kooiot,tlink-r4x", "rockchip,rk3568";
 
 	aliases {
 		ethernet0 = &gmac0;
