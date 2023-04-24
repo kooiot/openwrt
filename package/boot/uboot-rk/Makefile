@@ -66,7 +66,8 @@ define U-Boot/firefly-rk3568
 endef
 
 UBOOT_TARGETS := \
-  tlink-rk3568 \
+  tlink-r4x \
+  tlink-r7 \
   firefly-rk3568
 
 UBOOT_CONFIGURE_VARS += USE_PRIVATE_LIBGCC=yes

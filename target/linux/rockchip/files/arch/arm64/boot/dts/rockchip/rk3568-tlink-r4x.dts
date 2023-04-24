@@ -799,7 +799,6 @@
 	reset-gpios = <&gpio1 RK_PA2 GPIO_ACTIVE_HIGH>;
 	vpcie3v3-supply = <&pcie20_3v3>;
 	num-lanes = <1>;
-	rockchip,bifurcation;
 	status = "okay";
 
 	pcie@10 {
@@ -808,8 +807,10 @@
 		#size-cells = <2>;
 
 		rtl8111s_1: pcie-eth@10,0 {
-			compatible = "pci10ec,8111s";
+			compatible = "pci10ec,8111h";
 			reg = <0x000000 0 0 0 0>;
+
+			realtek,led-data = <0x78>;
 		};
 	};
 };
@@ -820,7 +821,6 @@
 	reset-gpios = <&gpio2 RK_PD6 GPIO_ACTIVE_HIGH>;
 	vpcie3v3-supply = <&pcie20_3v3>;
 	num-lanes = <1>;
-	rockchip,bifurcation;
 	status = "okay";
 
 	pcie@20 {
@@ -829,8 +829,10 @@
 		#size-cells = <2>;
 
 		rtl8111s_2: pcie-eth@20,0 {
-			compatible = "pci10ec,8111s";
+			compatible = "pci10ec,8111h";
 			reg = <0x000000 0 0 0 0>;
+
+			realtek,led-data = <0x78>;
 		};
 	};
 };

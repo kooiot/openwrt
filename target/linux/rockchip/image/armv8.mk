@@ -323,10 +323,11 @@ define Device/kooiot_tlink-r4x
 	kmod-usb-net-cdc-eem kmod-usb-net-cdc-ether \
 	kmod-usb-net-cdc-mbim kmod-usb-net-rndis \
 	kmod-usb-xhci-pci upd72020x-firmware \
-	kmod-i2c-fusb30x \
+	kmod-i2c-fusb30x kmod-brcmfmac \
 	kmod-can kmod-can-rockchip-canfd \
+	kmod-ata-ahci kmod-ata-ahci-platform \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    wpad-basic-mbedtls \
+    tlink-r7-firmware wpad-basic-mbedtls \
     tinc-freeioe-tunnel iperf3 \
     uqmi fdisk usbutils freeioe wwanleds \
     blockd kmod-eeprom-at24 fdisk
@@ -345,10 +346,14 @@ define Device/kooiot_tlink-r7
     kmod-rtc-sd3078 kmod-usb-net-asix \
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
-	kmod-usb-xhci-pci-renesas upd72020x-firmware \
-	mmod-can-rockchip-canfd \
+	kmod-usb-net-cdc-eem kmod-usb-net-cdc-ether \
+	kmod-usb-net-cdc-mbim kmod-usb-net-rndis \
+	kmod-usb-xhci-pci upd72020x-firmware \
+	kmod-i2c-fusb30x kmod-brcmfmac \
+	kmod-can kmod-can-rockchip-canfd \
+	kmod-ata-ahci kmod-ata-ahci-platform \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    wpad-basic-mbedtls \
+    tlink-r7-firmware wpad-basic-mbedtls \
     tinc-freeioe-tunnel iperf3 \
     uqmi fdisk usbutils freeioe wwanleds \
     blockd kmod-eeprom-at24 fdisk
