@@ -910,6 +910,21 @@ endef
 $(eval $(call KernelPackage,serial-8250-exar))
 
 
+define KernelPackage/serial-wk2xxx-i2c
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=WKMIC WK2xxx I2C to UART Support
+  KCONFIG:=CONFIG_SERIAL_WK2XXX_I2C
+  FILES:=$(LINUX_DIR)/drivers/tty/serial/wk2xxx_i2c/wk2xxx_i2c.ko
+  AUTOLOAD:=$(call AutoLoad,50,wk2xxx_i2c,1)
+endef
+
+define KernelPackage/serial-wk2xxx-i2c/description
+ Kernel module for WKMIC WK2xxx I2C UARTs
+endef
+
+$(eval $(call KernelPackage,serial-wk2xxx-i2c))
+
+
 define KernelPackage/serial-wk2xxx-spi
   SUBMENU:=$(OTHER_MENU)
   TITLE:=WKMIC WK2xxx SPI to UART Support
