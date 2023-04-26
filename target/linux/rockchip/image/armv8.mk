@@ -299,7 +299,8 @@ define Device/firefly_firefly-roc-pc
 	kmod-i2c-fusb30x \
 	kmod-can kmod-can-rockchip-canfd \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
-	kmod-brcmfmac kmod-ikconfig kmod-ata-ahci-platform \
+	kmod-mmc kmod-brcmfmac \
+  	kmod-ikconfig kmod-ata-ahci-platform \
 	firefly-roc-pc-firmware wpad-basic-mbedtls \
 	tinc-freeioe-tunnel iperf3 \
     uqmi fdisk usbutils freeioe wwanleds \
@@ -323,7 +324,8 @@ define Device/kooiot_tlink-r4x
 	kmod-usb-net-cdc-eem kmod-usb-net-cdc-ether \
 	kmod-usb-net-cdc-mbim kmod-usb-net-rndis \
 	kmod-usb-xhci-pci upd72020x-firmware \
-	kmod-i2c-fusb30x kmod-brcmfmac \
+	kmod-i2c-fusb30x \
+	kmod-mmc kmod-brcmfmac \
 	kmod-can kmod-can-rockchip-canfd \
 	kmod-ata-ahci kmod-ata-ahci-platform \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
@@ -349,7 +351,8 @@ define Device/kooiot_tlink-r7
 	kmod-usb-net-cdc-eem kmod-usb-net-cdc-ether \
 	kmod-usb-net-cdc-mbim kmod-usb-net-rndis \
 	kmod-usb-xhci-pci upd72020x-firmware \
-	kmod-i2c-fusb30x kmod-brcmfmac \
+	kmod-i2c-fusb30x \
+	kmod-mmc kmod-brcmfmac \
 	kmod-can kmod-can-rockchip-canfd \
 	kmod-ata-ahci kmod-ata-ahci-platform \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
