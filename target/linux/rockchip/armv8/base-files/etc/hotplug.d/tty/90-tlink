@@ -1,0 +1,27 @@
+#!/bin/sh
+
+. /lib/functions.sh
+
+[ "$ACTION" = add ] || [ "$ACTION" = remove ] || exit 0
+
+board=$(board_name)
+
+tlink_r7_wk_serial() {
+	case "$DEVICENAME" in
+		ttySWK0)
+			rm /dev/ttyS7
+			ln -s /dev/$DEVICENAME /dev/ttyS7
+			;;
+		ttySWK1)
+			rm /dev/ttyS8
+			ln -s /dev/$DEVICENAME /dev/ttyS8
+			;;
+	esac
+}
+
+case $board in
+kooiot,tlink-r7)
+	tlink_r7_wk_serial
+	;;
+esac
+
