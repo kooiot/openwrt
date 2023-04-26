@@ -149,7 +149,7 @@ CONFIG_DEFAULT_kmod-usb2=y
 CONFIG_DEFAULT_kmod-xradio=y
 CONFIG_DEFAULT_libc=y
 CONFIG_DEFAULT_libgcc=y
-CONFIG_DEFAULT_libustream-wolfssl=y
+CONFIG_DEFAULT_libustream-mbedtls=y
 CONFIG_DEFAULT_logd=y
 CONFIG_DEFAULT_luci-app-freeioe=y
 CONFIG_DEFAULT_luci-proto-3g=y
@@ -255,7 +255,6 @@ CONFIG_DISPLAY_SUPPORT=y
 CONFIG_SHADOW_PASSWORDS=y
 # CONFIG_CLEAN_IPKG is not set
 # CONFIG_IPK_FILES_CHECKSUMS is not set
-# CONFIG_INCLUDE_CONFIG is not set
 # CONFIG_REPRODUCIBLE_DEBUG_INFO is not set
 # CONFIG_COLLECT_KERNEL_DEBUG is not set
 
@@ -268,7 +267,6 @@ CONFIG_KERNEL_PRINTK=y
 CONFIG_KERNEL_SWAP=y
 # CONFIG_KERNEL_PROC_STRIPPED is not set
 CONFIG_KERNEL_DEBUG_FS=y
-# CONFIG_KERNEL_ARM_PMU is not set
 # CONFIG_KERNEL_PERF_EVENTS is not set
 # CONFIG_KERNEL_PROFILING is not set
 # CONFIG_KERNEL_UBSAN is not set
@@ -279,8 +277,6 @@ CONFIG_KERNEL_KALLSYMS=y
 CONFIG_KERNEL_DEBUG_KERNEL=y
 CONFIG_KERNEL_DEBUG_INFO=y
 CONFIG_KERNEL_DEBUG_INFO_REDUCED=y
-# CONFIG_KERNEL_DEBUG_LL_UART_NONE is not set
-# CONFIG_KERNEL_DEBUG_LL is not set
 # CONFIG_KERNEL_DEBUG_VIRTUAL is not set
 # CONFIG_KERNEL_DYNAMIC_DEBUG is not set
 # CONFIG_KERNEL_EARLY_PRINTK is not set
@@ -377,6 +373,7 @@ CONFIG_KERNEL_IPV6_SEG6_LWTUNNEL=y
 # CONFIG_KERNEL_WEXT_PRIV is not set
 # CONFIG_KERNEL_WEXT_PROC is not set
 # CONFIG_KERNEL_WEXT_SPY is not set
+# CONFIG_KERNEL_PAGE_POOL is not set
 # CONFIG_KERNEL_IP_PNP is not set
 
 #
@@ -459,17 +456,13 @@ CONFIG_SECCOMP=y
 # end of Global build settings
 
 # CONFIG_DEVEL is not set
-# CONFIG_BROKEN is not set
 CONFIG_BINARY_FOLDER=""
 CONFIG_DOWNLOAD_TOOL_CUSTOM=""
 CONFIG_DOWNLOAD_FOLDER=""
 CONFIG_LOCALMIRROR=""
 CONFIG_AUTOREBUILD=y
-# CONFIG_AUTOREMOVE is not set
-# CONFIG_BUILD_ALL_HOST_TOOLS is not set
 CONFIG_BUILD_SUFFIX=""
 CONFIG_TARGET_ROOTFS_DIR=""
-# CONFIG_CCACHE is not set
 CONFIG_CCACHE_DIR=""
 CONFIG_KERNEL_CFLAGS=""
 CONFIG_EXTERNAL_KERNEL_TREE=""
@@ -478,14 +471,8 @@ CONFIG_KERNEL_GIT_CLONE_URI=""
 CONFIG_BUILD_LOG_DIR=""
 CONFIG_EXTRA_OPTIMIZATION="-fno-caller-saves -fno-plt"
 CONFIG_TARGET_OPTIMIZATION="-Os -pipe"
-# CONFIG_EXTRA_TARGET_ARCH is not set
 CONFIG_EXTRA_BINUTILS_CONFIG_OPTIONS=""
-# CONFIG_DWARVES is not set
 CONFIG_EXTRA_GCC_CONFIG_OPTIONS=""
-# CONFIG_GCC_DEFAULT_PIE is not set
-# CONFIG_GCC_DEFAULT_SSP is not set
-# CONFIG_SJLJ_EXCEPTIONS is not set
-# CONFIG_INSTALL_GFORTRAN is not set
 CONFIG_MUSL_DISABLE_CRYPT_SIZE_HACK=y
 CONFIG_GDB=y
 # CONFIG_GDB_PYTHON is not set
@@ -2304,6 +2291,7 @@ CONFIG_PACKAGE_kmod-ledtrig-gpio=y
 #
 # Libraries
 #
+# CONFIG_PACKAGE_kmod-lib-842 is not set
 # CONFIG_PACKAGE_kmod-lib-cordic is not set
 CONFIG_PACKAGE_kmod-lib-crc-ccitt=y
 CONFIG_PACKAGE_kmod-lib-crc-itu-t=y
@@ -2605,6 +2593,7 @@ CONFIG_PACKAGE_kmod-gpio-button-hotplug=y
 # CONFIG_PACKAGE_kmod-ikconfig is not set
 # CONFIG_PACKAGE_kmod-keys-encrypted is not set
 # CONFIG_PACKAGE_kmod-keys-trusted is not set
+# CONFIG_PACKAGE_kmod-lkdtm is not set
 # CONFIG_PACKAGE_kmod-lp is not set
 # CONFIG_PACKAGE_kmod-mhi-bus is not set
 # CONFIG_PACKAGE_kmod-mhi-pci-generic is not set
@@ -3361,6 +3350,21 @@ CONFIG_LUA_ECO_OPENSSL=y
 #
 # CONFIG_PACKAGE_tcl is not set
 # end of Tcl
+
+#
+# ucode
+#
+CONFIG_PACKAGE_ucode=y
+CONFIG_PACKAGE_ucode-mod-fs=y
+CONFIG_PACKAGE_ucode-mod-math=y
+# CONFIG_PACKAGE_ucode-mod-nl80211 is not set
+# CONFIG_PACKAGE_ucode-mod-resolv is not set
+# CONFIG_PACKAGE_ucode-mod-rtnl is not set
+# CONFIG_PACKAGE_ucode-mod-struct is not set
+CONFIG_PACKAGE_ucode-mod-ubus=y
+CONFIG_PACKAGE_ucode-mod-uci=y
+# CONFIG_PACKAGE_ucode-mod-uloop is not set
+# end of ucode
 
 # CONFIG_PACKAGE_chicken-scheme-full is not set
 # CONFIG_PACKAGE_chicken-scheme-interpreter is not set
@@ -4428,6 +4432,7 @@ CONFIG_PACKAGE_libuci=y
 # CONFIG_PACKAGE_libuci-lua is not set
 # CONFIG_PACKAGE_libuci2 is not set
 CONFIG_PACKAGE_libuclient=y
+CONFIG_PACKAGE_libucode=y
 CONFIG_PACKAGE_libudev-zero=y
 # CONFIG_PACKAGE_libudns is not set
 # CONFIG_PACKAGE_libuecc is not set
@@ -5787,6 +5792,7 @@ CONFIG_PACKAGE_chat=y
 # CONFIG_PACKAGE_coap-server is not set
 # CONFIG_PACKAGE_conserver is not set
 # CONFIG_PACKAGE_crowdsec is not set
+# CONFIG_PACKAGE_crowdsec-firewall-bouncer is not set
 # CONFIG_PACKAGE_cshark is not set
 # CONFIG_PACKAGE_daemonlogger is not set
 # CONFIG_PACKAGE_darkstat is not set
@@ -6659,7 +6665,6 @@ CONFIG_LCD4LINUX_CUSTOM_PLUGIN_uptime=y
 CONFIG_PACKAGE_libjson-script=y
 # CONFIG_PACKAGE_libnetwork is not set
 # CONFIG_PACKAGE_librespeed-cli is not set
-CONFIG_PACKAGE_libucode=y
 # CONFIG_PACKAGE_libxml2-utils is not set
 # CONFIG_PACKAGE_lm-sensors is not set
 # CONFIG_PACKAGE_lm-sensors-detect is not set
@@ -6817,19 +6822,9 @@ CONFIG_STRACE_NONE=y
 # CONFIG_PACKAGE_tree is not set
 # CONFIG_PACKAGE_triggerhappy is not set
 # CONFIG_PACKAGE_ubnt-manager is not set
-CONFIG_PACKAGE_ucode=y
 # CONFIG_PACKAGE_ucode-mod-bpf is not set
-CONFIG_PACKAGE_ucode-mod-fs=y
 CONFIG_PACKAGE_ucode-mod-html=y
 CONFIG_PACKAGE_ucode-mod-lua=y
-CONFIG_PACKAGE_ucode-mod-math=y
-# CONFIG_PACKAGE_ucode-mod-nl80211 is not set
-# CONFIG_PACKAGE_ucode-mod-resolv is not set
-# CONFIG_PACKAGE_ucode-mod-rtnl is not set
-# CONFIG_PACKAGE_ucode-mod-struct is not set
-CONFIG_PACKAGE_ucode-mod-ubus=y
-CONFIG_PACKAGE_ucode-mod-uci=y
-# CONFIG_PACKAGE_ucode-mod-uloop is not set
 # CONFIG_PACKAGE_udns-dnsget is not set
 # CONFIG_PACKAGE_udns-ex-rdns is not set
 # CONFIG_PACKAGE_udns-rblcheck is not set
