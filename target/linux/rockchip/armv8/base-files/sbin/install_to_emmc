@@ -25,7 +25,7 @@ if [ ! -b ${EMMC_DISK} ]; then
 	EMMC_DISK="/dev/mmcblk2"
 fi
 
-EMMC_FIRST_SECTOR=32768
+EMMC_FIRST_SECTOR=65536
 EMMC_BOOTFS_SIZE=$((30 * 1024 * 1024))
 EMMC_ROOTFS_SIZE=$((256 * 1024 * 1024))
 EMMC_DATA_FIRST_SECTOR=$(( 800 * 1024 ))
@@ -105,7 +105,7 @@ echo "Partitioning EMMC ..."
 
 sbootfs=$(( $EMMC_FIRST_SECTOR ))
 ebootfs=$(( $EMMC_BOOTFS_SIZE / 512 + $sbootfs - 1 ))
-srootfs=$(( $ebootfs + 1 + 2048 ))
+srootfs=$(( $ebootfs + 1 + 4096 ))
 erootfs=$(( $EMMC_ROOTFS_SIZE / 512 + $srootfs -1 ))
 sdatafs=$(( $EMMC_DATA_FIRST_SECTOR ))
 edatafs=""
