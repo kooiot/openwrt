@@ -180,11 +180,11 @@
 +CONFIG_OPTEE_ALWAYS_USE_SECURITY_PARTITION=y
 --- /dev/null
 +++ b/arch/arm/dts/rk3568-tlink-r4x.dts
-@@ -0,0 +1,106 @@
+@@ -0,0 +1,136 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
-+ * SPDX-License-Identifier:     GPL-2.0+
++ * Copyright (c) 2022 KooIoT.com
 + *
-+ * (C) Copyright 2020 Rockchip Electronics Co., Ltd
 + */
 +
 +/dts-v1/;
@@ -196,19 +196,49 @@
 +	model = "KooIoT ThingsLink R4x";
 +	compatible = "kooiot,tlink-r4x", "rockchip,rk3568";
 +
-+	adc-keys {
-+		compatible = "adc-keys";
-+		io-channels = <&saradc 0>;
-+		io-channel-names = "buttons";
-+		keyup-threshold-microvolt = <1800000>;
-+		u-boot,dm-spl;
++	vcc3v3_usb: vcc3v3-usb-regulator {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc3v3_usb";
++		regulator-boot-on;
++		regulator-always-on;
++		gpio = <&gpio0 RK_PC2 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++	};
++
++	vcc3v3_usb_reset: vcc3v3-usb-reset-regulator {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc3v3_usb_reset";
++		regulator-boot-on;
++		regulator-always-on;
++		gpio = <&gpio0 RK_PC4 GPIO_ACTIVE_LOW>; // Revert reset pin
++	};
++
++	vcc3v3_pcie_reset: vcc3v3-pcie-reset-regulator {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc3v3_pcie_reset";
++		regulator-boot-on;
++		regulator-always-on;
++		gpio = <&gpio2 RK_PD7 GPIO_ACTIVE_LOW>; // Revert reset pin
++	};
++
++	leds {
++		compatible = "gpio-leds";
 +		status = "okay";
 +
-+		volumeup-key {
-+			u-boot,dm-spl;
-+			linux,code = <KEY_VOLUMEUP>;
-+			label = "volume up";
-+			press-threshold-microvolt = <9>;
++		status {
++			label = "kooiot:yellow:status";
++			linux,default-trigger = "heartbeat";
++			gpios = <&gpio0 RK_PD5 GPIO_ACTIVE_LOW>;
++		};
++	};
++
++	gpio_keys {
++		compatible = "gpio-keys";
++
++		reset {
++			label = "reset";
++			linux,code = <KEY_RESTART>;
++			gpios = <&gpio0 RK_PA5 GPIO_ACTIVE_LOW>;
 +		};
 +	};
 +};
