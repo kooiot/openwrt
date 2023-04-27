@@ -96,6 +96,7 @@ platform_do_upgrade() {
 	done < /tmp/partmap.image
 
 	#copy partition uuid
-	echo "Writing new UUID to /dev/$diskdev..."
-	get_image "$@" | dd of="/dev/$diskdev" bs=1 skip=440 count=4 seek=440 conv=fsync
+	#Do not copy partition uuid
+	# echo "Writing new UUID to /dev/$diskdev..."
+	# get_image "$@" | dd of="/dev/$diskdev" bs=1 skip=440 count=4 seek=440 conv=fsync
 }

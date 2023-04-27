@@ -196,6 +196,7 @@ tlink_add_5g_wan() {
 }
 
 tlink_init_5g() {
+	sleep 10 # wait for chips ready in five seconds
 	[ -e /dev/cdc-wdm0 ] && {
 		# QMI interface
 		echo "QMI module found!!!" > /dev/kmsg

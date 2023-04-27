@@ -2,6 +2,7 @@
 
 . /lib/functions/uci-defaults.sh
 . /lib/functions/system.sh
+. /lib/functions/tlink.sh
 
 rockchip_setup_interfaces()
 {
@@ -78,7 +79,7 @@ rockchip_setup_macs()
 	kooiot,tlink-r7)
 		local mmc_cid_mac=$(generate_mac_from_mmc_cid mmcblk1)
 		lan_mac=$(tlink_mac_mask "$mmc_cid_mac")
-		echo "MMC LAN MAC: "$lan_mac > /dev/kmsg
+		echo "LAN MAC: "$lan_mac > /dev/kmsg
 		[ -n "$lan_mac" ] && ucidef_set_interface_macaddr "lan1" $(macaddr_add "$lan_mac" 1)
 		[ -n "$lan_mac" ] && ucidef_set_interface_macaddr "lan2" $(macaddr_add "$lan_mac" 2)
 		[ -n "$lan_mac" ] && ucidef_set_interface_macaddr "lan3" $(macaddr_add "$lan_mac" 3)
@@ -89,7 +90,7 @@ rockchip_setup_macs()
 	[ -n "$wan_mac" ] && ucidef_set_interface_macaddr "wan" $wan_mac
 	[ -n "$label_mac" ] && ucidef_set_label_macaddr $label_mac
 
-	echo "Set Ethernet MAC done " > /dev/kmsg
+	echo "Set Ethernet MAC done!" > /dev/kmsg
 }
 
 board_config_update
