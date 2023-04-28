@@ -63,21 +63,21 @@ tlink_csq_leds_mixed()
 	if [ ${SHOW} -le 0 ]
 	then
 		tlink_led_echo "green:gs" 0
-		tlink_led_echo "red:bs" 0
+		tlink_led_echo "yellow:bs" 0
 		return 0
 	fi
 
 	if [ $CSQ -ge 17 ]
 	then
 		tlink_led_echo "green:gs" 255
-		tlink_led_echo "red:bs" 0
+		tlink_led_echo "yellow:bs" 0
 	else
-		tlink_led_echo "red:bs" 1
+		tlink_led_echo "yellow:bs" 1
 		if [ $CSQ -ge 10 ]
 		then
 			tlink_led_echo "green:gs" 255
 		else
-			tlink_led_echo "green:bs" 0
+			tlink_led_echo "yellow:bs" 0
 		fi
 	fi
 }
@@ -109,12 +109,11 @@ tlink_csq_leds_single()
 }
 
 case $(board_name) in
-	kooiot,tlink-m408|\
-	kooiot,tlink-m416)
+	kooiot,tlink-r4x)
 		tlink_csq_leds_mixed
 		;;
-	kooiot,tlink-k2)
-		tlink_csq_leds_single
+	kooiot,tlink-r7)
+		tlink_csq_leds_mixed
 		;;
 	*)
 		tlink_csq_leds_default
