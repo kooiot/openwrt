@@ -10,10 +10,14 @@ tlink_c2_usb_serial() {
 	CH341_PID="1a86:7523"
 	SYMLINK="ttyS2"
 
+	if [ ! -f /sys$DEVPATH/../idVendor ]; then
+		return
+	fi
+
 	vid=$(cat /sys$DEVPATH/../idVendor)
 	pid=$(cat /sys$DEVPATH/../idProduct)
 
-	echo "${vid}:${pid}" > /dev/kmsg
+	echo "CH341 Check""${vid}:${pid}" > /dev/kmsg
 
 	if [ "${vid}:${pid}" = "${CH341_PID}" ]; then
 		if [ "${ACTION}" = "bind" ]; then
