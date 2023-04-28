@@ -1249,22 +1249,22 @@
 };
 
 &usb2phy0_host {
-	phy-supply = <&vcc5v0_host>;
+	phy-supply = <&vcc5v0_host2>;
 	status = "okay";
 };
 
 &usb2phy0_otg {
-	vbus-supply = <&vcc5v0_otg>;
+	phy-supply = <&vcc5v0_host2>;
 	status = "okay";
 };
 
 &usb2phy1_host {
-	phy-supply = <&vcc5v0_host>;
+	phy-supply = <&vcc5v0_host3>;
 	status = "okay";
 };
 
 &usb2phy1_otg {
-	phy-supply = <&vcc5v0_host>;
+	phy-supply = <&vcc5v0_host3>;
 	status = "okay";
 };
 

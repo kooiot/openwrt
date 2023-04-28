@@ -1,5 +1,5 @@
---- a/arch/arm64/boot/dts/rockchip/rk3568.dtsi
-+++ a/arch/arm64/boot/dts/rockchip/rk3568.dtsi
+--- a/arch/arm64/boot/dts/rockchip/rk356x.dtsi
++++ a/arch/arm64/boot/dts/rockchip/rk356x.dtsi
 @@ -29,16 +29,16 @@
  		i2c3 = &i2c3;
  		i2c4 = &i2c4;
