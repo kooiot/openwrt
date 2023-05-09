@@ -11,7 +11,72 @@
  
 --- a/drivers/net/phy/motorcomm.c
 +++ b/drivers/net/phy/motorcomm.c
-@@ -622,6 +622,8 @@
+@@ -185,6 +185,8 @@
+ 
+ static int yt8512_led_init(struct phy_device *phydev)
+ {
++	struct device *dev = &phydev->mdio.dev;
++	struct device_node *of_node = dev->of_node;
+ 	int ret;
+ 	int val;
+ 	int mask;
+@@ -215,6 +217,24 @@
+ 
+ 	ret = ytphy_write_ext(phydev, YT8512_LED1_BT_ON_EN, val);
+ 
++	if (of_property_read_u32(of_node, "motorcomm,led0", &val)) {
++		phydev_info(phydev, "write led0 config val: %x", val);
++		ret = ytphy_write_ext(phydev, YT8512_EXTREG_LED0, val);
++		if (ret < 0) {
++			phydev_err(phydev, "write led0 config failed!\n");
++			return ret;
++		}
++	}
++
++	if (of_property_read_u32(of_node, "motorcomm,led1", &val)) {
++		phydev_info(phydev, "write led1 config val: %x", val);
++		ret = ytphy_write_ext(phydev, YT8512_EXTREG_LED1, val);
++		if (ret < 0) {
++			phydev_err(phydev, "write led1 config failed!\n");
++			return ret;
++		}
++	}
++
+ 	return ret;
+ }
+ 
+@@ -230,6 +250,30 @@
+ 	if (ret < 0)
+ 		return ret;
+ 
++	// Try to read phy_id if failed, then not initialize it
++	ret = phy_read(phydev, MII_PHYSID1) << 16;
++	ret |= phy_read(phydev, MII_PHYSID2);
++	phydev_info(phydev, "%s: phy_id: %x", __func__, ret);
++	if (ret == 0)
++		return 0;
++
++	// 10BT bug?
++	ret = ytphy_read_ext(phydev, 0x200a /*YT8512_10BT_BUG_REG*/);
++	if (ret < 0) {
++		phydev_err(phydev, "read 10BT BUG REG failed!\n");
++		return ret;
++	} else {
++		phydev_info(phydev, "10BT BUG REG val: %x", ret);
++	}
++
++	if (0) {
++		ret = ytphy_write_ext(phydev, 0x200a /*YT8512_10BT_BUG_REG*/, ret & 0xFBFF);
++		if (ret < 0) {
++			phydev_err(phydev, "write 10BT BUG REG failed!\n");
++			return ret;
++		}
++	}
++
+ 	ret = yt8512_clk_init(phydev);
+ 	if (ret < 0)
+ 		return ret;
+@@ -622,6 +666,8 @@
  
  static int yt8521_config_init(struct phy_device *phydev)
  {
@@ -20,11 +85,25 @@
  	int ret;
  	int val;
  
-@@ -660,6 +662,53 @@
+@@ -660,6 +706,67 @@
  	if (ret < 0)
  		return ret;
  
-+	if (of_property_read_bool(of_node, "nanopi,yt8521s-hack")) { 
++	if (of_property_read_bool(of_node, "tlink,yt8521s-hack")) {
++		ret = ytphy_write_ext(phydev, 0xa003 /*YT8521_RGMII_CFG_REG*/, 0xf);
++		if (ret < 0) {
++			phydev_err(phydev, "write RGMII Config failed!\n");
++			return ret;
++		}
++
++		ret = phy_write(phydev, MII_BMCR, 0x9040); // ???
++		if (ret < 0) {
++			phydev_err(phydev, "write MII_BMCR failed!\n");
++			return ret;
++		}
++	}
++
++	if (of_property_read_bool(of_node, "nanopi,yt8521s-hack")) {
 +		/* output SyncE clock (125mhz) even link is down */
 +		ret = ytphy_write_ext(phydev, 0xa012, 0x38);
 +		if (ret < 0)
@@ -74,7 +153,7 @@
  	printk (KERN_INFO "yt8521_config_init, 8521 init call out.\n");
  	return ret;
  }
-@@ -893,6 +942,32 @@
+@@ -893,6 +1000,32 @@
  	return 0;
  }
  
@@ -107,7 +186,17 @@
  
  #if ( LINUX_VERSION_CODE < KERNEL_VERSION(4,0,0) )
  #else
-@@ -1374,6 +1449,8 @@
+@@ -1345,8 +1478,8 @@
+ 		.phy_id		= PHY_ID_YT8512B,
+ 		.name		= "YT8512B Ethernet",
+ 		.phy_id_mask	= MOTORCOMM_PHY_ID_MASK,
+-#if ( LINUX_VERSION_CODE < KERNEL_VERSION(5,4,0) )
+ 		.features	= PHY_BASIC_FEATURES,
++#if ( LINUX_VERSION_CODE < KERNEL_VERSION(5,4,0) )
+ 		.flags			= PHY_HAS_INTERRUPT,
+ #endif		
+ 		.config_aneg	= genphy_config_aneg,
+@@ -1374,6 +1507,8 @@
          .read_status    = yt8521_read_status,
          .suspend        = yt8521_suspend,
          .resume         = yt8521_resume,
