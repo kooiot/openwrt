@@ -106,7 +106,7 @@ static int yt8521_config_init(struct phy_device *phydev)
 		phydev_info(phydev, "RGMII Config val: %x", ret);
 	}
 
-	/* Begin YT8521s Hacks, or 1000M will not works */
+	/* Begin YT8521s Hacks, set the correct tx delay for 1000M mode */
 	ret = yt_ext_write(phydev, YT8521_RGMII_CFG_REG, 0xff);
 	if (ret < 0) {
 		phydev_err(phydev, "write RGMII Config failed!\n");

@@ -90,7 +90,7 @@
  		return ret;
  
 +	if (of_property_read_bool(of_node, "tlink,yt8521s-hack")) {
-+		ret = ytphy_write_ext(phydev, 0xa003 /*YT8521_RGMII_CFG_REG*/, 0xf);
++		ret = ytphy_write_ext(phydev, 0xa003 /*YT8521_RGMII_CFG_REG*/, 0xff); /* tx delay */
 +		if (ret < 0) {
 +			phydev_err(phydev, "write RGMII Config failed!\n");
 +			return ret;
