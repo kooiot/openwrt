@@ -10,7 +10,7 @@
  	sun8i-s3-olinuxino.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k2x.dts
-@@ -0,0 +1,621 @@
+@@ -0,0 +1,622 @@
 +/*
 + * Copyright (C) 2022 Dirk Chang <dirk@kooiot.com>
 + *
@@ -291,7 +291,8 @@
 +		// reset-deassert-us = <1000000>;
 +		// interrupt-parent = <&pio>;
 +		// interrupts = <&pio 0 17 GPIO_ACTIVE_LOW>; /* PA17 */
-+		motorcomm,led1 = <0x1e00>;
++		motorcomm,led0 = <0x0>;
++		motorcomm,led1 = <0x1f80>;
 +		motorcomm,led2 = <0x24>;
 +	};
 +};
