@@ -10,7 +10,7 @@
  	sun8i-r40-tlink-nano-a40i.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k2x.dts
-@@ -0,0 +1,616 @@
+@@ -0,0 +1,617 @@
 +/*
 + * Copyright (C) 2022 Dirk Chang <dirk@kooiot.com>
 + *
@@ -283,9 +283,10 @@
 +};
 +
 +&gmac_mdio {
-+	phy1: ethernet-phy@0 {
++	phy1: ethernet-phy@3 {
 +		compatible = "ethernet-phy-ieee802.3-c22";
-+		reg = <0>;
++		reg = <3>;
++		tlink,yt8521s-hack;
 +		// reset-gpios = <&pio 0 9 GPIO_ACTIVE_LOW>; /* PA9 */
 +		// reset-assert-us = <10000>;
 +		// reset-deassert-us = <1000000>;

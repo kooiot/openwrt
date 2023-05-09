@@ -280,9 +280,9 @@
 +};
 +
 +&gmac_mdio {
-+	phy1: ethernet-phy@0 {
++	phy1: ethernet-phy@3 {
 +		compatible = "ethernet-phy-ieee802.3-c22";
-+		reg = <0>;
++		reg = <3>;
 +		// reset-gpios = <&pio 0 9 GPIO_ACTIVE_LOW>; /* PA9 */
 +		// reset-assert-us = <10000>;
 +		// reset-deassert-us = <1000000>;
