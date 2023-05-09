@@ -1,16 +1,16 @@
-menuconfig MOTORCOMM_PHY
+menuconfig MOTORCOMM_PHY_EXT
 	tristate "Motorcomm phy chips support"
 	help
 	  Currently supports the MOTORCOMM phy chips
 
 config MOTORCOMM_YT8521S
-	depends on MOTORCOMM_PHY
+	depends on MOTORCOMM_PHY_EXT
 	tristate "Motorcomm YT8521S phy support"
 	help
 		Currently supports the YT8521S PHY
 
 config MOTORCOMM_YT8512C
-	depends on MOTORCOMM_PHY
+	depends on MOTORCOMM_PHY_EXT
 	tristate "Motorcomm YT8521C phy support"
 	help
 		Currently supports the YT8512C PHY
