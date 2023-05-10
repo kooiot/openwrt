@@ -120,6 +120,16 @@ define Device/friendlyarm_nanopi-r2c-plus
 endef
 TARGET_DEVICES += friendlyarm_nanopi-r2c-plus
 
+define Device/firefly_roc-rk3328-cc
+  DEVICE_VENDOR := Firefly
+  DEVICE_MODEL := ROC-RK3328-CC
+  SOC := rk3328
+  DEVICE_DTS := rockchip/rk3328-roc-cc
+  UBOOT_DEVICE_NAME := roc-cc-rk3328
+  IMAGE/sysupgrade.img.gz := boot-common | boot-script nanopi-r2s | pine64-img | gzip | append-metadata
+endef
+TARGET_DEVICES += firefly_roc-rk3328-cc
+
 define Device/friendlyarm_nanopi-r2s
   DEVICE_VENDOR := FriendlyARM
   DEVICE_MODEL := NanoPi R2S
