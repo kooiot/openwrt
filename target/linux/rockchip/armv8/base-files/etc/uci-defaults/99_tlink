@@ -35,6 +35,26 @@ EOF
 	uci commit fstab
 }
 
+tlink_mount_storage() {
+	data_blk_p="/dev/sda"
+	if [ ! -b $data_blk_p ]; then
+		if [ -b "/dev/sda1" ]; then
+			data_blk_p="/dev/sda1"
+		fi
+	fi
+
+	rule_name=$(uci add fstab mount)
+	uci batch <<EOF
+set fstab.$rule_name.target='/mnt/storage'
+set fstab.$rule_name.device='$data_blk_p'
+set fstab.$rule_name.fstype='ext4'
+set fstab.$rule_name.options='rw,async'
+set fstab.$rule_name.enabled='1'
+set fstab.$rule_name.enabled_fsck='1'
+EOF
+	uci commit fstab
+}
+
 tlink_add_qmi_interface() {
 	uci set network.4g_wan='interface'
 	uci set network.4g_wan.proto='qmi'
@@ -214,7 +234,13 @@ tlink_default() {
 	if ( grep -qs '/mnt/data' /etc/config/fstab || \
 		tlink_mount_data )
 	then
-		echo "Data parition mount point added" > /dev/kmsg
+		echo "Data parition mount point added!" > /dev/kmsg
+	fi
+
+	if ( grep -qs '/mnt/storage' /etc/config/fstab || \
+		tlink_mount_storage )
+	then
+		echo "Storage disk mount point added!" > /dev/kmsg
 	fi
 
 	case "$(board_name)" in
