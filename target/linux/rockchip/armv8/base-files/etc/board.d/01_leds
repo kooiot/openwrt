@@ -39,7 +39,9 @@ hinlink,opc-h68k|\
 hinlink,opc-h69k)
 	ucidef_set_led_netdev "wan" "WAN" "blue:net" "eth0"
 	;;
-kooiot,tlink-r4x|\
+kooiot,tlink-r4x)
+	ucidef_set_led_netdev "modem" "modem" "kooiot:yellow:modem" "wwan0"
+	;;
 kooiot,tlink-r7)
 	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "wwan0"
 	;;
