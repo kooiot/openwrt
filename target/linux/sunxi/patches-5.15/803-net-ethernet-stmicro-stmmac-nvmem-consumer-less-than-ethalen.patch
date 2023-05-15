@@ -8,7 +8,7 @@
  
  #include "stmmac.h"
  #include "stmmac_platform.h"
-@@ -390,15 +391,80 @@
+@@ -390,15 +391,81 @@
  {
  	struct nvmem_cell *cell;
  	size_t cell_size;
@@ -50,6 +50,7 @@
 +/**
 + * Generate mac address from chipid as what u-boot does
 + */
++__attribute__((unused))
 +static void *stmmac_get_nvmem_sun8i_chipid(struct device* dev)
 +{
 +	struct nvmem_cell *cell;
@@ -90,7 +91,7 @@
  	return mac;
  }
  
-@@ -440,6 +506,13 @@
+@@ -440,6 +507,13 @@
  	if (mac_addr && is_valid_ether_addr(mac_addr))
  		*mac = mac_addr;
  

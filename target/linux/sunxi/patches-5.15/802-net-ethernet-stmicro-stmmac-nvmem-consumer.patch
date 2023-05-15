@@ -62,7 +62,7 @@ index 72da77b94ecd..8a7b804528ef 100644
  
 +	mac_addr = stmmac_get_nvmem_address(&pdev->dev);
 +	if (mac_addr && is_valid_ether_addr(mac_addr))
-+		*mac = mac_addr;
++		ether_addr_copy(mac, mac_addr);
 +
  	phy_mode = device_get_phy_mode(&pdev->dev);
  	if (phy_mode < 0)

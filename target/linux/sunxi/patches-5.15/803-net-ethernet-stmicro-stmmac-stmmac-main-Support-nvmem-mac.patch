@@ -52,7 +52,7 @@
 +
 +	kfree(chipid);
 +}
-+
++__attribute__((unused))
 +static void eth_hw_addr_nvmem_sun8i(struct device* dev, struct net_device *ndev)
 +{
 +	struct nvmem_cell *cell;

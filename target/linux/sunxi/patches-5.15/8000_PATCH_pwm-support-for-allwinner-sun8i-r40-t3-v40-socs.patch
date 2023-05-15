@@ -138,7 +138,7 @@ new file mode 100644
 index 0000000..d8597e4
 --- /dev/null
 +++ b/drivers/pwm/pwm-sun8i.c
-@@ -0,0 +1,401 @@
+@@ -0,0 +1,400 @@
 +// SPDX-License-Identifier: GPL-2.0
 +// Copyright (C) 2018 Hao Zhang <hao5781286@gmail.com>
 +// Copyright (C) 2020 Dirk Chang <dirk@kooiot.com>
@@ -517,7 +517,6 @@ index 0000000..d8597e4
 +static int sun8i_pwm_remove(struct platform_device *pdev)
 +{
 +	struct sun8i_pwm_chip *pwm = platform_get_drvdata(pdev);
-+	int ret;
 +
 +	pwmchip_remove(&pwm->chip);
 +

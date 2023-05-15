@@ -41,7 +41,7 @@
 +	for (i = 0; i < tmdev->chip->sensor_num; i++) {
 +		if (caldata[i] == 0)
 +			continue;
-+		int offset = (i % 2) << 4;
++		offset = (i % 2) << 4;
 +
 +		regmap_update_bits(tmdev->regmap,
 +				   SUN8I_THS_TEMP_CALIB + (4 * (i >> 1)),
