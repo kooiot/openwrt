@@ -113,7 +113,7 @@ case $(board_name) in
 		tlink_csq_leds_mixed
 		;;
 	kooiot,tlink-r7)
-		tlink_csq_leds_mixed
+		tlink_csq_leds_single
 		;;
 	*)
 		tlink_csq_leds_default

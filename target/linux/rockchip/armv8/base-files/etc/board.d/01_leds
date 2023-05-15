@@ -17,7 +17,9 @@ friendlyarm,nanopi-r4s)
 	ucidef_set_led_netdev "wan" "WAN" "green:wan" "eth0"
 	ucidef_set_led_netdev "lan" "LAN" "green:lan" "eth1"
 	;;
-kooiot,tlink-r4x|\
+kooiot,tlink-r4x)
+	ucidef_set_led_netdev "modem" "modem" "kooiot:yellow:modem" "wwan0"
+	;;
 kooiot,tlink-r7)
 	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "wwan0"
 	;;
