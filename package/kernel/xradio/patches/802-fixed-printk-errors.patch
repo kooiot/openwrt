@@ -1,0 +1,33 @@
+--- a/sta.c
++++ b/sta.c
+@@ -608,7 +608,7 @@
+ 	if (WARN_ON(!priv))
+ 		return;
+ 
+-	printk(KERN_ERR, "%s: xradio_for_each_vif enter!\n", __func__);
++	printk(KERN_ERR "%s: xradio_for_each_vif enter!\n", __func__);
+ 
+ 	/* delete umac warning */
+ 	if (hw_priv->vif_list[0] == NULL && hw_priv->vif_list[1] == NULL)
+@@ -632,7 +632,7 @@
+ 	                	FIF_BCN_PRBRESP_PROMISC |
+ 	                	FIF_PROBE_REQ;
+ 
+-		printk(KERN_ERR, "%s: xradio_for_each_vif down!\n", __func__);
++		printk(KERN_ERR "%s: xradio_for_each_vif down!\n", __func__);
+ 		down(&hw_priv->scan.lock);
+ 		mutex_lock(&hw_priv->conf_mutex);
+ 
+@@ -662,10 +662,10 @@
+ 			wsm_unlock_tx(hw_priv);
+ 		}
+ #endif
+-		printk(KERN_ERR, "%s: xradio_for_each_vif xradio_update_filtering!\n", __func__);
++		printk(KERN_ERR "%s: xradio_for_each_vif xradio_update_filtering!\n", __func__);
+ 		xradio_update_filtering(priv);
+ 		mutex_unlock(&hw_priv->conf_mutex);
+-		printk(KERN_ERR, "%s: xradio_for_each_vif up!\n", __func__);
++		printk(KERN_ERR "%s: xradio_for_each_vif up!\n", __func__);
+ 		up(&hw_priv->scan.lock);
+ 	}
+ }
