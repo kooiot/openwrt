@@ -244,6 +244,7 @@ static int wk2xxx_write_slave_reg(struct spi_device *spi,uint8_t port,uint8_t re
 /*
  * This function read wk2xxx of fifo:
  */
+#ifdef _DEBUG_WK_FIFO
 static int wk2xxx_read_fifo(struct spi_device *spi,uint8_t port,uint8_t fifolen,uint8_t *dat)
 {
 	struct spi_message msg;
@@ -320,6 +321,7 @@ static int wk2xxx_write_fifo(struct spi_device *spi,uint8_t port,uint8_t fifolen
 
 	return status;
 }
+#endif
 
 static void wk2xxxirq_app(struct uart_port *port);
 static void conf_wk2xxx_subport(struct uart_port *port);
