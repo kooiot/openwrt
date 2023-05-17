@@ -1,9 +1,9 @@
 --- a/drivers/nvmem/Kconfig
 +++ b/drivers/nvmem/Kconfig
-@@ -151,6 +151,16 @@
- 	  This driver can also be built as a module. If so, the module
- 	  will be called nvmem_sunxi_sid.
- 
+@@ -171,6 +171,16 @@
+ 	  This driver enable the OTP controller available on Microchip SAMA7G5
+ 	  SoCs. It controls the access to the OTP memory connected to it.
+
 +config NVMEM_MT76X8_SYSC
 +	tristate "Ralink MT76X8 sysc register r/w support"
 +	depends on SOC_MT7620 || SOC_MT7628AN || SOC_MT7688
@@ -14,20 +14,23 @@
 +	  This driver can also be built as a module. If so, the module
 +	  will be called nvmem_mt76x8_sysc.
 +
- config UNIPHIER_EFUSE
- 	tristate "UniPhier SoCs eFuse support"
- 	depends on ARCH_UNIPHIER || COMPILE_TEST
+ config NVMEM_MTK_EFUSE
+ 	tristate "Mediatek SoCs EFUSE support"
+ 	depends on ARCH_MEDIATEK || COMPILE_TEST
 --- a/drivers/nvmem/Makefile
 +++ b/drivers/nvmem/Makefile
-@@ -50,3 +50,5 @@
- nvmem-sc27xx-efuse-y		:= sc27xx-efuse.o
- obj-$(CONFIG_NVMEM_ZYNQMP)	+= nvmem_zynqmp_nvmem.o
- nvmem_zynqmp_nvmem-y		:= zynqmp_nvmem.o
+@@ -36,6 +36,8 @@
+ nvmem_meson_mx_efuse-y			:= meson-mx-efuse.o
+ obj-$(CONFIG_NVMEM_MICROCHIP_OTPC)	+= nvmem-microchip-otpc.o
+ nvmem-microchip-otpc-y			:= microchip-otpc.o
 +obj-$(CONFIG_NVMEM_MT76X8_SYSC) += nvmem_mt76x8_sysc.o
 +nvmem_mt76x8_sysc-y		:= mt76x8_sysc.o
+ obj-$(CONFIG_NVMEM_MTK_EFUSE)		+= nvmem_mtk-efuse.o
+ nvmem_mtk-efuse-y			:= mtk-efuse.o
+ obj-$(CONFIG_NVMEM_MXS_OCOTP)		+= nvmem-mxs-ocotp.o
 --- /dev/null
 +++ b/drivers/nvmem/mt76x8_sysc.c
-@@ -0,0 +1,298 @@
+@@ -0,0 +1,294 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Ralink MT76X8 sysc registers rw support.
@@ -47,8 +50,6 @@
 +#include <linux/random.h>
 +
 +#include <asm/mach-ralink/ralink_regs.h>
-+
-+#include "nvmem.h"
 +
 +struct mt76x8_sysc {
 +	struct device		*dev;
@@ -120,47 +121,47 @@
 +	return 0;
 +}
 +
-+static int mt76x8_cell_write_check(struct nvmem_device *nvmem, const char *name,
++static int mt76x8_cell_write_check(struct mt76x8_sysc *sysc, const char *name,
 +						u32 cell_offset, u32 cell_bytes,
 +						u32 bit_offset, u32 nbits,
 +						unsigned int offset, size_t bytes)
 +{
 +	/*
-+	dev_info(&nvmem->dev, "%s: writable check cell:%s\n", __func__, name);
-+	dev_info(&nvmem->dev, "%s: cell_offset:%X\tcell_bytes:%d\n",
++	dev_info(sysc->dev, "%s: writable check cell:%s\n", __func__, name);
++	dev_info(sysc->dev, "%s: cell_offset:%X\tcell_bytes:%d\n",
 +			__func__, cell_offset, cell_bytes);
-+	dev_info(&nvmem->dev, "%s: bit_offset:%X\tbits:%d\n",
++	dev_info(sysc->dev, "%s: bit_offset:%X\tbits:%d\n",
 +			__func__, bit_offset, nbits);
-+	dev_info(&nvmem->dev, "%s: offset:%X\tbytes:%d\n",
++	dev_info(sysc->dev, "%s: offset:%X\tbytes:%d\n",
 +			__func__, offset, bytes);
 +	*/
 +
 +	/* basic range checking */
 +	if (cell_offset > offset ||
 +		(cell_offset + cell_bytes) > (offset + bytes)) {
-+		dev_err(&nvmem->dev, "%s: out of range. cell:%s\n",
++		dev_err(sysc->dev, "%s: out of range. cell:%s\n",
 +				__func__, name);
 +		return -EINVAL;
 +	}
 +
 +	if (bit_offset == 0 && nbits == 0) {
 +		if ((offset + bytes) > (cell_offset + cell_bytes)) {
-+			dev_err(&nvmem->dev, "%s: out of range (nbits). cell:%s\n",
++			dev_err(sysc->dev, "%s: out of range (nbits). cell:%s\n",
 +					__func__, name);
 +			return -EINVAL;
 +		}
 +
-+		dev_info(&nvmem->dev, "%s: writable  cell:%s\n", __func__, name);
++		dev_info(sysc->dev, "%s: writable  cell:%s\n", __func__, name);
 +		return 0;
 +	}
 +
 +	if ((offset + bytes) > (cell_offset + DIV_ROUND_UP(nbits, BITS_PER_BYTE))) {
-+		dev_err(&nvmem->dev, "%s: out of range (nbits). cell:%s\n",
++		dev_err(sysc->dev, "%s: out of range (nbits). cell:%s\n",
 +				__func__, name);
 +		return -EINVAL;
 +	}
 +
-+	dev_info(&nvmem->dev, "%s: writable  cell:%s\n", __func__, name);
++	dev_info(sysc->dev, "%s: writable  cell:%s\n", __func__, name);
 +
 +	return 0;
 +}
@@ -168,9 +169,7 @@
 +static int mt76x8_write_check(struct mt76x8_sysc *sysc,
 +				unsigned int offset, size_t bytes)
 +{
-+	struct nvmem_device* nvmem = sysc->nvmem;
 +	struct device_node *parent, *child, *cell;
-+	struct device *dev = &nvmem->dev;
 +	u32 cell_offset, cell_bytes, bit_offset, nbits;
 +	const __be32 *addr;
 +	const char* name;
@@ -184,7 +183,7 @@
 +
 +		addr = of_get_property(child, "reg", &len);
 +		if (!addr || (len < 2 * sizeof(u32))) {
-+			dev_err(dev, "nvmem: invalid reg on %pOF\n", child);
++			dev_err(sysc->dev, "nvmem: invalid reg on %pOF\n", child);
 +			return -EINVAL;
 +		}
 +
@@ -199,7 +198,7 @@
 +			bit_offset = 0;
 +			nbits = 0;
 +		}
-+		if (0 == mt76x8_cell_write_check(nvmem, name,
++		if (0 == mt76x8_cell_write_check(sysc, name,
 +					cell_offset, cell_bytes, bit_offset,
 +					nbits, offset, bytes)) {
 +			cell = of_node_get(child);
@@ -226,7 +225,7 @@
 +	int ret;
 +
 +	if(!sysc->nvmem || !sysc->dev) {
-+		pr_err("%s: ERROR!!!!! %ld %ld\n", __func__, sysc->nvmem, sysc->dev);
++		dev_err(sysc->dev, "%s: ERROR!!!!! %ld %ld\n", __func__, sysc->nvmem, sysc->dev);
 +		return -EINVAL;
 +	}
 +

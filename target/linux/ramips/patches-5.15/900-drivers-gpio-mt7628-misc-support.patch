@@ -1,6 +1,6 @@
 --- a/drivers/gpio/Kconfig
 +++ b/drivers/gpio/Kconfig
-@@ -477,6 +477,13 @@
+@@ -575,6 +575,13 @@
  	help
  	  Say yes here to support the Ralink SoC GPIO device
  
@@ -16,7 +16,7 @@
  	depends on PLAT_SPEAR
 --- a/drivers/gpio/Makefile
 +++ b/drivers/gpio/Makefile
-@@ -97,6 +97,7 @@
+@@ -105,6 +105,7 @@
  obj-$(CONFIG_GPIO_MPC8XXX)		+= gpio-mpc8xxx.o
  obj-$(CONFIG_GPIO_MSIC)			+= gpio-msic.o
  obj-$(CONFIG_GPIO_MT7621)		+= gpio-mt7621.o
