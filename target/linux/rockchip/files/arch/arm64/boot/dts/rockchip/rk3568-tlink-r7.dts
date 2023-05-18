@@ -248,7 +248,7 @@
 		};
 
 		modem {
-			label = "kooiot:yellow:modem";
+			label = "kooiot:green:modem";
 			gpios = <&gpio3 RK_PA1 GPIO_ACTIVE_LOW>;
 			default-state = "off";
 			pinctrl-names = "default";
