@@ -53,16 +53,17 @@ metadata_gl_json = \
 			"revision": "$(call json_quote,$(REVISION))", \
 			"target": "$(call json_quote,$(TARGETID))", \
 			"board": "$(call json_quote,$(if $(BOARD_NAME),$(BOARD_NAME),$(DEVICE_NAME)))" \
-		}, \
-		"upgrade_control":"$(shell python3 $(TOPDIR)/make_gl_metadata.py)", \
-		"release_note":"$(shell sed ':a;N;s/\n/\\n/g;s/\r/\\r/g;ta' $(TOPDIR)/gl_release_note)" \
+		} \
 	}'
 
 define Build/append-gl-metadata
 	$(if $(SUPPORTED_DEVICES),-echo $(call metadata_gl_json,$(SUPPORTED_DEVICES)) | fwtool -I - $@)
-	[ ! -s "$(BUILD_KEY)" -o ! -s "$@" ] || { \
+	sha256sum "$@" | cut -d" " -f1 > "$@.sha256sum"
+	[ ! -s "$(BUILD_KEY)" -o ! -s "$(BUILD_KEY).ucert" -o ! -s "$@" ] || { \
+		cp "$(BUILD_KEY).ucert" "$@.ucert" ;\
 		usign -S -m "$@" -s "$(BUILD_KEY)" -x "$@.sig" ;\
-		fwtool -S "$@.sig" "$@" ;\
+		ucert -A -c "$@.ucert" -x "$@.sig" ;\
+		fwtool -S "$@.ucert" "$@" ;\
 	}
 endef
 
