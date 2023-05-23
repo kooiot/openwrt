@@ -77,6 +77,7 @@ define Device/Default
   KERNEL := kernel-bin
   IMAGES := sysupgrade.img.gz
   DEVICE_DTS = rockchip/$$(SOC)-$(lastword $(subst _, ,$(1)))
+  UBOOT_DEVICE_NAME = $(lastword $(subst _, ,$(1)))-$$(SOC)
 endef
 
 ifdef CONFIG_LINUX_6_1

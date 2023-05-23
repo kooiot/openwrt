@@ -80,17 +80,6 @@ define U-Boot/orangepi-r1-plus-lts-rk3328
   USE_RKBIN:=1
 endef
 
-define U-Boot/roc-cc-rk3328
-  BUILD_SUBTARGET:=armv8
-  NAME:=ROC-RK3328-CC
-  BUILD_DEVICES:= \
-    firefly_roc-rk3328-cc
-  DEPENDS:=+PACKAGE_u-boot-roc-cc-rk3328:arm-trusted-firmware-rockchip
-  PKG_BUILD_DEPENDS:=arm-trusted-firmware-rockchip
-  ATF:=rk3328_bl31.elf
-  OF_PLATDATA:=$(1)
-endef
-
 # RK3399 boards
 
 define U-Boot/guangmiao-g4c-rk3399
@@ -141,8 +130,6 @@ define U-Boot/rockpro64-rk3399
   BUILD_DEVICES:= \
     pine64_rockpro64
   DEPENDS:=+PACKAGE_u-boot-rockpro64-rk3399:arm-trusted-firmware-rockchip
-  PKG_BUILD_DEPENDS:=arm-trusted-firmware-rockchip
-  ATF:=rk3399_bl31.elf
 endef
 
 define U-Boot/rongpin-king3399-rk3399
