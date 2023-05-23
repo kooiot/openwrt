@@ -894,7 +894,7 @@
 			compatible = "pci10ec,8111h";
 			reg = <0x000000 0 0 0 0>;
 
-			realtek,led-data = <0x78>;
+			// realtek,led-data = <0x78>;
 		};
 	};
 };
@@ -916,7 +916,7 @@
 			compatible = "pci10ec,8111h";
 			reg = <0x000000 0 0 0 0>;
 
-			realtek,led-data = <0x78>;
+			// realtek,led-data = <0x78>;
 		};
 	};
 };
