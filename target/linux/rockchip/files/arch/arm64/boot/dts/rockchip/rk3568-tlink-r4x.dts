@@ -16,13 +16,18 @@
 	compatible = "kooiot,tlink-r4x", "rockchip,rk3568";
 
 	aliases {
+		mmc0 = &sdmmc0;
+		mmc1 = &sdhci;
+		mmc2 = &sdmmc2;
+
+		led-boot = &status_led;
+		led-failsafe = &status_led;
+		led-upgrade = &status_led;
+
 		ethernet0 = &gmac0;
 		ethernet1 = &gmac1;
 		ethernet2 = &rtl8111s_1;
 		ethernet3 = &rtl8111s_2;
-		mmc0 = &sdmmc0;
-		mmc1 = &sdhci;
-		mmc2 = &sdmmc2;
 
 		serial0 = &uart2;
 		serial1 = &uart0;
@@ -235,7 +240,7 @@
 		compatible = "gpio-leds";
 		status = "okay";
 
-		status {
+		status_led: status-led {
 			label = "kooiot:yellow:status";
 			linux,default-trigger = "heartbeat";
 			gpios = <&gpio0 RK_PD5 GPIO_ACTIVE_LOW>;
