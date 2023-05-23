@@ -24,7 +24,6 @@ endef
 
 # RK3328 boards
 
-<<<<<<< HEAD
 define U-Boot/nanopi-r2c-rk3328
   BUILD_SUBTARGET:=armv8
   NAME:=NanoPi R2C
@@ -151,6 +150,9 @@ define U-Boot/rockpro64-rk3399
   NAME:=RockPro64
   BUILD_DEVICES:= \
     pine64_rockpro64
+  DEPENDS:=+PACKAGE_u-boot-rockpro64-rk3399:arm-trusted-firmware-rockchip
+  PKG_BUILD_DEPENDS:=arm-trusted-firmware-rockchip
+  ATF:=rk3399_bl31.elf
 endef
 
 define U-Boot/rongpin-king3399-rk3399
