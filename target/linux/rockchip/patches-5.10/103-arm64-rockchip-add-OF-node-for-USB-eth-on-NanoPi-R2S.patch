@@ -14,12 +14,15 @@ Signed-off-by: David Bauer <mail@david-bauer.net>
 
 --- a/arch/arm64/boot/dts/rockchip/rk3328-nanopi-r2s.dts
 +++ b/arch/arm64/boot/dts/rockchip/rk3328-nanopi-r2s.dts
-@@ -404,6 +404,8 @@
- 	rtl8153: device@2 {
- 		compatible = "usbbda,8153";
- 		reg = <2>;
+@@ -405,4 +405,11 @@
+ &usbdrd_dwc3 {
+ 	dr_mode = "host";
+ 	status = "okay";
++
++	usb_eth: usb-eth@2 {
++		compatible = "realtek,rtl8153";
++		reg = <2>;
 +
 +		realtek,led-data = <0x87>;
- 	};
++	};
  };
- 
