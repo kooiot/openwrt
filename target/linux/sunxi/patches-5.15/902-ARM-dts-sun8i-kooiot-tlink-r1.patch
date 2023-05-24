@@ -60,12 +60,12 @@
 +	compatible = "kooiot,tlink-r1", "allwinner,sun8i-h3";
 +
 +	aliases {
++		mmc0 = &mmc0;
++		mmc1 = &mmc2;
 +		serial0 = &uart2;
 +		serial1 = &uart1;
 +		serial2 = &uart0;
 +		serial3 = &uart3;
-+		mmc0 = &mmc0;
-+		mmc1 = &mmc2;
 +	};
 +
 +	leds {

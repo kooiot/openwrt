@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-t3-tlink-dly-t3v2.dtsi
-@@ -0,0 +1,509 @@
+@@ -0,0 +1,512 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -14,17 +14,20 @@
 +
 +/ {
 +	aliases {
-+		ethernet0 = &gmac;
-+		ethernet1 = &emac;
-+		ethernet2 = &usb_eth1;
-+		ethernet3 = &usb_eth2;
++		mmc0 = &mmc0;
++		mmc1 = &mmc2;
 +		serial0 = &uart0;
 +		serial1 = &uart4;
 +		serial2 = &uart5;
 +		serial3 = &uart3;
 +		serial4 = &uart2;
-+		mmc0 = &mmc0;
-+		mmc1 = &mmc2;
++		ethernet0 = &gmac;
++		ethernet1 = &emac;
++		ethernet2 = &usb_eth1;
++		ethernet3 = &usb_eth2;
++		led-boot = &status_led;
++		led-failsafe = &status_led;
++		led-upgrade = &status_led;
 +	};
 +
 +	chosen {
@@ -42,7 +45,7 @@
 +	leds {
 +		compatible = "gpio-leds";
 +
-+		status {
++		status_led: status-led {
 +			label = "kooiot:green:status";
 +			gpios = <&pio 1 2 GPIO_ACTIVE_LOW>; /* PB2 / RUN */
 +			linux,default-trigger = "heartbeat";

@@ -10,7 +10,7 @@
  	sun8i-r16-bananapi-m2m.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-h3-tlink-x1.dts
-@@ -0,0 +1,214 @@
+@@ -0,0 +1,217 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (C) 2019-2020 Dirk Chang <dirk@kooiot.com>
@@ -24,10 +24,13 @@
 +	compatible = "kooiot,tlink-x1", "allwinner,sun8i-h3";
 +
 +	aliases {
-+		ethernet0 = &emac;
-+		ethernet1 = &usb_eth1;
 +		mmc0 = &mmc0;
 +		mmc1 = &mmc2;
++		ethernet0 = &emac;
++		ethernet1 = &usb_eth1;
++		led-boot = &status_led;
++		led-failsafe = &status_led;
++		led-upgrade = &status_led;
 +	};
 +
 +	leds {
@@ -35,7 +38,7 @@
 +		pinctrl-names = "default";
 +		pinctrl-0 = <&leds_rer>, <&r_pwr_rer>;
 +
-+		status {
++		status_led: status-led {
 +			label = "kooiot:green:status";
 +			gpios = <&pio 0 6 GPIO_ACTIVE_HIGH>;
 +			linux,default-trigger = "heartbeat";
