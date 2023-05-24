@@ -10,7 +10,7 @@
  	sun8i-s3-pinecube.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-s3-tlink-s1.dts
-@@ -0,0 +1,217 @@
+@@ -0,0 +1,220 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
@@ -28,13 +28,16 @@
 +		     "allwinner,sun8i-v3";
 +
 +	aliases {
++		mmc0 = &mmc0;
++		mmc1 = &mmc2;
++		mmc2 = &mmc1;
 +		serial0 = &uart0;
 +		serial1 = &uart2;
 +		ethernet0 = &emac;
 +		ethernet1 = &xr819;
-+		mmc0 = &mmc0;
-+		mmc1 = &mmc2;
-+		mmc2 = &mmc1;
++		led-boot = &status_led;
++		led-failsafe = &status_led;
++		led-upgrade = &status_led;
 +	};
 +
 +	chosen {
@@ -44,7 +47,7 @@
 +	leds {
 +		compatible = "gpio-leds";
 +
-+		status {
++		status_led: status-led {
 +			label = "kooiot:green:status";
 +			gpios = <&pio 6 6 GPIO_ACTIVE_LOW>; /* PG6 */
 +			linux,default-trigger = "heartbeat";

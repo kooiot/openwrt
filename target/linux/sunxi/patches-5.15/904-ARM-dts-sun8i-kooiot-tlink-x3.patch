@@ -10,7 +10,7 @@
  	sun8i-a83t-cubietruck-plus.dtb \
 --- a/arch/arm/boot/dts/sun8i-x3-tlink-x3.dts
 +++ b/arch/arm/boot/dts/sun8i-x3-tlink-x3.dts
-@@ -0,0 +1,280 @@
+@@ -0,0 +1,283 @@
 +/*
 + * Copyright 2021 Dirk Chang <dirk@kooiot.com>
 + */
@@ -27,13 +27,16 @@
 +	compatible = "kooiot,tlink-x3", "allwinner,sun8i-a33";
 +
 +	aliases {
++		mmc0 = &mmc0;
++		mmc1 = &mmc2;
 +		serial0 = &uart0;
 +		serial1 = &uart1;
 +		serial2 = &uart3;
-+		mmc0 = &mmc0;
-+		mmc1 = &mmc2;
 +		ethernet0 = &usb_eth0;
 +		ethernet1 = &usb_eth1;
++		led-boot = &status_led;
++		led-failsafe = &status_led;
++		led-upgrade = &status_led;
 +	};
 +
 +	chosen {
@@ -43,7 +46,7 @@
 +	leds {
 +		compatible = "gpio-leds";
 +
-+		status {
++		status_led: status-led {
 +			label = "kooiot:green:status";
 +			gpios = <&pio 4 4 GPIO_ACTIVE_HIGH>; /* PE4 */
 +			linux,default-trigger = "heartbeat";

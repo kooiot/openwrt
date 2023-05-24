@@ -10,7 +10,7 @@
  	sun8i-r40-tlink-nano-a40i.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k2x.dts
-@@ -0,0 +1,619 @@
+@@ -0,0 +1,622 @@
 +/*
 + * Copyright (C) 2022 Dirk Chang <dirk@kooiot.com>
 + *
@@ -29,8 +29,9 @@
 +	compatible = "kooiot,tlink-k2x", "allwinner,sun8i-r40";
 +
 +	aliases {
-+		ethernet0 = &gmac;
-+		ethernet1 = &emac;
++		mmc0 = &mmc0;
++		mmc1 = &mmc2;
++		mmc2 = &mmc1;
 +		serial0 = &uart0;
 +		serial1 = &uart2;
 +		serial2 = &uart3;
@@ -38,9 +39,11 @@
 +		serial4 = &uart5;
 +		serial5 = &uart6;
 +		serial6 = &uart7;
-+		mmc0 = &mmc0;
-+		mmc1 = &mmc2;
-+		mmc2 = &mmc1;
++		ethernet0 = &gmac;
++		ethernet1 = &emac;
++		led-boot = &status_led;
++		led-failsafe = &status_led;
++		led-upgrade = &status_led;
 +	};
 +
 +	chosen {
@@ -58,7 +61,7 @@
 +	leds {
 +		compatible = "gpio-leds";
 +
-+		status {
++		status_led: status-led {
 +			label = "kooiot:green:status";
 +			gpios = <&pio 6 7 GPIO_ACTIVE_HIGH>; /* PG7 */
 +			linux,default-trigger = "heartbeat";
