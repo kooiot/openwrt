@@ -1011,6 +1011,8 @@
 };
 
 &sdmmc2 {
+	#address-cells = <1>;
+	#size-cells = <0>;
 	max-frequency = <150000000>;
 	supports-sdio;
 	bus-width = <4>;

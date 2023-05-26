@@ -835,9 +835,9 @@
 	clock-frequency = <400000>;
 	i2c-scl-rising-time-ns = <71>;
 	i2c-scl-falling-time-ns = <10>;
-	wk@01 {
+	wk@1 {
 		compatible = "wkmic,wk2xxx_i2c";
-		reg = <0x01>;
+		reg = <0x1>;
 		interrupt-parent = <&gpio4>;
 		interrupts = <RK_PC4 IRQ_TYPE_LEVEL_LOW>;
 		pinctrl-names = "default";
@@ -1159,6 +1159,8 @@
 };
 
 &sdmmc2 {
+	#address-cells = <1>;
+	#size-cells = <0>;
 	max-frequency = <150000000>;
 	supports-sdio;
 	bus-width = <4>;
