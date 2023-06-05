@@ -113,8 +113,7 @@ rockchip_setup_macs()
 		;;
 	xunlong,orangepi-r1-plus|\
 	xunlong,orangepi-r1-plus-lts)
-		lan_mac=$(cat /sys/class/net/eth1/address)
-		wan_mac=$(macaddr_add "$lan_mac" -1)
+		wan_mac=$(macaddr_add "$(cat /sys/class/net/eth1/address)" -1)
 		;;
 	kooiot,tlink-r4x|\
 	kooiot,tlink-r7)

@@ -277,7 +277,7 @@ define Device/xunlong_orangepi-r1-plus
   DEVICE_MODEL := Orange Pi R1 Plus
   SOC := rk3328
   UBOOT_DEVICE_NAME := orangepi-r1-plus-rk3328
-  IMAGE/sysupgrade.img.gz := boot-common | boot-script nanopi-r2s | pine64-bin | gzip | append-metadata
+  IMAGE/sysupgrade.img.gz := boot-common | boot-script | pine64-img | gzip | append-metadata
   DEVICE_PACKAGES := kmod-usb-net-rtl8152
 endef
 TARGET_DEVICES += xunlong_orangepi-r1-plus
@@ -287,7 +287,7 @@ define Device/xunlong_orangepi-r1-plus-lts
   DEVICE_MODEL := Orange Pi R1 Plus LTS
   SOC := rk3328
   UBOOT_DEVICE_NAME := orangepi-r1-plus-lts-rk3328
-  IMAGE/sysupgrade.img.gz := boot-common | boot-script nanopi-r2s | pine64-bin | gzip | append-metadata
+  IMAGE/sysupgrade.img.gz := boot-common | boot-script | pine64-img | gzip | append-metadata
   DEVICE_PACKAGES := kmod-usb-net-rtl8152
 endef
 TARGET_DEVICES += xunlong_orangepi-r1-plus-lts
