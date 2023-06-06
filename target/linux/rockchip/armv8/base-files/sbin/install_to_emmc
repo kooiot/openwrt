@@ -16,6 +16,9 @@ echo "Board Name: $BOARD_NAME"
 echo -e "===============================\033[37m"
 echo ""
 
+# wait for openwrt system be already (possibly /tmp is not ready)
+sleep 5
+
 FORCE_INSTALL=${1}
 
 EMMC_DISK="/dev/mmcblk1"
