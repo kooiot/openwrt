@@ -293,7 +293,10 @@ static int set_normal_mode(struct net_device *ndev)
 	val = rockchip_canfd_read(rcan, CAN_MODE);
 	val |= WORK_MODE;
 	if (rcan->mode >= ROCKCHIP_CAN_MODE && rcan->txtorx)
-		val |= MODE_RXSTX;
+	{
+		// Do not know why, but this cause 3568 receives twice self sent frame
+		// val |= MODE_RXSTX;
+	}
 	rockchip_canfd_write(rcan, CAN_MODE, val);
 
 	netdev_dbg(ndev, "%s MODE=0x%08x\n", __func__,
