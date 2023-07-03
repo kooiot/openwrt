@@ -247,9 +247,17 @@
 +			pinctrl-0 = <&led_status_pin>;
 +		};
 +
++		cloud {
++			label = "kooiot:green:cloud";
++			gpios = <&gpio3 RK_PA0 GPIO_ACTIVE_LOW>;
++			default-state = "off";
++			pinctrl-names = "default";
++			pinctrl-0 = <&led_cloud_pin>;
++		};
++
 +		csq {
 +			label = "kooiot:green:csq";
-+			gpios = <&gpio3 RK_PA0 GPIO_ACTIVE_LOW>;
++			gpios = <&gpio3 RK_PA1 GPIO_ACTIVE_LOW>;
 +			default-state = "off";
 +			pinctrl-names = "default";
 +			pinctrl-0 = <&led_csq_pin>;
@@ -257,18 +265,10 @@
 +
 +		modem {
 +			label = "kooiot:yellow:modem";
-+			gpios = <&gpio3 RK_PA1 GPIO_ACTIVE_LOW>;
-+			default-state = "off";
-+			pinctrl-names = "default";
-+			pinctrl-0 = <&led_modem_pin>;
-+		};
-+
-+		cloud {
-+			label = "kooiot:green:cloud";
 +			gpios = <&gpio3 RK_PA2 GPIO_ACTIVE_LOW>;
 +			default-state = "off";
 +			pinctrl-names = "default";
-+			pinctrl-0 = <&led_cloud_pin>;
++			pinctrl-0 = <&led_modem_pin>;
 +		};
 +	};
 +
@@ -1043,13 +1043,13 @@
 +	    led_status_pin: led-status-pin {
 +			rockchip,pins = <0 RK_PD5 RK_FUNC_GPIO &pcfg_pull_none>;
 +	    };
-+		led_csq_pin: led-csq-pin {
++		led_cloud_pin: led-cloud-pin {
 +			rockchip,pins = <3 RK_PA0 RK_FUNC_GPIO &pcfg_pull_none>;
 +		};
-+		led_modem_pin: led-modem-pin {
++		led_csq_pin: led-csq-pin {
 +			rockchip,pins = <3 RK_PA1 RK_FUNC_GPIO &pcfg_pull_none>;
 +		};
-+		led_cloud_pin: led-cloud-pin {
++		led_modem_pin: led-modem-pin {
 +			rockchip,pins = <3 RK_PA2 RK_FUNC_GPIO &pcfg_pull_none>;
 +		};
 +		led_5g_working_pin: led-5g-working-pin {
