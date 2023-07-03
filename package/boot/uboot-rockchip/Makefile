@@ -84,11 +84,15 @@ endef
 
 define U-Boot/guangmiao-g4c-rk3399
   BUILD_SUBTARGET:=armv8
+<<<<<<< HEAD
   NAME:=GuangMiao G4C
   BUILD_DEVICES:= \
     sharevdi_guangmiao-g4c
   DEPENDS:=+PACKAGE_u-boot-guangmiao-g4c-rk3399:arm-trusted-firmware-rockchip
   PKG_BUILD_DEPENDS:=arm-trusted-firmware-rockchip
+=======
+  DEPENDS:=+PACKAGE_u-boot-$(1):trusted-firmware-a-rk3399
+>>>>>>> upstream/master
   ATF:=rk3399_bl31.elf
 endef
 
