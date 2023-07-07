@@ -264,7 +264,7 @@
 +		};
 +
 +		modem {
-+			label = "kooiot:yellow:modem";
++			label = "kooiot:green:modem";
 +			gpios = <&gpio3 RK_PA2 GPIO_ACTIVE_LOW>;
 +			default-state = "off";
 +			pinctrl-names = "default";
@@ -406,7 +406,7 @@
 +		do_1 {
 +			gpio-export,name = "do_1";
 +			gpio-export,output=<0>;
-+			gpios = <&gpio3 RK_PA3 GPIO_ACTIVE_LOW>;
++			gpios = <&gpio3 RK_PA3 GPIO_ACTIVE_HIGH>;
 +			pinctrl-names = "default";
 +			pinctrl-0 = <&do1_pin>;
 +		};
@@ -422,7 +422,7 @@
 +		do_2 {
 +			gpio-export,name = "do_2";
 +			gpio-export,output=<0>;
-+			gpios = <&gpio3 RK_PA4 GPIO_ACTIVE_LOW>;
++			gpios = <&gpio3 RK_PA4 GPIO_ACTIVE_HIGH>;
 +			pinctrl-names = "default";
 +			pinctrl-0 = <&do2_pin>;
 +		};
@@ -438,7 +438,7 @@
 +		do_3 {
 +			gpio-export,name = "do_3";
 +			gpio-export,output=<0>;
-+			gpios = <&gpio3 RK_PA5 GPIO_ACTIVE_LOW>;
++			gpios = <&gpio3 RK_PA5 GPIO_ACTIVE_HIGH>;
 +			pinctrl-names = "default";
 +			pinctrl-0 = <&do3_pin>;
 +		};
@@ -454,7 +454,7 @@
 +		do_4 {
 +			gpio-export,name = "do_4";
 +			gpio-export,output=<0>;
-+			gpios = <&gpio3 RK_PA6 GPIO_ACTIVE_LOW>;
++			gpios = <&gpio3 RK_PA6 GPIO_ACTIVE_HIGH>;
 +			pinctrl-names = "default";
 +			pinctrl-0 = <&do4_pin>;
 +		};
@@ -486,7 +486,7 @@
 +		di_4 {
 +			gpio-export,name = "di_4";
 +			gpio-export,direction_may_change = <1>;
-+			gpios = <&gpio1 RK_PB7 GPIO_ACTIVE_LOW>;
++			gpios = <&gpio0 RK_PB7 GPIO_ACTIVE_LOW>;
 +			pinctrl-names = "default";
 +			pinctrl-0 = <&di4_pin>;
 +		};
@@ -1104,7 +1104,7 @@
 +			rockchip,pins = <1 RK_PA7 RK_FUNC_GPIO &pcfg_pull_none>;
 +		};
 +		di4_pin: di4-pin {
-+			rockchip,pins = <1 RK_PB7 RK_FUNC_GPIO &pcfg_pull_none>;
++			rockchip,pins = <0 RK_PB7 RK_FUNC_GPIO &pcfg_pull_none>;
 +		};
 +	};
 +};
