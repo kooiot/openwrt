@@ -58,7 +58,7 @@ MODULE_LICENSE("Dual BSD/GPL");
 //#define _DEBUG_WK_TEST
 
 /*************Functional control interface************************/
-//#define WK_FIFO_FUNCTION
+#define WK_FIFO_FUNCTION
 //#define WK_FlowControl_FUNCTION
 #define WK_WORK_KTHREAD
 //#define WK_RS485_FUNCTION
@@ -283,7 +283,6 @@ struct wk2xxx_port
     int                           irq_gpio_num;
     int                           rst_gpio_num;
     int                           irq_gpio;
-    int                           irq;
     int                           minor;      /* minor number */
     int                           tx_empty; 
     struct wk2xxx_one             p[NR_PORTS];
@@ -323,7 +322,7 @@ static int wk2xxx_read_global_reg(struct i2c_client *client,uint8_t greg,uint8_t
         uint8_t cmd_addr,wk_addr = IIC_ADDR0;
         uint8_t ret, status = 0;
         uint8_t wk_reg[1],wk_dat[1];
-        cmd_addr=((wk_addr<<6)|0xE0|(greg&0x30)>>2)>>1;
+        cmd_addr=((wk_addr<<6)|0x20|(greg&0x30)>>2)>>1;
         mutex_lock(&wk2xxxs_reg_lock);
         /***********************************************/
         wk_reg[0] = greg&0x0f;
@@ -367,7 +366,7 @@ static int wk2xxx_write_global_reg(struct i2c_client *client,uint8_t greg,uint8_
         uint8_t cmd_addr,wk_addr = IIC_ADDR0;
         uint8_t status = 0;
         uint8_t wk_buf[2];
-        cmd_addr=((wk_addr<<6)|0xE0|(greg&0x30)>>2)>>1;
+        cmd_addr=((wk_addr<<6)|0x20|(greg&0x30)>>2)>>1;
         mutex_lock(&wk2xxxs_reg_lock);
         wk_buf[0] = greg&0x0f;
         wk_buf[1] = dat;
@@ -392,7 +391,7 @@ static int wk2xxx_read_slave_reg(struct i2c_client *client,uint8_t port,uint8_t 
          uint8_t cmd_addr,wk_addr = IIC_ADDR0;
          uint8_t ret, status = 0;
          uint8_t wk_reg[1],wk_dat[1];
-         cmd_addr=((wk_addr<<6)|0xE0|(port-1)<<2)>>1;
+         cmd_addr=((wk_addr<<6)|0x20|(port-1)<<2)>>1;
          mutex_lock(&wk2xxxs_reg_lock);
          /***********************************************/
          wk_reg[0] = sreg&0x0f;
@@ -434,7 +433,7 @@ static int wk2xxx_write_slave_reg(struct i2c_client *client,uint8_t port,uint8_t
         uint8_t cmd_addr,wk_addr = IIC_ADDR0;
         uint8_t status = 0;
         uint8_t wk_buf[2];
-        cmd_addr=((wk_addr<<6)|0xE0|(port-1)<<2)>>1;
+        cmd_addr=((wk_addr<<6)|0x20|(port-1)<<2)>>1;
         mutex_lock(&wk2xxxs_reg_lock);
         wk_buf[0] = sreg&0x0f;
         wk_buf[1] = dat;
@@ -463,7 +462,7 @@ static int wk2xxx_read_fifo(struct i2c_client *client,uint8_t port,uint8_t fifol
         uint8_t cmd_addr,wk_addr = IIC_ADDR0;
         int i, status = 0;
         uint8_t fifo_data[256] = {0};
-        cmd_addr = ((wk_addr<<6)|0xE0|(port-1)<<2|0x03) >> 1;
+        cmd_addr = ((wk_addr<<6)|0x20|(port-1)<<2|0x03) >> 1;
 	    if(!(fifolen>0)){
 			printk(KERN_ERR "%s,read fifolen error!!\n", __func__);
 			return 1;
@@ -494,7 +493,7 @@ static int wk2xxx_write_fifo(struct i2c_client *client,uint8_t port,uint8_t fifo
         uint8_t cmd_addr,wk_addr = IIC_ADDR0;
         int i, status = 0;
         uint8_t fifo_data[256] = {0};
-        cmd_addr = ((wk_addr<<6)|0xE0|(port-1)<<2|0x02) >> 1;
+        cmd_addr = ((wk_addr<<6)|0x20|(port-1)<<2|0x02) >> 1;
 	    if(!(fifolen>0)){
 			printk(KERN_ERR "%s,wrire fifolen error!!\n", __func__);
 			return 1;
@@ -812,8 +811,6 @@ static void wk2xxx_ist(struct kthread_work *ws)
         printk(KERN_ALERT "%s!!---exit--\n", __func__);
     #endif
 
-
-		enable_irq(s->irq);
 }
 
 static irqreturn_t wk2xxx_irq(int irq, void *dev_id)//
@@ -823,8 +820,6 @@ static irqreturn_t wk2xxx_irq(int irq, void *dev_id)//
     #ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!---in--\n", __func__);
     #endif  
-
-	disable_irq_nosync(irq);
 #ifdef WK_WORK_KTHREAD
     ret=kthread_queue_work(&s->kworker, &s->irq_work); 
 #else
@@ -917,9 +912,6 @@ static void wk2xxx_start_tx_proc(struct kthread_work *ws)
     rx |= WK2XXX_SIER_TFTRIG_IEN_BIT|WK2XXX_SIER_RFTRIG_IEN_BIT|WK2XXX_SIER_RXOUT_IEN_BIT; 
     wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SIER_REG,rx);
     mutex_unlock(&wk2xxxs_lock); 
-	#ifdef _DEBUG_WK_FUNCTION
-    printk(KERN_ALERT "%s!!-port:%ld;--exit--\n", __func__,one->port.iobase);
-	#endif
 }
 
 /*
@@ -1522,7 +1514,7 @@ static struct uart_driver wk2xxx_uart_driver = {
     major:                  SERIAL_WK2XXX_MAJOR,
 
     driver_name:            "ttySWK",
-    dev_name:               "ttySWK",
+    dev_name:               "ttysWK",
 
     minor:                  MINOR_START,
     nr:                     NR_PORTS,
@@ -1603,7 +1595,7 @@ static int wk2xxx_i2c_irq_parse_dt(struct device *dev,int *irq_gpio)
 
 static int wk2xxx_probe(struct i2c_client *client,const struct i2c_device_id *dev_id)
 {
-    // const struct sched_param sched_param = { .sched_priority = MAX_RT_PRIO / 2 };
+    const struct sched_param sched_param = { .sched_priority = MAX_RT_PRIO / 2 };
     //const struct sched_param sched_param = { .sched_priority = 100 / 2 };
     uint8_t i;
     int ret, irq;
@@ -1640,16 +1632,6 @@ static int wk2xxx_probe(struct i2c_client *client,const struct i2c_device_id *de
 
     #endif
 
-	if (client->irq <= 0) {
-		dev_err(&client->dev,
-			"wk2xxx has not been provided an Int IRQ\n");
-		mutex_unlock(&wk2xxxs_lock);
-		return -EINVAL;
-	}
-	irq = client->irq;
-	s->irq = irq;
-	printk(KERN_ALERT "wk2xxx_probe(client->irq)  irq = 0x%d\n",irq);
-	/*
     //Obtain the IRQ signal GPIO number and interrupt number
     irq = wk2xxx_i2c_irq_parse_dt(&client->dev,&s->irq_gpio_num);
 	if(irq<0){
@@ -1658,7 +1640,6 @@ static int wk2xxx_probe(struct i2c_client *client,const struct i2c_device_id *de
         goto out_gpio;
 	}
     s->irq_gpio = irq;
-	*/
     /**********************test i2c **************************************/
 
 	do{
@@ -1692,15 +1673,12 @@ static int wk2xxx_probe(struct i2c_client *client,const struct i2c_device_id *de
 	init_kthread_work(&s->irq_work, wk2xxx_ist);
 #endif
 	s->kworker_task = kthread_run(kthread_worker_fn, &s->kworker,
-				      "wk2xxx-%s", dev_name(&client->dev));
+				      "wk2xxx");
 	if (IS_ERR(s->kworker_task)) {
 		ret = PTR_ERR(s->kworker_task);
 		goto out_clk;
 	}
-	// sched_setscheduler(s->kworker_task, SCHED_FIFO, &sched_param);
-	printk(KERN_ALERT "%s Start kworker_task\n", __func__);
-	sched_set_fifo(s->kworker_task);
-	printk(KERN_ALERT "Start kworker_task\n");
+	sched_setscheduler(s->kworker_task, SCHED_FIFO, &sched_param);
 
     /**/
     mutex_lock(&wk2xxxs_lock);
@@ -1750,8 +1728,7 @@ static int wk2xxx_probe(struct i2c_client *client,const struct i2c_device_id *de
     mutex_unlock(&wk2xxxs_lock);
 
    /* Setup interrupt */
-	ret = devm_request_irq(&client->dev, irq, wk2xxx_irq, IRQF_SHARED | IRQF_TRIGGER_LOW, dev_name(&client->dev), s);
-	// ret = devm_request_irq(&client->dev, irq, wk2xxx_irq, IRQF_TRIGGER_FALLING, dev_name(&client->dev), s);
+	ret = devm_request_irq(&client->dev, irq, wk2xxx_irq,IRQF_TRIGGER_FALLING, dev_name(&client->dev), s);
   
 	if (!ret){
         printk(KERN_ALERT "devm_request_irq success. ret=%d.\n",ret);
