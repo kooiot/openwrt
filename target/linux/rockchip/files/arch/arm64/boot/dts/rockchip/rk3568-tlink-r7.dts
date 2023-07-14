@@ -384,13 +384,15 @@
 			pinctrl-0 = <&m2_sata_en_pin>;
 		};
 
+		/*
 		wk2xxx_reset_1 {
 			gpio-export,name = "wk2xxx_reset_1";
 			gpio-export,output=<1>;
 			gpios = <&gpio4 RK_PC7 GPIO_ACTIVE_LOW>;
 			pinctrl-names = "default";
-			pinctrl-0 = <&wk_reset_pin>;
+			pinctrl-0 = <&wk2xxx_reset_pin>;
 		};
+		*/
 
 		do_1_en {
 			gpio-export,name = "do_1_en";
@@ -403,7 +405,7 @@
 		do_1 {
 			gpio-export,name = "do_1";
 			gpio-export,output=<0>;
-			gpios = <&gpio3 RK_PA3 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio3 RK_PA3 GPIO_ACTIVE_HIGH>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&do1_pin>;
 		};
@@ -419,7 +421,7 @@
 		do_2 {
 			gpio-export,name = "do_2";
 			gpio-export,output=<0>;
-			gpios = <&gpio3 RK_PA4 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio3 RK_PA4 GPIO_ACTIVE_HIGH>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&do2_pin>;
 		};
@@ -435,7 +437,7 @@
 		do_3 {
 			gpio-export,name = "do_3";
 			gpio-export,output=<0>;
-			gpios = <&gpio3 RK_PA5 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio3 RK_PA5 GPIO_ACTIVE_HIGH>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&do3_pin>;
 		};
@@ -451,7 +453,7 @@
 		do_4 {
 			gpio-export,name = "do_4";
 			gpio-export,output=<0>;
-			gpios = <&gpio3 RK_PA6 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio3 RK_PA6 GPIO_ACTIVE_HIGH>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&do4_pin>;
 		};
@@ -483,7 +485,7 @@
 		di_4 {
 			gpio-export,name = "di_4";
 			gpio-export,direction_may_change = <1>;
-			gpios = <&gpio1 RK_PB7 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio0 RK_PB7 GPIO_ACTIVE_LOW>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&di4_pin>;
 		};
@@ -833,15 +835,17 @@
 
 	/* fromL: https://github.com/mlfeng/R10-release/blob/2d4c57bdb20e80d425312f42431c11bcdd1cfeb4/arch/arm/boot/dts/px3se-sdk.dtsi#L219 */
 	clock-frequency = <400000>;
-	i2c-scl-rising-time-ns = <71>;
-	i2c-scl-falling-time-ns = <10>;
+	// i2c-scl-rising-time-ns = <71>;
+	// i2c-scl-falling-time-ns = <10>;
 	wk@1 {
 		compatible = "wkmic,wk2xxx_i2c";
-		reg = <0x1>;
+		reg = <0x01>;
 		interrupt-parent = <&gpio4>;
 		interrupts = <RK_PC4 IRQ_TYPE_LEVEL_LOW>;
+		reset_gpio=<&gpio4 RK_PC7 GPIO_ACTIVE_HIGH>;
+		// irq_gpio= <&gpio4 RK_PC4 IRQ_TYPE_LEVEL_LOW>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&wk2xxx_irq_pin>;
+		pinctrl-0 = <&wk2xxx_irq_pin &wk2xxx_reset_pin>;
 		status = "okay";
 	};
 };
@@ -985,9 +989,6 @@
 		m2_sata_en_pin: m2-sata-en-pin {
 			rockchip,pins = <0 RK_PA6 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
-		wk_reset_pin: wk-reset-pin {
-			rockchip,pins = <4 RK_PC7 RK_FUNC_GPIO &pcfg_pull_none>;
-		};
 	};
 
 	pmic {
@@ -1069,6 +1070,9 @@
 		wk2xxx_irq_pin: wk2xxx-irq-pin {
 			rockchip,pins = <4 RK_PC4 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
+		wk2xxx_reset_pin: wk2xxx-reset-pin {
+			rockchip,pins = <4 RK_PC7 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
 	};
 
 	dido {
@@ -1106,7 +1110,7 @@
 			rockchip,pins = <1 RK_PA7 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 		di4_pin: di4-pin {
-			rockchip,pins = <1 RK_PB7 RK_FUNC_GPIO &pcfg_pull_none>;
+			rockchip,pins = <0 RK_PB7 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
 };
