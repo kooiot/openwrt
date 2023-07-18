@@ -1343,8 +1343,10 @@ static void wk2xxx_termios( struct uart_port *port, struct ktermios *termios,str
 		baud0=(uint8_t)(temp&0xff);
 		temp=(((freq%(baud*16))*100)/(baud));
 		pres=(temp+100/2)/100;
+    #ifdef _DEBUG_WK_VALUE
 		printk(KERN_ALERT "%s!!---freq:%d,baudrate:%d\n",__func__,freq,baud);
 		printk(KERN_ALERT "%s!!---baud1:%x,baud0:%x,pres:%x\n",__func__,baud1,baud0,pres);
+	#endif
 	}else{
 		printk(KERN_ALERT "the baud rate:%d is too high！ \n",baud);
 	}
