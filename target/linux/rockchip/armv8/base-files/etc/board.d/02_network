@@ -25,10 +25,6 @@ rockchip_setup_interfaces()
 	xunlong,orangepi-r1-plus-lts)
 		ucidef_set_interfaces_lan_wan 'eth1' 'eth0'
 		;;
-	hinlink,opc-h68k|\
-	hinlink,opc-h69k)
-		ucidef_set_interfaces_lan_wan 'eth1 eth2 eth3' 'eth0'
-		;;
 	kooiot,tlink-r4x|\
 	kooiot,tlink-r7)
 		ucidef_set_interface_lan "eth0"
@@ -45,10 +41,12 @@ rockchip_setup_interfaces()
 	radxa,e25)
 		ucidef_set_interfaces_lan_wan 'eth0' 'eth1'
 		;;
+	hinlink,opc-h68k|\
 	fastrhino,r68s|\
 	lyt,t68m)
 		ucidef_set_interfaces_lan_wan 'eth0 eth2 eth3' 'eth1'
 		;;
+	hinlink,opc-h69k|\
 	friendlyarm,nanopi-r5s)
 		ucidef_set_interfaces_lan_wan "eth1 eth2" "eth0"
 		;;
@@ -112,7 +110,6 @@ rockchip_setup_macs()
 		;;
 	friendlyarm,nanopi-r5c|\
 	friendlyarm,nanopi-r5s|\
-        panther,x2|\
 	sharevdi,guangmiao-g4c)
 		wan_mac=$(macaddr_generate_from_mmc_cid mmcblk1)
 		lan_mac=$(macaddr_add "$wan_mac" +1)
