@@ -1,0 +1,20 @@
+CONFIG_TARGET_ramips=y
+CONFIG_TARGET_ramips_mt76x8=y
+CONFIG_TARGET_ramips_mt76x8_DEVICE_kooiot_tlink-c1-16m=y
+CONFIG_KERNEL_IO_URING=y
+# CONFIG_LIBCURL_UNIX_SOCKETS is not set
+CONFIG_LUCI_LANG_zh_Hans=y
+CONFIG_MAKE_TOOLCHAIN=y
+# CONFIG_OPENSSL_WITH_IDEA is not set
+# CONFIG_OPENSSL_WITH_MDC2 is not set
+# CONFIG_OPENSSL_WITH_SEED is not set
+# CONFIG_OPENSSL_WITH_WHIRLPOOL is not set
+CONFIG_PACKAGE_kmod-crypto-sha256=y
+CONFIG_PACKAGE_kmod-nf-nat6=y
+CONFIG_PACKAGE_libiwinfo-lua=y
+CONFIG_PACKAGE_libyaml=y
+CONFIG_PACKAGE_luci-i18n-base-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-firewall-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-freeioe-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-opkg-zh-cn=y
+# CONFIG_WOLFSSL_HAS_OPENVPN is not set
