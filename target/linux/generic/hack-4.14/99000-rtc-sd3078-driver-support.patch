@@ -29,7 +29,7 @@
  obj-$(CONFIG_RTC_DRV_SNVS)	+= rtc-snvs.o
 --- /dev/null
 +++ b/drivers/rtc/rtc-sd3078.c
-@@ -0,0 +1,229 @@
+@@ -0,0 +1,257 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Real Time Clock (RTC) Driver for sd3078
@@ -71,6 +71,7 @@
 +struct sd3078 {
 +	struct rtc_device	*rtc;
 +	struct regmap		*regmap;
++	int					rtcf;
 +};
 +
 +/*
@@ -120,10 +121,14 @@
 +	struct sd3078 *sd3078 = i2c_get_clientdata(client);
 +	int ret;
 +
++	if (sd3078->rtcf) {
++		return 0;
++	}
++
 +	ret = regmap_bulk_read(sd3078->regmap, SD3078_REG_SC, rtc_data,
 +			       NUM_TIME_REGS);
 +	if (ret < 0) {
-+		dev_err(dev, "reading from RTC failed with err:%d\n", ret);
++		dev_err(&client->dev, "reading from RTC failed with err:%d\n", ret);
 +		return ret;
 +	}
 +
@@ -168,6 +173,12 @@
 +
 +#if WRITE_PROTECT_EN
 +	sd3078_enable_reg_write(sd3078);
++#else
++	if (sd3078->rtcf) {
++		// Make sure write is enable when rtcf is 1
++		sd3078_enable_reg_write(sd3078);
++		sd3078->rtcf = 0;
++	}
 +#endif
 +
 +	ret = regmap_bulk_write(sd3078->regmap, SD3078_REG_SC, rtc_data,
@@ -198,6 +209,7 @@
 +static int sd3078_probe(struct i2c_client *client,
 +			const struct i2c_device_id *id)
 +{
++	unsigned int ctrl;
 +	int ret;
 +	struct sd3078 *sd3078;
 +
@@ -214,6 +226,19 @@
 +		return PTR_ERR(sd3078->regmap);
 +	}
 +
++	ret = regmap_read(sd3078->regmap, SD3078_REG_CTRL1, &ctrl);
++	if (ret < 0) {
++		dev_err(&client->dev, "reading CTRL1 from RTC failed with err:%d\n", ret);
++		return ret;
++	}
++
++	sd3078->rtcf = ctrl & 0x01;
++	if (sd3078->rtcf) {
++		dev_err(&client->dev, "%s: RTC power lost CTRL1:%X\n", __func__, ctrl);
++	} else {
++		dev_info(&client->dev, "%s: CTRL1 is %X\n", __func__, ctrl);
++	}
++
 +	i2c_set_clientdata(client, sd3078);
 +
 +	sd3078->rtc = devm_rtc_allocate_device(&client->dev);
@@ -228,7 +253,10 @@
 +	if (ret)
 +		return ret;
 +
-+	sd3078_enable_reg_write(sd3078);
++	if (!sd3078->rtcf) {
++		// Make sure write is enable when probe
++		sd3078_enable_reg_write(sd3078);
++	}
 +
 +	return 0;
 +}
