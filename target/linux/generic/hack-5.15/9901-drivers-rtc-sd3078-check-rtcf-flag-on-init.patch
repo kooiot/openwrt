@@ -1,0 +1,130 @@
+--- a/drivers/rtc/rtc-sd3078.c
++++ b/drivers/rtc/rtc-sd3078.c
+@@ -39,6 +39,7 @@
+ struct sd3078 {
+ 	struct rtc_device	*rtc;
+ 	struct regmap		*regmap;
++	int					rtcf;
+ };
+ 
+ /*
+@@ -88,13 +89,25 @@
+ 	struct sd3078 *sd3078 = i2c_get_clientdata(client);
+ 	int ret;
+ 
++	if (sd3078->rtcf) {
++		return 0;
++	}
++
+ 	ret = regmap_bulk_read(sd3078->regmap, SD3078_REG_SC, rtc_data,
+ 			       NUM_TIME_REGS);
+ 	if (ret < 0) {
+-		dev_err(dev, "reading from RTC failed with err:%d\n", ret);
++		dev_err(&client->dev, "reading from RTC failed with err:%d\n", ret);
+ 		return ret;
+ 	}
+ 
++	/*
++	dev_info(&client->dev,
++		"%s: raw data is %02x %02x %02x %02x %02x %02x %02x\n",
++		__func__,
++		rtc_data[0], rtc_data[1], rtc_data[2], rtc_data[3],
++		rtc_data[4], rtc_data[5], rtc_data[6]);
++		*/
++
+ 	tm->tm_sec	= bcd2bin(rtc_data[SD3078_REG_SC] & 0x7F);
+ 	tm->tm_min	= bcd2bin(rtc_data[SD3078_REG_MN] & 0x7F);
+ 
+@@ -116,6 +129,14 @@
+ 	tm->tm_mon	= bcd2bin(rtc_data[SD3078_REG_MO] & 0x1F) - 1;
+ 	tm->tm_year = bcd2bin(rtc_data[SD3078_REG_YR]) + 100;
+ 
++	/*
++	dev_info(&client->dev, "%s: tm is secs=%d, mins=%d, hours=%d, "
++		"mday=%d, mon=%d, year=%d, wday=%d\n",
++		__func__,
++		tm->tm_sec, tm->tm_min, tm->tm_hour,
++		tm->tm_mday, tm->tm_mon, tm->tm_year, tm->tm_wday);
++		*/
++
+ 	return 0;
+ }
+ 
+@@ -126,6 +147,14 @@
+ 	struct sd3078 *sd3078 = i2c_get_clientdata(client);
+ 	int ret;
+ 
++	/*
++	dev_info(&client->dev, "%s: tm is secs=%d, mins=%d, hours=%d, "
++		"mday=%d, mon=%d, year=%d, wday=%d\n",
++		__func__,
++		tm->tm_sec, tm->tm_min, tm->tm_hour,
++		tm->tm_mday, tm->tm_mon, tm->tm_year, tm->tm_wday);
++		*/
++
+ 	rtc_data[SD3078_REG_SC] = bin2bcd(tm->tm_sec);
+ 	rtc_data[SD3078_REG_MN] = bin2bcd(tm->tm_min);
+ 	rtc_data[SD3078_REG_HR] = bin2bcd(tm->tm_hour) | 0x80;
+@@ -136,8 +165,22 @@
+ 
+ #if WRITE_PROTECT_EN
+ 	sd3078_enable_reg_write(sd3078);
++#else
++	if (sd3078->rtcf) {
++		// Make sure write is enable when probe
++		sd3078_enable_reg_write(sd3078);
++		sd3078->rtcf = 0;
++	}
+ #endif
+ 
++	/*
++	dev_info(&client->dev,
++		"%s: raw data is %02x %02x %02x %02x %02x %02x %02x\n",
++		__func__,
++		rtc_data[0], rtc_data[1], rtc_data[2], rtc_data[3],
++		rtc_data[4], rtc_data[5], rtc_data[6]);
++		*/
++
+ 	ret = regmap_bulk_write(sd3078->regmap, SD3078_REG_SC, rtc_data,
+ 				NUM_TIME_REGS);
+ 	if (ret < 0) {
+@@ -166,6 +209,7 @@
+ static int sd3078_probe(struct i2c_client *client,
+ 			const struct i2c_device_id *id)
+ {
++	unsigned int ctrl;
+ 	int ret;
+ 	struct sd3078 *sd3078;
+ 
+@@ -182,6 +226,19 @@
+ 		return PTR_ERR(sd3078->regmap);
+ 	}
+ 
++	ret = regmap_read(sd3078->regmap, SD3078_REG_CTRL1, &ctrl);
++	if (ret < 0) {
++		dev_err(&client->dev, "reading CTRL1 from RTC failed with err:%d\n", ret);
++		return ret;
++	}
++
++	sd3078->rtcf = ctrl & 0x01;
++	if (sd3078->rtcf) {
++		dev_err(&client->dev, "%s: RTC power lost CTRL1:%X\n", __func__, ctrl);
++	} else {
++		dev_info(&client->dev, "%s: CTRL1 is %X\n", __func__, ctrl);
++	}
++
+ 	i2c_set_clientdata(client, sd3078);
+ 
+ 	sd3078->rtc = devm_rtc_allocate_device(&client->dev);
+@@ -196,7 +253,10 @@
+ 	if (ret)
+ 		return ret;
+ 
+-	sd3078_enable_reg_write(sd3078);
++	if (!sd3078->rtcf) {
++		// Make sure write is enable when probe
++		sd3078_enable_reg_write(sd3078);
++	}
+ 
+ 	return 0;
+ }
