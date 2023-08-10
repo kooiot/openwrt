@@ -94,6 +94,20 @@ define U-Boot/nanopi-r2s-rk3328
     friendlyarm_nanopi-r2s
 endef
 
+define U-Boot/orangepi-r1-plus-rk3328
+  $(U-Boot/rk3328/Default)
+  NAME:=Orange Pi R1 Plus
+  BUILD_DEVICES:= \
+    xunlong_orangepi-r1-plus
+endef
+
+define U-Boot/orangepi-r1-plus-lts-rk3328
+  $(U-Boot/rk3328/Default)
+  NAME:=Orange Pi R1 Plus LTS
+  BUILD_DEVICES:= \
+    xunlong_orangepi-r1-plus-lts
+endef
+
 define U-Boot/roc-cc-rk3328
   $(U-Boot/rk3328/Default)
   NAME:=ROC-RK3328-CC
