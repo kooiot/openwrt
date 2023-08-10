@@ -2437,11 +2437,25 @@ CONFIG_PACKAGE_zip=y
 CONFIG_PACKAGE_siridb-server=y
 
 #
+# FreeIOE Cloud Hosts
+#
+# CONFIG_PACKAGE_freeioe-hosts-kooiot-cn is not set
+# CONFIG_PACKAGE_freeioe-hosts-ydncloud-com is not set
+
+#
 # Network Utilities
 #
 CONFIG_PACKAGE_cloud-watch=m
 CONFIG_PACKAGE_tinc-freeioe-tunnel=y
 CONFIG_PACKAGE_wwanleds=y
+
+#
+# SymLink Projects
+#
+# CONFIG_PACKAGE_symlink-projects-symgrid-com is not set
+# CONFIG_PACKAGE_symlink-projects-symid-fl-top is not set
+# CONFIG_PACKAGE_symlink-projects-tlink-k2x is not set
+# CONFIG_PACKAGE_symlink-projects-tlink-r4x is not set
 
 #
 # Terminal
@@ -2463,15 +2477,11 @@ CONFIG_PACKAGE_asw-iot-greengrass=m
 CONFIG_PACKAGE_factory-tlink=m
 CONFIG_PACKAGE_focas-ubus=m
 CONFIG_PACKAGE_freeioe=y
-# CONFIG_FREEIOE_CLOUD_HOST is not set
 # CONFIG_PACKAGE_kooiot is not set
 # CONFIG_PACKAGE_sdlnrj-xfrm is not set
 CONFIG_PACKAGE_skynet=y
 # CONFIG_PACKAGE_strip-ioe is not set
 CONFIG_PACKAGE_symlink=m
-# CONFIG_SYMLINK_PROJECT_NONE is not set
-CONFIG_SYMLINK_PROJECT_SYMGRID=y
-# CONFIG_SYMLINK_PROJECT_SYMID_FL is not set
 CONFIG_PACKAGE_symlink-psn=m
 # CONFIG_PACKAGE_tlink-usb2lcd is not set
 CONFIG_PACKAGE_tlink-utility=y
