@@ -193,7 +193,10 @@ define KernelPackage/ipsec
 	+kmod-crypto-md5 +kmod-crypto-sha1
   KCONFIG:= \
 	CONFIG_NET_KEY \
+	CONFIG_NET_KEY_MIGRATE \
 	CONFIG_XFRM_USER \
+	CONFIG_XFRM_SUB_POLICY=y \
+	CONFIG_XFRM_MIGRATE=y \
 	CONFIG_INET_IPCOMP \
 	CONFIG_XFRM_IPCOMP
   FILES:=$(foreach mod,$(IPSEC-m),$(LINUX_DIR)/net/$(mod).ko)
@@ -354,6 +357,21 @@ define KernelPackage/xfrm-interface/description
 endef
 
 $(eval $(call KernelPackage,xfrm-interface))
+
+define KernelPackage/xfrm-statistics
+  SUBMENU:=$(NETWORK_SUPPORT_MENU)
+  TITLE:=IPsec XFRM Statistics
+  DEPENDS:=+kmod-ipsec4 +IPV6:kmod-ipsec6
+  KCONFIG:=CONFIG_XFRM_STATISTICS
+  FILES:=$(LINUX_DIR)/net/xfrm/xfrm_statistics.ko
+  AUTOLOAD:=$(call AutoProbe,xfrm_statistics)
+endef
+
+define KernelPackage/xfrm-statistics/description
+ Kernel module for XFRM statistics support
+endef
+
+$(eval $(call KernelPackage,xfrm-statistics))
 
 
 define KernelPackage/iptunnel4
