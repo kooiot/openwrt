@@ -1,0 +1,133 @@
+#!/bin/sh
+
+if [ "$(id -u)" != "0" ]; then
+   echo "Script must be run as root !"
+   exit 0
+fi
+
+
+echo ""
+date
+echo -e "\033[36m==============================="
+echo "Installing system to emmc lightly"
+echo -e "===============================\033[37m"
+echo ""
+
+FORCE_INSTALL=${1}
+
+EMMC_DISK="/dev/mmcblk1"
+
+BOOT_DIR="/tmp/boot"
+BOOTFS_DIR="/tmp/_boot"
+
+if [ ! -b ${EMMC_DISK}boot0 ]; then
+    echo "Error: EMMC not found."
+    exit 1
+fi
+
+if [ ! -d ${BOOT_DIR} ]; then
+	mkdir ${BOOT_DIR}
+	mount /dev/mmcblk0p1 ${BOOT_DIR}
+fi
+
+if [ ! -f ${BOOT_DIR}/u-boot-sunxi-with-spl.bin ]; then
+    echo "Error: u-boot-sunxi-with-spl.bin not found."
+    exit 1
+fi
+
+if [ ! -f ${BOOT_DIR}/rootfs.size ]; then
+    echo "Error: rootfs.size not found."
+    exit 1
+fi
+ROOTFS_SIZE=`cat ${BOOT_DIR}/rootfs.size`
+ROOTFS_SIZE=$(( (${ROOTFS_SIZE} + 511) / 512 ))
+
+
+umount ${EMMC_DISK}* > /dev/null 2>&1
+
+#----------------------------------------------------------
+if [ "-f" = "$FORCE_INSTALL" ]; then
+	echo "Force install to eMMC"
+else
+	echo ""
+	echo -n "WARNING: EMMC WILL BE ERASED !, Continue (y/N)?  "
+	read -n 1 ANSWER
+
+	if [ ! "${ANSWER}" = "y" ] ; then
+		echo "."
+		echo "Canceled.."
+		exit 0
+	fi
+	echo ""
+fi
+#----------------------------------------------------------
+
+#************************************************************************
+echo ""
+echo "Instaling u-boot to EMMC ..."
+dd if=${BOOT_DIR}/u-boot-sunxi-with-spl.bin of=${EMMC_DISK} bs=1k seek=8 > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+    echo "ERROR installing u-boot."
+    exit 1
+fi
+sync
+#************************************************************************
+
+
+# -------------------------------------------------------------------
+
+umount $BOOTFS_DIR > /dev/null 2>&1
+if [ ! -d $BOOTFS_DIR ]; then
+    mkdir -p $BOOTFS_DIR
+fi
+rm $BOOTFS_DIR/* > /dev/null 2>&1
+sync
+
+# ================
+# MOUNT PARTITIONS
+# ================
+
+echo ""
+echo "Mounting EMMC partitions..."
+
+if ! mount ${EMMC_DISK}p1 $BOOTFS_DIR; then
+    echo "ERROR mounting boot partitions..."
+    exit 1
+fi
+echo "boot partitions mounted to $BOOTFS_DIR"
+
+# copy bootfs
+
+cp -pf ${BOOT_DIR}/boot.scr ${BOOTFS_DIR}/
+cp -pf ${BOOT_DIR}/uImage ${BOOTFS_DIR}/
+cp -pf ${BOOT_DIR}/dtb ${BOOTFS_DIR}/
+
+# UMOUNT
+if ! umount $BOOTFS_DIR; then
+  echo "ERROR unmounting boot partition."
+  exit 1
+fi
+rm -rf $BOOTFS_DIR/* > /dev/null 2>&1
+rmdir $BOOTFS_DIR > /dev/null 2>&1
+
+sync
+
+#-----------------------------------------------------------------------------------------------
+echo ""
+echo "Copying file system to EMMC ..."
+echo ""
+
+#-----------------------------------------------------------------------------------------
+dd if=/dev/mmcblk0p2 of=${EMMC_DISK}p2 bs=512 count=${ROOTFS_SIZE}
+dd if=/dev/zero of=${EMMC_DISK}p2 bs=512 seek=${ROOTFS_SIZE} count=512
+#-----------------------------------------------------------------------------------------
+sync
+
+
+echo ""
+echo -e "\033[36m*******************************"
+echo "System installed to EMMC."
+echo -e "*******************************\033[37m"
+echo ""
+
+exit 0
