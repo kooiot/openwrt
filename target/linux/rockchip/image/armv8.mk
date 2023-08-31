@@ -229,6 +229,15 @@ define Device/panther_x2
 endef
 TARGET_DEVICES += panther_x2
 
+define Device/pine64_rock64
+  DEVICE_VENDOR := Pine64
+  DEVICE_MODEL := Rock64
+  SOC := rk3328
+  UBOOT_DEVICE_NAME := rock64-rk3328
+  IMAGE/sysupgrade.img.gz := boot-common | boot-script | pine64-img | gzip | append-metadata
+endef
+TARGET_DEVICES += pine64_rock64
+
 define Device/pine64_rockpro64
   DEVICE_VENDOR := Pine64
   DEVICE_MODEL := RockPro64
