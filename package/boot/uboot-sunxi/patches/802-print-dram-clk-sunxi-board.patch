@@ -1,10 +1,11 @@
 --- a/board/sunxi/board.c
 +++ b/board/sunxi/board.c
-@@ -637,6 +637,7 @@
- 	power_failed |= axp_set_sw(IS_ENABLED(CONFIG_AXP_SW_ON));
+@@ -639,7 +639,7 @@
  #endif
- #endif
-+	printf("DRAM_CLK: %d\n", CONFIG_DRAM_CLK);
  	printf("DRAM:");
  	gd->ram_size = sunxi_dram_init();
- 	printf(" %d MiB\n", (int)(gd->ram_size >> 20));
+-	printf(" %d MiB\n", (int)(gd->ram_size >> 20));
++	printf(" %d MiB(%dMHz)\n", (int)(gd->ram_size >> 20), CONFIG_DRAM_CLK);
+ 	if (!gd->ram_size)
+ 		hang();
+ 

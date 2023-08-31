@@ -1,0 +1,76 @@
+--- a/arch/arm/include/asm/arch-sunxi/clock_sun6i.h
++++ a/arch/arm/include/asm/arch-sunxi/clock_sun6i.h
+@@ -518,6 +518,7 @@
+ #define CCM_SEC_SWITCH_PLL_NONSEC	(1 << 0)
+ 
+ #ifndef __ASSEMBLY__
++unsigned int clock_get_pll1(void);
+ void clock_set_pll1(unsigned int hz);
+ void clock_set_pll3(unsigned int hz);
+ void clock_set_pll3_factors(int m, int n);
+--- a/arch/arm/mach-sunxi/clock_sun6i.c
++++ b/arch/arm/mach-sunxi/clock_sun6i.c
+@@ -125,6 +125,7 @@
+ 	struct sunxi_ccm_reg * const ccm =
+ 		(struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
+ 	const int p = 0;
++#ifndef CONFIG_MACH_SUN8I_H3_PLL1_HACK
+ 	int k = 2;
+ 	int m = 2;
+ 
+@@ -135,6 +136,16 @@
+ 		k = 3;
+ 		m = 2;
+ 	}
++#else
++	int k = 1;
++	int m = 1;
++
++	if (clk >= 1368000000) {
++ 		k = 3;
++	} else if (clk >= 768000000) {
++		k = 2;
++	}
++#endif
+ 
+ 	/* Switch to 24MHz clock while changing PLL1 */
+ 	writel(AXI_DIV_3 << AXI_DIV_SHIFT |
+@@ -157,6 +168,21 @@
+ 	       CPU_CLK_SRC_PLL1 << CPU_CLK_SRC_SHIFT,
+ 	       &ccm->cpu_axi_cfg);
+ }
++
++unsigned int clock_get_pll1(void)
++{
++	struct sunxi_ccm_reg * const ccm =
++		(struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
++	unsigned int pll1_cfg;
++	int k, n;
++
++	pll1_cfg = readl(&ccm->pll1_cfg);
++
++	k = (pll1_cfg >>  4) & 0x3;
++	n = (pll1_cfg >>  8) & 0x1f;
++
++	return (24000000 * (n+1) * (k+1));
++}
+ #endif
+ 
+ void clock_set_pll3(unsigned int clk)
+--- a/board/sunxi/board.c
++++ b/board/sunxi/board.c
+@@ -649,10 +649,12 @@
+ 	 * Only clock up the CPU to full speed if we are reasonably
+ 	 * assured it's being powered with suitable core voltage
+ 	 */
+-	if (!power_failed)
++	if (!power_failed) {
+ 		clock_set_pll1(CONFIG_SYS_CLK_FREQ);
+-	else
++		printf("CPU Freq: %dMHz(%dMHz)\n", clock_get_pll1()/1000000, CONFIG_SYS_CLK_FREQ/1000000);
++	} else {
+ 		printf("Failed to set core voltage! Can't set CPU frequency\n");
++	}
+ }
+ #endif
+ 
