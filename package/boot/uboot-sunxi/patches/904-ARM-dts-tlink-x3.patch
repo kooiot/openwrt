@@ -1,14 +1,3 @@
---- a/arch/arm/dts/Makefile
-+++ b/arch/arm/dts/Makefile
-@@ -510,6 +510,8 @@
- 	sun8i-r16-bananapi-m2m.dtb \
- 	sun8i-r16-nintendo-nes-classic-edition.dtb \
- 	sun8i-r16-parrot.dtb
-+dtb-$(CONFIG_MACH_SUN8I_X3) += \
-+	sun8i-x3-tlink-x3.dtb
- dtb-$(CONFIG_MACH_SUN8I_A83T) += \
- 	sun8i-a83t-allwinner-h8homlet-v2.dtb \
- 	sun8i-a83t-bananapi-m3.dtb \
 --- a/configs/tlink_x3_defconfig
 +++ b/configs/tlink_x3_defconfig
 @@ -0,0 +1,18 @@

@@ -31,39 +31,3 @@
  endif
 
  config MACH_SUNXI_H3_H5
---- a/arch/arm/mach-sunxi/dram_sunxi_dw.c
-+++ b/arch/arm/mach-sunxi/dram_sunxi_dw.c
-@@ -353,11 +353,16 @@
- 	       MCTL_CR_ROW_BITS(para->row_bits), &mctl_com->cr);
- 
- 	if (socid == SOCID_R40) {
--		if (para->dual_rank)
--			panic("Dual rank memory not supported\n");
--
--		/* Mux pin to A15 address line for single rank memory. */
--		setbits_le32(&mctl_com->cr_r1, MCTL_CR_R1_MUX_A15);
-+		if (para->dual_rank) {
-+#if defined(CONFIG_SUNXI_DRAM_DW_R40_DUAL_RANK)
-+			// writel(0x000009f4, &mctl_com->cr_r1);
-+#else
-+			panic("Dual rank memory not supported\n");
-+#endif
-+		} else {
-+			/* Mux pin to A15 address line for single rank memory. */
-+			setbits_le32(&mctl_com->cr_r1, MCTL_CR_R1_MUX_A15);
-+		}
- 	}
- }
- 
-@@ -723,7 +728,11 @@
- #elif defined(CONFIG_MACH_SUN8I_R40)
- 	uint16_t socid = SOCID_R40;
- 	/* Currently we cannot support R40 with dual rank memory */
-+#if defined(CONFIG_SUNXI_DRAM_DW_R40_DUAL_RANK)
-+	para.page_size = 8192;
-+#else
-	para.dual_rank = 0;
-+#endif
- #elif defined(CONFIG_MACH_SUN8I_V3S)
- 	/* TODO: set delays and mbus priority for V3s */
- 	uint16_t socid = SOCID_H3;

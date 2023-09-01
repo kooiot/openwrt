@@ -66,19 +66,6 @@
 +CONFIG_SCSI=y
 +CONFIG_USB_ECHI_HCD=y
 +CONFIG_USB_OCHI_HCD=y
-+++ a/arch/arm/dts/Makefile
-+++ b/arch/arm/dts/Makefile
-@@ -545,7 +545,9 @@
- dtb-$(CONFIG_MACH_SUN8I_R40) += \
- 	sun8i-r40-bananapi-m2-ultra.dtb \
- 	sun8i-r40-tlink-ok-a40i.dtb \
--	sun8i-v40-bananapi-m2-berry.dtb
-+	sun8i-v40-bananapi-m2-berry.dtb \
-+	sun8i-t3-tlink-m408.dtb \
-+	sun8i-t3-tlink-m416.dtb
- dtb-$(CONFIG_MACH_SUN8I_V3S) += \
- 	sun8i-v3s-licheepi-zero.dtb
- dtb-$(CONFIG_MACH_SUN50I_H5) += \
 --- /dev/null
 +++ b/arch/arm/dts/sun8i-t3-tlink-m408.dts
 @@ -0,0 +1,12 @@

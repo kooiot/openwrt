@@ -1,13 +1,3 @@
---- a/arch/arm/dts/Makefile
-+++ b/arch/arm/dts/Makefile
-@@ -542,6 +542,7 @@
- 	sun8i-h3-orangepi-zero-plus2.dtb \
-	sun8i-h3-tlink-x1.dtb \
-	sun8i-h3-tlink-r1.dtb \
-+	sun8i-h3-tlink-x1s.dtb \
- 	sun8i-h3-rervision-dvk.dtb \
-	sun8i-h3-zeropi.dtb
- dtb-$(CONFIG_MACH_SUN8I_R40) += \
 --- /dev/null
 +++ b/configs/tlink_x1s_defconfig
 @@ -0,0 +1,17 @@

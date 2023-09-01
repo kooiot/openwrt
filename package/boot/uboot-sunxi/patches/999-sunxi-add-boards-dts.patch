@@ -1,0 +1,44 @@
+--- a/arch/arm/dts/Makefile
++++ b/arch/arm/dts/Makefile
+@@ -673,6 +673,8 @@
+ 	sun8i-a83t-bananapi-m3.dtb \
+ 	sun8i-a83t-cubietruck-plus.dtb \
+ 	sun8i-a83t-tbs-a711.dtb
++dtb-$(CONFIG_MACH_SUN8I_X3) += \
++	sun8i-x3-tlink-x3.dtb
+ dtb-$(CONFIG_MACH_SUN8I_H3) += \
+ 	sun8i-h2-plus-bananapi-m2-zero.dtb \
+ 	sun8i-h2-plus-libretech-all-h3-cc.dtb \
+@@ -699,16 +701,31 @@
+ 	sun8i-h3-orangepi-plus2e.dtb \
+ 	sun8i-h3-orangepi-zero-plus2.dtb \
+ 	sun8i-h3-rervision-dvk.dtb \
++	sun8i-h3-tlink-x1.dtb \
++	sun8i-h3-tlink-x1s.dtb \
++	sun8i-h3-tlink-r1.dtb \
+ 	sun8i-h3-zeropi.dtb
+ dtb-$(CONFIG_MACH_SUN8I_R40) += \
+ 	sun8i-r40-bananapi-m2-ultra.dtb \
+ 	sun8i-r40-oka40i-c.dtb \
+ 	sun8i-t3-cqa3t-bv3.dtb \
+-	sun8i-v40-bananapi-m2-berry.dtb
++	sun8i-v40-bananapi-m2-berry.dtb \
++	sun8i-r40-tlink-ok-a40i.dtb \
++	sun8i-r40-tlink-k1.dtb \
++	sun8i-r40-tlink-dj-a40i-e.dtb \
++	sun8i-r40-tlink-qh-x40.dtb \
++	sun8i-r40-tlink-nano-a40i.dtb \
++	sun8i-r40-tlink-k2.dtb \
++	sun8i-r40-tlink-k2x.dtb \
++	sun8i-t3-tlink-m408.dtb \
++	sun8i-t3-tlink-m416.dtb
+ dtb-$(CONFIG_MACH_SUN8I_V3S) += \
+ 	sun8i-s3-elimo-initium.dtb \
+ 	sun8i-s3-pinecube.dtb \
+ 	sun8i-v3-sl631-imx179.dtb \
++	sun8i-s3-lichee-zero-plus.dtb \
++	sun8i-s3-tlink-s1.dtb \
++	sun8i-v3s-sinlinx-sin-v3s.dtb \
+ 	sun8i-v3s-licheepi-zero.dtb
+ dtb-$(CONFIG_MACH_SUN50I_H5) += \
+ 	sun50i-h5-bananapi-m2-plus.dtb \

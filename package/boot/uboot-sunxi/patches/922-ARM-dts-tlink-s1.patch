@@ -14,16 +14,6 @@
 +CONFIG_DEFAULT_DEVICE_TREE="sun8i-s3-tlink-s1"
 +# CONFIG_SPL_I2C_SUPPORT=y
 +# CONFIG_NETDEVICES is not set
---- a/arch/arm/dts/Makefile
-+++ b/arch/arm/dts/Makefile
-@@ -554,6 +554,7 @@
- 	sun8i-v40-bananapi-m2-berry.dtb \
- 	sun8i-t3-tlink-m408.dtb
- dtb-$(CONFIG_MACH_SUN8I_V3S) += \
-+	sun8i-s3-tlink-s1.dtb \
- 	sun8i-s3-pinecube.dtb \
- 	sun8i-s3-lichee-zero-plus.dtb \
- 	sun8i-v3s-sinlinx-sin-v3s.dtb \
 --- /dev/null
 +++ b/arch/arm/dts/sun8i-s3-tlink-s1.dts
 @@ -0,0 +1,84 @@
