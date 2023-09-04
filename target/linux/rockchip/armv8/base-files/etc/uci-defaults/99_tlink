@@ -178,6 +178,7 @@ tlink_init_4g() {
 	[ -e /dev/cdc-wdm0 ] && {
 		# QMI interface
 		echo "QMI module found!!!" > /dev/kmsg
+		sleep 10 # wait for chips ready in five seconds
 
 		lsusb -d "1508:1001" > /dev/null
 		if [ $? -eq 0 ]
