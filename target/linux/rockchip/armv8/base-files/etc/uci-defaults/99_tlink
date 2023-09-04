@@ -175,18 +175,19 @@ tlink_sd_default () {
 }
 
 tlink_init_4g() {
+	# Fibcom NL668 using ppp
+	lsusb -d "1508:1001" > /dev/null
+	if [ $? -eq 0 ]
+	then
+		echo "Fibocom NL668 found!" > /dev/kmsg
+		tlink_add_4g_wan
+		return
+	fi
+
 	[ -e /dev/cdc-wdm0 ] && {
 		# QMI interface
 		echo "QMI module found!!!" > /dev/kmsg
-
-		lsusb -d "1508:1001" > /dev/null
-		if [ $? -eq 0 ]
-		then
-			echo "Fibocom NL668 found!" > /dev/kmsg
-			tlink_add_4g_wan
-		else
-			tlink_add_qmi_interface
-		fi
+		tlink_add_qmi_interface
 	} || {
 		echo "Initial 4G ppp configuration!!!" > /dev/kmsg
 		tlink_add_4g_wan
@@ -236,7 +237,17 @@ tlink_add_5g_wan() {
 }
 
 tlink_init_5g() {
+	# Fibcom NL668 using ppp
+	lsusb -d "1508:1001" > /dev/null
+	if [ $? -eq 0 ]
+	then
+		echo "Fibocom NL668 found!" > /dev/kmsg
+		tlink_add_4g_wan
+		return
+	fi
+
 	sleep 10 # wait for chips ready in five seconds
+
 	[ -e /dev/cdc-wdm0 ] && {
 		# QMI interface
 		echo "QMI module found!!!" > /dev/kmsg
