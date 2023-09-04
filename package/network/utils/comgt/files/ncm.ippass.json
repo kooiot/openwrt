@@ -79,7 +79,7 @@
 		"initialize": [
 			"AT",
 			"AT+QCFG=\\\"usbnet\\\",5",
-			"AT+QCFG=\\\"nat\\\",1",
+			"AT+QCFG=\\\"nat\\\",0",
 			"AT"
 		],
 		"configure": [
@@ -102,7 +102,7 @@
 		"initialize": [
 			"AT",
 			"ATE1",
-			"AT+GTIPPASS=0",
+			"AT+GTIPPASS=1",
 			"AT+CGDCONT=${profile},\\\"${pdptype}\\\"${apn:+,\\\"$apn\\\"}"
 		],
 		"connect": "AT+GTRNDIS=1,${profile}",
