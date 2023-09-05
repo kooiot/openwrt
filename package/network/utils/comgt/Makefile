@@ -97,6 +97,7 @@ endef
 define Package/comgt-ncm/install
 	$(INSTALL_DIR) $(1)/etc/gcom
 	$(INSTALL_DATA) ./files/ncm.json $(1)/etc/gcom/ncm.json
+	$(INSTALL_DATA) ./files/ncm.ippass.json $(1)/etc/gcom/ncm.ippass.json
 	$(INSTALL_DATA) ./files/runcommand.gcom $(1)/etc/gcom/runcommand.gcom
 	$(INSTALL_DIR) $(1)/lib/netifd/proto
 	$(INSTALL_BIN) ./files/ncm.sh $(1)/lib/netifd/proto/ncm.sh
