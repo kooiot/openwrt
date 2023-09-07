@@ -3,6 +3,7 @@
 @@ -0,0 +1,13 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
++CONFIG_DEFAULT_DEVICE_TREE="sun8i-s3-tlink-s1"
 +CONFIG_SPL=y
 +CONFIG_MACH_SUN8I_V3S=y
 +CONFIG_SUNXI_DRAM_DDR3_1333=y
@@ -11,9 +12,8 @@
 +CONFIG_MMC0_CD_PIN="PF6"
 +CONFIG_MMC_SUNXI_SLOT_EXTRA=2
 +# CONFIG_I2C0_ENABLE=y
-+CONFIG_DEFAULT_DEVICE_TREE="sun8i-s3-tlink-s1"
-+# CONFIG_SPL_I2C_SUPPORT=y
-+# CONFIG_NETDEVICES is not set
++# CONFIG_SPL_I2C=y
++# CONFIG_NET is not set
 --- /dev/null
 +++ b/arch/arm/dts/sun8i-s3-tlink-s1.dts
 @@ -0,0 +1,84 @@
