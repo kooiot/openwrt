@@ -1,6 +1,6 @@
 --- /dev/null	
 +++ b/configs/tlink_s1_defconfig
-@@ -0,0 +1,13 @@
+@@ -0,0 +1,14 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
 +CONFIG_DEFAULT_DEVICE_TREE="sun8i-s3-tlink-s1"
@@ -11,6 +11,7 @@
 +CONFIG_DRAM_ODT_EN=y
 +CONFIG_MMC0_CD_PIN="PF6"
 +CONFIG_MMC_SUNXI_SLOT_EXTRA=2
++# CONFIG_HAS_ARMV7_SECURE_BASE is not set
 +# CONFIG_I2C0_ENABLE=y
 +# CONFIG_SPL_I2C=y
 +# CONFIG_NET is not set

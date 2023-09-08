@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/configs/Lichee_Zero_Plus_defconfig
-@@ -0,0 +1,21 @@
+@@ -0,0 +1,20 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
 +CONFIG_DEFAULT_DEVICE_TREE="sun8i-s3-lichee-zero-plus"
