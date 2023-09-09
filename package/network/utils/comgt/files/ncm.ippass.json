@@ -103,6 +103,7 @@
 			"AT",
 			"ATE1",
 			"AT+GTIPPASS=1",
+			"AT+GTSETMASK=3",
 			"AT+CGDCONT=${profile},\\\"${pdptype}\\\"${apn:+,\\\"$apn\\\"}"
 		],
 		"connect": "AT+GTRNDIS=1,${profile}",
