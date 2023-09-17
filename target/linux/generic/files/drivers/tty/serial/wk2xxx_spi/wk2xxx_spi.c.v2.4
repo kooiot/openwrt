@@ -47,7 +47,7 @@ MODULE_LICENSE("Dual BSD/GPL");
 #define DRIVER_DESC   "SPI driver for spi to Uart chip WK2XXX, etc."
 #define VERSION_DESC  "V2.4 On 2022.07.24"
 /*************The debug control **********************************/
-//#define _DEBUG_WK_FUNCTION
+#define _DEBUG_WK_FUNCTION
 //#define _DEBUG_WK_RX
 //#define _DEBUG_WK_TX
 //#define _DEBUG_WK_IRQ
@@ -321,7 +321,7 @@ static int wk2xxx_read_global_reg(struct spi_device *spi,uint8_t reg,uint8_t *da
     int status;
     struct spi_transfer index_xfer = {
                 .len            = 2,
-                // .speed_hz	= wk2xxx_spi_speed,
+                .speed_hz	= wk2xxx_spi_speed,
     };
     mutex_lock(&wk2xxxs_reg_lock);
     status =0;
@@ -357,7 +357,7 @@ static int wk2xxx_write_global_reg(struct spi_device *spi,uint8_t reg,uint8_t da
     int status;
     struct spi_transfer index_xfer = {
             .len            = 2,
-            // .speed_hz	= wk2xxx_spi_speed,
+            .speed_hz	= wk2xxx_spi_speed,
     };
     mutex_lock(&wk2xxxs_reg_lock);
     #ifdef WK_CSGPIO_FUNCTION 
@@ -387,7 +387,7 @@ static int wk2xxx_read_slave_reg(struct spi_device *spi,uint8_t port,uint8_t reg
     int status;
     struct spi_transfer index_xfer = {
             .len            = 2,
-            // .speed_hz	= wk2xxx_spi_speed,
+            .speed_hz	= wk2xxx_spi_speed,
     };
     mutex_lock(&wk2xxxs_reg_lock);
     #ifdef WK_CSGPIO_FUNCTION 
@@ -424,7 +424,7 @@ static int wk2xxx_write_slave_reg(struct spi_device *spi,uint8_t port,uint8_t re
     int status;
     struct spi_transfer index_xfer = {
         .len            = 2,
-		// .speed_hz	= wk2xxx_spi_speed,
+		.speed_hz	= wk2xxx_spi_speed,
     };
     mutex_lock(&wk2xxxs_reg_lock);
     #ifdef WK_CSGPIO_FUNCTION 
@@ -457,7 +457,7 @@ static int wk2xxx_read_fifo(struct spi_device *spi,uint8_t port,uint8_t fifolen,
     uint8_t transmit_fifo_data[MAX_RFCOUNT_SIZE+1]={0};
     struct spi_transfer index_xfer = {
             .len            = fifolen+1,
-            //.speed_hz	= wk2xxx_spi_speed,
+            .speed_hz	= wk2xxx_spi_speed,
     }; 
 	if(!(fifolen>0)){
 		printk(KERN_ERR "%s,fifolen error!!\n", __func__);
@@ -494,7 +494,7 @@ static int wk2xxx_write_fifo(struct spi_device *spi,uint8_t port,uint8_t fifolen
     uint8_t transmit_fifo_data[MAX_RFCOUNT_SIZE+1]={0};
     struct spi_transfer index_xfer = {
             .len            = fifolen+1,
-            // .speed_hz	= wk2xxx_spi_speed,
+            .speed_hz	= wk2xxx_spi_speed,
     }; 
 	if(!(fifolen>0)){
 		printk(KERN_ERR "%s,fifolen error,fifolen:%d!!\n", __func__,fifolen);
@@ -1638,6 +1638,14 @@ static int wk2xxx_probe(struct spi_device *spi)
         printk(KERN_ALERT "%s!!--in--\n", __func__);
     #endif
     
+	/* Setup SPI bus */
+	spi->bits_per_word	= 8;
+	/* only supports mode 0 on WK2124 */
+	spi->mode		= spi->mode ? : SPI_MODE_0;
+	spi->max_speed_hz	= spi->max_speed_hz ? : 10000000;
+	ret = spi_setup(spi);
+	if (ret)
+		return ret;
     /* Alloc port structure */
 	s = devm_kzalloc(&spi->dev, sizeof(*s) +sizeof(struct wk2xxx_one) * NR_PORTS,GFP_KERNEL);
 	if (!s) {
@@ -1674,7 +1682,7 @@ static int wk2xxx_probe(struct spi_device *spi)
 
     }
     #endif
- 
+
     //Obtain the IRQ signal GPIO number and interrupt number
     irq = wk2xxx_spi_irq_parse_dt(&spi->dev,&s->irq_gpio_num);
 	if(irq<0){
@@ -1687,7 +1695,7 @@ static int wk2xxx_probe(struct spi_device *spi)
     /**********************test spi **************************************/
 
 	do{
-	    // wk2xxx_read_global_reg(spi,WK2XXX_GENA_REG,dat);
+	    wk2xxx_read_global_reg(spi,WK2XXX_GENA_REG,dat);
         wk2xxx_read_global_reg(spi,WK2XXX_GENA_REG,dat);
 		printk(KERN_ERR "wk2xxx_probe(0x30)  GENA = 0x%X\n",dat[0]);//GENA=0X30
 		wk2xxx_write_global_reg(spi,WK2XXX_GENA_REG,0xf5);
@@ -1697,8 +1705,6 @@ static int wk2xxx_probe(struct spi_device *spi)
 		wk2xxx_read_global_reg(spi,WK2XXX_GENA_REG,dat);
 		printk(KERN_ERR "wk2xxx_probe(0x3f)  GENA = 0x%X\n",dat[0]);//GENA=0X3f
         wk2xxx_write_global_reg(spi,WK2XXX_GENA_REG,0xf0);
-		wk2xxx_read_global_reg(spi,WK2XXX_GENA_REG,dat);
-		printk(KERN_ERR "wk2xxx_probe(0x3f)  GENA = 0x%X\n",dat[0]);//GENA=0X30
 	}while(0);
     /*Get interrupt number*/
     wk2xxx_write_global_reg(spi,WK2XXX_GENA_REG,0x0);
@@ -1710,7 +1716,7 @@ static int wk2xxx_probe(struct spi_device *spi)
         goto out_gpio;
     }
     /*Init kthread_worker  and kthread_work */
-   
+    
 #ifdef WK_WORK_KTHREAD
     kthread_init_worker(&(s->kworker));
 	kthread_init_work(&s->irq_work, wk2xxx_ist);

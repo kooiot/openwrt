@@ -10,7 +10,7 @@
  	sun8i-s3-olinuxino.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k2x.dts
-@@ -0,0 +1,622 @@
+@@ -0,0 +1,628 @@
 +/*
 + * Copyright (C) 2022 Dirk Chang <dirk@kooiot.com>
 + *
@@ -299,18 +299,19 @@
 +
 +&spi2 {
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&spi2_pc_pins>, <&spi2_irq_pins>;
++	pinctrl-0 = <&spi2_pc_pins>, <&spi2_irq_pins>; //, <&spi2_reset_pins>;
 +	status = "okay";
 +
 +	spi2_serial: spi2-serial@0 {
-+		compatible = "wkmic,wk2132spi";
-+		reg = <0>;
++		status = "okay";
++		compatible = "wkmic,wk2xxx_spi";
++		reg = <0x00>;
 +		spi-max-frequency = <10000000>;
 +		poll_mode = <0>;
 +		type = <0>;
 +		enable_dma = <0>;
-+		irq_gpio=<&pio 8 15 IRQ_TYPE_LEVEL_LOW>; /* PI15/EINT27 */
-+		status = "okay";
++		// reset_gpio = <&pio 8 9 GPIO_ACTIVE_HIGH>; /* PI9 */
++		irq_gpio=<&pio 8 15 IRQ_TYPE_LEVEL_LOW>; /* PI15 */
 +	};
 +
 +	mcp2515: mcp2515@0 {
@@ -439,6 +440,11 @@
 +	spi2_irq_pins: spi2-irq-pins {
 +		pins = "PI15", "PH2";
 +		function = "irq";
++	};
++
++	spi2_reset_pins: spi2-reset-pins {
++		pins = "PI9";
++		function = "gpio_out";
 +	};
 +
 +	wifi_rst: wifi-rst-pin {
