@@ -10,7 +10,7 @@
  	sun8i-s3-olinuxino.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k2.dts
-@@ -0,0 +1,625 @@
+@@ -0,0 +1,627 @@
 +/*
 + * Copyright (C) 2022 Dirk Chang <dirk@kooiot.com>
 + *
@@ -116,11 +116,13 @@
 +			gpios = <&pio 1 5 GPIO_ACTIVE_HIGH>; /* PB5 */
 +		};
 +
++		/*
 +		wk2xxx_reset_1 {
 +			gpio-export,name = "wk2xxx_reset_1";
 +			gpio-export,output=<1>;
-+			gpios = <&pio 8 9 GPIO_ACTIVE_LOW>; /* PI9 */
++			gpios = <&pio 8 9 GPIO_ACTIVE_LOW>; /* PI9 /
 +		};
++		*/
 +
 +		ap_reset {
 +			gpio-export,name = "ap_reset";
@@ -295,7 +297,7 @@
 +
 +&spi2 {
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&spi2_pc_pins>, <&spi2_irq_pins>; //, <&spi2_reset_pins>;
++	pinctrl-0 = <&spi2_pc_pins>, <&spi2_irq_pins>, <&spi2_reset_pins>;
 +	status = "okay";
 +	wk2xxx_spi: wk2xxx-spi@00 {
 +		status = "okay";
@@ -305,7 +307,7 @@
 +		poll_mode = <0>;
 +		type = <0>;
 +		enable_dma = <0>;
-+		// reset_gpio = <&pio 8 9 GPIO_ACTIVE_HIGH>; /* PI9 */
++		reset_gpio = <&pio 8 9 GPIO_ACTIVE_HIGH>; /* PI9 */
 +		irq_gpio=<&pio 8 15 IRQ_TYPE_LEVEL_LOW>; /* PI15 */
 +	};
 +};

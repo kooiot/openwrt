@@ -59,7 +59,7 @@ MODULE_LICENSE("Dual BSD/GPL");
 //#define WK_FlowControl_FUNCTION
 #define WK_WORK_KTHREAD
 //#define WK_RS485_FUNCTION
-//#define WK_RSTGPIO_FUNCTION
+#define WK_RSTGPIO_FUNCTION
 //#define WK_CSGPIO_FUNCTION
 /*************SPI control interface******************************/
 #define SPI_LEN_LIMIT       30    //MAX<=255
@@ -321,7 +321,7 @@ static int wk2xxx_read_global_reg(struct spi_device *spi,uint8_t reg,uint8_t *da
     int status;
     struct spi_transfer index_xfer = {
                 .len            = 2,
-                // .speed_hz	= wk2xxx_spi_speed,
+                .speed_hz	= wk2xxx_spi_speed,
     };
     mutex_lock(&wk2xxxs_reg_lock);
     status =0;
@@ -357,7 +357,7 @@ static int wk2xxx_write_global_reg(struct spi_device *spi,uint8_t reg,uint8_t da
     int status;
     struct spi_transfer index_xfer = {
             .len            = 2,
-            // .speed_hz	= wk2xxx_spi_speed,
+            .speed_hz	= wk2xxx_spi_speed,
     };
     mutex_lock(&wk2xxxs_reg_lock);
     #ifdef WK_CSGPIO_FUNCTION 
@@ -387,7 +387,7 @@ static int wk2xxx_read_slave_reg(struct spi_device *spi,uint8_t port,uint8_t reg
     int status;
     struct spi_transfer index_xfer = {
             .len            = 2,
-            // .speed_hz	= wk2xxx_spi_speed,
+            .speed_hz	= wk2xxx_spi_speed,
     };
     mutex_lock(&wk2xxxs_reg_lock);
     #ifdef WK_CSGPIO_FUNCTION 
@@ -424,7 +424,7 @@ static int wk2xxx_write_slave_reg(struct spi_device *spi,uint8_t port,uint8_t re
     int status;
     struct spi_transfer index_xfer = {
         .len            = 2,
-		// .speed_hz	= wk2xxx_spi_speed,
+		.speed_hz	= wk2xxx_spi_speed,
     };
     mutex_lock(&wk2xxxs_reg_lock);
     #ifdef WK_CSGPIO_FUNCTION 
@@ -457,7 +457,7 @@ static int wk2xxx_read_fifo(struct spi_device *spi,uint8_t port,uint8_t fifolen,
     uint8_t transmit_fifo_data[MAX_RFCOUNT_SIZE+1]={0};
     struct spi_transfer index_xfer = {
             .len            = fifolen+1,
-            //.speed_hz	= wk2xxx_spi_speed,
+            .speed_hz	= wk2xxx_spi_speed,
     }; 
 	if(!(fifolen>0)){
 		printk(KERN_ERR "%s,fifolen error!!\n", __func__);
@@ -494,7 +494,7 @@ static int wk2xxx_write_fifo(struct spi_device *spi,uint8_t port,uint8_t fifolen
     uint8_t transmit_fifo_data[MAX_RFCOUNT_SIZE+1]={0};
     struct spi_transfer index_xfer = {
             .len            = fifolen+1,
-            // .speed_hz	= wk2xxx_spi_speed,
+            .speed_hz	= wk2xxx_spi_speed,
     }; 
 	if(!(fifolen>0)){
 		printk(KERN_ERR "%s,fifolen error,fifolen:%d!!\n", __func__,fifolen);
@@ -907,14 +907,28 @@ static void wk2xxx_start_tx_proc(struct kthread_work *ws)
     struct uart_port *port = &(to_wk2xxx_one(ws, start_tx_work)->port);
     struct wk2xxx_port *s = dev_get_drvdata(port->dev);
 
+        // uint8_t gier,sifr0,sier0,gifr;
+
     uint8_t rx;
 	#ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!-port:%ld;--in--\n", __func__,one->port.iobase);
 	#endif
     mutex_lock(&wk2xxxs_lock);
+
+	// printk(KERN_ALERT "%s!!-port:%ld  spi->mode= 0x%x\n", __func__, one->port.iobase, s->spi_wk->mode);
+
     wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,&rx);
     rx |= WK2XXX_SIER_TFTRIG_IEN_BIT|WK2XXX_SIER_RFTRIG_IEN_BIT|WK2XXX_SIER_RXOUT_IEN_BIT; 
     wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,rx);
+
+		/*
+        wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GIFR_REG ,&gifr);
+        wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GIER_REG ,&gier);
+        wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIFR_REG,&sifr0);
+        wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,&sier0);
+        printk(KERN_ALERT "start_tx_proc!!-port:%ld....gifr:%x gier:%x sier:%x sifr:%x \n",one->port.iobase, gifr,gier,sier0,sifr0);
+		*/
+
     mutex_unlock(&wk2xxxs_lock); 
 }
 
@@ -1297,10 +1311,11 @@ static void conf_wk2xxx_subport(struct uart_port *port)//i
     wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_BAUD0_REG ,baud0);
     wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_BAUD1_REG ,baud1);
     wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_PRES_REG ,pres);
-	#ifdef _DEBUG_WK_FUNCTION
+	//#ifdef _DEBUG_WK_FUNCTION
         wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_BAUD0_REG,&baud1);
         wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_BAUD1_REG,&baud0);
         wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_PRES_REG,&pres);
+	#ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!---baud1:0x%x;baud0:0x%x;pres=0x%X.---\n", __func__,baud1,baud0,pres);
     #endif
     wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SPAGE_REG ,0);
@@ -1637,7 +1652,18 @@ static int wk2xxx_probe(struct spi_device *spi)
     #ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!--in--\n", __func__);
     #endif
+
+	// printk(KERN_ALERT "wk2xxx_probe  spi->mode= 0x%x\n", spi->mode);
     
+	/* Setup SPI bus */
+	spi->bits_per_word	= 8;
+	/* only supports mode 0 on WK2124 */
+	spi->mode		= spi->mode ? : SPI_MODE_0;
+	spi->max_speed_hz	= spi->max_speed_hz ? : 10000000;
+	ret = spi_setup(spi);
+	if (ret)
+		return ret;
+
     /* Alloc port structure */
 	s = devm_kzalloc(&spi->dev, sizeof(*s) +sizeof(struct wk2xxx_one) * NR_PORTS,GFP_KERNEL);
 	if (!s) {
@@ -1645,7 +1671,15 @@ static int wk2xxx_probe(struct spi_device *spi)
 		return -ENOMEM;
 	}
 	s->spi_wk = spi;
-    s->devtype=&wk2124_devtype;
+
+	if (of_device_is_compatible(spi->dev.of_node, "wkmic,wk2132_spi")) {
+		printk(KERN_ALERT "wk2xxx_probe as wkmic,wk2132_spi\n");
+		s->devtype=&wk2132_devtype;
+	} else {
+		// Default is wk2124
+		s->devtype=&wk2124_devtype;
+	}
+
     dev_set_drvdata(&spi->dev, s);
     #ifdef WK_RSTGPIO_FUNCTION
      //Obtain the GPIO number of RST signal
@@ -1687,7 +1721,7 @@ static int wk2xxx_probe(struct spi_device *spi)
     /**********************test spi **************************************/
 
 	do{
-	    // wk2xxx_read_global_reg(spi,WK2XXX_GENA_REG,dat);
+	    wk2xxx_read_global_reg(spi,WK2XXX_GENA_REG,dat);
         wk2xxx_read_global_reg(spi,WK2XXX_GENA_REG,dat);
 		printk(KERN_ERR "wk2xxx_probe(0x30)  GENA = 0x%X\n",dat[0]);//GENA=0X30
 		wk2xxx_write_global_reg(spi,WK2XXX_GENA_REG,0xf5);
@@ -1738,6 +1772,7 @@ static int wk2xxx_probe(struct spi_device *spi)
         }
     }
 
+	// FIXME: Should initial the ports as devtype's nr_uart
     printk(KERN_ALERT "wk2xxx_serial_init.\n");
     for(i =0;i<NR_PORTS;i++){
         s->p[i].line          = i;
@@ -1865,6 +1900,8 @@ static int wk2xxx_remove(struct spi_device *spi)
 static const struct of_device_id wkmic_spi_dt_match[] = {
         //{ .compatible = "wkmic,wk2124_spi",  },
         { .compatible = "wkmic,wk2xxx_spi", },
+		{ .compatible = "wkmic,wk2124_spi" },
+		{ .compatible = "wkmic,wk2132_spi" },
 		{ },
 };
 
