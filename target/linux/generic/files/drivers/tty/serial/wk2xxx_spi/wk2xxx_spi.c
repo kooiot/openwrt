@@ -633,6 +633,7 @@ static void wk2xxx_tx_chars(struct uart_port *port)
     uint8_t fsr,tfcnt,dat[1],txbuf[256]={0};
     int count,tx_count,i;
 	int len_tfcnt,len_limit,len_p=0;
+    uint8_t sier;
 	len_limit=SPI_LEN_LIMIT;
 	#ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!-port:%ld;--in--\n", __func__,one->port.iobase);
@@ -713,18 +714,17 @@ static void wk2xxx_tx_chars(struct uart_port *port)
             uart_write_wakeup(&one->port); 
         }
         if (uart_circ_empty(&one->port.state->xmit)){
-            wk2xxx_stop_tx(&one->port);
+			printk(KERN_ALERT "%s!!-port:%ld;--close port as uart_circ_empty()--\n", __func__,one->port.iobase);
+            // wk2xxx_stop_tx(&one->port);
+			wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,&sier);
+			sier&=~WK2XXX_SIER_TFTRIG_IEN_BIT;
+			wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,sier);
         }
     }
     #ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!-port:%ld;--exit--\n", __func__,one->port.iobase);
     #endif
 }
-
-
-
-
-
 
 static void wk2xxx_port_irq(struct wk2xxx_port *s, int portno)//
 {   
@@ -742,6 +742,8 @@ static void wk2xxx_port_irq(struct wk2xxx_port *s, int portno)//
         printk(KERN_ALERT "%s!!-port:%ld;--in--\n", __func__,one->port.iobase);
     #endif
 
+	// DIRK: added lock
+    mutex_lock(&wk2xxxs_lock);  
 
     #ifdef _DEBUG_WK_IRQ
         wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GIFR_REG ,&gifr);
@@ -769,7 +771,7 @@ static void wk2xxx_port_irq(struct wk2xxx_port *s, int portno)//
         
         if ((sifr & WK2XXX_SIFR_TFTRIG_INT_BIT)&&(sier & WK2XXX_SIER_TFTRIG_IEN_BIT)){
             wk2xxx_tx_chars(&one->port);
-            return;
+            break;
         }
         if (pass_counter++ > WK2XXX_ISR_PASS_LIMIT)
             break;
@@ -779,6 +781,8 @@ static void wk2xxx_port_irq(struct wk2xxx_port *s, int portno)//
             printk(KERN_ALERT "irq_app...........rx............tx  sifr:%x sier:%x port:%ld\n",sifr,sier,one->port.iobase);
         #endif
     } while ((sifr&(WK2XXX_SIFR_RXOVT_INT_BIT|WK2XXX_SIFR_RFTRIG_INT_BIT))||((sifr & WK2XXX_SIFR_TFTRIG_INT_BIT)&&(sier & WK2XXX_SIER_TFTRIG_IEN_BIT)));
+	// DIRK: added lock
+    mutex_unlock(&wk2xxxs_lock);  
     #ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!-port:%ld;--exit--\n", __func__,one->port.iobase);
     #endif
@@ -794,7 +798,11 @@ static void wk2xxx_ist(struct kthread_work *ws)
         printk(KERN_ALERT "%s!!---in--\n", __func__);
     #endif
 
+	// DIRK: added lock
+    mutex_lock(&wk2xxxs_global_lock);  
     wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GIFR_REG ,&gifr);
+	// DIRK: added lock
+    mutex_unlock(&wk2xxxs_global_lock);
     while(1){
 
         for (i = 0; i < s->devtype->nr_uart; ++i){
@@ -803,7 +811,11 @@ static void wk2xxx_ist(struct kthread_work *ws)
             }
         }
 
+		// DIRK: added lock
+		mutex_lock(&wk2xxxs_global_lock);  
         wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GIFR_REG ,&gifr);
+		// DIRK: added lock
+		mutex_unlock(&wk2xxxs_global_lock);
         if(!(gifr&0x0f)){
             break;
         }
@@ -907,7 +919,7 @@ static void wk2xxx_start_tx_proc(struct kthread_work *ws)
     struct uart_port *port = &(to_wk2xxx_one(ws, start_tx_work)->port);
     struct wk2xxx_port *s = dev_get_drvdata(port->dev);
 
-        // uint8_t gier,sifr0,sier0,gifr;
+    // uint8_t gier,sifr0,sier0,gifr;
 
     uint8_t rx;
 	#ifdef _DEBUG_WK_FUNCTION
@@ -921,13 +933,12 @@ static void wk2xxx_start_tx_proc(struct kthread_work *ws)
     rx |= WK2XXX_SIER_TFTRIG_IEN_BIT|WK2XXX_SIER_RFTRIG_IEN_BIT|WK2XXX_SIER_RXOUT_IEN_BIT; 
     wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,rx);
 
-		/*
-        wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GIFR_REG ,&gifr);
-        wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GIER_REG ,&gier);
-        wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIFR_REG,&sifr0);
-        wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,&sier0);
-        printk(KERN_ALERT "start_tx_proc!!-port:%ld....gifr:%x gier:%x sier:%x sifr:%x \n",one->port.iobase, gifr,gier,sier0,sifr0);
-		*/
+	// HACK. Read regs again to avoid send failure!!!! which I do not know why
+	// wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GIFR_REG ,&gifr);
+	// wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GIER_REG ,&gier);
+	// wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIFR_REG,&sifr0);
+	// wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,&sier0);
+	// printk(KERN_ALERT "start_tx_proc!!-port:%ld....gifr:%x gier:%x sier:%x sifr:%x \n",one->port.iobase, gifr,gier,sier0,sifr0);
 
     mutex_unlock(&wk2xxxs_lock); 
 }
@@ -1038,6 +1049,7 @@ static int wk2xxx_startup(struct uart_port *port)//i
 	#endif
 
     mutex_lock(&wk2xxxs_global_lock);  
+    mutex_lock(&wk2xxxs_lock);  
     wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GENA_REG,dat);
     gena=dat[0];
     switch (one->port.iobase){
@@ -1150,6 +1162,7 @@ static int wk2xxx_startup(struct uart_port *port)//i
 	#endif
 		/**********************************************************************/
 
+    mutex_unlock(&wk2xxxs_lock);
     mutex_unlock(&wk2xxxs_global_lock);
     uart_circ_clear(&one->port.state->xmit);
     wk2xxx_enable_ms(&one->port);
@@ -1172,6 +1185,7 @@ static void wk2xxx_shutdown(struct uart_port *port)
     #endif
 
     mutex_lock(&wk2xxxs_global_lock);
+    mutex_lock(&wk2xxxs_lock);
     wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GIER_REG,&gier);
     switch (one->port.iobase){
         case 1:
@@ -1196,6 +1210,7 @@ static void wk2xxx_shutdown(struct uart_port *port)
     }
 
     wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,0x0);
+    mutex_unlock(&wk2xxxs_lock);
 	mutex_unlock(&wk2xxxs_global_lock);
 
     #ifdef WK_WORK_KTHREAD
@@ -1280,6 +1295,10 @@ static void conf_wk2xxx_subport(struct uart_port *port)//i
 	baud1=one->new_baud1_reg;
 	pres=one->new_pres_reg;
 	fwcr=one->new_fwcr_reg;
+
+	// DIRK: added lock
+    mutex_lock(&wk2xxxs_lock);
+
     /* Disable Uart all interrupts */
 	wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG ,dat);
 	sier = dat[0];
@@ -1296,7 +1315,7 @@ static void conf_wk2xxx_subport(struct uart_port *port)//i
     wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_LCR_REG,lcr);
     #ifdef WK_FlowControl_FUNCTION
 	if(fwcr>0){  
-        printk(KERN_ALERT "%s!!---Flow Control  fwcr=0x%X\n",__func__,fwcr);
+        printk(KERN_ALERT "%s!!-port:%ld;---Flow Control  fwcr=0x%X\n",__func__,one->port.iobase,fwcr);
         // Configure flow control levels 
 		wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_FWCR_REG,fwcr);
         //Flow control halt level 0XF0, resume level 0X80 
@@ -1311,17 +1330,19 @@ static void conf_wk2xxx_subport(struct uart_port *port)//i
     wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_BAUD0_REG ,baud0);
     wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_BAUD1_REG ,baud1);
     wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_PRES_REG ,pres);
-	//#ifdef _DEBUG_WK_FUNCTION
+	#ifdef _DEBUG_WK_FUNCTION
         wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_BAUD0_REG,&baud1);
         wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_BAUD1_REG,&baud0);
         wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_PRES_REG,&pres);
-	#ifdef _DEBUG_WK_FUNCTION
-        printk(KERN_ALERT "%s!!---baud1:0x%x;baud0:0x%x;pres=0x%X.---\n", __func__,baud1,baud0,pres);
+        printk(KERN_ALERT "%s!!-port:%ld;---baud1:0x%x;baud0:0x%x;pres=0x%X.---\n", __func__,one->port.iobase,baud1,baud0,pres);
     #endif
     wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SPAGE_REG ,0);
     wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SCR_REG ,scr|(WK2XXX_SCR_RXEN_BIT|WK2XXX_SCR_TXEN_BIT));
 
     wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG ,sier);
+
+	// DIRK: added lock
+	mutex_unlock(&wk2xxxs_lock);
 
     #ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!-port:%ld;--exit--\n", __func__,one->port.iobase);
@@ -1339,7 +1360,7 @@ static void wk2xxx_termios( struct uart_port *port, struct ktermios *termios,str
 
 	#ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!-port:%ld;--in--\n", __func__,one->port.iobase);
-        printk(KERN_ALERT "%s!!---c_cflag:0x%x,c_iflag:0x%x.\n",__func__,termios->c_cflag,termios->c_iflag);
+        printk(KERN_ALERT "%s!!-port:%ld;---c_cflag:0x%x,c_iflag:0x%x.\n",__func__,one->port.iobase,termios->c_cflag,termios->c_iflag);
 	#endif
 	baud1=0;
 	baud0=0;
@@ -1354,10 +1375,10 @@ static void wk2xxx_termios( struct uart_port *port, struct ktermios *termios,str
 		baud0=(uint8_t)(temp&0xff);
 		temp=(((freq%(baud*16))*100)/(baud));
 		pres=(temp+100/2)/100;
-		printk(KERN_ALERT "%s!!---freq:%d,baudrate:%d\n",__func__,freq,baud);
-		printk(KERN_ALERT "%s!!---baud1:%x,baud0:%x,pres:%x\n",__func__,baud1,baud0,pres);
+		printk(KERN_ALERT "%s!!-port:%ld;---freq:%d,baudrate:%d\n",__func__,one->port.iobase,freq,baud);
+		printk(KERN_ALERT "%s!!-port:%ld;---baud1:%x,baud0:%x,pres:%x\n",__func__,one->port.iobase,baud1,baud0,pres);
 	}else{
-		printk(KERN_ALERT "the baud rate:%d is too high！ \n",baud);
+		printk(KERN_ALERT "%s!!-port:%ld;the baud rate:%d is too high！ \n",__func__,one->port.iobase,baud);
 	}
 	tty_termios_encode_baud_rate(termios, baud, baud);
 
@@ -1417,11 +1438,11 @@ static void wk2xxx_termios( struct uart_port *port, struct ktermios *termios,str
     }
     
 	if (termios->c_iflag & IXON){
-        printk(KERN_ALERT "%s!!---c_cflag:0x%x,IXON:0x%x.\n",__func__,termios->c_cflag,IXON);
+        printk(KERN_ALERT "%s!!-port:%ld;---c_cflag:0x%x,IXON:0x%x.\n",__func__,one->port.iobase,termios->c_cflag,IXON);
 
     }
 	if (termios->c_iflag & IXOFF){
-        printk(KERN_ALERT "%s!!---c_cflag:0x%x,IXOFF:0x%x.\n",__func__,termios->c_cflag,IXOFF);
+        printk(KERN_ALERT "%s!!-port:%ld;---c_cflag:0x%x,IXOFF:0x%x.\n",__func__,one->port.iobase,termios->c_cflag,IXOFF);
  
     }
     #endif
@@ -1719,6 +1740,8 @@ static int wk2xxx_probe(struct spi_device *spi)
     s->irq_gpio = irq;
 
     /**********************test spi **************************************/
+	// DIRK: Added lock
+    mutex_lock(&wk2xxxs_global_lock);  
 
 	do{
 	    wk2xxx_read_global_reg(spi,WK2XXX_GENA_REG,dat);
@@ -1737,6 +1760,9 @@ static int wk2xxx_probe(struct spi_device *spi)
     /*Get interrupt number*/
     wk2xxx_write_global_reg(spi,WK2XXX_GENA_REG,0x0);
     wk2xxx_read_global_reg(spi,WK2XXX_GENA_REG,dat);
+
+	// DIRK: Added lock
+	mutex_unlock(&wk2xxxs_global_lock);  
     if((dat[0]&0xf0)!=0x30){ 
         printk(KERN_ALERT "wk2xxx_probe(0x30)  GENA = 0x%X\n",dat[0]);
         printk(KERN_ALERT "The spi failed to read the register.!!!!\n");
@@ -1744,7 +1770,7 @@ static int wk2xxx_probe(struct spi_device *spi)
         goto out_gpio;
     }
     /*Init kthread_worker  and kthread_work */
-   
+    
 #ifdef WK_WORK_KTHREAD
     kthread_init_worker(&(s->kworker));
 	kthread_init_work(&s->irq_work, wk2xxx_ist);
