@@ -120,6 +120,22 @@ static int xr_usb_serial_alloc_minor(struct xr_usb_serial *xr_usb_serial)
 	return minor;
 }
 
+/*
+ * Try to bind minor number associate it with 'xr_usb_serial'.
+ */
+static int xr_usb_serial_set_minor(struct xr_usb_serial *xr_usb_serial, int minor)
+{
+	mutex_lock(&xr_usb_serial_table_lock);
+	if (!xr_usb_serial_table[minor]) {
+		xr_usb_serial_table[minor] = xr_usb_serial;
+		mutex_unlock(&xr_usb_serial_table_lock);
+		return minor;
+	}
+	mutex_unlock(&xr_usb_serial_table_lock);
+
+	return XR_USB_SERIAL_TTY_MINORS;
+}
+
 /* Release the minor number associated with 'xr_usb_serial'.  */
 static void xr_usb_serial_release_minor(struct xr_usb_serial *xr_usb_serial)
 {
@@ -1532,7 +1548,17 @@ made_compressed_probe:
 		goto alloc_fail;
 	}
 
-	minor = xr_usb_serial_alloc_minor(xr_usb_serial);
+	if (intf->dev.of_node) {
+		if (of_property_read_s32(intf->dev.of_node, "xr_tty_minor", &minor)) {
+			minor = xr_usb_serial_alloc_minor(xr_usb_serial);
+		} else {
+			dev_info(&intf->dev, "of_node:%pOF got minor:%d\n", intf->dev.of_node, minor);
+			minor = xr_usb_serial_set_minor(xr_usb_serial, minor);
+		}
+	} else {
+		minor = xr_usb_serial_alloc_minor(xr_usb_serial);
+	}
+
 	if (minor == XR_USB_SERIAL_TTY_MINORS) {
 		dev_err(&intf->dev, "no more free xr_usb_serial devices\n");
 		kfree(xr_usb_serial);
@@ -1712,12 +1738,12 @@ skip_countries:
 	dev_info(&intf->dev, "ttyXR_USB_SERIAL%d: USB XR_USB_SERIAL device\n", minor);
 	
 	xr_usb_serial->rs485mode = 0;
-	if (usb_dev->dev.of_node) {
-		if (of_property_read_bool(usb_dev->dev.of_node, "xr_485_mode")) {
+	if (intf->dev.of_node) {
+		if (of_property_read_bool(intf->dev.of_node, "xr_485_mode")) {
 			xr_usb_serial->rs485mode = 1;
-			dev_info(&usb_dev->dev, "of_node:%pOF using xr_485_mode\n", usb_dev->dev.of_node);
+			dev_info(&intf->dev, "of_node:%pOF using xr_485_mode\n", intf->dev.of_node);
 		} else {
-			dev_info(&usb_dev->dev, "of_node:%pOF has no xr_485_mode\n", usb_dev->dev.of_node);
+			dev_info(&intf->dev, "of_node:%pOF has no xr_485_mode\n", intf->dev.of_node);
 		}
 	} else {
 		dev_info(&usb_dev->dev, "no of_mode found\n");
