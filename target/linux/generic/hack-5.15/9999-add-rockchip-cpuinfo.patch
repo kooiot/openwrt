@@ -1,0 +1,30 @@
+--- a/drivers/soc/rockchip/Kconfig
++++ b/drivers/soc/rockchip/Kconfig
+@@ -5,6 +5,16 @@
+ # Rockchip Soc drivers
+ #
+ 
++config ROCKCHIP_CPUINFO
++	tristate "Rockchip cpuinfo support"
++	depends on (ROCKCHIP_EFUSE || ROCKCHIP_OTP) && (ARM64 || ARM)
++	help
++	  Say y here to enable Rockchip cpuinfo support.
++	  Set system_serial_low/high from eFuse ID.
++	  Serial can read from /proc/cpuinfo.
++
++	  If unsure, say N.
++
+ config ROCKCHIP_GRF
+ 	bool "Rockchip General Register Files support" if COMPILE_TEST
+ 	default y if ARCH_ROCKCHIP
+--- a/drivers/soc/rockchip/Makefile
++++ b/drivers/soc/rockchip/Makefile
+@@ -2,6 +2,8 @@
+ #
+ # Rockchip Soc drivers
+ #
++
++obj-$(CONFIG_ROCKCHIP_CPUINFO) += rockchip-cpuinfo.o
+ obj-$(CONFIG_ROCKCHIP_GRF) += grf.o
+ obj-$(CONFIG_ROCKCHIP_IODOMAIN) += io-domain.o
+ obj-$(CONFIG_ROCKCHIP_PM_DOMAINS) += pm_domains.o
