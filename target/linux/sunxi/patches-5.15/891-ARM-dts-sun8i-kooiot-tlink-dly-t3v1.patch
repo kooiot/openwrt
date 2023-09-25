@@ -220,7 +220,7 @@
 +	#address-cells = <1>;
 +	#size-cells = <0>;
 +
-+	xr22800: hub@1 {
++	xr22800: xr22800@1 {
 +		compatible = "usb4e2,800";
 +		reg = <1>;
 +		#address-cells = <1>;
@@ -238,7 +238,7 @@
 +	#address-cells = <1>;
 +	#size-cells = <0>;
 +
-+	xr22804: hub@1 {
++	xr22804: xr22804@1 {
 +		compatible = "usb4e2,804";
 +		reg = <1>;
 +		#address-cells = <1>;
@@ -248,21 +248,45 @@
 +			reg = <1>;
 +			local-mac-address = [00 00 00 00 00 00];
 +		};
-+		uart@2 {
++		xr_uart1: xr-uart1@2 {
 +			reg = <2>;
-+			xr_485_mode;
++			#address-cells = <2>;
++			#size-cells = <0>;
++			xr-uart1-interface@0 {	/* interface 0 of configuration 1 */
++				reg = <0 1>;
++				xr_485_mode;
++				xr_tty_minor=<0>;
++			};
 +		};
-+		uart@3 {
++		xr_uart2: xr-uart2@3 {
 +			reg = <3>;
-+			xr_485_mode;
++			#address-cells = <2>;
++			#size-cells = <0>;
++			xr-uart2-interface@0 {	/* interface 0 of configuration 1 */
++				reg = <0 1>;
++				xr_485_mode;
++				xr_tty_minor=<1>;
++			};
 +		};
-+		uart@4 {
++		xr_uart3: xr-uart3@4 {
 +			reg = <4>;
-+			xr_485_mode;
++			#address-cells = <2>;
++			#size-cells = <0>;
++			xr-uart3-interface@0 {	/* interface 0 of configuration 1 */
++				reg = <0 1>;
++				xr_485_mode;
++				xr_tty_minor=<2>;
++			};
 +		};
-+		uart@5 {
++		xr_uart4: xr-uart4@5 {
 +			reg = <5>;
-+			xr_485_mode;
++			#address-cells = <2>;
++			#size-cells = <0>;
++			xr-uart4-interface@0 {	/* interface 0 of configuration 1 */
++				reg = <0 1>;
++				xr_485_mode;
++				xr_tty_minor=<3>;
++			};
 +		};
 +	};
 +};
