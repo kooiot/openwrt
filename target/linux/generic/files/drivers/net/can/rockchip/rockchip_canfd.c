@@ -546,11 +546,17 @@ static int rockchip_canfd_start_xmit(struct sk_buff *skb,
 	}
 
 	if (rcan->txtorx && rcan->mode <= ROCKCHIP_RK3568_CAN_MODE && cf->can_id & CAN_EFF_FLAG)
+	{
+		// netdev_err(ndev, "%s: SET MODE_RXSTX\n", __func__);
 		rockchip_canfd_write(rcan, CAN_MODE,
 				     rockchip_canfd_read(rcan, CAN_MODE) | MODE_RXSTX);
+	}
 	else
+	{
+		// netdev_err(ndev, "%s: CLEAR MODE_RXSTX\n", __func__);
 		rockchip_canfd_write(rcan, CAN_MODE,
 				     rockchip_canfd_read(rcan, CAN_MODE) & (~MODE_RXSTX));
+	}
 
 	if (!rcan->txtorx && rcan->mode <= ROCKCHIP_RK3568_CAN_MODE && cf->can_id & CAN_EFF_FLAG) {
 		/* Two frames are sent consecutively.
@@ -1130,6 +1136,7 @@ static int rockchip_canfd_probe(struct platform_device *pdev)
 		rcan->txtorx = 0;
 		netif_napi_add(ndev, &rcan->napi, rockchip_canfd_rx_poll, 6);
 	}
+	dev_err(&pdev->dev, "%s: rcan->txtorx(%d)\n", __func__, rcan->txtorx);
 
 	ndev->netdev_ops = &rockchip_canfd_netdev_ops;
 	ndev->irq = irq;
