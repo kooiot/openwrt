@@ -1,0 +1,39 @@
+--- a/drivers/net/usb/usbnet.c	2021-12-12 13:09:19.991570759 +0800
++++ b/drivers/net/usb/usbnet.c	2021-12-12 13:09:09.635611101 +0800
+@@ -33,6 +33,7 @@
+ #include <linux/slab.h>
+ #include <linux/kernel.h>
+ #include <linux/pm_runtime.h>
++#include <linux/of.h>
+ 
+ /*-------------------------------------------------------------------------*/
+ 
+@@ -1637,6 +1638,10 @@
+ 	const char			*name;
+ 	struct usb_driver 	*driver = to_usb_driver(udev->dev.driver);
+ 
++	struct device* pdev;
++	char buf[IFNAMSIZ];
++	int alias_id;
++
+ 	/* usbnet already took usb runtime pm, so have to enable the feature
+ 	 * for usb interface, otherwise usb_autopm_get_interface may return
+ 	 * failure if RUNTIME_PM is enabled.
+@@ -1782,6 +1787,17 @@
+ 		}
+ 	}
+ 
++	pdev = &dev->udev->dev;
++	if (pdev->of_node) {
++		alias_id = of_alias_get_id(pdev->of_node, "ethernet");
++		if (alias_id >= 0) {
++			dev_info(pdev, "Got alias ethernet%d node:%pOF\n", alias_id, pdev->of_node);
++			snprintf(buf, IFNAMSIZ, "eth%d", alias_id);
++			strlcpy(dev->net->name, buf, IFNAMSIZ);
++			// dev->net->ifindex = alias_id;
++		}
++	}
++
+ 	status = register_netdev (net);
+ 	if (status)
+ 		goto out5;

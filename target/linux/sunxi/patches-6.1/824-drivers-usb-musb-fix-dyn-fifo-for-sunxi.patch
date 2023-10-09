@@ -1,0 +1,13 @@
+--- a/drivers/usb/musb/sunxi.c
++++ b/drivers/usb/musb/sunxi.c
+@@ -220,6 +220,10 @@
+ 	sunxi_musb = musb;
+ 	musb->phy = glue->phy;
+ 	musb->xceiv = glue->xceiv;
++	musb->dyn_fifo = true;
++	if (musb->config) {
++		musb->dyn_fifo = musb->config->dyn_fifo;
++	}
+ 
+ 	if (test_bit(SUNXI_MUSB_FL_HAS_SRAM, &glue->flags)) {
+ 		ret = sunxi_sram_claim(musb->controller->parent);
