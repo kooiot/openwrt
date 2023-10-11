@@ -27,7 +27,7 @@
 #include <linux/platform_device.h>
 #include <asm/irq.h>
 #include <asm/io.h>
-#include "linux/version.h"
+#include <linux/version.h>
 #include <linux/regmap.h>
 #include <linux/uaccess.h>
 #include <linux/kthread.h>
@@ -1317,8 +1317,11 @@ static void conf_wk2xxx_subport(struct uart_port *port)//i
     #endif
 }
 
-
-static void wk2xxx_termios( struct uart_port *port, struct ktermios *termios,struct ktermios *old)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+static void wk2xxx_termios( struct uart_port *port, struct ktermios *termios, const struct ktermios *old)
+#else
+static void wk2xxx_termios( struct uart_port *port, struct ktermios *termios, struct ktermios *old)
+#endif
 {
 
     struct wk2xxx_one *one = to_wk2xxx_one(port, port);

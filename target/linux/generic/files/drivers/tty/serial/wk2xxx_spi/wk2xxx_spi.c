@@ -34,6 +34,7 @@
 #include <linux/of_gpio.h>
 #include <linux/gpio.h>
 
+#include <linux/version.h>
 #include <linux/workqueue.h>
 #include <linux/platform_device.h>
 #include <linux/of.h>
@@ -1286,8 +1287,13 @@ static void conf_wk2xxx_subport(struct uart_port *port)//i
 }
 
 // change speed
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+static void wk2xxx_termios( struct uart_port *port, struct ktermios *termios,
+		const struct ktermios *old)
+#else
 static void wk2xxx_termios( struct uart_port *port, struct ktermios *termios,
 		struct ktermios *old)
+#endif
 {
 	struct wk2xxx_port *s = container_of(port, struct wk2xxx_port, port);
 	int baud = 0;
@@ -1609,7 +1615,11 @@ static int wk2xxx_probe(struct spi_device *spi)
 	return status;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+static void wk2xxx_remove(struct spi_device *spi)
+#else
 static int wk2xxx_remove(struct spi_device *spi)
+#endif
 {
 	int i;
 #ifdef _DEBUG_WK2XXX
@@ -1628,7 +1638,9 @@ static int wk2xxx_remove(struct spi_device *spi)
    	printk(KERN_ERR "-wk2xxx_remove()------exit---\n");
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)
 	return 0;
+#endif
 }
 
 static const struct of_device_id wk2xxx_of_match[] = {
