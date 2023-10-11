@@ -383,6 +383,8 @@ define KernelPackage/drm-sun8i
 	CONFIG_DRM_SUN8I_MIXER \
 	CONFIG_DRM_SUN8I_TCON_TOP
   FILES:= \
+	$(LINUX_DIR)/drivers/gpu/drm/drm_dma_helper.ko \
+	$(LINUX_DIR)/drivers/gpu/drm/drm_shmem_helper.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/arm/mali-dp.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/scheduler/gpu-sched.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/lima/lima.ko \
