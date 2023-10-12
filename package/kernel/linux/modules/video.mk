@@ -409,7 +409,7 @@ $(eval $(call KernelPackage,drm-sun8i))
 define KernelPackage/drm-sun8i-hdmi
   SUBMENU:=$(VIDEO_MENU)
   TITLE:=SUN8I SoCs HDMI DRM support
-  DEPENDS:=+kmod-sound-core kmod-drm-sun8i
+  DEPENDS:=+kmod-sound-core +kmod-drm-sun8i
   KCONFIG:= \
     CONFIG_DRM_SUN4I_HDMI \
 	CONFIG_DRM_SUN4I_HDMI_AUDIO=y \
@@ -440,7 +440,7 @@ $(eval $(call KernelPackage,drm-sun8i-hdmi))
 define KernelPackage/drm-sun8i-dsi
   SUBMENU:=$(VIDEO_MENU)
   TITLE:=SUN8I SoCs LVDS DRM support
-  DEPENDS:=+kmod-backlight-pwm kmod-drm-sun8i +kmod-pwm-sun8i
+  DEPENDS:=+kmod-backlight-pwm +kmod-drm-sun8i +kmod-pwm-sun8i
   KCONFIG:= \
 	CONFIG_DRM_MIPI_DBI \
 	CONFIG_DRM_MIPI_DSI=y \
@@ -453,7 +453,7 @@ define KernelPackage/drm-sun8i-dsi
 	$(LINUX_DIR)/drivers/phy/allwinner/phy-sun6i-mipi-dphy.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.ko \
 	$(LINUX_DIR)/drivers/gpu/drm/panel/panel-simple.ko \
-	$(LINUX_DIR)/drivers/gpu/drm/drm_dp_aux_bus.ko@gt5.10 \
+	$(LINUX_DIR)/drivers/gpu/drm/drm_dp_aux_bus.ko@le5.15 \
 	$(LINUX_DIR)/drivers/gpu/drm/panel/panel-lvds.ko
   AUTOLOAD:=$(call AutoLoad,08,phy-sun6i-mipi-dphy sun6i_mipi_dsi panel-simple panel-lvds,1)
 endef
