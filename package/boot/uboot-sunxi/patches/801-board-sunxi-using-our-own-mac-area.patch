@@ -1,5 +1,14 @@
 --- a/board/sunxi/board.c
 +++ b/board/sunxi/board.c
+@@ -818,7 +818,7 @@
+ 		if ((sid[3] & 0xffffff) == 0)
+ 			sid[3] |= 0x800000;
+
+-		for (i = 0; i < 4; i++) {
++		for (i = 0; i < 8; i++) {
+ 			sprintf(ethaddr, "ethernet%d", i);
+ 			if (!fdt_get_alias(fdt, ethaddr))
+ 				continue;
 @@ -819,12 +819,15 @@
  				continue;
 
