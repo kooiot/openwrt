@@ -1,0 +1,66 @@
+#!/bin/sh
+
+if [ "$(id -u)" != "0" ]; then
+   echo "Script must be run as root !"
+   exit 0
+fi
+
+BOARD_NAME=`cat /tmp/sysinfo/board_name  | sed "s/\,/_/g"`
+
+
+echo ""
+date
+echo -e "\033[36m==============================="
+echo "Update U-Boot in eMMC"
+echo "Board Name: $BOARD_NAME"
+echo -e "===============================\033[37m"
+echo ""
+
+UBOOT_BIN_FILE=${1}
+
+EMMC_DISK="/dev/mmcblk1"
+
+# If blk1 not there try blk2 (in R40 borads)
+if [ ! -b ${EMMC_DISK} ]; then
+	EMMC_DISK="/dev/mmcblk2"
+fi
+
+if [ ! -b ${EMMC_DISK}boot0 ]; then
+    echo "Error: EMMC not found."
+    exit 1
+fi
+
+if [ ! -f ${UBOOT_BIN_FILE} ]; then
+    echo "Error: ${UBOOT_BIN_FILE} not found."
+    exit 1
+fi
+
+echo ""
+echo -n "WARNING: EMMC UBOOT WILL BE UPDATED !, Continue (y/N)?  "
+read -n 1 ANSWER
+
+if [ ! "${ANSWER}" = "y" ] ; then
+	echo "."
+	echo "Canceled.."
+	exit 0
+fi
+echo ""
+#----------------------------------------------------------
+
+echo ""
+echo "Update u-boot to EMMC ..."
+dd if=${UBOOT_BIN_FILE} of=${EMMC_DISK} bs=1k seek=8 > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+    echo "ERROR installing u-boot."
+    exit 1
+fi
+sync
+#************************************************************************
+
+echo ""
+echo -e "\033[36m*******************************"
+echo "Uboot has been updated to EMMC."
+echo -e "*******************************\033[37m"
+echo ""
+
+exit 0

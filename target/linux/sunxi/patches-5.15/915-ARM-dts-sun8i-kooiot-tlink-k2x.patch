@@ -10,7 +10,7 @@
  	sun8i-r40-tlink-nano-a40i.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k2x.dts
-@@ -0,0 +1,622 @@
+@@ -0,0 +1,623 @@
 +/*
 + * Copyright (C) 2022 Dirk Chang <dirk@kooiot.com>
 + *
@@ -41,6 +41,7 @@
 +		serial6 = &uart7;
 +		ethernet0 = &emac;
 +		ethernet1 = &gmac;
++		ethernet2 = &xr819;
 +		led-boot = &status_led;
 +		led-failsafe = &status_led;
 +		led-upgrade = &status_led;
@@ -413,7 +414,7 @@
 +		interrupt-parent = <&pio>;
 +		interrupts = <7 7 IRQ_TYPE_EDGE_RISING>; /* PH7 */
 +		interrupt-names = "host-wake";
-+		local-mac-address = [dc 44 6d c0 ff ee];
++		local-mac-address = [b0 c9 1a 2b 3c 4d];
 +	};
 +};
 +
