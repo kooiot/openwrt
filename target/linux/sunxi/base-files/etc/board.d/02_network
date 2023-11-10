@@ -70,7 +70,7 @@ kooiot,tlink-r1)
 	;;
 kooiot,tlink-k2x)
 	ucidef_set_interface_lan "eth0"
-	ucidef_set_interface "lan1" device "eth1" protocol "static"
+	ucidef_set_interface "lan2" device "eth1" protocol "static"
 	;;
 kooiot,tlink-k1)
 	ucidef_set_interface_lan "eth0 eth1"
@@ -80,9 +80,9 @@ kooiot,tlink-m408|\
 kooiot,tlink-m416)
 #	tlink_setup_macs
 	ucidef_set_interface_lan "eth0"
-	ucidef_set_interface "lan1" device "eth1" protocol "static"
-	ucidef_set_interface "lan2" device "eth2" protocol "static"
-	ucidef_set_interface "lan3" device "eth3" protocol "static"
+	ucidef_set_interface "lan2" device "eth1" protocol "static"
+	ucidef_set_interface "lan3" device "eth2" protocol "static"
+	ucidef_set_interface "lan4" device "eth3" protocol "static"
 	;;
 kooiot,tlink-s1)
 	ucidef_set_interface_lan "eth0"
