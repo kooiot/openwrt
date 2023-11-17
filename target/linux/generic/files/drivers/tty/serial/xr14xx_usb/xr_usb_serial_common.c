@@ -126,7 +126,7 @@ static int xr_usb_serial_alloc_minor(struct xr_usb_serial *xr_usb_serial)
 static int xr_usb_serial_set_minor(struct xr_usb_serial *xr_usb_serial, int minor)
 {
 	mutex_lock(&xr_usb_serial_table_lock);
-	if (!xr_usb_serial_table[minor]) {
+	if (!xr_usb_serial_table[minor] || xr_usb_serial_table[minor]->disconnected) {
 		xr_usb_serial_table[minor] = xr_usb_serial;
 		mutex_unlock(&xr_usb_serial_table_lock);
 		return minor;
@@ -140,7 +140,8 @@ static int xr_usb_serial_set_minor(struct xr_usb_serial *xr_usb_serial, int mino
 static void xr_usb_serial_release_minor(struct xr_usb_serial *xr_usb_serial)
 {
 	mutex_lock(&xr_usb_serial_table_lock);
-	xr_usb_serial_table[xr_usb_serial->minor] = NULL;
+	if (xr_usb_serial_table[xr_usb_serial->minor] == xr_usb_serial)
+		xr_usb_serial_table[xr_usb_serial->minor] = NULL;
 	mutex_unlock(&xr_usb_serial_table_lock);
 }
 
@@ -506,7 +507,7 @@ static void xr_usb_serial_read_bulk_callback(struct urb *urb)
 					rb->index, urb->actual_length);
 	set_bit(rb->index, &xr_usb_serial->read_urbs_free);
 
-	if (!xr_usb_serial->dev) {
+	if (!xr_usb_serial->dev || xr_usb_serial->disconnected) {
 		dev_dbg(&xr_usb_serial->data->dev, "%s - disconnected\n", __func__);
 		return;
 	}
@@ -756,7 +757,7 @@ static int xr_usb_serial_tty_write(struct tty_struct *tty,
 	}
 	wb = &xr_usb_serial->wb[wbn];
 
-	if (!xr_usb_serial->dev) {
+	if (!xr_usb_serial->dev || xr_usb_serial->disconnected) {
 		wb->use = 0;
 		spin_unlock_irqrestore(&xr_usb_serial->write_lock, flags);
 		return -ENODEV;
@@ -1873,6 +1874,15 @@ static void xr_usb_serial_disconnect(struct usb_interface *intf)
 	device_remove_file(&xr_usb_serial->control->dev, &dev_attr_bmCapabilities);
 	usb_set_intfdata(xr_usb_serial->control, NULL);
 	usb_set_intfdata(xr_usb_serial->data, NULL);
+
+	// DIRK remove gpio
+#ifdef CONFIG_GPIOLIB
+	if (xr_usb_serial->rv_gpio_created == 0) {
+		gpiochip_remove(&xr_usb_serial->xr_gpio);
+		xr_usb_serial->rv_gpio_created = -1;
+	}
+#endif
+
 	mutex_unlock(&xr_usb_serial->mutex);
 
 	tty = tty_port_tty_get(&xr_usb_serial->port);
