@@ -73,7 +73,7 @@ tlink_csq_leds_mixed()
 		tlink_led_echo "green:gs" 255
 		tlink_led_echo "red:bs" 0
 	else
-		tlink_led_echo "red:bs" 1
+		tlink_led_echo "red:bs" 255
 		if [ $CSQ -ge 10 ]
 		then
 			tlink_led_echo "green:gs" 255

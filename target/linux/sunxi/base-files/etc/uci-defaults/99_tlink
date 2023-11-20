@@ -67,6 +67,14 @@ tlink_add_4g_wan() {
 		;;
 	esac
 
+	# detect fibocom NL668
+	lsusb -d "1508:1001" > /dev/null
+	if [ $? -eq 0 ]
+	then
+		AT_PORT='/dev/ttyUSB1'
+		AT_PORT_INFO='/dev/ttyUSB2'
+	fi
+
 	uci set network.4g_wan='interface'
 	uci set network.4g_wan.service='umts'
 	uci set network.4g_wan.proto='3g'
@@ -159,8 +167,8 @@ tlink_init_4g() {
 
 tlink_add_5g_wan() {
 	# detect port by lsusb
-	local AT_PORT_INFO='/dev/ttyUSB1'
-	local AT_PORT='/dev/ttyUSB0'
+	local AT_PORT_INFO='/dev/ttyUSB2'
+	local AT_PORT='/dev/ttyUSB3'
 	lsusb -d "2dee:4d52" > /dev/null
 	if [ $? -eq 0 ]
 	then
@@ -198,6 +206,15 @@ tlink_add_5g_wan() {
 }
 
 tlink_init_5g() {
+	# Fibcom NL668 using ppp
+	lsusb -d "1508:1001" > /dev/null
+	if [ $? -eq 0 ]
+	then
+		echo "Fibocom NL668 found!" > /dev/kmsg
+		tlink_add_4g_wan
+		return
+	fi
+
 	[ -e /dev/cdc-wdm0 ] && {
 		# QMI interface
 		echo "QMI module found!!!" > /dev/kmsg
