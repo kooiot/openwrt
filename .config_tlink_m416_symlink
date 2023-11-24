@@ -2774,6 +2774,7 @@ CONFIG_PACKAGE_process-monitor=y
 # CONFIG_PACKAGE_robot-server is not set
 # CONFIG_PACKAGE_robot-web is not set
 # CONFIG_PACKAGE_start-stop-daemon is not set
+CONFIG_PACKAGE_xr-usb-watch=y
 # end of Utilities
 
 # CONFIG_PACKAGE_asw-iot-greengrass is not set

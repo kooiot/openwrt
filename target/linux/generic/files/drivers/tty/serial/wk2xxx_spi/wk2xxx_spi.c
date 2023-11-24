@@ -77,9 +77,9 @@ MODULE_LICENSE("Dual BSD/GPL");
 
 
 
-static DEFINE_MUTEX(wk2xxxs_lock);               
-static DEFINE_MUTEX(wk2xxxs_reg_lock);              
-static DEFINE_MUTEX(wk2xxxs_global_lock);
+static DEFINE_MUTEX(wk2xxxs_lock);          // Lock slave write reg    
+static DEFINE_MUTEX(wk2xxxs_reg_lock);      // Lock SPI reg reading
+static DEFINE_MUTEX(wk2xxxs_global_lock);	// Lock global write reg
 
 /******************************************/
 #define 	NR_PORTS 	                4         
@@ -1049,7 +1049,6 @@ static int wk2xxx_startup(struct uart_port *port)//i
 	#endif
 
     mutex_lock(&wk2xxxs_global_lock);  
-    mutex_lock(&wk2xxxs_lock);  
     wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GENA_REG,dat);
     gena=dat[0];
     switch (one->port.iobase){
@@ -1123,6 +1122,10 @@ static int wk2xxx_startup(struct uart_port *port)//i
 			printk(KERN_ALERT ":%s！！bad iobase3: %d.\n",__func__, (uint8_t)one->port.iobase);
 			break;
 	}   
+    mutex_unlock(&wk2xxxs_global_lock); // DIRK: Release Lock earilier
+
+	// DIRK: added lock
+    mutex_lock(&wk2xxxs_lock);
     wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,dat);
     sier = dat[0];
     sier &= ~WK2XXX_SIER_TFTRIG_IEN_BIT;
@@ -1162,10 +1165,12 @@ static int wk2xxx_startup(struct uart_port *port)//i
 	#endif
 		/**********************************************************************/
 
-    mutex_unlock(&wk2xxxs_lock);
-    mutex_unlock(&wk2xxxs_global_lock);
+    // mutex_unlock(&wk2xxxs_global_lock); DIRK: moved to earilier
     uart_circ_clear(&one->port.state->xmit);
     wk2xxx_enable_ms(&one->port);
+
+	// DIRK: added lock
+    mutex_unlock(&wk2xxxs_lock);
 
     #ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!-port:%ld;--exit--\n", __func__,one->port.iobase);
@@ -1185,7 +1190,6 @@ static void wk2xxx_shutdown(struct uart_port *port)
     #endif
 
     mutex_lock(&wk2xxxs_global_lock);
-    mutex_lock(&wk2xxxs_lock);
     wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GIER_REG,&gier);
     switch (one->port.iobase){
         case 1:
@@ -1208,10 +1212,11 @@ static void wk2xxx_shutdown(struct uart_port *port)
             printk(KERN_ALERT "%s!! (GIER)bad iobase %d\n",__func__, (uint8_t)one->port.iobase);;
             break;
     }
-
-    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,0x0);
-    mutex_unlock(&wk2xxxs_lock);
 	mutex_unlock(&wk2xxxs_global_lock);
+
+    mutex_lock(&wk2xxxs_lock); // DIRK: added lock
+    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,0x0);
+    mutex_unlock(&wk2xxxs_lock); // DIRK: added lock
 
     #ifdef WK_WORK_KTHREAD
         kthread_flush_work(&one->start_tx_work);
@@ -1763,6 +1768,7 @@ static int wk2xxx_probe(struct spi_device *spi)
 
 	// DIRK: Added lock
 	mutex_unlock(&wk2xxxs_global_lock);  
+
     if((dat[0]&0xf0)!=0x30){ 
         printk(KERN_ALERT "wk2xxx_probe(0x30)  GENA = 0x%X\n",dat[0]);
         printk(KERN_ALERT "The spi failed to read the register.!!!!\n");
@@ -1798,7 +1804,7 @@ static int wk2xxx_probe(struct spi_device *spi)
         }
     }
 
-	// FIXME: Should initial the ports as devtype's nr_uart
+	// DIRK FIXME: Should initial the ports as devtype's nr_uart
     printk(KERN_ALERT "wk2xxx_serial_init.\n");
     for(i =0;i<NR_PORTS;i++){
         s->p[i].line          = i;
