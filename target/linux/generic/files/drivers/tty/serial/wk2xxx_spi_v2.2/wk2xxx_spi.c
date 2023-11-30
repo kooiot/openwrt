@@ -1109,6 +1109,7 @@ static int wk2xxx_startup(struct uart_port *port)//i
 	if (s->suspending)
 		return 0;   
 	s->force_end_work = 0;
+	sprintf(b, "wk2xxx-%d", (uint8_t)s->port.iobase);
 	s->workqueue = create_workqueue(b);
 
 	if (!s->workqueue) 
@@ -1271,7 +1272,6 @@ static void wk2xxx_shutdown(struct uart_port *port)
 
 	uint8_t gena,dat[1];
 	struct wk2xxx_port *s = container_of(port,struct wk2xxx_port,port);
-	struct wk2xxx_priv_data *priv_data = dev_get_drvdata(port->dev);
 #ifdef _DEBUG_WK_FUNCTION
 	printk(KERN_ALERT "%s!!-port:%ld;--in--\n", __func__,s->port.iobase);
 #endif
@@ -1288,10 +1288,6 @@ static void wk2xxx_shutdown(struct uart_port *port)
 	if (s->port.irq)
 	{    
 		free_irq(s->port.irq, s);//释放中断
-	}
-	if (priv_data->rst_gpio > 0 )
-	{
-		gpio_free(priv_data->rst_gpio);
 	}
 	mutex_lock(&wk2xxxs_global_lock);
 	wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GENA,dat);
@@ -1321,7 +1317,6 @@ static void wk2xxx_shutdown(struct uart_port *port)
 
 	mutex_unlock(&wk2xxxs_global_lock);
 
-	devm_kfree(port->dev,priv_data);
 #ifdef _DEBUG_WK_FUNCTION
 	printk(KERN_ALERT "%s!!-port:%ld;--exit--\n", __func__,s->port.iobase);
 #endif
@@ -1558,7 +1553,7 @@ static void wk2xxx_termios( struct uart_port *port, struct ktermios *termios,
 	fwcr=(termios->c_cflag&CRTSCTS)?0X30:0;
 
 
-#ifdef _DEBUG_WK2XXX
+#ifdef _DEBUG_WK_VALUE
 	printk(KERN_ALERT "wk2xxx_termios()----port:%ld--lcr:0x%x- cflag:0x%x-CSTOPB:0x%x,PARENB:0x%x,PARODD:0x%x--\n",s->port.iobase,lcr,cflag,CSTOPB,PARENB,PARODD);
 #endif
 
@@ -1568,8 +1563,8 @@ static void wk2xxx_termios( struct uart_port *port, struct ktermios *termios,
 	s->new_lcr = lcr;
 	s->new_fwcr = fwcr;
 
-#ifdef _DEBUG_WK2XXX
-	printk(KERN_ALERT "wk2xxx_termios()----port:%lx--NEW_FWCR-\n",s->port.iobase,s->new_fwcr);
+#ifdef _DEBUG_WK_VALUE
+	printk(KERN_ALERT "wk2xxx_termios()----port:%ld,--NEW_FWCR:%x-\n",s->port.iobase,s->new_fwcr);
 #endif
 
 	conf_wk2xxx_subport(&s->port);
@@ -1773,18 +1768,18 @@ static int wk2xxx_probe(struct spi_device *spi)
 	int status, irq, ret;
 	uint8_t dat[1];
 	const struct wk2xxx_quirks *quirks;
-	struct wk2xxx_priv_data *priv_data;
+	struct wk2xxx_priv_data *priv;
 #ifdef _DEBUG_WK_FUNCTION
 	printk(KERN_ALERT "%s!!--in--\n", __func__);
 #endif
 
 	/* Alloc port structure */
-	priv_data = devm_kzalloc(&spi->dev, sizeof(*priv_data),GFP_KERNEL);
-	if (!priv_data) {
+	priv = devm_kzalloc(&spi->dev, sizeof(*priv),GFP_KERNEL);
+	if (!priv) {
 	    printk(KERN_ALERT "wk2xxx_probe(devm_kzalloc) fail.\n");
 		return -ENOMEM;
 	}
-	dev_set_drvdata(&spi->dev, priv_data);
+	dev_set_drvdata(&spi->dev, priv);
 
 	do
 	{
@@ -1807,17 +1802,17 @@ static int wk2xxx_probe(struct spi_device *spi)
 
 #ifdef WK_RSTGPIO_FUNCTION
 	//Obtain the GPIO number of RST signal
-	ret=wk2xxx_spi_rstgpio_parse_dt(&spi->dev,&priv_data->rst_gpio);
+	ret=wk2xxx_spi_rstgpio_parse_dt(&spi->dev,&priv->rst_gpio);
 	if(ret!=0){
-		printk(KERN_ALERT "wk2xxx_probe(rst_gpio)  rst_gpio= 0x%d\n",priv_data->rst_gpio);
-		ret=priv_data->rst_gpio;
+		printk(KERN_ALERT "wk2xxx_probe(rst_gpio)  rst_gpio= 0x%d\n",priv->rst_gpio);
+		ret=priv->rst_gpio;
 		return 1;
 	}
 	/*reset wk2xxx*/
 	mdelay(10);
-	gpio_set_value(priv_data->rst_gpio, 0); 	
+	gpio_set_value(priv->rst_gpio, 0);
 	mdelay(10);
-	gpio_set_value(priv_data->rst_gpio, 1); 
+	gpio_set_value(priv->rst_gpio, 1);
 	mdelay(10);
 #endif
 
@@ -1881,6 +1876,7 @@ static int wk2xxx_remove(struct spi_device *spi)
 
 	int i;
 	const struct wk2xxx_quirks *quirks;
+	struct wk2xxx_priv_data *priv = dev_get_drvdata(&spi->dev);
 #ifdef _DEBUG_WK_FUNCTION
 	printk(KERN_ALERT "%s!!--in--\n", __func__);
 #endif
@@ -1897,6 +1893,11 @@ static int wk2xxx_remove(struct spi_device *spi)
 	uart_unregister_driver(&wk2xxx_uart_driver);
 	mutex_unlock(&wk2xxxs_lock);
 
+	if (priv->rst_gpio > 0 )
+	{
+		gpio_free(priv->rst_gpio);
+	}
+	devm_kfree(&spi->dev,priv);
 #ifdef _DEBUG_WK_FUNCTION
 	printk(KERN_ALERT "%s!!--exit--\n", __func__);
 #endif
@@ -1922,8 +1923,8 @@ static const struct wk2xxx_quirks wk2xxx_wk2132_quirks = {
 
 static const struct of_device_id rockchip_spi_wk2xxx_dt_match[] = {
 	{ .compatible = "wkmic,wk2xxx_spi", .data = &wk2xxx_wk2124_quirks },
-	{ .compatible = "wkmic,wk2124spi", .data = &wk2xxx_wk2124_quirks },
-	{ .compatible = "wkmic,wk2132spi", .data = &wk2xxx_wk2132_quirks },
+	{ .compatible = "wkmic,wk2124_spi", .data = &wk2xxx_wk2124_quirks },
+	{ .compatible = "wkmic,wk2132_spi", .data = &wk2xxx_wk2132_quirks },
 	{ },
 };
 
@@ -1931,7 +1932,7 @@ MODULE_DEVICE_TABLE(of, rockchip_spi_wk2xxx_dt_match);
 
 static struct spi_driver wk2xxx_driver = {
 	.driver = {
-		.name           = "wk2xxxspi",
+		.name           = "wk2xxx_spi",
 		.bus            = &spi_bus_type,
 		.owner          = THIS_MODULE,
 		.of_match_table = of_match_ptr(rockchip_spi_wk2xxx_dt_match),
