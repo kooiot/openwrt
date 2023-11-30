@@ -49,7 +49,7 @@ MODULE_LICENSE("Dual BSD/GPL");
 /*************The debug control **********************************/
 //#define _DEBUG_WK_FUNCTION
 //#define _DEBUG_WK_RX
-//#define _DEBUG_WK_TX
+#define _DEBUG_WK_TX
 //#define _DEBUG_WK_IRQ
 //#define _DEBUG_WK_VALUE
 //#define _DEBUG_WK_TEST
@@ -74,7 +74,7 @@ MODULE_LICENSE("Dual BSD/GPL");
 #define WK2XXX_STATUS_OE    8
 
 
-// #define DIRK_MOD	1
+//#define DIRK_MOD	1
 
 
 static DEFINE_MUTEX(wk2xxxs_lock);          // Lock slave write reg    
@@ -692,7 +692,7 @@ static void wk2xxx_tx_chars(struct uart_port *port)
 	   	i++;
 		count=count-1;
         #ifdef _DEBUG_WK_TX
-            printk(KERN_ALERT "tx_chars:0x%x--\n",txbuf[i-1]);
+            // printk(KERN_ALERT "tx_chars:0x%x--\n",txbuf[i-1]);
         #endif
     };
 
@@ -716,9 +716,9 @@ static void wk2xxx_tx_chars(struct uart_port *port)
     #endif
     out:wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_FSR_REG,dat);
         fsr = dat[0];
-    #ifdef _DEBUG_WK_VALUE
+    //#ifdef _DEBUG_WK_VALUE
         printk(KERN_ALERT "%s!!-port:%ld;--FSR:0X%X--\n", __func__,one->port.iobase,fsr);
-	#endif
+	//#endif
     if(((fsr&WK2XXX_FSR_TDAT_BIT)==0)&&((fsr&WK2XXX_FSR_TBUSY_BIT)==0)){
         if (uart_circ_chars_pending(&one->port.state->xmit) < WAKEUP_CHARS){
             uart_write_wakeup(&one->port); 
@@ -782,6 +782,7 @@ static void wk2xxx_port_irq(struct wk2xxx_port *s, int portno)//
     #ifdef _DEBUG_WK_IRQ
         printk(KERN_ALERT "%s....port:%ld......sifr:%x sier:%x \n",__func__,one->port.iobase,sifr,sier);
     #endif
+		printk(KERN_ALERT "%s....port:%ld......sifr:%x sier:%x \n",__func__,one->port.iobase,sifr,sier);
 
     do {
         if ((sifr&WK2XXX_SIFR_RFTRIG_INT_BIT)||(sifr&WK2XXX_SIFR_RXOVT_INT_BIT)){
@@ -824,6 +825,7 @@ static void wk2xxx_ist(struct kthread_work *ws)
     // mutex_lock(&wk2xxxs_global_lock);
 #endif
     wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GIFR_REG ,&gifr);
+	printk(KERN_ALERT "%s!!--gifr:%x--\n", __func__, gifr);
 
 #ifdef DIRK_MOD
     // mutex_unlock(&wk2xxxs_global_lock);
@@ -848,6 +850,7 @@ static void wk2xxx_ist(struct kthread_work *ws)
             break;
         }
         
+		printk(KERN_ALERT "%s!!--22--gifr:%x--\n", __func__, gifr);
 			
     }
 
@@ -855,9 +858,9 @@ static void wk2xxx_ist(struct kthread_work *ws)
         printk(KERN_ALERT "%s!!---exit--\n", __func__);
     #endif
 
-//#ifdef DIRK_MOD
-		enable_irq(s->irq_gpio);
-//#endif
+#ifdef DIRK_MOD
+		// enable_irq(s->irq_gpio);
+#endif
 }
 
 static irqreturn_t wk2xxx_irq(int irq, void *dev_id)//
@@ -868,17 +871,17 @@ static irqreturn_t wk2xxx_irq(int irq, void *dev_id)//
         printk(KERN_ALERT "%s!!---in--\n", __func__);
     #endif  
 
-//#ifdef DIRK_MOD
-	disable_irq_nosync(irq);
-//#endif
+#ifdef DIRK_MOD
+	// disable_irq_nosync(irq);
+#endif
 #ifdef WK_WORK_KTHREAD
     ret=kthread_queue_work(&s->kworker, &s->irq_work); 
 #else
     ret=queue_kthread_work(&s->kworker, &s->irq_work);  
 #endif
-   if (!ret) {
-        printk(KERN_ALERT "%s!!ret=%d--kthread_queue_work--error--\n", __func__,ret);
-   }
+	if (!ret) {
+        printk(KERN_ALERT "%s!!ret:%d---errror--\n", __func__,ret);
+	}
 
     #ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!ret:%d---exit--\n", __func__,ret);
@@ -899,6 +902,7 @@ static u_int wk2xxx_tx_empty(struct uart_port *port)// or query the tx fifo is n
     #ifdef _DEBUG_WK_FUNCTION
 	    printk(KERN_ALERT "%s!!-port:%ld;--in--\n", __func__,one->port.iobase);
     #endif
+	    printk(KERN_ALERT "%s!!-port:%ld;--in--\n", __func__,one->port.iobase);
 	mutex_lock(&wk2xxxs_lock);
   
     wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_FSR_REG,&fsr);
@@ -911,6 +915,7 @@ static u_int wk2xxx_tx_empty(struct uart_port *port)// or query the tx fifo is n
     #ifdef _DEBUG_WK_FUNCTION
        printk(KERN_ALERT "%s!!-port:%ld;tx_empty:0x%x,fsr:0x%x--exit--\n", __func__,one->port.iobase,s->tx_empty,fsr);
     #endif
+       printk(KERN_ALERT "%s!!-port:%ld;tx_empty:0x%x,fsr:0x%x--exit--\n", __func__,one->port.iobase,s->tx_empty,fsr);
     return s->tx_empty;
 }
 
@@ -959,7 +964,7 @@ static void wk2xxx_start_tx_proc(struct kthread_work *ws)
 
     // uint8_t gier,sifr0,sier0,gifr;
 
-    uint8_t rx;
+    uint8_t rx, rx2;
 	#ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!-port:%ld;--in--\n", __func__,one->port.iobase);
 	#endif
@@ -969,7 +974,9 @@ static void wk2xxx_start_tx_proc(struct kthread_work *ws)
 
     wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,&rx);
     rx |= WK2XXX_SIER_TFTRIG_IEN_BIT|WK2XXX_SIER_RFTRIG_IEN_BIT|WK2XXX_SIER_RXOUT_IEN_BIT; 
+    //wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,0);
     wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,rx);
+    //wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,&rx2);
 
 	// HACK. Read regs again to avoid send failure!!!! which I do not know why
 	// wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GIFR_REG ,&gifr);
@@ -979,6 +986,11 @@ static void wk2xxx_start_tx_proc(struct kthread_work *ws)
 	// printk(KERN_ALERT "start_tx_proc!!-port:%ld....gifr:%x gier:%x sier:%x sifr:%x \n",one->port.iobase, gifr,gier,sier0,sifr0);
 
     mutex_unlock(&wk2xxxs_lock); 
+	/*
+	if (rx != rx2) {
+		printk(KERN_ALERT "%s!!-port:%ld;--exit-- rx:%x\n", __func__,one->port.iobase, rx);
+	}
+	*/
 }
 
 /*
@@ -992,13 +1004,14 @@ static void wk2xxx_start_tx(struct uart_port *port)
 	#ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!-port:%ld;--in--\n", __func__,one->port.iobase);
 	#endif
+        printk(KERN_ALERT "%s!!-port:%ld;--in--\n", __func__,one->port.iobase);
 #ifdef WK_WORK_KTHREAD
     ret=kthread_queue_work(&s->kworker, &one->start_tx_work);
 #else
     ret=queue_kthread_work(&s->kworker, &one->start_tx_work);
 #endif
 	if (!ret) {
-        printk(KERN_ALERT "%s!!-port:%ld;ret=%d--kthread_queue_work--error--\n", __func__,one->port.iobase,ret);
+        printk(KERN_ALERT "%s!!-port:%ld;ret=%d--exit--\n", __func__,one->port.iobase,ret);
 	}
 
     #ifdef _DEBUG_WK_FUNCTION
@@ -1048,9 +1061,6 @@ static void wk2xxx_stop_rx(struct uart_port *port)
 #else
    ret=queue_kthread_work(&s->kworker, &one->stop_rx_work);
 #endif
-   if (!ret) {
-        printk(KERN_ALERT "%s!!-port:%ld;ret=%d--kthread_queue_work--error--\n", __func__,one->port.iobase,ret);
-   }
 
 	#ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!-port:%ld;ret:%d--exit--\n", __func__,one->port.iobase,ret);
@@ -1916,8 +1926,7 @@ static int wk2xxx_probe(struct spi_device *spi)
     mutex_unlock(&wk2xxxs_lock);
 
    /* Setup interrupt */
-	// ret = devm_request_irq(&spi->dev, irq, wk2xxx_irq,IRQF_TRIGGER_FALLING, dev_name(&spi->dev), s);
-	ret = devm_request_irq(&spi->dev, irq, wk2xxx_irq,IRQF_SHARED|IRQF_TRIGGER_LOW, dev_name(&spi->dev), s);
+	ret = devm_request_irq(&spi->dev, irq, wk2xxx_irq,IRQF_TRIGGER_FALLING, dev_name(&spi->dev), s);
   
 	if (!ret){
         printk(KERN_ALERT "devm_request_irq success. ret=%d.\n",ret);
