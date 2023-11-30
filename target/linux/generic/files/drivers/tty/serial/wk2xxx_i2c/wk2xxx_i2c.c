@@ -1622,7 +1622,18 @@ static int wk2xxx_probe(struct i2c_client *client,const struct i2c_device_id *de
 		return -ENOMEM;
 	}
 	s->wk2xxx_i2c_client=client;
-    s->devtype=&wk2168_devtype;
+
+    // s->devtype=&wk2168_devtype;
+	if (of_device_is_compatible(spi->dev.of_node, "wkmic,wk2132_i2c")) {
+		printk(KERN_ALERT "wk2xxx_probe as wkmic,wk2132_i2c\n");
+		s->devtype=&wk2132_devtype;
+	} else if (of_device_is_compatible(spi->dev.of_node, "wkmic,wk2124_i2c")) {
+		s->devtype=&wk2124_devtype;
+	} else {
+		// Default is wk2168
+		s->devtype=&wk2168_devtype;
+	}
+
     dev_set_drvdata(&client->dev, s);
     #ifdef WK_RSTGPIO_FUNCTION
      //Obtain the GPIO number of RST signal
@@ -1792,7 +1803,7 @@ static int wk2xxx_remove(struct i2c_client *i2c_client)
 	#endif
 
     mutex_lock(&wk2xxxs_lock);
-    for(i =0;i<NR_PORTS;i++){
+	for (i=0; i<s->devtype->nr_uart; i++) {
         uart_remove_one_port(&wk2xxx_uart_driver, &s->p[i].port);
         printk(KERN_ALERT "%s!--uart_remove_one_port：%d.\n", __func__,i);
     }
@@ -1842,6 +1853,8 @@ static const struct i2c_device_id wk2xxx_i2c_id_table[]={
  };
 static const struct of_device_id wk2xxx_i2c_dt_ids[] = {
 	{.compatible = "wkmic,wk2xxx_i2c", },
+	{ .compatible = "wkmic,wk2124_i2c" },
+	{ .compatible = "wkmic,wk2132_i2c" },
 	{}
 };
 
