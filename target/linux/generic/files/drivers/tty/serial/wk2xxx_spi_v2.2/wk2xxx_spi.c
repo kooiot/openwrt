@@ -56,6 +56,7 @@ MODULE_LICENSE("Dual BSD/GPL");
 
 //#define WK_RS485_FUNCTION
 #define WK_FIFO_FUNCTION
+#define WK_RSTGPIO_FUNCTION
 
 #define WK2XXX_STATUS_PE    1
 #define WK2XXX_STATUS_FE    2
@@ -72,6 +73,10 @@ static DEFINE_MUTEX(wk2xxxs_global_lock);
 
 struct wk2xxx_quirks {
 	int nr_ports;
+};
+
+struct wk2xxx_priv_data {
+	int rst_gpio;
 };
 
 struct wk2xxx_port 
@@ -1266,6 +1271,7 @@ static void wk2xxx_shutdown(struct uart_port *port)
 
 	uint8_t gena,dat[1];
 	struct wk2xxx_port *s = container_of(port,struct wk2xxx_port,port);
+	struct wk2xxx_priv_data *priv_data = dev_get_drvdata(port->dev);
 #ifdef _DEBUG_WK_FUNCTION
 	printk(KERN_ALERT "%s!!-port:%ld;--in--\n", __func__,s->port.iobase);
 #endif
@@ -1282,6 +1288,10 @@ static void wk2xxx_shutdown(struct uart_port *port)
 	if (s->port.irq)
 	{    
 		free_irq(s->port.irq, s);//释放中断
+	}
+	if (priv_data->rst_gpio > 0 )
+	{
+		gpio_free(priv_data->rst_gpio);
 	}
 	mutex_lock(&wk2xxxs_global_lock);
 	wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GENA,dat);
@@ -1311,6 +1321,7 @@ static void wk2xxx_shutdown(struct uart_port *port)
 
 	mutex_unlock(&wk2xxxs_global_lock);
 
+	devm_kfree(port->dev,priv_data);
 #ifdef _DEBUG_WK_FUNCTION
 	printk(KERN_ALERT "%s!!-port:%ld;--exit--\n", __func__,s->port.iobase);
 #endif
@@ -1724,17 +1735,56 @@ static int rockchip_spi_parse_dt(struct device *dev)
 	return irq;
 }
 
+#ifdef WK_RSTGPIO_FUNCTION
+static int wk2xxx_spi_rstgpio_parse_dt(struct device *dev,int *rst_gpio)
+{
+
+	enum of_gpio_flags rst_flags; 
+#ifdef _DEBUG_WK_FUNCTION
+	printk(KERN_ALERT "%s!!--in--\n", __func__);
+#endif
+	*rst_gpio = of_get_named_gpio_flags(dev->of_node, "reset_gpio", 0,&rst_flags);
+	if (!gpio_is_valid(*rst_gpio)){
+		printk(KERN_ERR"invalid wk2xxx_rst_gpio: %d\n", *rst_gpio);
+		return -1;
+	}
+
+	if(	*rst_gpio){
+		if (gpio_request(*rst_gpio , "rst_gpio")){
+			printk(KERN_ERR"gpio_request failed!! rst_gpio: %d!\n",*rst_gpio);
+			gpio_free(*rst_gpio);
+			return  IRQ_NONE;
+		}
+	}
+	gpio_direction_output(*rst_gpio,1);// output high
+	printk(KERN_ERR"wk2xxx_rst_gpio: %d", *rst_gpio);
+#ifdef _DEBUG_WK_FUNCTION
+	printk(KERN_ALERT "%s!!--exit--\n", __func__);
+#endif
+	return 0;
+}
+
+#endif
 
 
 static int wk2xxx_probe(struct spi_device *spi)
 {
 	uint8_t i;
-	int status, irq;
+	int status, irq, ret;
 	uint8_t dat[1];
 	const struct wk2xxx_quirks *quirks;
+	struct wk2xxx_priv_data *priv_data;
 #ifdef _DEBUG_WK_FUNCTION
 	printk(KERN_ALERT "%s!!--in--\n", __func__);
 #endif
+
+	/* Alloc port structure */
+	priv_data = devm_kzalloc(&spi->dev, sizeof(*priv_data),GFP_KERNEL);
+	if (!priv_data) {
+	    printk(KERN_ALERT "wk2xxx_probe(devm_kzalloc) fail.\n");
+		return -ENOMEM;
+	}
+	dev_set_drvdata(&spi->dev, priv_data);
 
 	do
 	{
@@ -1754,6 +1804,22 @@ static int wk2xxx_probe(struct spi_device *spi)
 	{
 		return 1;
 	}
+
+#ifdef WK_RSTGPIO_FUNCTION
+	//Obtain the GPIO number of RST signal
+	ret=wk2xxx_spi_rstgpio_parse_dt(&spi->dev,&priv_data->rst_gpio);
+	if(ret!=0){
+		printk(KERN_ALERT "wk2xxx_probe(rst_gpio)  rst_gpio= 0x%d\n",priv_data->rst_gpio);
+		ret=priv_data->rst_gpio;
+		return 1;
+	}
+	/*reset wk2xxx*/
+	mdelay(10);
+	gpio_set_value(priv_data->rst_gpio, 0); 	
+	mdelay(10);
+	gpio_set_value(priv_data->rst_gpio, 1); 
+	mdelay(10);
+#endif
 
 	wk2xxx_read_global_reg(spi,WK2XXX_GENA,dat);
 	if((dat[0]&0xf0)!=0x30)
@@ -1855,7 +1921,7 @@ static const struct wk2xxx_quirks wk2xxx_wk2132_quirks = {
 };
 
 static const struct of_device_id rockchip_spi_wk2xxx_dt_match[] = {
-	{ .compatible = "wkmic,wk2124spi_cs0", .data = &wk2xxx_wk2124_quirks },
+	{ .compatible = "wkmic,wk2xxx_spi", .data = &wk2xxx_wk2124_quirks },
 	{ .compatible = "wkmic,wk2124spi", .data = &wk2xxx_wk2124_quirks },
 	{ .compatible = "wkmic,wk2132spi", .data = &wk2xxx_wk2132_quirks },
 	{ },
