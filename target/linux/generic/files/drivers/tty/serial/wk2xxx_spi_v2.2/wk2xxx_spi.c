@@ -1781,19 +1781,6 @@ static int wk2xxx_probe(struct spi_device *spi)
 	}
 	dev_set_drvdata(&spi->dev, priv);
 
-	do
-	{
-		wk2xxx_read_global_reg(spi,WK2XXX_GENA,dat);
-		printk(KERN_ERR "wk2xxx_probe()  GENA = 0x%X\n",dat[0]);//GENA=0X30
-		wk2xxx_write_global_reg(spi,WK2XXX_GENA,0xf5);
-		wk2xxx_read_global_reg(spi,WK2XXX_GENA,dat);
-		printk(KERN_ERR "wk2xxx_probe()  GENA = 0x%X\n",dat[0]);//GENA=0X35
-		wk2xxx_write_global_reg(spi,WK2XXX_GENA,0xf0);
-		wk2xxx_read_global_reg(spi,WK2XXX_GENA,dat);
-		printk(KERN_ERR "wk2xxx_probe()  GENA = 0x%X\n",dat[0]);//GENA=0X30
-	}while(0);
-	/////////////////////test spi //////////////////////////	
-
 	irq = rockchip_spi_parse_dt(&spi->dev);
 	if(irq<0)
 	{
@@ -1816,6 +1803,18 @@ static int wk2xxx_probe(struct spi_device *spi)
 	mdelay(10);
 #endif
 
+	do
+	{
+		wk2xxx_read_global_reg(spi,WK2XXX_GENA,dat);
+		printk(KERN_ERR "wk2xxx_probe()  GENA = 0x%X\n",dat[0]);//GENA=0X30
+		wk2xxx_write_global_reg(spi,WK2XXX_GENA,0xf5);
+		wk2xxx_read_global_reg(spi,WK2XXX_GENA,dat);
+		printk(KERN_ERR "wk2xxx_probe()  GENA = 0x%X\n",dat[0]);//GENA=0X35
+		wk2xxx_write_global_reg(spi,WK2XXX_GENA,0xf0);
+		wk2xxx_read_global_reg(spi,WK2XXX_GENA,dat);
+		printk(KERN_ERR "wk2xxx_probe()  GENA = 0x%X\n",dat[0]);//GENA=0X30
+	}while(0);
+	/////////////////////test spi //////////////////////////
 	wk2xxx_read_global_reg(spi,WK2XXX_GENA,dat);
 	if((dat[0]&0xf0)!=0x30)
 	{ 
