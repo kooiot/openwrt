@@ -1680,6 +1680,9 @@ static int rockchip_i2c_parse_dt(struct device *dev)
 {
 
 	int irq_gpio, irq_flags, irq;
+#ifdef _DEBUG_WK_FUNCTION
+	printk(KERN_ALERT "%s!!--in--\n", __func__);
+#endif
 	//从设备树获取IRQ——GPIO
 	irq_gpio = of_get_named_gpio_flags(dev->of_node, "irq_gpio", 0,(enum of_gpio_flags *)&irq_flags);
 	if (!gpio_is_valid(irq_gpio))
@@ -1771,23 +1774,13 @@ static int wk2xxx_probe(struct i2c_client *client,const struct i2c_device_id *de
 	}
 	dev_set_drvdata(&client->dev, priv);
 
-	do
-	{
-		wk2xxx_read_global_reg(client,WK2XXX_GENA,dat);
-		printk(KERN_ERR "wk2xxx_probe()  GENA = 0x%X\n",dat[0]);
-		wk2xxx_write_global_reg(client,WK2XXX_GENA,0xf5);
-		wk2xxx_read_global_reg(client,WK2XXX_GENA,dat);
-		printk(KERN_ERR "wk2xxx_probe()  GENA = 0x%X\n",dat[0]);
-		wk2xxx_write_global_reg(client,WK2XXX_GENA,0xf0);
-		wk2xxx_read_global_reg(client,WK2XXX_GENA,dat);
-		printk(KERN_ERR "wk2xxx_probe()  GENA = 0x%X\n",dat[0]);
-	}while(0);
-	/////////////////////test i2c//////////////////////////
-
-	irq = rockchip_i2c_parse_dt(&client->dev);
-	if(irq<0)
-	{
-		return 1;
+	if (client->irq <= 0) {
+		irq = rockchip_i2c_parse_dt(&client->dev);
+		if(irq<0)
+			return -EINVAL;
+	} else {
+		irq = client->irq;
+		printk(KERN_ALERT "wk2xxx_probe(client->irq)  irq = 0x%d\n",irq);
 	}
 
 #ifdef WK_RSTGPIO_FUNCTION
@@ -1806,6 +1799,20 @@ static int wk2xxx_probe(struct i2c_client *client,const struct i2c_device_id *de
 	mdelay(10);
 #endif
 
+	do
+	{
+		wk2xxx_read_global_reg(client,WK2XXX_GENA,dat);
+		wk2xxx_read_global_reg(client,WK2XXX_GENA,dat);
+		printk(KERN_ERR "wk2xxx_probe()  GENA = 0x%X\n",dat[0]);//GENA=0X30
+		wk2xxx_write_global_reg(client,WK2XXX_GENA,0xf5);
+		wk2xxx_read_global_reg(client,WK2XXX_GENA,dat);
+		printk(KERN_ERR "wk2xxx_probe()  GENA = 0x%X\n",dat[0]);//GENA=0X35
+		wk2xxx_write_global_reg(client,WK2XXX_GENA,0xf0);
+		wk2xxx_read_global_reg(client,WK2XXX_GENA,dat);
+		printk(KERN_ERR "wk2xxx_probe()  GENA = 0x%X\n",dat[0]);//GENA=0X30
+	}while(0);
+	/////////////////////test i2c//////////////////////////
+	// wk2xxx_write_global_reg(client,WK2XXX_GENA_REG,0x0);
 	wk2xxx_read_global_reg(client,WK2XXX_GENA,dat);
 	if((dat[0]&0xf0)!=0xb0)
 	{ 
