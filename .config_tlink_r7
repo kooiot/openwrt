@@ -3903,6 +3903,7 @@ CONFIG_PACKAGE_process-monitor=y
 # CONFIG_PACKAGE_freeioe is not set
 # CONFIG_PACKAGE_kooiot is not set
 # CONFIG_PACKAGE_sdlnrj-xfrm is not set
+# CONFIG_PACKAGE_sdlnrj-xfrm-client is not set
 # CONFIG_PACKAGE_skynet is not set
 # CONFIG_PACKAGE_strip-ioe is not set
 CONFIG_PACKAGE_symlink=y

@@ -109,6 +109,17 @@
 		"connect": "AT+GTRNDIS=1,${profile}",
 		"disconnect": "AT+GTRNDIS=0,${profile}"
 	},
+	"unicom": {
+		"initialize": [
+			"AT",
+			"ATE1",
+			"AT+GTIPPASS=1",
+			"AT+GTSETMASK=3",
+			"AT+CGDCONT=${profile},\\\"${pdptype}\\\"${apn:+,\\\"$apn\\\"}"
+		],
+		"connect": "AT+GTRNDIS=1,${profile}",
+		"disconnect": "AT+GTRNDIS=0,${profile}"
+	},
 	"quectel_ec200t_eu": {
 		"initialize": [
 			"AT+CFUN=1"
