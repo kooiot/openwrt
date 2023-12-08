@@ -1,10 +1,10 @@
  /*
-*   FILE NAME  : wk2xxx_i2c_v2.4.c   
+*   FILE NAME  : wk2xxx_spi.c   
 *
 *   WKIC Ltd.
 *   By  Xu XunWei Tech  
-*   DEMO Version :2.4 Data:2022-09-9
-*   DESCRIPTION: Implements an interface for the wk2xxx of I2C interface
+*   DEMO Version :2.4 Data:2022-07-24
+*   DESCRIPTION: Implements an interface for the wk2xxx of spi interface
 *
 *  
 *   
@@ -20,6 +20,7 @@
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/freezer.h>
+#include <linux/spi/spi.h>
 #include <linux/timer.h>
 #include <linux/of_gpio.h>
 #include <linux/gpio.h>
@@ -34,10 +35,6 @@
 #include <linux/sched.h>
 #include <uapi/linux/sched.h>
 
-/*******************************/
-#include <linux/i2c.h>
-#include <linux/serial_core.h>
-/*****************************/
 #include <uapi/linux/sched/types.h>
 
 
@@ -47,7 +44,7 @@ MODULE_LICENSE("Dual BSD/GPL");
 
 
 #define DRIVER_AUTHOR "Xuxunwei"
-#define DRIVER_DESC   "I2C driver for I2C to Uart chip WK2XXX, etc."
+#define DRIVER_DESC   "SPI driver for spi to Uart chip WK2XXX, etc."
 #define VERSION_DESC  "V2.4 On 2022.07.24"
 /*************The debug control **********************************/
 //#define _DEBUG_WK_FUNCTION
@@ -58,18 +55,15 @@ MODULE_LICENSE("Dual BSD/GPL");
 //#define _DEBUG_WK_TEST
 
 /*************Functional control interface************************/
-//#define WK_FIFO_FUNCTION
+#define WK_FIFO_FUNCTION
 //#define WK_FlowControl_FUNCTION
 #define WK_WORK_KTHREAD
 //#define WK_RS485_FUNCTION
 #define WK_RSTGPIO_FUNCTION
-/*************I2C control interface******************************/
-#define I2C_LEN_LIMIT       30   //MAX<=255
+//#define WK_CSGPIO_FUNCTION
+/*************SPI control interface******************************/
+#define SPI_LEN_LIMIT       30    //MAX<=255
 
-#define IIC_ADDR0      0X0     //IA1=0;IA0=0
-//#define IIC_ADDR0      0X1     //IA1=0;IA0=1
-//#define IIC_ADDR0      0X2     //IA1=1;IA0=0
-//#define IIC_ADDR0      0X3     //IA1=1;IA0=1
 /*************Uart Setting interface******************************/
 #define WK2XXX_TXFIFO_LEVEL		(0x01) /* TX FIFO level */
 #define WK2XXX_RXFIFO_LEVEL		(0x40) /* RX FIFO level */
@@ -80,12 +74,12 @@ MODULE_LICENSE("Dual BSD/GPL");
 #define WK2XXX_STATUS_OE    8
 
 
+// #define DIRK_MOD	1
 
 
-
-static DEFINE_MUTEX(wk2xxxs_lock);               
-static DEFINE_MUTEX(wk2xxxs_reg_lock);              
-static DEFINE_MUTEX(wk2xxxs_global_lock);
+static DEFINE_MUTEX(wk2xxxs_lock);          // Lock slave write reg    
+static DEFINE_MUTEX(wk2xxxs_reg_lock);      // Lock SPI reg reading
+static DEFINE_MUTEX(wk2xxxs_global_lock);	// Lock global write reg
 
 /******************************************/
 #define 	NR_PORTS 	                4         
@@ -94,6 +88,7 @@ static DEFINE_MUTEX(wk2xxxs_global_lock);
 #define 	CALLOUT_WK2XXX_MAJOR		208	
 #define 	MINOR_START		            5
 //wk2xxx hardware configuration
+#define		wk2xxx_spi_speed	        10000000
 //#define 	WK_CRASTAL_CLK		        (24000000)
 #define 	WK_CRASTAL_CLK		        (11059200)
 #define 	WK2XXX_ISR_PASS_LIMIT	    2
@@ -247,7 +242,9 @@ static DEFINE_MUTEX(wk2xxxs_global_lock);
 #define 	WK2XXX_RS485_RTSEN_BIT        0x02
 #define 	WK2XXX_RS485_RTSINV_BIT       0x01
 
-
+#ifdef WK_CSGPIO_FUNCTION 
+int cs_gpio_num;
+#endif
 
 struct wk2xxx_devtype {
 	char name[10];
@@ -271,29 +268,28 @@ struct wk2xxx_one
 
 struct wk2xxx_port 
 {
-    const struct wk2xxx_devtype	  *devtype;
-    struct uart_driver		      uart;
-    struct i2c_client             *wk2xxx_i2c_client;
-    struct workqueue_struct       *workqueue;
-    struct work_struct            work;
-    unsigned char			      buf[256];
-	struct kthread_worker	      kworker;
-	struct task_struct		      *kworker_task;
-	struct kthread_work		      irq_work;
-    int                           irq_gpio_num;
-    int                           rst_gpio_num;
-    int                           irq_gpio;
-    int                           irq;
-    int                           minor;      /* minor number */
-    int                           tx_empty; 
-    struct wk2xxx_one             p[NR_PORTS];
+    const struct wk2xxx_devtype	*devtype;
+    struct uart_driver		uart;
+    struct spi_device *spi_wk;
+    struct workqueue_struct *workqueue;
+    struct work_struct work;
+    unsigned char			buf[256];
+	struct kthread_worker	kworker;
+	struct task_struct		*kworker_task;
+	struct kthread_work		irq_work;
+    //int cs_gpio_num;
+    int irq_gpio_num;
+    int rst_gpio_num;
+    int irq_gpio;
+    int minor;      /* minor number */
+    int tx_empty; 
+    struct wk2xxx_one		p[NR_PORTS];
 };
 
 static const struct wk2xxx_devtype wk2124_devtype = {
 	.name		= "WK2124",
 	.nr_uart	= 4,
 };
-
 static const struct wk2xxx_devtype wk2132_devtype = {
 	.name		= "WK2132",
 	.nr_uart	= 2,
@@ -317,206 +313,215 @@ static const struct wk2xxx_devtype wk2202_devtype = {
 /*
 * This function read wk2xxx of Global register:
 */
-static int wk2xxx_read_global_reg(struct i2c_client *client,uint8_t greg,uint8_t *dat)
+static int wk2xxx_read_global_reg(struct spi_device *spi,uint8_t reg,uint8_t *dat)
 {
-        struct i2c_msg msg[2];
-        uint8_t cmd_addr,wk_addr = IIC_ADDR0;
-        uint8_t ret, status = 0;
-        uint8_t wk_reg[1],wk_dat[1];
-        cmd_addr=((wk_addr<<6)|0xE0|(greg&0x30)>>2)>>1;
-        mutex_lock(&wk2xxxs_reg_lock);
-        /***********************************************/
-        wk_reg[0] = greg&0x0f;
-        msg[0].addr = cmd_addr;
-        msg[0].flags = 0;//write flags
-        msg[0].len = 1;
-        msg[0].buf = wk_reg;
-        ret= i2c_transfer(client->adapter, &msg[0], 1);
-        if ( ret< 0) {
-             printk(KERN_ALERT "wk2xxx_read_global_reg1(i2c) error,ret:%d!\n",ret);
-             status = 1;
-             mutex_unlock(&wk2xxxs_reg_lock);
-             return status;
-        }
-
-        /**********************************************/
-        msg[1].addr = cmd_addr;
-        msg[1].flags = I2C_M_RD;
-        msg[1].len = 1;
-        msg[1].buf = wk_dat;
-        ret=i2c_transfer(client->adapter, &msg[1], 1);
-        if(ret!=1){
-            printk(KERN_ALERT "wk2xxx_read_global_reg2(i2c) error!ret:%d!\n",ret);
-            *dat=0x0;
-            status = 1;
-            mutex_unlock(&wk2xxxs_reg_lock);
-            return status;
-        }
-
-         *dat=wk_dat[0];
-        mutex_unlock(&wk2xxxs_reg_lock);
+    struct spi_message msg;
+    uint8_t buf_wdat[2];
+    uint8_t buf_rdat[2];
+    int status;
+    struct spi_transfer index_xfer = {
+                .len            = 2,
+                .speed_hz	= wk2xxx_spi_speed,
+    };
+    mutex_lock(&wk2xxxs_reg_lock);
+    status =0;
+    #ifdef WK_CSGPIO_FUNCTION 
+    gpio_set_value(cs_gpio_num, 0); 
+    #endif
+    spi_message_init(&msg);
+    buf_wdat[0] = 0x40|reg;
+    buf_wdat[1] = 0x00;
+    buf_rdat[0] = 0x00;
+    buf_rdat[1] = 0x00;
+    index_xfer.tx_buf = buf_wdat;
+    index_xfer.rx_buf =(void *) buf_rdat;
+    spi_message_add_tail(&index_xfer, &msg);
+    status = spi_sync(spi, &msg);
+    #ifdef WK_CSGPIO_FUNCTION 
+    gpio_set_value(cs_gpio_num, 1); 
+    #endif
+    mutex_unlock(&wk2xxxs_reg_lock);
+    if(status){
         return status;
-
+    }
+    *dat = buf_rdat[1];
+    return 0;
 }
 /*
 * This function write wk2xxx of Global register:
 */
-static int wk2xxx_write_global_reg(struct i2c_client *client,uint8_t greg,uint8_t dat)
+static int wk2xxx_write_global_reg(struct spi_device *spi,uint8_t reg,uint8_t dat)
 {
-        struct i2c_msg msg;
-        uint8_t cmd_addr,wk_addr = IIC_ADDR0;
-        uint8_t status = 0;
-        uint8_t wk_buf[2];
-        cmd_addr=((wk_addr<<6)|0xE0|(greg&0x30)>>2)>>1;
-        mutex_lock(&wk2xxxs_reg_lock);
-        wk_buf[0] = greg&0x0f;
-        wk_buf[1] = dat;
-        msg.addr = cmd_addr;
-        msg.flags = 0;
-        msg.len = 2;
-        msg.buf = wk_buf;
-        if (i2c_transfer(client->adapter, &msg, 1) < 0) {
-            printk(KERN_ALERT "wk2xxx_write_global_reg1(i2c) error!\n");
-            status = 1;
-            mutex_unlock(&wk2xxxs_reg_lock);
-            return status;
-        }
-        mutex_unlock(&wk2xxxs_reg_lock);
-        return status;
+    struct spi_message msg;
+    uint8_t buf_reg[2];
+    int status;
+    struct spi_transfer index_xfer = {
+            .len            = 2,
+            .speed_hz	= wk2xxx_spi_speed,
+    };
+    mutex_lock(&wk2xxxs_reg_lock);
+    #ifdef WK_CSGPIO_FUNCTION 
+    gpio_set_value(cs_gpio_num, 0); 
+    #endif
+    spi_message_init(&msg);
+    /* register index */
+    buf_reg[0] = 0x00|reg;
+    buf_reg[1] = dat;
+    index_xfer.tx_buf = buf_reg;
+    spi_message_add_tail(&index_xfer, &msg);
+    status = spi_sync(spi, &msg);
+    #ifdef WK_CSGPIO_FUNCTION 
+    gpio_set_value(cs_gpio_num, 1);
+    #endif
+    mutex_unlock(&wk2xxxs_reg_lock);
+    return status;
 }
 /*
 * This function read wk2xxx of slave register:
 */
-static int wk2xxx_read_slave_reg(struct i2c_client *client,uint8_t port,uint8_t sreg,uint8_t *dat)
-{        struct i2c_msg msg[2];
-         uint8_t cmd_addr,wk_addr = IIC_ADDR0;
-         uint8_t ret, status = 0;
-         uint8_t wk_reg[1],wk_dat[1];
-         cmd_addr=((wk_addr<<6)|0xE0|(port-1)<<2)>>1;
-         mutex_lock(&wk2xxxs_reg_lock);
-         /***********************************************/
-         wk_reg[0] = sreg&0x0f;
-         msg[0].addr = cmd_addr;
-         msg[0].flags = 0;
-         msg[0].len = 1;
-         msg[0].buf = wk_reg;
-         if (i2c_transfer(client->adapter, &msg[0], 1) < 0) {
-              printk(KERN_ALERT "wk2xxx_read_slave_reg1(i2c) error!\n");
-              status = 1;
-              mutex_unlock(&wk2xxxs_reg_lock);
-              return status;
-         }
-
-         /**********************************************/
-         msg[1].addr = cmd_addr;
-         msg[1].flags = I2C_M_RD;
-         msg[1].len = 1;
-         msg[1].buf = wk_dat;
-         ret=i2c_transfer(client->adapter, &msg[1], 1);
-         if(ret!=1){
-             printk(KERN_ALERT "wk2xxx_read_slave_reg2(i2c) error!\n");
-             *dat=0x0;
-             status = 1;
-             mutex_unlock(&wk2xxxs_reg_lock);
-             return status;
-         }
-         *dat=wk_dat[0];
-         mutex_unlock(&wk2xxxs_reg_lock);
-         return status;
+static int wk2xxx_read_slave_reg(struct spi_device *spi,uint8_t port,uint8_t reg,uint8_t *dat)
+{
+    struct spi_message msg;
+    uint8_t buf_wdat[2];
+    uint8_t buf_rdat[2];
+    int status;
+    struct spi_transfer index_xfer = {
+            .len            = 2,
+            .speed_hz	= wk2xxx_spi_speed,
+    };
+    mutex_lock(&wk2xxxs_reg_lock);
+    #ifdef WK_CSGPIO_FUNCTION 
+    gpio_set_value(cs_gpio_num, 0);
+    #endif
+    status =0;
+    spi_message_init(&msg);
+    buf_wdat[0] = 0x40|(((port-1)<<4)|reg);
+    buf_wdat[1] = 0x00;
+    buf_rdat[0] = 0x00;
+    buf_rdat[1] = 0x00;
+    index_xfer.tx_buf = buf_wdat;
+    index_xfer.rx_buf =(void *) buf_rdat;
+    spi_message_add_tail(&index_xfer, &msg);
+    status = spi_sync(spi, &msg);
+    #ifdef WK_CSGPIO_FUNCTION 
+    gpio_set_value(cs_gpio_num, 1);
+    #endif
+    mutex_unlock(&wk2xxxs_reg_lock);
+    if(status){
+        return status;
+    }
+    *dat = buf_rdat[1];
+    return 0;
 
 }
 /*
 * This function write wk2xxx of Slave register:
 */
-static int wk2xxx_write_slave_reg(struct i2c_client *client,uint8_t port,uint8_t sreg,uint8_t dat)
+static int wk2xxx_write_slave_reg(struct spi_device *spi,uint8_t port,uint8_t reg,uint8_t dat)
 {
-        struct i2c_msg msg;
-        uint8_t cmd_addr,wk_addr = IIC_ADDR0;
-        uint8_t status = 0;
-        uint8_t wk_buf[2];
-        cmd_addr=((wk_addr<<6)|0xE0|(port-1)<<2)>>1;
-        mutex_lock(&wk2xxxs_reg_lock);
-        wk_buf[0] = sreg&0x0f;
-        wk_buf[1] = dat;
-        msg.addr = cmd_addr;
-        msg.flags = 0;
-        msg.len = 2;
-        msg.buf = wk_buf;
-        if (i2c_transfer(client->adapter, &msg, 1) < 0) {
-            printk(KERN_ALERT "wk2xxx_write_slave_reg1(i2c) error!\n");
-            status = 1;
-            mutex_unlock(&wk2xxxs_reg_lock);
-            return status;
-        }
-        mutex_unlock(&wk2xxxs_reg_lock);
-        return status;
+    struct spi_message msg;
+    uint8_t buf_reg[2];
+    int status;
+    struct spi_transfer index_xfer = {
+        .len            = 2,
+		.speed_hz	= wk2xxx_spi_speed,
+    };
+    mutex_lock(&wk2xxxs_reg_lock);
+    #ifdef WK_CSGPIO_FUNCTION 
+    gpio_set_value(cs_gpio_num, 0);
+    #endif
+    spi_message_init(&msg);
+    /* register index */
+    buf_reg[0] = ((port-1)<<4)|reg;
+    buf_reg[1] = dat;
+    index_xfer.tx_buf = buf_reg;
+    spi_message_add_tail(&index_xfer, &msg);
+    status = spi_sync(spi, &msg);
+    #ifdef WK_CSGPIO_FUNCTION 
+    gpio_set_value(cs_gpio_num, 1);
+    #endif
+    mutex_unlock(&wk2xxxs_reg_lock);
+    return status;
 }
 
+#ifdef WK_FIFO_FUNCTION
 #define MAX_RFCOUNT_SIZE 256
 
 /*
 * This function read wk2xxx of fifo:
 */
-static int wk2xxx_read_fifo(struct i2c_client *client,uint8_t port,uint8_t fifolen,uint8_t *dat)
+static int wk2xxx_read_fifo(struct spi_device *spi,uint8_t port,uint8_t fifolen,uint8_t *dat)
 {
-        struct i2c_msg msg;
-        uint8_t cmd_addr,wk_addr = IIC_ADDR0;
-        int i, status = 0;
-        uint8_t fifo_data[256] = {0};
-        cmd_addr = ((wk_addr<<6)|0xE0|(port-1)<<2|0x03) >> 1;
-	    if(!(fifolen>0)){
-			printk(KERN_ERR "%s,read fifolen error!!\n", __func__);
-			return 1;
-		 }
-        mutex_lock(&wk2xxxs_reg_lock);
-        msg.addr = cmd_addr;
-        msg.flags = I2C_M_RD;
-        msg.len = fifolen;
-        msg.buf = fifo_data;
-        if (i2c_transfer(client->adapter, &msg, 1) < 0) {
-            printk(KERN_ALERT " %s--1(i2c) error!\n",__func__);
-            status = 1;
-            mutex_unlock(&wk2xxxs_reg_lock);
-            return status;
-        }
-        for (i = 0; i < fifolen; i++)
-        	*(dat + i) = fifo_data[i];
-        mutex_unlock(&wk2xxxs_reg_lock);
-        return status;
+    struct spi_message msg;
+    int status,i;
+    uint8_t recive_fifo_data[MAX_RFCOUNT_SIZE+1]={0};
+    uint8_t transmit_fifo_data[MAX_RFCOUNT_SIZE+1]={0};
+    struct spi_transfer index_xfer = {
+            .len            = fifolen+1,
+            .speed_hz	= wk2xxx_spi_speed,
+    }; 
+	if(!(fifolen>0)){
+		printk(KERN_ERR "%s,fifolen error!!\n", __func__);
+		return 1;
+	}
+    mutex_lock(&wk2xxxs_reg_lock);
+    #ifdef WK_CSGPIO_FUNCTION 
+    gpio_set_value(cs_gpio_num, 0);
+    #endif
+    spi_message_init(&msg);
+    /* register index */
+    transmit_fifo_data[0] = ((port-1)<<4)|0xc0;
+    index_xfer.tx_buf = transmit_fifo_data;
+    index_xfer.rx_buf =(void *) recive_fifo_data;
+    spi_message_add_tail(&index_xfer, &msg); 
+    status = spi_sync(spi, &msg);
+    for(i=0;i<fifolen;i++)
+        *(dat+i)=recive_fifo_data[i+1];
+    #ifdef WK_CSGPIO_FUNCTION 
+    gpio_set_value(cs_gpio_num, 1);
+    #endif
+    mutex_unlock(&wk2xxxs_reg_lock);
+    return status;
         
 }
 /*
 * This function write wk2xxx of fifo:
 */
-static int wk2xxx_write_fifo(struct i2c_client *client,uint8_t port,uint8_t fifolen,uint8_t *dat)
+static int wk2xxx_write_fifo(struct spi_device *spi,uint8_t port,uint8_t fifolen,uint8_t *dat)
 {
-        struct i2c_msg msg;
-        uint8_t cmd_addr,wk_addr = IIC_ADDR0;
-        int i, status = 0;
-        uint8_t fifo_data[256] = {0};
-        cmd_addr = ((wk_addr<<6)|0xE0|(port-1)<<2|0x02) >> 1;
-	    if(!(fifolen>0)){
-			printk(KERN_ERR "%s,wrire fifolen error!!\n", __func__);
-			return 1;
-		  }
-	    for (i = 0; i < fifolen; i++)
-		    fifo_data[i] = *(dat + i);
-
-        mutex_lock(&wk2xxxs_reg_lock);
-        msg.addr = cmd_addr;
-        msg.flags = 0;
-        msg.len = fifolen;
-        msg.buf = fifo_data;
-        if (i2c_transfer(client->adapter, &msg, 1) < 0) {
-            printk(KERN_ALERT " %s --1(i2c) w_error!\n",__func__);
-            status = 1;
-            mutex_unlock(&wk2xxxs_reg_lock);
-            return status;
-        }
-        mutex_unlock(&wk2xxxs_reg_lock);
-        return status;
-        
+    struct spi_message msg;
+    int status,i;
+    uint8_t recive_fifo_data[MAX_RFCOUNT_SIZE+1]={0};
+    uint8_t transmit_fifo_data[MAX_RFCOUNT_SIZE+1]={0};
+    struct spi_transfer index_xfer = {
+            .len            = fifolen+1,
+            .speed_hz	= wk2xxx_spi_speed,
+    }; 
+	if(!(fifolen>0)){
+		printk(KERN_ERR "%s,fifolen error,fifolen:%d!!\n", __func__,fifolen);
+		return 1;
+	}
+    mutex_lock(&wk2xxxs_reg_lock);
+    #ifdef WK_CSGPIO_FUNCTION 
+    gpio_set_value(cs_gpio_num, 0);
+    #endif
+    spi_message_init(&msg);
+    /* register index */
+    transmit_fifo_data[0] = ((port-1)<<4)|0x80;
+    for(i=0;i<fifolen;i++){
+        transmit_fifo_data[i+1]=*(dat+i);
+    }
+    index_xfer.tx_buf = transmit_fifo_data;
+    index_xfer.rx_buf =(void *) recive_fifo_data;
+    spi_message_add_tail(&index_xfer, &msg);
+    status = spi_sync(spi, &msg);
+    #ifdef WK_CSGPIO_FUNCTION 
+    gpio_set_value(cs_gpio_num, 1);
+    #endif
+    mutex_unlock(&wk2xxxs_reg_lock);
+    return status;        
 }
+#endif // WK_FIFO_FUNCTION
 
 static void conf_wk2xxx_subport(struct uart_port *port);
 static void wk2xxx_stop_tx(struct uart_port *port);
@@ -533,19 +538,19 @@ static void wk2xxx_rx_chars(struct uart_port *port)
     unsigned int flg, status = 0,rx_count=0;
     int rx_num=0,rxlen=0;
 	int len_rfcnt,len_limit,len_p=0;
-	len_limit=I2C_LEN_LIMIT;
+	len_limit=SPI_LEN_LIMIT;
     #ifdef _DEBUG_WK_FUNCTION
 		printk(KERN_ALERT "%s!!-port:%ld;--in--\n", __func__,one->port.iobase);
     #endif
-    wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_FSR_REG,&fsr);
+    wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_FSR_REG,&fsr);
     if (fsr& WK2XXX_FSR_RDAT_BIT){
-        wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_RFCNT_REG,&rfcnt);
+        wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_RFCNT_REG,&rfcnt);
         if(rfcnt==0){
-            wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_RFCNT_REG,&rfcnt);   
+            wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_RFCNT_REG,&rfcnt);   
         }
-		wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_RFCNT_REG,&rfcnt2);
+		wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_RFCNT_REG,&rfcnt2);
         if(rfcnt2==0){
-            wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_RFCNT_REG,&rfcnt2);
+            wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_RFCNT_REG,&rfcnt2);
         }
         rfcnt=(rfcnt2>=rfcnt)?rfcnt:rfcnt2;
 	    rxlen=(rfcnt==0)?256:rfcnt;	
@@ -558,17 +563,17 @@ static void wk2xxx_rx_chars(struct uart_port *port)
 	            len_rfcnt=rxlen;
 	            while(len_rfcnt){
 			        if(len_rfcnt>len_limit){
-				        wk2xxx_read_fifo(s->wk2xxx_i2c_client,one->port.iobase,len_limit,rx_dat+len_p);
+				        wk2xxx_read_fifo(s->spi_wk,one->port.iobase,len_limit,rx_dat+len_p);
 				        len_rfcnt=len_rfcnt-len_limit;
 				        len_p=len_p+len_limit;
 			        }else{
-				        wk2xxx_read_fifo(s->wk2xxx_i2c_client,one->port.iobase,len_rfcnt,rx_dat+len_p);//
+				        wk2xxx_read_fifo(s->spi_wk,one->port.iobase,len_rfcnt,rx_dat+len_p);//
 				        len_rfcnt=0;
 			        }
 	            }
         #else
 	        for(rx_num=0;rx_num<rxlen;rx_num++){
-		        wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_FDAT_REG,&rx_dat[rx_num]);
+		        wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_FDAT_REG,&rx_dat[rx_num]);
 		    }
         #endif
 
@@ -630,38 +635,47 @@ static void wk2xxx_tx_chars(struct uart_port *port)
     uint8_t fsr,tfcnt,dat[1],txbuf[256]={0};
     int count,tx_count,i;
 	int len_tfcnt,len_limit,len_p=0;
-	len_limit=I2C_LEN_LIMIT;
+    uint8_t sier;
+	len_limit=SPI_LEN_LIMIT;
 	#ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!-port:%ld;--in--\n", __func__,one->port.iobase);
 	#endif
     if (one->port.x_char) {   
         #ifdef _DEBUG_WK_TX
-            printk(KERN_ALERT "wk2xxx_tx_chars   one->port.x_char:%x,port = %ld\n",one->port.x_char,one->port.iobase);
+            printk(KERN_ALERT "%s   one->port.x_char:%x,port = %ld\n",__func__,one->port.x_char,one->port.iobase);
        	#endif
-        wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_FDAT_REG,one->port.x_char);
+        wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_FDAT_REG,one->port.x_char);
         one->port.icount.tx++;
         one->port.x_char = 0;
         goto out;
     }
 
     if(uart_circ_empty(&one->port.state->xmit) || uart_tx_stopped(&one->port)){
+        #ifdef _DEBUG_WK_TX
+		if(uart_circ_empty(&one->port.state->xmit)) {
+			printk(KERN_ALERT "%s   uart_circ_empty,port = %ld\n",__func__,one->port.iobase);
+		}
+		if(uart_tx_stopped(&one->port)){
+			printk(KERN_ALERT "%s   uart_tx_stopped,port = %ld\n",__func__,one->port.iobase);
+		}
+       	#endif
         goto out;
     }
 
-    wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_FSR_REG,&fsr);
-    wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_TFCNT_REG,&tfcnt); 
+    wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_FSR_REG,&fsr);
+    wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_TFCNT_REG,&tfcnt); 
 	#ifdef _DEBUG_WK_TX
-		printk(KERN_ALERT "wk2xxx_tx_chars   fsr:0x%x,tfcnt:0x%x,port = %ld\n",fsr,tfcnt,one->port.iobase);
+		printk(KERN_ALERT "%s   fsr:0x%x,tfcnt:0x%x,port = %ld\n",__func__,fsr,tfcnt,one->port.iobase);
 	#endif
     if(tfcnt==0){
 	    tx_count=(fsr & WK2XXX_FSR_TFULL_BIT)?0:256;
         #ifdef _DEBUG_WK_TX
-            printk(KERN_ALERT "wk2xxx_tx_chars2   tx_count:%x,port = %ld\n",tx_count,one->port.iobase);
+            printk(KERN_ALERT "%s   tx_count:%x,port = %ld\n",__func__,tx_count,one->port.iobase);
 		#endif
     }else{
 		tx_count=256-tfcnt;
 	    #ifdef _DEBUG_WK_TX
-            printk(KERN_ALERT "wk2xxx_tx_chars2   tx_count:%x,port = %ld\n",tx_count,one->port.iobase);
+            printk(KERN_ALERT "%s   tx_count:%x,port = %ld\n",__func__,tx_count,one->port.iobase);
 		#endif 
     } 
     if(tx_count>200){
@@ -686,21 +700,21 @@ static void wk2xxx_tx_chars(struct uart_port *port)
 	len_tfcnt=i;    
 	while(len_tfcnt){
 		if(len_tfcnt>len_limit){
-            wk2xxx_write_fifo(s->wk2xxx_i2c_client,one->port.iobase,len_limit,txbuf+len_p);	
+            wk2xxx_write_fifo(s->spi_wk,one->port.iobase,len_limit,txbuf+len_p);	
 			len_p=len_p+len_limit;
 			len_tfcnt=len_tfcnt-len_limit;
         }else{
-            wk2xxx_write_fifo(s->wk2xxx_i2c_client,one->port.iobase,len_tfcnt,txbuf+len_p);
+            wk2xxx_write_fifo(s->spi_wk,one->port.iobase,len_tfcnt,txbuf+len_p);
 			len_p=len_p+len_tfcnt;
 			len_tfcnt=0;
 		}
 	}
     #else
 	    for(count=0;count<i;count++){
-            wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_FDAT_REG,txbuf[count]);	
+            wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_FDAT_REG,txbuf[count]);	
         }
     #endif
-    out:wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_FSR_REG,dat);
+    out:wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_FSR_REG,dat);
         fsr = dat[0];
     #ifdef _DEBUG_WK_VALUE
         printk(KERN_ALERT "%s!!-port:%ld;--FSR:0X%X--\n", __func__,one->port.iobase,fsr);
@@ -710,7 +724,14 @@ static void wk2xxx_tx_chars(struct uart_port *port)
             uart_write_wakeup(&one->port); 
         }
         if (uart_circ_empty(&one->port.state->xmit)){
+#ifndef DIRK_MOD
             wk2xxx_stop_tx(&one->port);
+#else
+			// printk(KERN_ALERT "%s!!-port:%ld;--stop tx as uart_circ_empty()-- 2\n", __func__,one->port.iobase);
+			wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,&sier);
+			sier&=~WK2XXX_SIER_TFTRIG_IEN_BIT;
+			wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,sier);
+#endif
         }
     }
     #ifdef _DEBUG_WK_FUNCTION
@@ -739,24 +760,27 @@ static void wk2xxx_port_irq(struct wk2xxx_port *s, int portno)//
         printk(KERN_ALERT "%s!!-port:%ld;--in--\n", __func__,one->port.iobase);
     #endif
 
+#ifdef DIRK_MOD
+    mutex_lock(&wk2xxxs_lock);
+#endif
 
     #ifdef _DEBUG_WK_IRQ
-        wk2xxx_read_global_reg(s->wk2xxx_i2c_client,WK2XXX_GIFR_REG ,&gifr);
-        wk2xxx_read_global_reg(s->wk2xxx_i2c_client,WK2XXX_GIER_REG ,&gier);
-        wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,1,WK2XXX_SIFR_REG,&sifr0);
-        wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,2,WK2XXX_SIFR_REG,&sifr1);
-        wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,3,WK2XXX_SIFR_REG,&sifr2);
-        wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,4,WK2XXX_SIFR_REG,&sifr3);
-        wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,1,WK2XXX_SIER_REG,&sier0);
-        wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,2,WK2XXX_SIER_REG,&sier1);
-        wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,3,WK2XXX_SIER_REG,&sier2);
-        wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,4,WK2XXX_SIER_REG,&sier3);
-        printk(KERN_ALERT "irq_app....gifr:%x  gier:%x  sier1:%x  sier2:%x sier3:%x sier4:%x   sifr1:%x sifr2:%x sifr3:%x sifr4:%x \n",gifr,gier,sier0,sier1,sier2,sier3,sifr0,sifr1,sifr2,sifr3);
+        wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GIFR_REG ,&gifr);
+        wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GIER_REG ,&gier);
+        wk2xxx_read_slave_reg(s->spi_wk,1,WK2XXX_SIFR_REG,&sifr0);
+        wk2xxx_read_slave_reg(s->spi_wk,2,WK2XXX_SIFR_REG,&sifr1);
+        wk2xxx_read_slave_reg(s->spi_wk,3,WK2XXX_SIFR_REG,&sifr2);
+        wk2xxx_read_slave_reg(s->spi_wk,4,WK2XXX_SIFR_REG,&sifr3);
+        wk2xxx_read_slave_reg(s->spi_wk,1,WK2XXX_SIER_REG,&sier0);
+        wk2xxx_read_slave_reg(s->spi_wk,2,WK2XXX_SIER_REG,&sier1);
+        wk2xxx_read_slave_reg(s->spi_wk,3,WK2XXX_SIER_REG,&sier2);
+        wk2xxx_read_slave_reg(s->spi_wk,4,WK2XXX_SIER_REG,&sier3);
+        printk(KERN_ALERT "%s....gifr:%x  gier:%x  sier1:%x  sier2:%x sier3:%x sier4:%x   sifr1:%x sifr2:%x sifr3:%x sifr4:%x \n",__func__,gifr,gier,sier0,sier1,sier2,sier3,sifr0,sifr1,sifr2,sifr3);
     #endif           
-    wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SIFR_REG,&sifr);
-    wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SIER_REG,&sier);
+    wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIFR_REG,&sifr);
+    wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,&sier);
     #ifdef _DEBUG_WK_IRQ
-        printk(KERN_ALERT "irq_app....port:%ld......sifr:%x sier:%x \n",one->port.iobase,sifr,sier);
+        printk(KERN_ALERT "%s....port:%ld......sifr:%x sier:%x \n",__func__,one->port.iobase,sifr,sier);
     #endif
 
     do {
@@ -766,16 +790,20 @@ static void wk2xxx_port_irq(struct wk2xxx_port *s, int portno)//
         
         if ((sifr & WK2XXX_SIFR_TFTRIG_INT_BIT)&&(sier & WK2XXX_SIER_TFTRIG_IEN_BIT)){
             wk2xxx_tx_chars(&one->port);
-            return;
+            break;
         }
         if (pass_counter++ > WK2XXX_ISR_PASS_LIMIT)
             break;
-        wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SIFR_REG,&sifr);
-        wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SIER_REG,&sier);
+        wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIFR_REG,&sifr);
+        wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,&sier);
         #ifdef _DEBUG_WK_VALUE
             printk(KERN_ALERT "irq_app...........rx............tx  sifr:%x sier:%x port:%ld\n",sifr,sier,one->port.iobase);
         #endif
     } while ((sifr&(WK2XXX_SIFR_RXOVT_INT_BIT|WK2XXX_SIFR_RFTRIG_INT_BIT))||((sifr & WK2XXX_SIFR_TFTRIG_INT_BIT)&&(sier & WK2XXX_SIER_TFTRIG_IEN_BIT)));
+
+#ifdef DIRK_MOD
+    mutex_unlock(&wk2xxxs_lock);  
+#endif
     #ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!-port:%ld;--exit--\n", __func__,one->port.iobase);
     #endif
@@ -791,7 +819,15 @@ static void wk2xxx_ist(struct kthread_work *ws)
         printk(KERN_ALERT "%s!!---in--\n", __func__);
     #endif
 
-    wk2xxx_read_global_reg(s->wk2xxx_i2c_client,WK2XXX_GIFR_REG ,&gifr);
+
+#ifdef DIRK_MOD
+    // mutex_lock(&wk2xxxs_global_lock);
+#endif
+    wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GIFR_REG ,&gifr);
+
+#ifdef DIRK_MOD
+    // mutex_unlock(&wk2xxxs_global_lock);
+#endif
     while(1){
 
         for (i = 0; i < s->devtype->nr_uart; ++i){
@@ -800,7 +836,14 @@ static void wk2xxx_ist(struct kthread_work *ws)
             }
         }
 
-        wk2xxx_read_global_reg(s->wk2xxx_i2c_client,WK2XXX_GIFR_REG ,&gifr);
+#ifdef DIRK_MOD
+		// mutex_lock(&wk2xxxs_global_lock);
+#endif
+        wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GIFR_REG ,&gifr);
+
+#ifdef DIRK_MOD
+		// mutex_unlock(&wk2xxxs_global_lock);
+#endif
         if(!(gifr&0x0f)){
             break;
         }
@@ -812,8 +855,9 @@ static void wk2xxx_ist(struct kthread_work *ws)
         printk(KERN_ALERT "%s!!---exit--\n", __func__);
     #endif
 
-
-		enable_irq(s->irq);
+//#ifdef DIRK_MOD
+		enable_irq(s->irq_gpio);
+//#endif
 }
 
 static irqreturn_t wk2xxx_irq(int irq, void *dev_id)//
@@ -824,12 +868,17 @@ static irqreturn_t wk2xxx_irq(int irq, void *dev_id)//
         printk(KERN_ALERT "%s!!---in--\n", __func__);
     #endif  
 
+//#ifdef DIRK_MOD
 	disable_irq_nosync(irq);
+//#endif
 #ifdef WK_WORK_KTHREAD
     ret=kthread_queue_work(&s->kworker, &s->irq_work); 
 #else
     ret=queue_kthread_work(&s->kworker, &s->irq_work);  
 #endif
+   if (!ret) {
+        printk(KERN_ALERT "%s!!ret=%d--kthread_queue_work--error--\n", __func__,ret);
+   }
 
     #ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!ret:%d---exit--\n", __func__,ret);
@@ -852,9 +901,9 @@ static u_int wk2xxx_tx_empty(struct uart_port *port)// or query the tx fifo is n
     #endif
 	mutex_lock(&wk2xxxs_lock);
   
-    wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_FSR_REG,&fsr);
+    wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_FSR_REG,&fsr);
     while((fsr & WK2XXX_FSR_TDAT_BIT)|(fsr&WK2XXX_FSR_TBUSY_BIT)){
-	   	wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_FSR_REG,&fsr);
+	   	wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_FSR_REG,&fsr);
 	}
     s->tx_empty=((fsr&(WK2XXX_FSR_TBUSY_BIT|WK2XXX_FSR_TDAT_BIT))==0) ? TIOCSER_TEMT : 0;
 	mutex_unlock(&wk2xxxs_lock);
@@ -892,9 +941,9 @@ static void wk2xxx_stop_tx(struct uart_port *port)//
 	#endif
 
     mutex_lock(&wk2xxxs_lock);
-	wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SIER_REG,&sier);
+	wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,&sier);
     sier&=~WK2XXX_SIER_TFTRIG_IEN_BIT;
-    wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SIER_REG,sier);
+    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,sier);
 	mutex_unlock(&wk2xxxs_lock); 
 	#ifdef _DEBUG_WK_FUNCTION
     printk(KERN_ALERT "%s!!-port:%ld;--exit--\n", __func__,one->port.iobase);
@@ -908,18 +957,28 @@ static void wk2xxx_start_tx_proc(struct kthread_work *ws)
     struct uart_port *port = &(to_wk2xxx_one(ws, start_tx_work)->port);
     struct wk2xxx_port *s = dev_get_drvdata(port->dev);
 
+    // uint8_t gier,sifr0,sier0,gifr;
+
     uint8_t rx;
 	#ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!-port:%ld;--in--\n", __func__,one->port.iobase);
 	#endif
     mutex_lock(&wk2xxxs_lock);
-    wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SIER_REG,&rx);
+
+	// printk(KERN_ALERT "%s!!-port:%ld  spi->mode= 0x%x\n", __func__, one->port.iobase, s->spi_wk->mode);
+
+    wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,&rx);
     rx |= WK2XXX_SIER_TFTRIG_IEN_BIT|WK2XXX_SIER_RFTRIG_IEN_BIT|WK2XXX_SIER_RXOUT_IEN_BIT; 
-    wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SIER_REG,rx);
+    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,rx);
+
+	// HACK. Read regs again to avoid send failure!!!! which I do not know why
+	// wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GIFR_REG ,&gifr);
+	// wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GIER_REG ,&gier);
+	// wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIFR_REG,&sifr0);
+	// wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,&sier0);
+	// printk(KERN_ALERT "start_tx_proc!!-port:%ld....gifr:%x gier:%x sier:%x sifr:%x \n",one->port.iobase, gifr,gier,sier0,sifr0);
+
     mutex_unlock(&wk2xxxs_lock); 
-	#ifdef _DEBUG_WK_FUNCTION
-    printk(KERN_ALERT "%s!!-port:%ld;--exit--\n", __func__,one->port.iobase);
-	#endif
 }
 
 /*
@@ -938,6 +997,9 @@ static void wk2xxx_start_tx(struct uart_port *port)
 #else
     ret=queue_kthread_work(&s->kworker, &one->start_tx_work);
 #endif
+	if (!ret) {
+        printk(KERN_ALERT "%s!!-port:%ld;ret=%d--kthread_queue_work--error--\n", __func__,one->port.iobase,ret);
+	}
 
     #ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!-port:%ld;ret=%d--exit--\n", __func__,one->port.iobase,ret);
@@ -958,14 +1020,14 @@ static void wk2xxx_stop_rx_proc(struct kthread_work *ws)
         printk(KERN_ALERT "%s!!-port:%ld;--in--\n", __func__,one->port.iobase);
 	#endif  
     mutex_lock(&wk2xxxs_lock); 
-    wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SIER_REG,&rx);
+    wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,&rx);
     rx &=~WK2XXX_SIER_RFTRIG_IEN_BIT;
     rx &=~WK2XXX_SIER_RXOUT_IEN_BIT;
-    wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SIER_REG,rx);
+    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,rx);
 
-    wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SCR_REG,&rx);
+    wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SCR_REG,&rx);
     rx &=~WK2XXX_SCR_RXEN_BIT;
-    wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SCR_REG,rx);
+    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SCR_REG,rx);
     mutex_unlock(&wk2xxxs_lock); 
 
     
@@ -986,6 +1048,9 @@ static void wk2xxx_stop_rx(struct uart_port *port)
 #else
    ret=queue_kthread_work(&s->kworker, &one->stop_rx_work);
 #endif
+   if (!ret) {
+        printk(KERN_ALERT "%s!!-port:%ld;ret=%d--kthread_queue_work--error--\n", __func__,one->port.iobase,ret);
+   }
 
 	#ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!-port:%ld;ret:%d--exit--\n", __func__,one->port.iobase,ret);
@@ -1028,48 +1093,48 @@ static int wk2xxx_startup(struct uart_port *port)//i
 	#endif
 
     mutex_lock(&wk2xxxs_global_lock);  
-    wk2xxx_read_global_reg(s->wk2xxx_i2c_client,WK2XXX_GENA_REG,dat);
+    wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GENA_REG,dat);
     gena=dat[0];
     switch (one->port.iobase){
         case 1:
             gena|=WK2XXX_GENA_UT1EN_BIT;
-            wk2xxx_write_global_reg(s->wk2xxx_i2c_client,WK2XXX_GENA_REG,gena);
+            wk2xxx_write_global_reg(s->spi_wk,WK2XXX_GENA_REG,gena);
             break;
         case 2:
             gena|=WK2XXX_GENA_UT2EN_BIT;
-            wk2xxx_write_global_reg(s->wk2xxx_i2c_client,WK2XXX_GENA_REG,gena);
+            wk2xxx_write_global_reg(s->spi_wk,WK2XXX_GENA_REG,gena);
             break;
         case 3:
             gena|=WK2XXX_GENA_UT3EN_BIT;
-            wk2xxx_write_global_reg(s->wk2xxx_i2c_client,WK2XXX_GENA_REG,gena);
+            wk2xxx_write_global_reg(s->spi_wk,WK2XXX_GENA_REG,gena);
             break;
         case 4:
             gena|=WK2XXX_GENA_UT4EN_BIT;
-            wk2xxx_write_global_reg(s->wk2xxx_i2c_client,WK2XXX_GENA_REG,gena);
+            wk2xxx_write_global_reg(s->spi_wk,WK2XXX_GENA_REG,gena);
             break;
         default:
 		    printk(KERN_ALERT ":%s！！ bad iobase1: %d.\n", __func__,(uint8_t)one->port.iobase);
             break;
     }
  
-    //wk2xxx_read_global_reg(s->wk2xxx_i2c_client,WK2XXX_GRST_REG,dat);
+    //wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GRST_REG,dat);
     grst=0;
     switch (one->port.iobase){
         case 1:
             grst|=WK2XXX_GRST_UT1RST_BIT;
-            wk2xxx_write_global_reg(s->wk2xxx_i2c_client,WK2XXX_GRST_REG,grst);
+            wk2xxx_write_global_reg(s->spi_wk,WK2XXX_GRST_REG,grst);
             break;
         case 2:
             grst|=WK2XXX_GRST_UT2RST_BIT;
-            wk2xxx_write_global_reg(s->wk2xxx_i2c_client,WK2XXX_GRST_REG,grst);
+            wk2xxx_write_global_reg(s->spi_wk,WK2XXX_GRST_REG,grst);
             break;
         case 3:
             grst|=WK2XXX_GRST_UT3RST_BIT;
-            wk2xxx_write_global_reg(s->wk2xxx_i2c_client,WK2XXX_GRST_REG,grst);
+            wk2xxx_write_global_reg(s->spi_wk,WK2XXX_GRST_REG,grst);
             break;
         case 4:
             grst|=WK2XXX_GRST_UT4RST_BIT;
-            wk2xxx_write_global_reg(s->wk2xxx_i2c_client,WK2XXX_GRST_REG,grst);
+            wk2xxx_write_global_reg(s->spi_wk,WK2XXX_GRST_REG,grst);
             break;
         default:
             printk(KERN_ALERT ":%s！！ bad iobase2: %d.\n", __func__,(uint8_t)one->port.iobase);
@@ -1077,72 +1142,84 @@ static int wk2xxx_startup(struct uart_port *port)//i
     }
 
 	//enable the sub port interrupt
-	wk2xxx_read_global_reg(s->wk2xxx_i2c_client,WK2XXX_GIER_REG,dat);
+	wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GIER_REG,dat);
 	gier = dat[0];		
 	switch (one->port.iobase)
 	{
 		case 1:
 			gier|=WK2XXX_GIER_UT1IE_BIT;
-			wk2xxx_write_global_reg(s->wk2xxx_i2c_client,WK2XXX_GIER_REG,gier);
+			wk2xxx_write_global_reg(s->spi_wk,WK2XXX_GIER_REG,gier);
 			break;
 		case 2:
 			gier|=WK2XXX_GIER_UT2IE_BIT;
-			wk2xxx_write_global_reg(s->wk2xxx_i2c_client,WK2XXX_GIER_REG,gier);
+			wk2xxx_write_global_reg(s->spi_wk,WK2XXX_GIER_REG,gier);
 			break;
 		case 3:
 			gier|=WK2XXX_GIER_UT3IE_BIT;
-			wk2xxx_write_global_reg(s->wk2xxx_i2c_client,WK2XXX_GIER_REG,gier);
+			wk2xxx_write_global_reg(s->spi_wk,WK2XXX_GIER_REG,gier);
 			break;
 		case 4:
 			gier|=WK2XXX_GIER_UT4IE_BIT;
-			wk2xxx_write_global_reg(s->wk2xxx_i2c_client,WK2XXX_GIER_REG,gier);
+			wk2xxx_write_global_reg(s->spi_wk,WK2XXX_GIER_REG,gier);
 			break;
 		default:
 			printk(KERN_ALERT ":%s！！bad iobase3: %d.\n",__func__, (uint8_t)one->port.iobase);
 			break;
 	}   
-    wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SIER_REG,dat);
+
+#ifdef DIRK_MOD
+    mutex_unlock(&wk2xxxs_global_lock); // DIRK: Release Lock earilier
+
+    mutex_lock(&wk2xxxs_lock);
+#endif
+    wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,dat);
     sier = dat[0];
     sier &= ~WK2XXX_SIER_TFTRIG_IEN_BIT;
     sier |= WK2XXX_SIER_RFTRIG_IEN_BIT;
     sier |= WK2XXX_SIER_RXOUT_IEN_BIT;
-    wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SIER_REG,sier);
+    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,sier);
 
-    wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SCR_REG,dat);
+    wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SCR_REG,dat);
     scr = dat[0] | WK2XXX_SCR_TXEN_BIT|WK2XXX_SCR_RXEN_BIT;
-    wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SCR_REG,scr);
+    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SCR_REG,scr);
 
     //initiate the fifos
-    wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_FCR_REG,0xff);//initiate the fifos
-    wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_FCR_REG,0xfc);
+    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_FCR_REG,0xff);//initiate the fifos
+    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_FCR_REG,0xfc);
     //set rx/tx interrupt 
-    wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SPAGE_REG,1);  
-    wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_RFTL_REG,WK2XXX_RXFIFO_LEVEL);
-    wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_TFTL_REG,WK2XXX_TXFIFO_LEVEL);
-    wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SPAGE_REG,0);  
+    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SPAGE_REG,1);  
+    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_RFTL_REG,WK2XXX_RXFIFO_LEVEL);
+    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_TFTL_REG,WK2XXX_TXFIFO_LEVEL);
+    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SPAGE_REG,0);  
 
 	/*enable rs485*/
 	#ifdef WK_RS485_FUNCTION
-    wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_RS485_REG,0X02);//default  high
-	//wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_RS485,0X03);//default low
-	wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SPAGE_REG,0X01);
-	wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_RRSDLY_REG,0X10);
-	wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SPAGE_REG,0X00);
+    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_RS485_REG,0X02);//default  high
+	//wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_RS485,0X03);//default low
+	wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SPAGE_REG,0X01);
+	wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_RRSDLY_REG,0X10);
+	wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SPAGE_REG,0X00);
 	#endif
         /*****************************test**************************************/
     #ifdef _DEBUG_WK_TEST
-        wk2xxx_read_global_reg(s->wk2xxx_i2c_client,WK2XXX_GENA_REG,&gena);
-		wk2xxx_read_global_reg(s->wk2xxx_i2c_client,WK2XXX_GIER_REG,&gier);
-		wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SIER_REG,&sier);
-		wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SCR_REG,&scr);
-		wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_FCR_REG,dat);
+        wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GENA_REG,&gena);
+		wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GIER_REG,&gier);
+		wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,&sier);
+		wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SCR_REG,&scr);
+		wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_FCR_REG,dat);
 		printk(KERN_ALERT "%s!!-port:%ld;gena:0x%x;gier:0x%x;sier:0x%x;scr:0x%x;fcr:0x%x----\n", __func__,one->port.iobase,gena,gier,sier,scr,dat[0]);	
 	#endif
 		/**********************************************************************/
 
+#ifndef DIRK_MOD
     mutex_unlock(&wk2xxxs_global_lock);
+#endif
     uart_circ_clear(&one->port.state->xmit);
     wk2xxx_enable_ms(&one->port);
+
+#ifdef DIRK_MOD
+    mutex_unlock(&wk2xxxs_lock);
+#endif
 
     #ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!-port:%ld;--exit--\n", __func__,one->port.iobase);
@@ -1162,31 +1239,39 @@ static void wk2xxx_shutdown(struct uart_port *port)
     #endif
 
     mutex_lock(&wk2xxxs_global_lock);
-    wk2xxx_read_global_reg(s->wk2xxx_i2c_client,WK2XXX_GIER_REG,&gier);
+    wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GIER_REG,&gier);
     switch (one->port.iobase){
         case 1:
             gier&=~WK2XXX_GIER_UT1IE_BIT;
-            wk2xxx_write_global_reg(s->wk2xxx_i2c_client,WK2XXX_GIER_REG,gier);
+            wk2xxx_write_global_reg(s->spi_wk,WK2XXX_GIER_REG,gier);
             break;
         case 2:
             gier&=~WK2XXX_GIER_UT2IE_BIT;;
-            wk2xxx_write_global_reg(s->wk2xxx_i2c_client,WK2XXX_GIER_REG,gier);
+            wk2xxx_write_global_reg(s->spi_wk,WK2XXX_GIER_REG,gier);
             break;
         case 3:
             gier&=~WK2XXX_GIER_UT3IE_BIT;;
-            wk2xxx_write_global_reg(s->wk2xxx_i2c_client,WK2XXX_GIER_REG,gier);
+            wk2xxx_write_global_reg(s->spi_wk,WK2XXX_GIER_REG,gier);
             break;
         case 4:
             gier&=~WK2XXX_GIER_UT4IE_BIT;;
-            wk2xxx_write_global_reg(s->wk2xxx_i2c_client,WK2XXX_GIER_REG,gier);
+            wk2xxx_write_global_reg(s->spi_wk,WK2XXX_GIER_REG,gier);
             break;
         default:
             printk(KERN_ALERT "%s!! (GIER)bad iobase %d\n",__func__, (uint8_t)one->port.iobase);;
             break;
     }
 
-    wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SIER_REG,0x0);
+#ifdef DIRK_MOD
 	mutex_unlock(&wk2xxxs_global_lock);
+
+    mutex_lock(&wk2xxxs_lock); 
+    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,0x0);
+    mutex_unlock(&wk2xxxs_lock);
+#else
+    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,0x0);
+	mutex_unlock(&wk2xxxs_global_lock);
+#endif
 
     #ifdef WK_WORK_KTHREAD
         kthread_flush_work(&one->start_tx_work);
@@ -1202,48 +1287,48 @@ static void wk2xxx_shutdown(struct uart_port *port)
 
 
     mutex_lock(&wk2xxxs_global_lock);
-    wk2xxx_read_global_reg(s->wk2xxx_i2c_client,WK2XXX_GRST_REG,dat);
+    wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GRST_REG,dat);
     grst=dat[0];
     switch (one->port.iobase){
         case 1:
             grst|=WK2XXX_GRST_UT1RST_BIT;
-            wk2xxx_write_global_reg(s->wk2xxx_i2c_client,WK2XXX_GRST_REG,grst);
+            wk2xxx_write_global_reg(s->spi_wk,WK2XXX_GRST_REG,grst);
             break;
         case 2:
             grst|=WK2XXX_GRST_UT2RST_BIT;
-            wk2xxx_write_global_reg(s->wk2xxx_i2c_client,WK2XXX_GRST_REG,grst);
+            wk2xxx_write_global_reg(s->spi_wk,WK2XXX_GRST_REG,grst);
             break;
         case 3:
             grst|=WK2XXX_GRST_UT3RST_BIT;
-            wk2xxx_write_global_reg(s->wk2xxx_i2c_client,WK2XXX_GRST_REG,grst);
+            wk2xxx_write_global_reg(s->spi_wk,WK2XXX_GRST_REG,grst);
             break;
         case 4:
             grst|=WK2XXX_GRST_UT4RST_BIT;
-            wk2xxx_write_global_reg(s->wk2xxx_i2c_client,WK2XXX_GRST_REG,grst);
+            wk2xxx_write_global_reg(s->spi_wk,WK2XXX_GRST_REG,grst);
             break;
         default:
             printk(KERN_ALERT "%s!! bad iobase %d\n",__func__, (uint8_t)one->port.iobase);
             break;
     }
 
-    wk2xxx_read_global_reg(s->wk2xxx_i2c_client,WK2XXX_GENA_REG,dat);
+    wk2xxx_read_global_reg(s->spi_wk,WK2XXX_GENA_REG,dat);
     gena=dat[0];
     switch (one->port.iobase){
         case 1:
             gena&=~WK2XXX_GENA_UT1EN_BIT;
-            wk2xxx_write_global_reg(s->wk2xxx_i2c_client,WK2XXX_GENA_REG,gena);
+            wk2xxx_write_global_reg(s->spi_wk,WK2XXX_GENA_REG,gena);
             break;
         case 2:
             gena&=~WK2XXX_GENA_UT2EN_BIT;
-            wk2xxx_write_global_reg(s->wk2xxx_i2c_client,WK2XXX_GENA_REG,gena);
+            wk2xxx_write_global_reg(s->spi_wk,WK2XXX_GENA_REG,gena);
             break;
         case 3:
             gena&=~WK2XXX_GENA_UT3EN_BIT;
-            wk2xxx_write_global_reg(s->wk2xxx_i2c_client,WK2XXX_GENA_REG,gena);
+            wk2xxx_write_global_reg(s->spi_wk,WK2XXX_GENA_REG,gena);
             break;
         case 4:
             gena&=~WK2XXX_GENA_UT4EN_BIT;
-            wk2xxx_write_global_reg(s->wk2xxx_i2c_client,WK2XXX_GENA_REG,gena);
+            wk2xxx_write_global_reg(s->spi_wk,WK2XXX_GENA_REG,gena);
             break;
         default:
             printk(KERN_ALERT "%s!! bad iobase %d\n",__func__, (uint8_t)one->port.iobase);;
@@ -1270,47 +1355,63 @@ static void conf_wk2xxx_subport(struct uart_port *port)//i
 	baud1=one->new_baud1_reg;
 	pres=one->new_pres_reg;
 	fwcr=one->new_fwcr_reg;
+
+#ifdef DIRK_MOD
+    mutex_lock(&wk2xxxs_lock);
+#endif
     /* Disable Uart all interrupts */
-	wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SIER_REG ,dat);
+	wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG ,dat);
 	sier = dat[0];
-	wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SIER_REG,0X0);
+	wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG,0X0);
+
+#ifdef DIRK_MOD
+    mutex_unlock(&wk2xxxs_lock);
+#endif
 
 	do{
-        wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_FSR_REG,dat);
+        wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_FSR_REG,dat);
 	} while ((dat[0] & WK2XXX_FSR_TBUSY_BIT)&&(count--));
+
+#ifdef DIRK_MOD
+    mutex_lock(&wk2xxxs_lock);
+#endif
     // then, disable tx and rx
-    wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SCR_REG,dat);
+    wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SCR_REG,dat);
     scr = dat[0];
-    wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SCR_REG,scr&(~(WK2XXX_SCR_RXEN_BIT|WK2XXX_SCR_TXEN_BIT)));
+    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SCR_REG,scr&(~(WK2XXX_SCR_RXEN_BIT|WK2XXX_SCR_TXEN_BIT)));
     // set the parity, stop bits and data size //
-    wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_LCR_REG,lcr);
+    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_LCR_REG,lcr);
     #ifdef WK_FlowControl_FUNCTION
 	if(fwcr>0){  
-        printk(KERN_ALERT "%s!!---Flow Control  fwcr=0x%X\n",__func__,fwcr);
+        printk(KERN_ALERT "%s!!-port:%ld;---Flow Control  fwcr=0x%X\n",__func__,one->port.iobase,fwcr);
         // Configure flow control levels 
-		wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_FWCR_REG,fwcr);
+		wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_FWCR_REG,fwcr);
         //Flow control halt level 0XF0, resume level 0X80 
-		wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SPAGE_REG ,1);
-		wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_FWTH_REG,0XF0);
-		wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_FWTL_REG,0X80);
-		wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SPAGE_REG ,0);
+		wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SPAGE_REG ,1);
+		wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_FWTH_REG,0XF0);
+		wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_FWTL_REG,0X80);
+		wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SPAGE_REG ,0);
     }
     #endif
     /* Setup baudrate generator */
-    wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SPAGE_REG ,1);
-    wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_BAUD0_REG ,baud0);
-    wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_BAUD1_REG ,baud1);
-    wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_PRES_REG ,pres);
+    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SPAGE_REG ,1);
+    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_BAUD0_REG ,baud0);
+    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_BAUD1_REG ,baud1);
+    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_PRES_REG ,pres);
 	#ifdef _DEBUG_WK_FUNCTION
-        wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_BAUD0_REG,&baud1);
-        wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_BAUD1_REG,&baud0);
-        wk2xxx_read_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_PRES_REG,&pres);
-        printk(KERN_ALERT "%s!!---baud1:0x%x;baud0:0x%x;pres=0x%X.---\n", __func__,baud1,baud0,pres);
+        wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_BAUD0_REG,&baud1);
+        wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_BAUD1_REG,&baud0);
+        wk2xxx_read_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_PRES_REG,&pres);
+        printk(KERN_ALERT "%s!!-port:%ld;---baud1:0x%x;baud0:0x%x;pres=0x%X.---\n", __func__,one->port.iobase,baud1,baud0,pres);
     #endif
-    wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SPAGE_REG ,0);
-    wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SCR_REG ,scr|(WK2XXX_SCR_RXEN_BIT|WK2XXX_SCR_TXEN_BIT));
+    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SPAGE_REG ,0);
+    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SCR_REG ,scr|(WK2XXX_SCR_RXEN_BIT|WK2XXX_SCR_TXEN_BIT));
 
-    wk2xxx_write_slave_reg(s->wk2xxx_i2c_client,one->port.iobase,WK2XXX_SIER_REG ,sier);
+    wk2xxx_write_slave_reg(s->spi_wk,one->port.iobase,WK2XXX_SIER_REG ,sier);
+
+#ifdef DIRK_MOD
+	mutex_unlock(&wk2xxxs_lock);
+#endif
 
     #ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!-port:%ld;--exit--\n", __func__,one->port.iobase);
@@ -1328,7 +1429,9 @@ static void wk2xxx_termios( struct uart_port *port, struct ktermios *termios,str
 
 	#ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!-port:%ld;--in--\n", __func__,one->port.iobase);
-        printk(KERN_ALERT "%s!!---c_cflag:0x%x,c_iflag:0x%x.\n",__func__,termios->c_cflag,termios->c_iflag);
+	#endif
+	#ifdef _DEBUG_WK_VALUE
+        printk(KERN_ALERT "%s!!-port:%ld;---c_cflag:0x%x,c_iflag:0x%x.\n",__func__,one->port.iobase,termios->c_cflag,termios->c_iflag);
 	#endif
 	baud1=0;
 	baud0=0;
@@ -1343,12 +1446,12 @@ static void wk2xxx_termios( struct uart_port *port, struct ktermios *termios,str
 		baud0=(uint8_t)(temp&0xff);
 		temp=(((freq%(baud*16))*100)/(baud));
 		pres=(temp+100/2)/100;
-    #ifdef _DEBUG_WK_VALUE
-		printk(KERN_ALERT "%s!!---freq:%d,baudrate:%d\n",__func__,freq,baud);
-		printk(KERN_ALERT "%s!!---baud1:%x,baud0:%x,pres:%x\n",__func__,baud1,baud0,pres);
-	#endif
+		#ifdef _DEBUG_WK_VALUE
+		printk(KERN_ALERT "%s!!-port:%ld;---freq:%d,baudrate:%d\n",__func__,one->port.iobase,freq,baud);
+		printk(KERN_ALERT "%s!!-port:%ld;---baud1:%x,baud0:%x,pres:%x\n",__func__,one->port.iobase,baud1,baud0,pres);
+		#endif
 	}else{
-		printk(KERN_ALERT "the baud rate:%d is too high！ \n",baud);
+		printk(KERN_ALERT "%s!!-port:%ld;the baud rate:%d is too high！ \n",__func__,one->port.iobase,baud);
 	}
 	tty_termios_encode_baud_rate(termios, baud, baud);
 
@@ -1408,11 +1511,11 @@ static void wk2xxx_termios( struct uart_port *port, struct ktermios *termios,str
     }
     
 	if (termios->c_iflag & IXON){
-        printk(KERN_ALERT "%s!!---c_cflag:0x%x,IXON:0x%x.\n",__func__,termios->c_cflag,IXON);
+        printk(KERN_ALERT "%s!!-port:%ld;---c_cflag:0x%x,IXON:0x%x.\n",__func__,one->port.iobase,termios->c_cflag,IXON);
 
     }
 	if (termios->c_iflag & IXOFF){
-        printk(KERN_ALERT "%s!!---c_cflag:0x%x,IXOFF:0x%x.\n",__func__,termios->c_cflag,IXOFF);
+        printk(KERN_ALERT "%s!!-port:%ld;---c_cflag:0x%x,IXOFF:0x%x.\n",__func__,one->port.iobase,termios->c_cflag,IXOFF);
  
     }
     #endif
@@ -1532,13 +1635,13 @@ static struct uart_driver wk2xxx_uart_driver = {
 };
 
 static int uart_driver_registered;
-
+static struct spi_driver wk2xxx_driver;
 
 #ifdef WK_RSTGPIO_FUNCTION
-static int wk2xxx_i2c_rstgpio_parse_dt(struct device *dev,int *rst_gpio)
+static int wk2xxx_spi_rstgpio_parse_dt(struct device *dev,int *rst_gpio)
 {
 
-	enum of_gpio_flags rst_flags;
+	enum of_gpio_flags rst_flags; 
 	#ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!--in--\n", __func__);
 	#endif
@@ -1565,12 +1668,41 @@ static int wk2xxx_i2c_rstgpio_parse_dt(struct device *dev,int *rst_gpio)
 
 #endif
 
+#ifdef WK_CSGPIO_FUNCTION 
 
-
-static int wk2xxx_i2c_irq_parse_dt(struct device *dev,int *irq_gpio)
+static int wk2xxx_spi_csgpio_parse_dt(struct device *dev,int *cs_gpio)
 {
 
-    enum of_gpio_flags  irq_flags;
+	enum of_gpio_flags cs_flags; 
+	#ifdef _DEBUG_WK_FUNCTION
+        printk(KERN_ALERT "%s!!--in--\n", __func__);
+	#endif
+	*cs_gpio = of_get_named_gpio_flags(dev->of_node, "cs-gpios", 0,&cs_flags);
+    if (!gpio_is_valid(*cs_gpio)){
+		printk(KERN_ERR"invalid wk2xxx_cs_gpio: %d\n", *cs_gpio);
+		return -1;
+    }
+   
+    if(	*cs_gpio){
+		if (gpio_request(*cs_gpio , "cs-gpios")){
+            printk(KERN_ERR"gpio_request failed!! cs_gpio: %d!\n",*cs_gpio);
+		    gpio_free(*cs_gpio);
+		    return  IRQ_NONE;
+        }
+    }
+	printk(KERN_ERR"wk2xxx_cs_gpio: %d", *cs_gpio);
+    gpio_direction_output(*cs_gpio,1);// output high
+	#ifdef _DEBUG_WK_FUNCTION
+        printk(KERN_ALERT "%s!!--exit--\n", __func__);
+	#endif
+	return 0;
+}
+#endif
+
+static int wk2xxx_spi_irq_parse_dt(struct device *dev,int *irq_gpio)
+{
+
+	enum of_gpio_flags irq_flags;
     int irq; 
 	#ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!--in--\n", __func__);
@@ -1603,9 +1735,9 @@ static int wk2xxx_i2c_irq_parse_dt(struct device *dev,int *irq_gpio)
 
 
 
-static int wk2xxx_probe(struct i2c_client *client,const struct i2c_device_id *dev_id)
+static int wk2xxx_probe(struct spi_device *spi)
 {
-    // const struct sched_param sched_param = { .sched_priority = MAX_RT_PRIO / 2 };
+    const struct sched_param sched_param = { .sched_priority = MAX_RT_PRIO / 2 };
     //const struct sched_param sched_param = { .sched_priority = 100 / 2 };
     uint8_t i;
     int ret, irq;
@@ -1614,19 +1746,39 @@ static int wk2xxx_probe(struct i2c_client *client,const struct i2c_device_id *de
     #ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!--in--\n", __func__);
     #endif
+
+	// printk(KERN_ALERT "wk2xxx_probe  spi->mode= 0x%x\n", spi->mode);
     
+	/* Setup SPI bus */
+	spi->bits_per_word	= 8;
+	/* only supports mode 0 on WK2124 */
+	spi->mode		= spi->mode ? : SPI_MODE_0;
+	spi->max_speed_hz	= spi->max_speed_hz ? : 10000000;
+	ret = spi_setup(spi);
+	if (ret)
+		return ret;
     /* Alloc port structure */
-	s = devm_kzalloc(&client->dev, sizeof(*s) +sizeof(struct wk2xxx_one) * NR_PORTS,GFP_KERNEL);
+	s = devm_kzalloc(&spi->dev, sizeof(*s) +sizeof(struct wk2xxx_one) * NR_PORTS,GFP_KERNEL);
 	if (!s) {
 	    printk(KERN_ALERT "wk2xxx_probe(devm_kzalloc) fail.\n");
 		return -ENOMEM;
 	}
-	s->wk2xxx_i2c_client=client;
-    s->devtype=&wk2168_devtype;
-    dev_set_drvdata(&client->dev, s);
+	s->spi_wk = spi;
+#ifndef DIRK_MOD
+    s->devtype=&wk2124_devtype;
+#else
+	if (of_device_is_compatible(spi->dev.of_node, "wkmic,wk2132_spi")) {
+		printk(KERN_ALERT "wk2xxx_probe as wkmic,wk2132_spi\n");
+		s->devtype=&wk2132_devtype;
+	} else {
+		// Default is wk2124
+		s->devtype=&wk2124_devtype;
+	}
+#endif
+    dev_set_drvdata(&spi->dev, s);
     #ifdef WK_RSTGPIO_FUNCTION
      //Obtain the GPIO number of RST signal
-    ret=wk2xxx_i2c_rstgpio_parse_dt(&client->dev,&s->rst_gpio_num);
+    ret=wk2xxx_spi_rstgpio_parse_dt(&spi->dev,&s->rst_gpio_num);
     if(ret!=0){
         printk(KERN_ALERT "wk2xxx_probe(rst_gpio_num)  rst_gpio_num= 0x%d\n",s->rst_gpio_num);
         ret=s->rst_gpio_num;
@@ -1639,48 +1791,59 @@ static int wk2xxx_probe(struct i2c_client *client,const struct i2c_device_id *de
 	mdelay(10);
     gpio_set_value(s->rst_gpio_num, 1); 
     mdelay(10);
-
     #endif
 
-	if (client->irq <= 0) {
-		dev_err(&client->dev,
-			"wk2xxx has not been provided an Int IRQ\n");
-		mutex_unlock(&wk2xxxs_lock);
-		return -EINVAL;
-	}
-	irq = client->irq;
-	s->irq = irq;
-	printk(KERN_ALERT "wk2xxx_probe(client->irq)  irq = 0x%d\n",irq);
-	/*
+    #ifdef WK_CSGPIO_FUNCTION 
+    //Obtain the GPIO number of CS signal
+    ret=wk2xxx_spi_csgpio_parse_dt(&spi->dev,&cs_gpio_num);
+    if(ret!=0){
+        printk(KERN_ALERT "wk2xxx_probe(cs_gpio)  cs_gpio_num = 0x%d\n",cs_gpio_num);
+        ret=cs_gpio_num;
+        goto out_gpio;
+
+    }
+    #endif
+
     //Obtain the IRQ signal GPIO number and interrupt number
-    irq = wk2xxx_i2c_irq_parse_dt(&client->dev,&s->irq_gpio_num);
+    irq = wk2xxx_spi_irq_parse_dt(&spi->dev,&s->irq_gpio_num);
 	if(irq<0){
         printk(KERN_ALERT "wk2xxx_probe(irq_gpio)  irq = 0x%d\n",irq);
         ret=irq;
         goto out_gpio;
 	}
     s->irq_gpio = irq;
-	*/
-    /**********************test i2c **************************************/
+
+    /**********************test spi **************************************/
+#ifdef DIRK_MOD
+    mutex_lock(&wk2xxxs_global_lock);  
+#endif
 
 	do{
-	    wk2xxx_read_global_reg(client,WK2XXX_GENA_REG,dat);
-        wk2xxx_read_global_reg(client,WK2XXX_GENA_REG,dat);
-		printk(KERN_ERR "wk2xxx_probe(0xB0)  GENA = 0x%X\n",dat[0]);//GENA=0XB0
-		wk2xxx_write_global_reg(client,WK2XXX_GENA_REG,0xB5);
-		wk2xxx_read_global_reg(client,WK2XXX_GENA_REG,dat);
-		printk(KERN_ERR "wk2xxx_probe(0xB5)  GENA = 0x%X\n",dat[0]);//GENA=0XB5
-		wk2xxx_write_global_reg(client,WK2XXX_GENA_REG,0xBf);
-		wk2xxx_read_global_reg(client,WK2XXX_GENA_REG,dat);
-		printk(KERN_ERR "wk2xxx_probe(0xBf)  GENA = 0x%X\n",dat[0]);//GENA=0XBf
-        wk2xxx_write_global_reg(client,WK2XXX_GENA_REG,0xB0);
+	    wk2xxx_read_global_reg(spi,WK2XXX_GENA_REG,dat);
+        wk2xxx_read_global_reg(spi,WK2XXX_GENA_REG,dat);
+		printk(KERN_ERR "wk2xxx_probe(0x30)  GENA = 0x%X\n",dat[0]);//GENA=0X30
+		wk2xxx_write_global_reg(spi,WK2XXX_GENA_REG,0xf5);
+		wk2xxx_read_global_reg(spi,WK2XXX_GENA_REG,dat);
+		printk(KERN_ERR "wk2xxx_probe(0x35)  GENA = 0x%X\n",dat[0]);//GENA=0X35
+		wk2xxx_write_global_reg(spi,WK2XXX_GENA_REG,0xff);
+		wk2xxx_read_global_reg(spi,WK2XXX_GENA_REG,dat);
+		printk(KERN_ERR "wk2xxx_probe(0x3f)  GENA = 0x%X\n",dat[0]);//GENA=0X3f
+        wk2xxx_write_global_reg(spi,WK2XXX_GENA_REG,0xf0);
+#ifdef DIRK_MOD
+		wk2xxx_read_global_reg(spi,WK2XXX_GENA_REG,dat);
+		printk(KERN_ERR "wk2xxx_probe(0x3f)  GENA = 0x%X\n",dat[0]);//GENA=0X30
+#endif
 	}while(0);
     /*Get interrupt number*/
-    wk2xxx_write_global_reg(client,WK2XXX_GENA_REG,0x0);
-    wk2xxx_read_global_reg(client,WK2XXX_GENA_REG,dat);
-    if((dat[0]&0xf0)!=0xB0){ 
-        printk(KERN_ALERT "wk2xxx_probe(0xB0)  GENA = 0x%X\n",dat[0]);
-        printk(KERN_ALERT "The I2C failed to read the register.!!!!\n");
+    wk2xxx_write_global_reg(spi,WK2XXX_GENA_REG,0x0);
+    wk2xxx_read_global_reg(spi,WK2XXX_GENA_REG,dat);
+
+#ifdef DIRK_MOD
+	mutex_unlock(&wk2xxxs_global_lock);  
+#endif
+    if((dat[0]&0xf0)!=0x30){ 
+        printk(KERN_ALERT "wk2xxx_probe(0x30)  GENA = 0x%X\n",dat[0]);
+        printk(KERN_ALERT "The spi failed to read the register.!!!!\n");
         ret=-1;
         goto out_gpio;
     }
@@ -1694,15 +1857,12 @@ static int wk2xxx_probe(struct i2c_client *client,const struct i2c_device_id *de
 	init_kthread_work(&s->irq_work, wk2xxx_ist);
 #endif
 	s->kworker_task = kthread_run(kthread_worker_fn, &s->kworker,
-				      "wk2xxx-%s", dev_name(&client->dev));
+				      "wk2xxx-%s", dev_name(&spi->dev));
 	if (IS_ERR(s->kworker_task)) {
 		ret = PTR_ERR(s->kworker_task);
 		goto out_clk;
 	}
-	// sched_setscheduler(s->kworker_task, SCHED_FIFO, &sched_param);
-	printk(KERN_ALERT "%s Start kworker_task\n", __func__);
-	sched_set_fifo(s->kworker_task);
-	printk(KERN_ALERT "Start kworker_task\n");
+	sched_setscheduler(s->kworker_task, SCHED_FIFO, &sched_param);
 
     /**/
     mutex_lock(&wk2xxxs_lock);
@@ -1717,9 +1877,13 @@ static int wk2xxx_probe(struct i2c_client *client,const struct i2c_device_id *de
     }
 
     printk(KERN_ALERT "wk2xxx_serial_init.\n");
+#ifdef DIRK_MOD
     for(i =0;i<s->devtype->nr_uart;i++){
+#else
+    for(i =0;i<NR_PORTS;i++){
+#endif
         s->p[i].line          = i;
-        s->p[i].port.dev	= &client->dev;
+        s->p[i].port.dev	= &spi->dev;
 		s->p[i].port.line     = i;
 		s->p[i].port.ops      = &wk2xxx_pops;
 		s->p[i].port.uartclk  = WK_CRASTAL_CLK;
@@ -1752,8 +1916,8 @@ static int wk2xxx_probe(struct i2c_client *client,const struct i2c_device_id *de
     mutex_unlock(&wk2xxxs_lock);
 
    /* Setup interrupt */
-	ret = devm_request_irq(&client->dev, irq, wk2xxx_irq, IRQF_SHARED | IRQF_TRIGGER_LOW, dev_name(&client->dev), s);
-	// ret = devm_request_irq(&client->dev, irq, wk2xxx_irq, IRQF_TRIGGER_FALLING, dev_name(&client->dev), s);
+	// ret = devm_request_irq(&spi->dev, irq, wk2xxx_irq,IRQF_TRIGGER_FALLING, dev_name(&spi->dev), s);
+	ret = devm_request_irq(&spi->dev, irq, wk2xxx_irq,IRQF_SHARED|IRQF_TRIGGER_LOW, dev_name(&spi->dev), s);
   
 	if (!ret){
         printk(KERN_ALERT "devm_request_irq success. ret=%d.\n",ret);
@@ -1761,7 +1925,11 @@ static int wk2xxx_probe(struct i2c_client *client,const struct i2c_device_id *de
     }
    
 out_port:
+#ifdef DIRK_MOD
 	for (i=0; i<s->devtype->nr_uart; i++) {
+#else
+	for (i=0; i<NR_PORTS; i++) {
+#endif
         printk(KERN_ALERT "uart_remove_one_port：%ld. status= 0x%d\n",s->p[i].port.iobase,ret);
 		uart_remove_one_port(&wk2xxx_uart_driver, &s->p[i].port);
 	}
@@ -1778,21 +1946,32 @@ out_gpio:
         gpio_free(s->rst_gpio_num); 
         s->rst_gpio_num=0; 
     }
+    #ifdef WK_CSGPIO_FUNCTION 
+    if(cs_gpio_num>0){
+        printk(KERN_ALERT "gpio_free(cs_gpio_num)= 0x%d,ret=0x%d\n",cs_gpio_num,ret);
+        gpio_free(cs_gpio_num);  
+        cs_gpio_num=0;
+    }  
+    #endif
 	return ret;
 }
 
 
-static int wk2xxx_remove(struct i2c_client *i2c_client)
+static int wk2xxx_remove(struct spi_device *spi)
 {
 
     int i;
-    struct wk2xxx_port *s = dev_get_drvdata(&i2c_client->dev);
+    struct wk2xxx_port *s = dev_get_drvdata(&spi->dev);
 	#ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!--in--\n", __func__);
 	#endif
 
     mutex_lock(&wk2xxxs_lock);
+#ifdef DIRK_MOD
+	for (i=0; i<s->devtype->nr_uart; i++) {
+#else
     for(i =0;i<NR_PORTS;i++){
+#endif
         uart_remove_one_port(&wk2xxx_uart_driver, &s->p[i].port);
         printk(KERN_ALERT "%s!--uart_remove_one_port：%d.\n", __func__,i);
     }
@@ -1817,47 +1996,43 @@ static int wk2xxx_remove(struct i2c_client *i2c_client)
         printk(KERN_ALERT "%s!--,gpio_free(s->rst_gpio_num);\n", __func__);  
     }
 
+    #ifdef WK_CSGPIO_FUNCTION 
+    if(cs_gpio_num>0){
+        gpio_free(cs_gpio_num); 
+        printk(KERN_ALERT "%s!--,gpio_free(cs_gpio_num); ;\n", __func__); 
+    } 
+    #endif
+
     printk( KERN_ERR"removing wk2xxx_uart_driver\n");
     uart_unregister_driver(&wk2xxx_uart_driver);
     mutex_unlock(&wk2xxxs_lock);
+    devm_kfree(&spi->dev,s);
     #ifdef _DEBUG_WK_FUNCTION
         printk(KERN_ALERT "%s!!--exit--\n", __func__);
 	#endif
     return 0;
 }
 
-
-
-
-/*
-static int wk2xxx_resume(struct i2c_client *i2c_client)
-{
-    	printk(KERN_ERR "resume wk2xxx");
-    	return 0;
-}
-*/
-static const struct i2c_device_id wk2xxx_i2c_id_table[]={
-  {"wk2xxx_i2c",0},
-  {}
- };
-static const struct of_device_id wk2xxx_i2c_dt_ids[] = {
-	{.compatible = "wkmic,wk2xxx_i2c", },
-	{}
+static const struct of_device_id wkmic_spi_dt_match[] = {
+        //{ .compatible = "wkmic,wk2124_spi",  },
+        { .compatible = "wkmic,wk2xxx_spi", },
+		{ .compatible = "wkmic,wk2124_spi" },
+		{ .compatible = "wkmic,wk2132_spi" },
+		{ },
 };
 
-MODULE_DEVICE_TABLE(of, wk2xxx_i2c_dt_ids);
+MODULE_DEVICE_TABLE(of, wkmic_spi_dt_match);
 
-static struct i2c_driver wk2xxx_i2c_driver = {
-	.driver = {
-		.name       = "wk2xxx_i2c",
-		.owner      = THIS_MODULE,
-		.of_match_table = of_match_ptr(wk2xxx_i2c_dt_ids),
-	},
+static struct spi_driver wk2xxx_driver = {
+        .driver = {
+                .name           = "wk2xxxspi1",
+                .bus            = &spi_bus_type,
+                .owner          = THIS_MODULE,
+		        .of_match_table = of_match_ptr(wkmic_spi_dt_match),
+        },
 
-	.probe          = wk2xxx_probe,
-	.remove         = wk2xxx_remove,
-	//.resume         = wk2xxx_resume,
-	.id_table       = wk2xxx_i2c_id_table,
+        .probe          = wk2xxx_probe,
+        .remove         = wk2xxx_remove,
 };
 
 
@@ -1867,9 +2042,9 @@ static int __init wk2xxx_init(void)
     int ret;
     printk(KERN_ALERT"%s: " DRIVER_DESC "\n",__func__);
 	printk(KERN_ALERT "%s: " VERSION_DESC "\n",__func__);
-    ret =  i2c_add_driver(&wk2xxx_i2c_driver);
+    ret = spi_register_driver(&wk2xxx_driver);
     if(ret<0){
-        printk(KERN_ALERT "%s,failed to init wk2xxx i2c;ret= :%d\n",__func__,ret);
+        printk(KERN_ALERT "%s,failed to init wk2xxx spi;ret= :%d\n",__func__,ret);
     }
     return ret;
 }
@@ -1879,9 +2054,8 @@ static int __init wk2xxx_init(void)
 static void __exit wk2xxx_exit(void)
 {
 
-    printk(KERN_ALERT "%s!!---\n", __func__);
-    return i2c_del_driver(&wk2xxx_i2c_driver);
-
+    printk(KERN_ALERT "%s!!--in--\n", __func__);
+    return spi_unregister_driver(&wk2xxx_driver);
 }
 
 
