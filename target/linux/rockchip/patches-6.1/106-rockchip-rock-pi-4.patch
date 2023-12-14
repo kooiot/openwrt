@@ -1,15 +1,14 @@
 --- a/arch/arm64/boot/dts/rockchip/Makefile
 +++ b/arch/arm64/boot/dts/rockchip/Makefile
-@@ -30,6 +30,8 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-gr
+@@ -30,6 +30,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-gr
  dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-gru-scarlet-dumo.dtb
  dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-gru-scarlet-inx.dtb
  dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-gru-scarlet-kd.dtb
-+dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-guangmiao-g4c.dtb
 +dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-nanopi-r4se.dtb
  dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-hugsun-x99.dtb
  dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-khadas-edge.dtb
  dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-khadas-edge-captain.dtb
-@@ -50,6 +52,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-ro
+@@ -50,6 +51,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-ro
  dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-roc-pc-mezzanine.dtb
  dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-roc-pc-plus.dtb
  dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-rock-4c-plus.dtb

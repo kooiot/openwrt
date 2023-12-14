@@ -88,7 +88,7 @@ Signed-off-by: hmz007 <hmz007@gmail.com>
  struct dmc_usage {
  	u32 access;
  	u32 total;
-@@ -50,33 +91,261 @@ struct dmc_usage {
+@@ -50,33 +91,261 @@
  struct rockchip_dfi {
  	struct devfreq_event_dev *edev;
  	struct devfreq_event_desc *desc;
@@ -361,7 +361,7 @@ Signed-off-by: hmz007 <hmz007@gmail.com>
  
  	/* enable count, use software mode */
  	writel_relaxed(SOFTWARE_EN, dfi_regs + DDRMON_CTRL);
-@@ -100,12 +369,22 @@ static int rockchip_dfi_get_busier_ch(st
+@@ -100,12 +369,22 @@
  	rockchip_dfi_stop_hardware_counter(edev);
  
  	/* Find out which channel is busier */
@@ -388,7 +388,7 @@ Signed-off-by: hmz007 <hmz007@gmail.com>
  		if (tmp > max) {
  			busier_ch = i;
  			max = tmp;
-@@ -121,7 +400,8 @@ static int rockchip_dfi_disable(struct d
+@@ -121,7 +400,8 @@
  	struct rockchip_dfi *info = devfreq_event_get_drvdata(edev);
  
  	rockchip_dfi_stop_hardware_counter(edev);
@@ -398,7 +398,7 @@ Signed-off-by: hmz007 <hmz007@gmail.com>
  
  	return 0;
  }
-@@ -131,10 +411,13 @@ static int rockchip_dfi_enable(struct de
+@@ -131,10 +411,13 @@
  	struct rockchip_dfi *info = devfreq_event_get_drvdata(edev);
  	int ret;
  
@@ -416,7 +416,7 @@ Signed-off-by: hmz007 <hmz007@gmail.com>
  	}
  
  	rockchip_dfi_start_hardware_counter(edev);
-@@ -151,8 +434,11 @@ static int rockchip_dfi_get_event(struct
+@@ -151,8 +434,11 @@
  {
  	struct rockchip_dfi *info = devfreq_event_get_drvdata(edev);
  	int busier_ch;
@@ -428,7 +428,7 @@ Signed-off-by: hmz007 <hmz007@gmail.com>
  
  	edata->load_count = info->ch_usage[busier_ch].access;
  	edata->total_count = info->ch_usage[busier_ch].total;
-@@ -167,22 +453,116 @@ static const struct devfreq_event_ops ro
+@@ -167,22 +453,116 @@
  	.set_event = rockchip_dfi_set_event,
  };
  
@@ -557,12 +557,11 @@ Signed-off-by: hmz007 <hmz007@gmail.com>
  
  	data->regs = devm_platform_ioremap_resource(pdev, 0);
  	if (IS_ERR(data->regs))
-@@ -201,21 +581,97 @@ static int rockchip_dfi_probe(struct pla
- 		if (IS_ERR(data->regmap_pmu))
- 			return PTR_ERR(data->regmap_pmu);
- 	}
+@@ -202,21 +582,96 @@
+ 	if (IS_ERR(data->regmap_pmu))
+ 		return PTR_ERR(data->regmap_pmu);
+ 
 -	data->dev = dev;
-+
 +	regmap_read(data->regmap_pmu, PMUGRF_OS_REG2, &val);
 +	data->dram_type = READ_DRAMTYPE_INFO(val);
 +	data->ch_msk = READ_CH_INFO(val);

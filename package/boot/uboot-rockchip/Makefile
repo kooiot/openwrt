@@ -141,6 +141,23 @@ define U-Boot/nanopi-r5s-rk3568
     friendlyarm_nanopi-r5s
 endef
 
+define U-Boot/opc-h68k-rk3568
+  $(U-Boot/rk3568/Default)
+  NAME:=OPC-H68K Board
+  BUILD_DEVICES:= \
+    hinlink_opc-h66k \
+    hinlink_opc-h68k \
+    hinlink_opc-h69k
+endef
+
+define U-Boot/station-p2-rk3568
+  $(U-Boot/rk3568/Default)
+  BUILD_SUBTARGET:=armv8
+  NAME:=StationP2
+  BUILD_DEVICES:= \
+       firefly_station-p2
+endef
+
 UBOOT_TARGETS := \
   nanopc-t4-rk3399 \
   nanopi-r4s-rk3399 \
@@ -153,6 +170,8 @@ UBOOT_TARGETS := \
   roc-cc-rk3328 \
   rock64-rk3328 \
   rock-pi-e-rk3328 \
+  opc-h68k-rk3568 \
+  station-p2-rk3568 \
   nanopi-r5c-rk3568 \
   nanopi-r5s-rk3568
 
