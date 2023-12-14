@@ -784,6 +784,7 @@ let main_obj = {
 
 hostapd.data.ubus = ubus;
 hostapd.data.obj = ubus.publish("hostapd", main_obj);
+hostapd.udebug_set("hostapd", hostapd.data.ubus);
 
 function bss_event(type, name, data) {
 	let ubus = hostapd.data.ubus;
@@ -798,6 +799,7 @@ return {
 	shutdown: function() {
 		for (let phy in hostapd.data.config)
 			iface_set_config(phy, null);
+		hostapd.udebug_set(null);
 		hostapd.ubus.disconnect();
 	},
 	bss_add: function(name, obj) {
