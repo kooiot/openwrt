@@ -168,7 +168,8 @@ ion :1.0 Data:2018-08-08
 //wk2xxx hardware configuration
 #define		wk2xxx_spi_speed	10000000
 #define 	IRQ_WK2XXX		GPIO7_A2
-#define 	WK_CRASTAL_CLK		(3686400*2)
+// #define 	WK_CRASTAL_CLK		(3686400*2)
+#define 	WK_CRASTAL_CLK		(11059200)
 #define     MAX_WK2XXX           	4
 #define 	WK2XXX_ISR_PASS_LIMIT	50
 #define		PORT_WK2XXX            1

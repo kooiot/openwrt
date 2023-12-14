@@ -66,7 +66,7 @@ MODULE_LICENSE("Dual BSD/GPL");
 #define WK2XXX_STATUS_BRK   4
 #define WK2XXX_STATUS_OE    8
 
-#define SPI_LEN_LIMIT       255    //MAX<=255
+#define I2C_LEN_LIMIT       255    //MAX<=255
 
 
 static DEFINE_MUTEX(wk2xxxs_lock);                /* race on probe */
@@ -135,7 +135,7 @@ static int wk2xxx_read_global_reg(struct i2c_client *client,uint8_t greg,uint8_t
 	uint8_t cmd_addr,wk_addr = 0;
 	uint8_t ret, status = 0;
 	uint8_t wk_reg[1],wk_dat[1];
-	cmd_addr=((wk_addr<<6)|0x20|(greg&0x30)>>2)>>1;
+	cmd_addr=((wk_addr<<6)|0xE0|(greg&0x30)>>2)>>1;
 	mutex_lock(&wk2xxxs_reg_lock);
 	/***********************************************/
 	wk_reg[0] = greg&0x0f;
@@ -181,7 +181,7 @@ static int wk2xxx_write_global_reg(struct i2c_client *client,uint8_t greg,uint8_
 	uint8_t cmd_addr,wk_addr = 0;
 	uint8_t status = 0;
 	uint8_t wk_buf[2];
-	cmd_addr=((wk_addr<<6)|0x20|(greg&0x30)>>2)>>1;
+	cmd_addr=((wk_addr<<6)|0xE0|(greg&0x30)>>2)>>1;
 	mutex_lock(&wk2xxxs_reg_lock);
 	wk_buf[0] = greg&0x0f;
 	wk_buf[1] = dat;
@@ -206,7 +206,7 @@ static int wk2xxx_read_slave_reg(struct i2c_client *client,uint8_t port,uint8_t 
 	uint8_t cmd_addr,wk_addr = 0;
 	uint8_t ret, status = 0;
 	uint8_t wk_reg[1],wk_dat[1];
-	cmd_addr=((wk_addr<<6)|0x20|(port-1)<<2)>>1;
+	cmd_addr=((wk_addr<<6)|0xE0|(port-1)<<2)>>1;
 	mutex_lock(&wk2xxxs_reg_lock);
 	/***********************************************/
 	wk_reg[0] = sreg&0x0f;
@@ -248,7 +248,7 @@ static int wk2xxx_write_slave_reg(struct i2c_client *client,uint8_t port,uint8_t
 	uint8_t cmd_addr,wk_addr = 0;
 	uint8_t status = 0;
 	uint8_t wk_buf[2];
-	cmd_addr=((wk_addr<<6)|0x20|(port-1)<<2)>>1;
+	cmd_addr=((wk_addr<<6)|0xE0|(port-1)<<2)>>1;
 	mutex_lock(&wk2xxxs_reg_lock);
 	wk_buf[0] = sreg&0x0f;
 	wk_buf[1] = dat;
@@ -277,7 +277,7 @@ static int wk2xxx_read_fifo(struct i2c_client *client,uint8_t port,uint8_t fifol
 	uint8_t cmd_addr,wk_addr = 0;
 	int i, status = 0;
 	uint8_t fifo_data[256] = {0};
-	cmd_addr = ((wk_addr<<6)|0x20|(port-1)<<2|0x03) >> 1;
+	cmd_addr = ((wk_addr<<6)|0xE0|(port-1)<<2|0x03) >> 1;
 	if(!(fifolen>0)){
 		printk(KERN_ERR "%s,read fifolen error!!\n", __func__);
 		return 1;
@@ -308,7 +308,7 @@ static int wk2xxx_write_fifo(struct i2c_client *client,uint8_t port,uint8_t fifo
 	uint8_t cmd_addr,wk_addr = 0;
 	int i, status = 0;
 	uint8_t fifo_data[256] = {0};
-	cmd_addr = ((wk_addr<<6)|0x20|(port-1)<<2|0x02) >> 1;
+	cmd_addr = ((wk_addr<<6)|0xE0|(port-1)<<2|0x02) >> 1;
 	if(!(fifolen>0)){
 		printk(KERN_ERR "%s,wrire fifolen error!!\n", __func__);
 		return 1;
@@ -464,7 +464,7 @@ static void wk2xxx_rx_chars(struct uart_port *port)
 	unsigned int ch,flg,sifr, ignored=0,status = 0,rx_count=0;
 	int rfcnt=0,rfcnt2=0,rx_num=0;
 	int len_rfcnt,len_limit,len_p=0;
-	len_limit=SPI_LEN_LIMIT;
+	len_limit=I2C_LEN_LIMIT;
 #ifdef _DEBUG_WK_FUNCTION
 	printk(KERN_ALERT "%s!!-port:%ld;--in--\n", __func__,s->port.iobase);
 #endif
@@ -661,7 +661,7 @@ static void wk2xxx_tx_chars(struct uart_port *port)
 	uint8_t fsr,tfcnt,dat[1],txbuf[256]={0};
 	int count,tx_count,i;
 	int len_tfcnt,len_limit,len_p=0;
-	len_limit=SPI_LEN_LIMIT;
+	len_limit=I2C_LEN_LIMIT;
 #ifdef _DEBUG_WK_FUNCTION
 	printk(KERN_ALERT "%s!!-port:%ld;--in--\n", __func__,s->port.iobase);
 #endif
@@ -1383,8 +1383,11 @@ static void conf_wk2xxx_subport(struct uart_port *port)//i
 
 
 // change speed
-static void wk2xxx_termios( struct uart_port *port, struct ktermios *termios,
-		struct ktermios *old)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+static void wk2xxx_termios( struct uart_port *port, struct ktermios *termios, const struct ktermios *old)
+#else
+static void wk2xxx_termios( struct uart_port *port, struct ktermios *termios, struct ktermios *old)
+#endif
 {
 
 	struct wk2xxx_port *s = container_of(port,struct wk2xxx_port,port);
@@ -1803,16 +1806,17 @@ static int wk2xxx_probe(struct i2c_client *client,const struct i2c_device_id *de
 	{
 		wk2xxx_read_global_reg(client,WK2XXX_GENA,dat);
 		wk2xxx_read_global_reg(client,WK2XXX_GENA,dat);
-		printk(KERN_ERR "wk2xxx_probe()  GENA = 0x%X\n",dat[0]);//GENA=0X30
+		printk(KERN_ERR "wk2xxx_probe(0xB0)  GENA = 0x%X\n",dat[0]);//GENA=0XB0
 		wk2xxx_write_global_reg(client,WK2XXX_GENA,0xf5);
 		wk2xxx_read_global_reg(client,WK2XXX_GENA,dat);
-		printk(KERN_ERR "wk2xxx_probe()  GENA = 0x%X\n",dat[0]);//GENA=0X35
+		printk(KERN_ERR "wk2xxx_probe(0xB5)  GENA = 0x%X\n",dat[0]);//GENA=0XB5
 		wk2xxx_write_global_reg(client,WK2XXX_GENA,0xf0);
 		wk2xxx_read_global_reg(client,WK2XXX_GENA,dat);
-		printk(KERN_ERR "wk2xxx_probe()  GENA = 0x%X\n",dat[0]);//GENA=0X30
+		printk(KERN_ERR "wk2xxx_probe(0xBF)  GENA = 0x%X\n",dat[0]);//GENA=0XBF
+        wk2xxx_write_global_reg(client,WK2XXX_GENA,0xB0);
 	}while(0);
 	/////////////////////test i2c//////////////////////////
-	// wk2xxx_write_global_reg(client,WK2XXX_GENA_REG,0x0);
+	wk2xxx_write_global_reg(client,WK2XXX_GENA,0x0);
 	wk2xxx_read_global_reg(client,WK2XXX_GENA,dat);
 	if((dat[0]&0xf0)!=0xb0)
 	{ 
