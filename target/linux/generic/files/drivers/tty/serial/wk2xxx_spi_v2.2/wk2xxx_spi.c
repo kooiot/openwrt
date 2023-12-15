@@ -1389,8 +1389,11 @@ static void conf_wk2xxx_subport(struct uart_port *port)//i
 
 
 // change speed
-static void wk2xxx_termios( struct uart_port *port, struct ktermios *termios,
-		struct ktermios *old)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+static void wk2xxx_termios( struct uart_port *port, struct ktermios *termios, const struct ktermios *old)
+#else
+static void wk2xxx_termios( struct uart_port *port, struct ktermios *termios, struct ktermios *old)
+#endif
 {
 
 	struct wk2xxx_port *s = container_of(port,struct wk2xxx_port,port);
