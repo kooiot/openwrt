@@ -13,7 +13,7 @@
 
 
 
-
+#include <linux/version.h>
 #include <linux/init.h>                        
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -1873,7 +1873,11 @@ static int wk2xxx_probe(struct spi_device *spi)
 }
 
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+static void wk2xxx_remove(struct spi_device *spi)
+#else
 static int wk2xxx_remove(struct spi_device *spi)
+#endif
 {
 
 	int i;
@@ -1903,7 +1907,9 @@ static int wk2xxx_remove(struct spi_device *spi)
 #ifdef _DEBUG_WK_FUNCTION
 	printk(KERN_ALERT "%s!!--exit--\n", __func__);
 #endif
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)
 	return 0;
+#endif
 }
 /*
    static int wk2xxx_resume(struct spi_device *spi)
