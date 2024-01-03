@@ -178,6 +178,7 @@ TARGET_DEVICES += xunlong_orangepi-r1-plus-lts
 define Device/firefly_firefly-roc-pc
   DEVICE_VENDOR := Firefly
   DEVICE_MODEL := Roc PC (RK3568)
+  KERNEL := kernel-bin
   SOC := rk3568
   UBOOT_DEVICE_NAME := firefly-rk3568
   IMAGE/sysupgrade.img.gz := boot-common | boot-script-rk | pine64-img | gzip | append-metadata
@@ -205,6 +206,7 @@ TARGET_DEVICES += firefly_firefly-roc-pc
 define Device/kooiot_tlink-r4x
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink R4x (RK3568)
+  KERNEL := kernel-bin
   SOC := rk3568
   UBOOT_DEVICE_NAME := tlink-r4x
   IMAGE/sysupgrade.img.gz := boot-common | boot-script-rk | pine64-img | gzip | append-metadata
@@ -232,6 +234,7 @@ TARGET_DEVICES += kooiot_tlink-r4x
 define Device/kooiot_tlink-r7
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink R7 (RK3568)
+  KERNEL := kernel-bin
   SOC := rk3568
   UBOOT_DEVICE_NAME := tlink-r7
   IMAGE/sysupgrade.img.gz := boot-common | boot-script-rk | pine64-img | gzip | append-metadata
