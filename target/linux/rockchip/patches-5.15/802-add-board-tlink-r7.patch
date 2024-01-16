@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/arch/arm64/boot/dts/rockchip/rk3568-tlink-r7.dts
-@@ -0,0 +1,1317 @@
+@@ -0,0 +1,1329 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (c) 2022 KooIoT.com
@@ -541,20 +541,24 @@
 +};
 +
 +&gmac0 {
-+	assigned-clocks = <&cru SCLK_GMAC0_RX_TX>, <&cru SCLK_GMAC0_RGMII_SPEED>, <&cru SCLK_GMAC0>;
-+	assigned-clock-parents = <&cru SCLK_GMAC0_RGMII_SPEED>,  <&cru SCLK_GMAC0>;
++	assigned-clocks = <&cru SCLK_GMAC0_RX_TX>, <&cru SCLK_GMAC0>;
++	assigned-clock-parents = <&cru SCLK_GMAC0_RGMII_SPEED>, <&gmac0_clkin>;
 +	assigned-clock-rates = <0>, <125000000>;
-+	clock_in_out = "output";
++	clock_in_out = "input";
 +	phy-handle = <&rgmii_phy0>;
-+	phy-mode = "rgmii-id";
++	phy-mode = "rgmii";
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&gmac0_miim
 +		     &gmac0_tx_bus2
 +		     &gmac0_rx_bus2
 +		     &gmac0_rgmii_clk
-+		     &gmac0_rgmii_bus>;
-+	tx_delay = <0x3c>;
-+	rx_delay = <0x2f>;
++		     &gmac0_rgmii_bus
++		     &gmac0_clkinout
++		     &gmac0_rst>;
++	// tx_delay = <0x3c>; // Dev board
++	// rx_delay = <0x31>;
++	tx_delay = <0x38>;
++	rx_delay = <0x2e>;
 +	snps,reset-gpio = <&gpio2 RK_PD3 GPIO_ACTIVE_LOW>;
 +	snps,reset-active-low;
 +	/* Reset time is 20ms, 100ms for rtl8211f */
@@ -563,20 +567,24 @@
 +};
 +
 +&gmac1 {
-+	assigned-clocks = <&cru SCLK_GMAC1_RX_TX>, <&cru SCLK_GMAC1_RGMII_SPEED>, <&cru SCLK_GMAC1>;
-+	assigned-clock-parents = <&cru SCLK_GMAC1_RGMII_SPEED>, <&cru SCLK_GMAC1>;
++	assigned-clocks = <&cru SCLK_GMAC1_RX_TX>, <&cru SCLK_GMAC1>;
++	assigned-clock-parents = <&cru SCLK_GMAC1_RGMII_SPEED>, <&gmac1_clkin>;
 +	assigned-clock-rates = <0>, <125000000>;
-+	clock_in_out = "output";
++	clock_in_out = "input";
 +	phy-handle = <&rgmii_phy1>;
-+	phy-mode = "rgmii-id";
++	phy-mode = "rgmii";
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&gmac1m1_miim
 +		     &gmac1m1_tx_bus2
 +		     &gmac1m1_rx_bus2
 +		     &gmac1m1_rgmii_clk
-+		     &gmac1m1_rgmii_bus>;
-+	tx_delay = <0x4f>;
-+	rx_delay = <0x26>;
++		     &gmac1m1_rgmii_bus
++		     &gmac1m1_clkinout
++		     &gmac1_rst>;
++	// tx_delay = <0x4a>; // Dev board
++	// rx_delay = <0x2c>;
++	tx_delay = <0x45>;
++	rx_delay = <0x28>;
 +	snps,reset-gpio = <&gpio2 RK_PD1 GPIO_ACTIVE_LOW>;
 +	snps,reset-active-low;
 +	/* Reset time is 20ms, 100ms for rtl8211f */
@@ -865,6 +873,8 @@
 +&mdio0 {
 +	rgmii_phy0: ethernet-phy@0 {
 +		compatible = "ethernet-phy-ieee802.3-c22";
++		// realtek,aldps-enable;
++		// realtek,clkout-disable;
 +		reg = <0x0>;
 +	};
 +};
@@ -872,6 +882,8 @@
 +&mdio1 {
 +	rgmii_phy1: ethernet-phy@0 {
 +		compatible = "ethernet-phy-ieee802.3-c22";
++		// realtek,aldps-enable;
++		// realtek,clkout-disable;
 +		reg = <0x0>;
 +	};
 +};
@@ -1032,11 +1044,11 @@
 +	};
 +
 +	gmac {
-+		gmac0_int: gmac0-int {
-+			rockchip,pins = <2 RK_PD2 RK_FUNC_GPIO &pcfg_pull_none>;
++		gmac0_rst: gmac0-rst {
++			rockchip,pins = <2 RK_PD3 RK_FUNC_GPIO &pcfg_pull_up>;
 +		};
-+		gmac1_int: gmac1-int {
-+			rockchip,pins = <2 RK_PD0 RK_FUNC_GPIO &pcfg_pull_none>;
++		gmac1_rst: gmac1-rst {
++			rockchip,pins = <2 RK_PD1 RK_FUNC_GPIO &pcfg_pull_up>;
 +		};
 +	};
 +
@@ -1231,7 +1243,7 @@
 +};
 +
 +&uart8 {
-+	status = "okay";
++	status = "disabled";
 +};
 +
 +&uart9 {

@@ -1,0 +1,12 @@
+--- a/drivers/net/phy/realtek.c	2024-01-16 11:45:12.787017194 +0800
++++ b/drivers/net/phy/realtek.c	2024-01-16 11:41:19.805953497 +0800
+@@ -354,6 +354,9 @@
+ 		return ret;
+ 	}
+ 
++	ret = phy_read_paged(phydev, 0xa43, RTL8211F_PHYCR1);
++	dev_info(dev, "RTL8211F_PHYCR1:%x\n", ret);
++
+ 	switch (phydev->interface) {
+ 	case PHY_INTERFACE_MODE_RGMII:
+ 		val_txdly = 0;
