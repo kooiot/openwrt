@@ -19,7 +19,7 @@ UBOOT="$6"
 head=4
 sect=63
 
-set $(ptgen -S "0x544C4E4B" -o $OUTPUT -h $head -s $sect -l 1024 -t 83 -p ${BOOTFSSIZE}M -t 83 -p ${ROOTFSSIZE}M)
+set $(ptgen -S "0x4B4E4C54" -o $OUTPUT -h $head -s $sect -l 1024 -t 83 -p ${BOOTFSSIZE}M -t 83 -p ${ROOTFSSIZE}M)
 
 BOOTOFFSET="$(($1 / 512))"
 BOOTSIZE="$(($2 / 512))"
