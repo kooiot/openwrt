@@ -1,28 +1,3 @@
-define Device/FitImage
-	KERNEL_SUFFIX := -uImage.itb
-	KERNEL = kernel-bin | libdeflate-gzip | fit gzip $$(KDIR)/image-$$(DEVICE_DTS).dtb
-	KERNEL_NAME := Image
-endef
-
-define Device/FitImageLzma
-	KERNEL_SUFFIX := -uImage.itb
-	KERNEL = kernel-bin | lzma | fit lzma $$(KDIR)/image-$$(DEVICE_DTS).dtb
-	KERNEL_NAME := Image
-endef
-
-define Device/EmmcImage
-	IMAGES += factory.bin sysupgrade.bin
-	IMAGE/factory.bin := append-rootfs | pad-rootfs | pad-to 64k
-	IMAGE/sysupgrade.bin/squashfs := append-rootfs | pad-to 64k | sysupgrade-tar rootfs=$$$$@ | append-metadata
-endef
-
-define Device/UbiFit
-	KERNEL_IN_UBI := 1
-	IMAGES := factory.ubi sysupgrade.bin
-	IMAGE/factory.ubi := append-ubi
-	IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
-endef
-
 define Build/wax6xx-netgear-tar
 	mkdir $@.tmp
 	mv $@ $@.tmp/nand-ipq807x-apps.img
@@ -60,6 +35,21 @@ define Device/buffalo_wxr-5950ax12
 	DEVICE_PACKAGES := ipq-wifi-buffalo_wxr-5950ax12
 endef
 TARGET_DEVICES += buffalo_wxr-5950ax12
+
+define Device/cmcc_rm2-6
+	$(call Device/FitImage)
+	$(call Device/UbiFit)
+	DEVICE_VENDOR := CMCC
+	DEVICE_MODEL := RM2-6
+	BLOCKSIZE := 128k
+	PAGESIZE := 2048
+	DEVICE_DTS_CONFIG := config@ac02
+	SOC := ipq8070
+	IMAGES := factory.bin sysupgrade.bin
+	IMAGE/factory.bin := append-ubi | qsdk-ipq-factory-nand
+	DEVICE_PACKAGES := ipq-wifi-cmcc_rm2-6 kmod-hwmon-gpiofan
+endef
+TARGET_DEVICES += cmcc_rm2-6
 
 define Device/compex_wpq873
 	$(call Device/FitImage)
@@ -114,6 +104,31 @@ define Device/edimax_cax1800
 	DEVICE_PACKAGES := ipq-wifi-edimax_cax1800
 endef
 TARGET_DEVICES += edimax_cax1800
+
+define Device/linksys_mx4200v1
+	$(call Device/FitImage)
+	$(call Device/UbiFit)
+	DEVICE_VENDOR := Linksys
+	DEVICE_MODEL := MX4200
+	DEVICE_VARIANT := v1
+	BLOCKSIZE := 128k
+	PAGESIZE := 2048
+	KERNEL_SIZE := 6144k
+	IMAGE_SIZE := 147456k
+	NAND_SIZE := 512m
+	KERNEL_IN_UBI :=
+	SOC := ipq8174
+	IMAGES += factory.bin
+	IMAGE/factory.bin := append-kernel | pad-to $$$$(KERNEL_SIZE) | append-ubi | linksys-image type=MX4200
+	DEVICE_PACKAGES := kmod-leds-pca963x ipq-wifi-linksys_mx4200 kmod-bluetooth
+endef
+TARGET_DEVICES += linksys_mx4200v1
+
+define Device/linksys_mx4200v2
+	$(call Device/linksys_mx4200v1)
+	DEVICE_VARIANT := v2
+endef
+TARGET_DEVICES += linksys_mx4200v2
 
 define Device/netgear_rax120v2
 	$(call Device/FitImage)
@@ -195,7 +210,7 @@ define Device/prpl_haze
 	DEVICE_DTS_CONFIG := config@hk09
 	SOC := ipq8072
 	DEVICE_PACKAGES += ath11k-firmware-qcn9074 ipq-wifi-prpl_haze kmod-ath11k-pci \
-		mkf2fs f2fsck kmod-fs-f2fs
+		mkf2fs f2fsck kmod-fs-f2fs kmod-leds-lp5562
 endef
 TARGET_DEVICES += prpl_haze
 
