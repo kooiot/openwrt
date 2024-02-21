@@ -117,6 +117,19 @@ tlink_k2_wk_spi() {
 	esac
 }
 
+tlink_k2_ch432_spi() {
+	case "$DEVICENAME" in
+		ttyWCH0)
+			rm /dev/ttyS7
+			ln -s /dev/$DEVICENAME /dev/ttyS7
+			;;
+		ttyWCH1)
+			rm /dev/ttyS8
+			ln -s /dev/$DEVICENAME /dev/ttyS8
+			;;
+	esac
+}
+
 case $board in
 kooiot,tlink-m408)
 	tlink_m408_xr_usb
@@ -130,6 +143,7 @@ kooiot,tlink-k1)
 kooiot,tlink-k2|\
 kooiot,tlink-k2x)
 	tlink_k2_wk_spi
+	tlink_k2_ch432_spi
 	;;
 esac
 

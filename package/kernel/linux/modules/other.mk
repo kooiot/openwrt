@@ -916,6 +916,21 @@ endef
 $(eval $(call KernelPackage,serial-xr14xx-usb))
 
 
+define KernelPackage/serial-ch432
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=CH432 SPI to UART Support
+  KCONFIG:=CONFIG_SERIAL_CH432
+  FILES:=$(LINUX_DIR)/drivers/tty/serial/ch432.ko
+  AUTOLOAD:=$(call AutoLoad,50,ch432,1)
+endef
+
+define KernelPackage/serial-ch432/description
+ Kernel module for CH432 SPI to UARTs
+endef
+
+$(eval $(call KernelPackage,serial-ch432))
+
+
 define KernelPackage/regmap-core
   SUBMENU:=$(OTHER_MENU)
   TITLE:=Generic register map support
