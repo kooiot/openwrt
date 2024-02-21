@@ -17,7 +17,7 @@ diff --git a/drivers/rtc/Kconfig b/drivers/rtc/Kconfig
 index 65ad9d0b47ab..a0960f0cb7f9 100644
 --- a/drivers/rtc/Kconfig
 +++ b/drivers/rtc/Kconfig
-@@ -650,6 +650,15 @@ config RTC_DRV_RX8025
+@@ -652,6 +652,15 @@ config RTC_DRV_RX8025
  	  This driver can also be built as a module. If so, the module
  	  will be called rtc-rx8025.
  
@@ -37,7 +37,7 @@ diff --git a/drivers/rtc/Makefile b/drivers/rtc/Makefile
 index bfb57464118d..5ecf6e7868fe 100644
 --- a/drivers/rtc/Makefile
 +++ b/drivers/rtc/Makefile
-@@ -147,6 +147,7 @@ obj-$(CONFIG_RTC_DRV_RX4581)	+= rtc-rx4581.o
+@@ -150,6 +150,7 @@ obj-$(CONFIG_RTC_DRV_RX4581)	+= rtc-rx4581.o
  obj-$(CONFIG_RTC_DRV_RX6110)	+= rtc-rx6110.o
  obj-$(CONFIG_RTC_DRV_RX8010)	+= rtc-rx8010.o
  obj-$(CONFIG_RTC_DRV_RX8025)	+= rtc-rx8025.o

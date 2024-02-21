@@ -1,0 +1,21 @@
+--- a/drivers/net/can/spi/mcp251x.c
++++ b/drivers/net/can/spi/mcp251x.c
+@@ -506,6 +506,7 @@
+ 
+ 	/* Enable interrupts */
+ 	mcp251x_write_reg(spi, CANINTE,
++			  CANINTE_MERRE | 
+ 			  CANINTE_ERRIE | CANINTE_TX2IE | CANINTE_TX1IE |
+ 			  CANINTE_TX0IE | CANINTE_RX1IE | CANINTE_RX0IE);
+ 
+@@ -756,6 +757,10 @@
+ 
+ 		mcp251x_read_2regs(spi, CANINTF, &intf, &eflag);
+ 
++		if (intf & CANINTF_MERRF) {
++			clear_intf |= CANINTF_MERRF;
++		}
++
+ 		/* receive buffer 0 */
+ 		if (intf & CANINTF_RX0IF) {
+ 			mcp251x_hw_rx(spi, 0);

@@ -1,6 +1,6 @@
 --- a/drivers/tty/serial/Kconfig
 +++ b/drivers/tty/serial/Kconfig
-@@ -18,6 +18,10 @@
+@@ -20,6 +20,10 @@
  
  comment "Non-8250 serial port support"
  

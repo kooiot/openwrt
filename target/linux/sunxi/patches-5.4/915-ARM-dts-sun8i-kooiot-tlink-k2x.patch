@@ -10,7 +10,7 @@
  	sun8i-s3-olinuxino.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k2x.dts
-@@ -0,0 +1,631 @@
+@@ -0,0 +1,645 @@
 +/*
 + * Copyright (C) 2022 Dirk Chang <dirk@kooiot.com>
 + *
@@ -315,6 +315,20 @@
 +		enable_dma = <0>;
 +		reset_gpio = <&pio 8 9 GPIO_ACTIVE_LOW>; /* PI9 */
 +		irq_gpio=<&pio 8 15 IRQ_TYPE_LEVEL_LOW>; /* PI15 */
++	};
++
++	spi2_ch432: spi2-ch432@0 {
++		// compatible = "ch43x_spi";
++		compatible = "wch,ch43x";
++		#address-cells = <1>;
++		#size-cells = <1>;
++		reg = <0 0>;
++		spi-max-frequency = <10000000>;
++		interrupt-parent = <&pio>;
++		interrupts = <8 15 IRQ_TYPE_LEVEL_LOW>; /* PI15/EINT27 */
++		status = "disabled";
++		port0_rs485_mode;
++		port1_rs485_mode;
 +	};
 +
 +	mcp2515: mcp2515@1 {
