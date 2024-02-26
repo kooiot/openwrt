@@ -1197,7 +1197,7 @@ static int ch43x_spi_probe(struct spi_device *spi)
 {
     struct ch43x_devtype *devtype = &ch43x_devtype;
     // unsigned long flags = IRQF_TRIGGER_FALLING;
-    unsigned long flags = IRQF_TRIGGER_LOW | IRQF_TRIGGER_FALLING;
+    unsigned long flags = IRQF_TRIGGER_LOW | IRQF_SHARED; // | IRQF_TRIGGER_FALLING;
     int ret;
     u32 save;
 
