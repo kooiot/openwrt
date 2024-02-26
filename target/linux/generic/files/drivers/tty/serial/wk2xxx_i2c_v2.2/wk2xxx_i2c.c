@@ -1804,10 +1804,10 @@ static int wk2xxx_probe(struct i2c_client *client,const struct i2c_device_id *de
 		wk2xxx_read_global_reg(client,WK2XXX_GENA,dat);
 		wk2xxx_read_global_reg(client,WK2XXX_GENA,dat);
 		printk(KERN_ERR "wk2xxx_probe(0xB0)  GENA = 0x%X\n",dat[0]);//GENA=0XB0
-		wk2xxx_write_global_reg(client,WK2XXX_GENA,0xf5);
+		wk2xxx_write_global_reg(client,WK2XXX_GENA,0xB5);
 		wk2xxx_read_global_reg(client,WK2XXX_GENA,dat);
 		printk(KERN_ERR "wk2xxx_probe(0xB5)  GENA = 0x%X\n",dat[0]);//GENA=0XB5
-		wk2xxx_write_global_reg(client,WK2XXX_GENA,0xf0);
+		wk2xxx_write_global_reg(client,WK2XXX_GENA,0xBf);
 		wk2xxx_read_global_reg(client,WK2XXX_GENA,dat);
 		printk(KERN_ERR "wk2xxx_probe(0xBF)  GENA = 0x%X\n",dat[0]);//GENA=0XBF
         wk2xxx_write_global_reg(client,WK2XXX_GENA,0xB0);
