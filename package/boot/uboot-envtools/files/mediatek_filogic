@@ -12,6 +12,9 @@ touch /etc/config/ubootenv
 board=$(board_name)
 
 case "$board" in
+asus,rt-ax59u)
+	ubootenv_add_uci_config "/dev/mtd0" "0x100000" "0x20000" "0x20000"
+	;;
 bananapi,bpi-r3)
 	rootdev="$(cmdline_get_var root)"
 	rootdev="${rootdev##*/}"
@@ -61,7 +64,8 @@ glinet,gl-mt6000)
 	local envdev=$(find_mmc_part "u-boot-env")
 	ubootenv_add_uci_config "$envdev" "0x0" "0x80000"
 	;;
-mercusys,mr90x-v1)
+mercusys,mr90x-v1|\
+routerich,ax3000)
 	local envdev=/dev/mtd$(find_mtd_index "u-boot-env")
 	ubootenv_add_uci_config "$envdev" "0x0" "0x20000" "0x20000" "1"
 	;;
