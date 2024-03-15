@@ -1,0 +1,157 @@
+--- a/drivers/net/ethernet/allwinner/sun4i-emac.c
++++ b/drivers/net/ethernet/allwinner/sun4i-emac.c
+@@ -21,6 +21,8 @@
+ #include <linux/mii.h>
+ #include <linux/module.h>
+ #include <linux/netdevice.h>
++#include <linux/gpio.h>
++#include <linux/of_gpio.h>
+ #include <linux/of_address.h>
+ #include <linux/of_irq.h>
+ #include <linux/of_mdio.h>
+@@ -99,6 +101,8 @@
+ 	struct reset_control	*reset;
+ 
+ 	phy_interface_t		phy_interface;
++
++	int phyrst;
+ };
+ 
+ static void emac_update_speed(struct net_device *dev)
+@@ -602,7 +606,9 @@
+ 		/* A packet ready now  & Get status/length */
+ 		good_packet = true;
+ 
+-		rxhdr = readl(db->membase + EMAC_RX_IO_DATA_REG);
++		// rxhdr = readl(db->membase + EMAC_RX_IO_DATA_REG);
++		emac_inblk_32bit(db->membase + EMAC_RX_IO_DATA_REG,
++				&rxhdr, sizeof(rxhdr));
+ 
+ 		if (netif_msg_rx_status(db))
+ 			dev_dbg(db->dev, "rxhdr: %x\n", *((int *)(&rxhdr)));
+@@ -666,13 +672,11 @@
+ 	struct net_device *dev = dev_id;
+ 	struct emac_board_info *db = netdev_priv(dev);
+ 	int int_status;
+-	unsigned long flags;
+ 	unsigned int reg_val;
+ 
+ 	/* A real interrupt coming */
+ 
+-	/* holders of db->lock must always block IRQs */
+-	spin_lock_irqsave(&db->lock, flags);
++	spin_lock(&db->lock);
+ 
+ 	/* Disable all interrupts */
+ 	writel(0, db->membase + EMAC_INT_CTL_REG);
+@@ -706,7 +710,7 @@
+ 		reg_val |= (0xf << 0) | (0x01 << 8);
+ 		writel(reg_val, db->membase + EMAC_INT_CTL_REG);
+ 	}
+-	spin_unlock_irqrestore(&db->lock, flags);
++	spin_unlock(&db->lock);
+ 
+ 	return IRQ_HANDLED;
+ }
+@@ -737,6 +741,16 @@
+ 	if (request_irq(dev->irq, &emac_interrupt, 0, dev->name, dev))
+ 		return -EAGAIN;
+ 
++	if (gpio_is_valid(db->phyrst)) {
++		dev_err(db->dev, "%s sun4i-emac reset gpio %d \n", __func__, db->phyrst);
++		gpio_set_value(db->phyrst, 0);
++		// msleep(300);
++		udelay(200);
++		gpio_set_value(db->phyrst, 1);
++		udelay(200);
++		// msleep(40);
++	}
++
+ 	/* Initialize EMAC board */
+ 	emac_reset(db);
+ 	emac_init_device(dev);
+@@ -820,6 +834,7 @@
+ 	int ret = 0;
+ 	const char *mac_addr;
+ 	const struct emac_quirks *quirks;
++	enum of_gpio_flags flags;
+ 
+ 	int alias_id;
+ 
+@@ -871,6 +886,16 @@
+ 			goto out_dispose_mapping;
+ 		}
+ 
++		/*
++		dev_dbg(&pdev->dev, "%s: contol reset sun4i_emac reset\n", __func__);
++		// ret = reset_control_reset(db->reset);
++		ret = reset_control_assert(db->reset);
++		if (ret) {
++			dev_err(&pdev->dev, "could not assert EMAC reset\n");
++			goto out_dispose_mapping;
++		}
++		msleep(300);
++		*/
+ 		ret = reset_control_deassert(db->reset);
+ 		if (ret) {
+ 			dev_err(&pdev->dev, "could not deassert EMAC reset\n");
+@@ -890,6 +915,32 @@
+ 		goto out_assert_reset;
+ 	}
+ 
++	db->phyrst = of_get_named_gpio_flags(pdev->dev.of_node, "reset-gpios", 0,
++						&flags);
++	if (gpio_is_valid(db->phyrst)) {
++
++		flags = (flags == OF_GPIO_ACTIVE_LOW ? GPIOF_OUT_INIT_LOW : GPIOF_OUT_INIT_HIGH);
++
++		ret = devm_gpio_request_one(&pdev->dev, db->phyrst, flags,
++					    "sun4i_emac_reset");
++		if (ret) {
++			dev_err(&pdev->dev, "failed to request reset gpio %d: %d\n",
++				db->phyrst, ret);;
++
++			goto out_assert_reset;
++		}
++
++		dev_err(&pdev->dev, "%s sun4i-emac reset gpio %d flags %d\n",
++				__func__, db->phyrst, flags);;
++		// msleep(20);
++		gpio_set_value(db->phyrst, 0);
++		udelay(200);
++		// msleep(300);
++		gpio_set_value(db->phyrst, 1);
++		udelay(200);
++		// msleep(40);
++	}
++
+ 	ret = sunxi_sram_claim(&pdev->dev);
+ 	if (ret) {
+ 		dev_err(&pdev->dev, "Error couldn't map SRAM to device\n");
+@@ -940,6 +989,7 @@
+ 	if (ret) {
+ 		dev_err(&pdev->dev, "Registering netdev failed!\n");
+ 		ret = -ENODEV;
++
+ 		goto out_release_sram;
+ 	}
+ 
+@@ -961,6 +1013,9 @@
+ out:
+ 	dev_err(db->dev, "not found (%d).\n", ret);
+ 
++	if (gpio_is_valid(db->phyrst))
++		gpio_free(db->phyrst);
++
+ 	free_netdev(ndev);
+ 
+ 	return ret;
+@@ -977,6 +1032,8 @@
+ 	reset_control_assert(db->reset);
+ 	irq_dispose_mapping(ndev->irq);
+ 	iounmap(db->membase);
++	if (gpio_is_valid(db->phyrst))
++		gpio_free(db->phyrst);
+ 	free_netdev(ndev);
+ 
+ 	dev_dbg(&pdev->dev, "released and freed device\n");

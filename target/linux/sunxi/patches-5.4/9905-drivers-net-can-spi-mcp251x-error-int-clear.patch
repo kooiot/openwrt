@@ -1,6 +1,40 @@
 --- a/drivers/net/can/spi/mcp251x.c
 +++ b/drivers/net/can/spi/mcp251x.c
-@@ -506,6 +506,7 @@
+@@ -218,6 +218,7 @@
+ 
+ 	int force_quit;
+ 	int after_suspend;
++	int error_restart;
+ #define AFTER_SUSPEND_UP 1
+ #define AFTER_SUSPEND_DOWN 2
+ #define AFTER_SUSPEND_POWER 4
+@@ -269,7 +270,8 @@
+ 		.tx_buf = priv->spi_tx_buf,
+ 		.rx_buf = priv->spi_rx_buf,
+ 		.len = len,
+-		.cs_change = 0,
++		// .cs_change = 0,
++		.speed_hz = 10000000,
+ 	};
+ 	struct spi_message m;
+ 	int ret;
+@@ -278,6 +280,7 @@
+ 	spi_message_add_tail(&t, &m);
+ 
+ 	ret = spi_sync(spi, &m);
++	// udelay(1);
+ 	if (ret)
+ 		dev_err(&spi->dev, "spi transfer failed: ret = %d\n", ret);
+ 	return ret;
+@@ -465,6 +468,7 @@
+ 
+ 	if (priv->tx_skb || priv->tx_len) {
+ 		dev_warn(&spi->dev, "hard_xmit called while tx busy\n");
++		// msleep(1);
+ 		return NETDEV_TX_BUSY;
+ 	}
+ 
+@@ -506,6 +510,7 @@
  
  	/* Enable interrupts */
  	mcp251x_write_reg(spi, CANINTE,
@@ -8,14 +42,162 @@
  			  CANINTE_ERRIE | CANINTE_TX2IE | CANINTE_TX1IE |
  			  CANINTE_TX0IE | CANINTE_RX1IE | CANINTE_RX0IE);
  
-@@ -756,6 +757,10 @@
+@@ -573,6 +578,8 @@
+ 	unsigned long timeout;
+ 	int ret;
+ 
++	dev_err(&spi->dev, "%s !\n", __func__);
++
+ 	/* Wait for oscillator startup timer after power up */
+ 	mdelay(MCP251X_OST_DELAY_MS);
+ 
+@@ -691,6 +698,7 @@
+ 	mutex_lock(&priv->mcp_lock);
+ 	if (priv->tx_skb) {
+ 		if (priv->can.state == CAN_STATE_BUS_OFF) {
++			dev_err(&spi->dev, "%s CAN_STATE_BUS_OFF!\n", __func__);
+ 			mcp251x_clean(net);
+ 		} else {
+ 			frame = (struct can_frame *)priv->tx_skb->data;
+@@ -715,6 +723,7 @@
+ 
+ 	mutex_lock(&priv->mcp_lock);
+ 	if (priv->after_suspend) {
++		dev_err(&spi->dev, "after_suspend!\n");
+ 		mcp251x_hw_reset(spi);
+ 		mcp251x_setup(net, spi);
+ 		priv->force_quit = 0;
+@@ -731,7 +740,23 @@
+ 		priv->after_suspend = 0;
+ 	}
+ 
++	if (priv->error_restart) {
++		dev_err(&spi->dev, "error_restart!\n");
++		// mcp251x_write_reg(spi, TXBCTRL(0), 0);
++		mcp251x_clean(net);
++
++		mcp251x_hw_reset(spi);
++		mcp251x_setup(net, spi);
++		mcp251x_set_normal_mode(spi);
++		priv->force_quit = 0;
++		netif_wake_queue(net);
++		// mcp251x_error_skb(net, CAN_ERR_RESTARTED, 0);
++		dev_err(&spi->dev, "error_restart (%x) Done!\n", priv->error_restart);
++		priv->error_restart = 0;
++	}
++
+ 	if (priv->restart_tx) {
++		dev_err(&spi->dev, "restart_tx!\n");
+ 		priv->restart_tx = 0;
+ 		mcp251x_write_reg(spi, TXBCTRL(0), 0);
+ 		mcp251x_clean(net);
+@@ -750,11 +775,13 @@
+ 	mutex_lock(&priv->mcp_lock);
+ 	while (!priv->force_quit) {
+ 		enum can_state new_state;
+-		u8 intf, eflag;
++		u8 intf, eflag, org_intf, org_eflag;
+ 		u8 clear_intf = 0;
+ 		int can_id = 0, data1 = 0;
  
  		mcp251x_read_2regs(spi, CANINTF, &intf, &eflag);
++		org_intf = intf;
++		org_eflag = eflag;
  
-+		if (intf & CANINTF_MERRF) {
-+			clear_intf |= CANINTF_MERRF;
-+		}
-+
  		/* receive buffer 0 */
  		if (intf & CANINTF_RX0IF) {
- 			mcp251x_hw_rx(spi, 0);
+@@ -788,17 +815,33 @@
+ 		}
+ 
+ 		/* mask out flags we don't care about */
+-		intf &= CANINTF_RX | CANINTF_TX | CANINTF_ERR;
++		intf &= CANINTF_RX | CANINTF_TX | CANINTF_ERR | CANINTF_MERRF;
+ 
+ 		/* any error or tx interrupt we need to clear? */
+-		if (intf & (CANINTF_ERR | CANINTF_TX))
+-			clear_intf |= intf & (CANINTF_ERR | CANINTF_TX);
++		if (intf & (CANINTF_MERRF | CANINTF_ERR | CANINTF_TX))
++			clear_intf |= intf & (CANINTF_MERRF | CANINTF_ERR | CANINTF_TX);
+ 		if (clear_intf)
+ 			mcp251x_write_bits(spi, CANINTF, clear_intf, 0x00);
+ 
+ 		if (eflag & (EFLG_RX0OVR | EFLG_RX1OVR))
+ 			mcp251x_write_bits(spi, EFLG, eflag, 0x00);
+ 
++		/*
++		if (intf & CANINTF_MERRF) {
++			// Check error flags
++			if (eflag & 0x38) {
++				priv->force_quit = 1;
++				priv->error_restart = eflag;
++				// mcp251x_write_reg(spi, CANINTE, 0x00);
++				mcp251x_write_reg(spi, CANINTF, 0x00);
++
++				queue_work(priv->wq, &priv->restart_work);
++				// dev_err(&spi->dev, "intf: %x eflag: %x !!\t 17:46:40\n", intf, eflag);
++				break;
++			}
++		}
++		*/
++
+ 		/* Update can state */
+ 		if (eflag & EFLG_TXBO) {
+ 			new_state = CAN_STATE_BUS_OFF;
+@@ -858,11 +901,29 @@
+ 		}
+ 
+ 		if (priv->can.state == CAN_STATE_BUS_OFF) {
++			// dev_err(&spi->dev, "intf: %x (%x) eflag: %x (%x) restart_ms(%x) !!\t 2023.02.23T16:04:38\n",
++			//		intf, org_intf, eflag, org_eflag, priv->can.restart_ms);
++			// can_bus_off(net);
+ 			if (priv->can.restart_ms == 0) {
+ 				priv->force_quit = 1;
+ 				priv->can.can_stats.bus_off++;
+ 				can_bus_off(net);
+-				mcp251x_hw_sleep(spi);
++				if (org_eflag & 0x38) {
++					// dev_err(&spi->dev, "can_restart_now 1!\n");
++					can_restart_now(net);
++				} else  {
++					// dev_err(&spi->dev, "mcp251x_hw_sleep 1!\n");
++					mcp251x_hw_sleep(spi);
++				}
++				break;
++			} else {
++				// priv->force_quit = 1;
++				// priv->can.can_stats.bus_off++;
++				can_bus_off(net);
++				if (org_eflag & 0x38) {
++					// dev_err(&spi->dev, "can_restart_now 2!\n");
++					can_restart_now(net);
++				}
+ 				break;
+ 			}
+ 		}
+@@ -908,6 +969,8 @@
+ 	if (!dev_fwnode(&spi->dev))
+ 		flags = IRQF_TRIGGER_FALLING;
+ 
++	dev_err(&spi->dev, "acquire irq flags %ld\n", flags);
++	flags = IRQF_TRIGGER_LOW;
+ 	ret = request_threaded_irq(spi->irq, NULL, mcp251x_can_ist,
+ 				   flags | IRQF_ONESHOT, dev_name(&spi->dev),
+ 				   priv);
+@@ -1029,6 +1092,7 @@
+ 	net->flags |= IFF_ECHO;
+ 
+ 	priv = netdev_priv(net);
++	// priv->can.restart_ms = 1;
+ 	priv->can.bittiming_const = &mcp251x_bittiming_const;
+ 	priv->can.do_set_mode = mcp251x_do_set_mode;
+ 	priv->can.clock.freq = freq / 2;
+--- a/drivers/net/can/dev/dev.c
++++ b/drivers/net/can/dev/dev.c
+@@ -612,6 +612,7 @@
+ 
+ 	return 0;
+ }
++EXPORT_SYMBOL_GPL(can_restart_now);
+ 
+ /* CAN bus-off
+  *

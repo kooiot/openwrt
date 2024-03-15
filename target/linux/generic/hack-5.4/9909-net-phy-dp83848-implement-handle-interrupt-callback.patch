@@ -1,0 +1,131 @@
+--- a/drivers/net/phy/dp83848.c
++++ b/drivers/net/phy/dp83848.c
+@@ -5,6 +5,7 @@
+  * Copyright (C) 2015-2016 Texas Instruments Incorporated - http://www.ti.com/
+  */
+ 
++#include <linux/interrupt.h>
+ #include <linux/module.h>
+ #include <linux/mii.h>
+ #include <linux/delay.h>
+@@ -18,6 +19,7 @@
+ /* Registers */
+ #define DP83848_MICR			0x11 /* MII Interrupt Control Register */
+ #define DP83848_MISR			0x12 /* MII Interrupt Status Register */
++#define DP83848_LEDCR			0x18 /* LED Direct Control Register */
+ #define DP83848_PHYCR			0x19 /* PHY Control Register */
+ 
+ /* MICR Register Fields */
+@@ -36,6 +38,7 @@
+ 
+ /* PHYCR Register Fields */
+ #define DP83848_PHYCR_LED_CNFG		BIT(5) /* LED Configuration */
++#define DP83848_PHYCR_FORCE_MDIX	BIT(14) /* Force MDIX */
+ 
+ #define DP83848_INT_EN_MASK		\
+ 	(DP83848_MISR_ANC_INT_EN |	\
+@@ -43,6 +46,20 @@
+ 	 DP83848_MISR_SPD_INT_EN |	\
+ 	 DP83848_MISR_LINK_INT_EN)
+ 
++#define DP83848_MISR_RHF_INT		BIT(8)
++#define DP83848_MISR_FHF_INT		BIT(9)
++#define DP83848_MISR_ANC_INT		BIT(10)
++#define DP83848_MISR_DUP_INT		BIT(11)
++#define DP83848_MISR_SPD_INT		BIT(12)
++#define DP83848_MISR_LINK_INT		BIT(13)
++#define DP83848_MISR_ED_INT		BIT(14)
++
++#define DP83848_INT_MASK		\
++	(DP83848_MISR_ANC_INT |	\
++	 DP83848_MISR_DUP_INT |	\
++	 DP83848_MISR_SPD_INT |	\
++	 DP83848_MISR_LINK_INT)
++
+ static int dp83848_ack_interrupt(struct phy_device *phydev)
+ {
+ 	int err = phy_read(phydev, DP83848_MISR);
+@@ -59,17 +76,28 @@
+ 		return control;
+ 
+ 	if (phydev->interrupts == PHY_INTERRUPT_ENABLED) {
++		ret = dp83848_ack_interrupt(phydev);
++		if (ret)
++			return ret;
++
+ 		control |= DP83848_MICR_INT_OE;
+ 		control |= DP83848_MICR_INTEN;
+ 
+ 		ret = phy_write(phydev, DP83848_MISR, DP83848_INT_EN_MASK);
+ 		if (ret < 0)
+ 			return ret;
++
++		ret = phy_write(phydev, DP83848_MICR, control);
+ 	} else {
+ 		control &= ~DP83848_MICR_INTEN;
++		ret = phy_write(phydev, DP83848_MICR, control);
++		if (ret)
++			return ret;
++
++		ret = dp83848_ack_interrupt(phydev);
+ 	}
+ 
+-	return phy_write(phydev, DP83848_MICR, control);
++	return ret; 
+ }
+ 
+ static int ns_dp83848_config_init(struct phy_device *phydev)
+@@ -88,6 +116,7 @@
+ 	if (val & DP83848_PHYCR_LED_CNFG) {
+ 		phydev_info(phydev, "%s: fix led value: %x", __func__, val);
+ 		val &= ~DP83848_PHYCR_LED_CNFG;
++		// val |= DP83848_PHYCR_FORCE_MDIX;
+ 		msleep(10);
+ 		phy_write(phydev, DP83848_PHYCR, val);
+ 		msleep(10);
+@@ -95,6 +124,8 @@
+ 		msleep(10);
+ 		val = phy_read(phydev, DP83848_PHYCR);
+ 		phydev_info(phydev, "%s: fixed led value: %x", __func__, val);
++		// val = phy_read(phydev, DP83848_LEDCR);
++		// phydev_info(phydev, "%s: led direct control value: %x", __func__, val);
+ 	} else {
+ 		phydev_info(phydev, "%s: led value: %x", __func__, val);
+ 	}
+@@ -102,6 +133,26 @@
+ 	return 0;
+ }
+ 
++static int dp83848_handle_interrupt(struct phy_device *phydev)
++{
++	int irq_status;
++
++	irq_status = phy_read(phydev, DP83848_MISR);
++	if (irq_status < 0) {
++		// phy_error(phydev);
++		phydev->state = PHY_HALTED;
++		phy_mac_interrupt(phydev);
++		return IRQ_NONE;
++	}
++
++	if (!(irq_status & DP83848_INT_MASK))
++		return IRQ_NONE;
++
++	phy_mac_interrupt(phydev);
++
++	return IRQ_HANDLED;
++}
++
+ static int dp83848_config_init(struct phy_device *phydev)
+ {
+ 	int val;
+@@ -139,8 +190,8 @@
+ 		.resume		= genphy_resume,		\
+ 								\
+ 		/* IRQ related */				\
+-		.ack_interrupt	= dp83848_ack_interrupt,	\
+ 		.config_intr	= dp83848_config_intr,		\
++		.handle_interrupt = dp83848_handle_interrupt,	\
+ 	}
+ 
+ static struct phy_driver dp83848_driver[] = {

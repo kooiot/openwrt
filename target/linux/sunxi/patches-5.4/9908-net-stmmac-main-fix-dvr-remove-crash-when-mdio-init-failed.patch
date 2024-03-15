@@ -1,0 +1,35 @@
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac.h
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac.h
+@@ -234,6 +234,9 @@
+ 
+ 	/* Receive Side Scaling */
+ 	struct stmmac_rss rss;
++
++	/* For unregister_netdev crash */
++	int netdev_inited;
+ };
+ 
+ enum stmmac_state {
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+@@ -4819,6 +4819,7 @@
+ 			__func__, ret);
+ 		goto error_netdev_register;
+ 	}
++	priv->netdev_inited = 1;
+ 
+ #ifdef CONFIG_DEBUG_FS
+ 	stmmac_init_fs(ndev);
+@@ -4865,8 +4866,10 @@
+ 	stmmac_stop_all_dma(priv);
+ 
+ 	stmmac_mac_set(priv, priv->ioaddr, false);
+-	netif_carrier_off(ndev);
+-	unregister_netdev(ndev);
++	if (priv->netdev_inited) {
++		netif_carrier_off(ndev);
++		unregister_netdev(ndev);
++	}
+ #ifdef CONFIG_DEBUG_FS
+ 	stmmac_exit_fs(ndev);
+ #endif
