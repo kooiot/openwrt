@@ -65,10 +65,11 @@ kooiot,tlink-x3)
 kooiot,tlink-x1|\
 kooiot,tlink-x1s|\
 kooiot,tlink-x2|\
+kooiot,tlink-k2x|\
 kooiot,tlink-r1)
 	ucidef_set_interfaces_lan_wan "eth0" "eth1"
 	;;
-kooiot,tlink-k2x)
+kooiot,tlink-k2x-1)
 	ucidef_set_interface_lan "eth0"
 	ucidef_set_interface "lan2" device "eth1" protocol "static"
 	;;
