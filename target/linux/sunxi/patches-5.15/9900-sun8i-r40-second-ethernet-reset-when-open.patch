@@ -1,0 +1,96 @@
+--- a/drivers/net/ethernet/allwinner/sun4i-emac.c
++++ b/drivers/net/ethernet/allwinner/sun4i-emac.c
+@@ -21,6 +21,8 @@
+ #include <linux/mii.h>
+ #include <linux/module.h>
+ #include <linux/netdevice.h>
++#include <linux/gpio.h>
++#include <linux/of_gpio.h>
+ #include <linux/of_address.h>
+ #include <linux/of_irq.h>
+ #include <linux/of_mdio.h>
+@@ -98,6 +100,7 @@
+ 	struct reset_control	*reset;
+ 
+ 	phy_interface_t		phy_interface;
++	int phyrst;
+ };
+ 
+ static void emac_update_speed(struct net_device *dev)
+@@ -720,6 +723,16 @@
+ 	if (request_irq(dev->irq, &emac_interrupt, 0, dev->name, dev))
+ 		return -EAGAIN;
+ 
++	if (gpio_is_valid(db->phyrst)) {
++		dev_err(db->dev, "%s sun4i-emac reset gpio %d \n", __func__, db->phyrst);
++		gpio_set_value(db->phyrst, 0);
++		// msleep(300);
++		udelay(200);
++		gpio_set_value(db->phyrst, 1);
++		udelay(200);
++		// msleep(40);
++	}
++
+ 	/* Initialize EMAC board */
+ 	emac_reset(db);
+ 	emac_init_device(dev);
+@@ -802,6 +815,7 @@
+ 	struct net_device *ndev;
+ 	int ret = 0;
+ 	const struct emac_quirks *quirks;
++	enum of_gpio_flags flags;
+ 
+ 	int alias_id;
+ 
+@@ -872,6 +886,32 @@
+ 		goto out_assert_reset;
+ 	}
+ 
++	db->phyrst = of_get_named_gpio_flags(pdev->dev.of_node, "reset-gpios", 0,
++						&flags);
++	if (gpio_is_valid(db->phyrst)) {
++
++		flags = (flags == OF_GPIO_ACTIVE_LOW ? GPIOF_OUT_INIT_LOW : GPIOF_OUT_INIT_HIGH);
++
++		ret = devm_gpio_request_one(&pdev->dev, db->phyrst, flags,
++					    "sun4i_emac_reset");
++		if (ret) {
++			dev_err(&pdev->dev, "failed to request reset gpio %d: %d\n",
++				db->phyrst, ret);;
++
++			goto out_assert_reset;
++		}
++
++		dev_err(&pdev->dev, "%s sun4i-emac reset gpio %d flags %d\n",
++				__func__, db->phyrst, flags);;
++		// msleep(20);
++		gpio_set_value(db->phyrst, 0);
++		udelay(200);
++		// msleep(300);
++		gpio_set_value(db->phyrst, 1);
++		udelay(200);
++		// msleep(40);
++	}
++
+ 	ret = sunxi_sram_claim(&pdev->dev);
+ 	if (ret) {
+ 		dev_err(&pdev->dev, "Error couldn't map SRAM to device\n");
+@@ -940,6 +980,9 @@
+ out:
+ 	dev_err(db->dev, "not found (%d).\n", ret);
+ 
++	if (gpio_is_valid(db->phyrst))
++		gpio_free(db->phyrst);
++
+ 	free_netdev(ndev);
+ 
+ 	return ret;
+@@ -956,6 +999,8 @@
+ 	reset_control_assert(db->reset);
+ 	irq_dispose_mapping(ndev->irq);
+ 	iounmap(db->membase);
++	if (gpio_is_valid(db->phyrst))
++		gpio_free(db->phyrst);
+ 	free_netdev(ndev);
+ 
+ 	dev_dbg(&pdev->dev, "released and freed device\n");

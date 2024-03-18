@@ -10,7 +10,7 @@
  	sun8i-r40-tlink-nano-a40i.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k2x.dts
-@@ -0,0 +1,623 @@
+@@ -0,0 +1,624 @@
 +/*
 + * Copyright (C) 2022 Dirk Chang <dirk@kooiot.com>
 + *
@@ -255,6 +255,7 @@
 +	phy-handle = <&emac_phy>;
 +	phy-supply = <&reg_vdd_io_3v3>;
 +	phy-mode = "mii";
++	reset-gpios = <&pio 7 27 GPIO_ACTIVE_LOW>; /* PH27 */
 +	status = "okay";
 +};
 +
@@ -270,9 +271,9 @@
 +		motorcomm,led0 = <0x331>;
 +		motorcomm,led1 = <0x30>;
 +
-+		reset-gpios = <&pio 7 27 GPIO_ACTIVE_LOW>; /* PH27 */
-+		reset-assert-us = <10000>;
-+		reset-deassert-us = <1000000>;
++		// reset-gpios = <&pio 7 27 GPIO_ACTIVE_LOW>; /* PH27 */
++		// reset-assert-us = <10000>;
++		// reset-deassert-us = <1000000>;
 +	};
 +};
 +
