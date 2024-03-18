@@ -126,6 +126,22 @@ define U-Boot/rockpro64-rk3399
 endef
 
 
+# RK3566 boards
+
+define U-Boot/rk3566/Default
+  BUILD_SUBTARGET:=armv8
+  DEPENDS:=+PACKAGE_u-boot-$(1):trusted-firmware-a-rk3566
+  ATF:=rk3568_bl31_v1.43.elf
+  TPL:=rk3566_ddr_1056MHz_v1.18.bin
+endef
+
+define U-Boot/radxa-cm3-io-rk3566
+  $(U-Boot/rk3566/Default)
+  NAME:=CM3 IO
+  BUILD_DEVICES:= \
+    radxa_cm3-io
+endef
+
 # RK3568 boards
 
 define U-Boot/rk3568/Default
@@ -181,6 +197,7 @@ UBOOT_TARGETS := \
   rock-pi-e-rk3328 \
   opc-h68k-rk3568 \
   station-p2-rk3568 \
+  radxa-cm3-io-rk3566 \
   nanopi-r5c-rk3568 \
   nanopi-r5s-rk3568
 
@@ -192,7 +209,6 @@ UBOOT_CUSTOMIZE_CONFIG := \
 	--set-str MKIMAGE_DTC_PATH $(PKG_BUILD_DIR)/scripts/dtc/dtc
 
 UBOOT_MAKE_FLAGS += \
-  PATH=$(STAGING_DIR_HOST)/bin:$(PATH) \
   BL31=$(STAGING_DIR_IMAGE)/$(ATF) \
   $(if $(TPL),ROCKCHIP_TPL=$(STAGING_DIR_IMAGE)/$(TPL))
 
