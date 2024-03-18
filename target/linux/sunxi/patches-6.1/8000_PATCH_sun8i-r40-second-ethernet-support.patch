@@ -9,9 +9,9 @@ index 8d8560a67abf..27f99372d153 100644
 -    const: allwinner,sun4i-a10-emac
 +    oneOf:
 +      - const: allwinner,sun4i-a10-emac
-+      - const: allwinner,sun4i-r40-emac
++      - const: allwinner,sun8i-r40-emac
 +      - items:
-+          - const: allwinner,sun4i-r40-emac
++          - const: allwinner,sun8i-r40-emac
 +          - const: allwinner,sun4i-a10-emac
  
    reg:
@@ -161,7 +161,7 @@ index 5ed80d9a6b9f..b26913610a38 100644
 +	.has_reset = false,
 +};
  
-+static const struct emac_quirks sun4i_r40_emac_quirks = {
++static const struct emac_quirks sun8i_r40_emac_quirks = {
 +	.has_reset = true,
 +};
 +
@@ -171,8 +171,8 @@ index 5ed80d9a6b9f..b26913610a38 100644
 +		.data = &sun4i_a10_emac_quirks
 +	},
 +	{
-+		.compatible = "allwinner,sun4i-r40-emac",
-+		.data = &sun4i_r40_emac_quirks
++		.compatible = "allwinner,sun8i-r40-emac",
++		.data = &sun8i_r40_emac_quirks
 +	},
  	/* Deprecated */
 -	{.compatible = "allwinner,sun4i-emac",},
@@ -238,7 +238,7 @@ index d5ad3b9efd12..c31386e421b1 100644
  		};
  
 +		emac: ethernet@1c0b000 {
-+			compatible = "allwinner,sun4i-r40-emac";
++			compatible = "allwinner,sun8i-r40-emac";
 +			reg = <0x01c0b000 0x1000>;
 +			interrupts = <GIC_SPI 55 IRQ_TYPE_LEVEL_HIGH>;
 +			clocks = <&ccu CLK_BUS_EMAC>;

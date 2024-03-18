@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-t3-tlink-dly-t3v2.dtsi
-@@ -0,0 +1,536 @@
+@@ -0,0 +1,534 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -122,15 +122,13 @@
 +	phy-handle = <&emac_phy>;
 +	phy-supply = <&reg_dcdc1>;
 +	phy-mode = "mii";
++	reset-gpios = <&pio 7 27 GPIO_ACTIVE_LOW>; /* PH27 */
 +	status = "okay";
 +};
 +
 +&emac_mdio {
 +	status = "okay";
 +	phy-supply = <&reg_dcdc1>;
-+	reset-gpios = <&pio 7 27 GPIO_ACTIVE_LOW>; /* PH27 */
-+	reset-assert-us = <10000>;
-+	reset-deassert-us = <1000000>;
 +	allwinner,emac-fix-phy-id = <0x20005c90>;
 +
 +	emac_phy: ethernet-phy@1 {
