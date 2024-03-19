@@ -144,12 +144,6 @@
 +			gpios = <&pio 8 7 GPIO_ACTIVE_HIGH>; /* PI7 */
 +		};
 +
-+		ex_uart_reset {
-+			gpio-export,name = "ex_uart_reset";
-+			gpio-export,output=<1>;
-+			gpios = <&pio 8 9 GPIO_ACTIVE_LOW>; /* PI9 */
-+		};
-+
 +		can_reset {
 +			gpio-export,name = "can_reset";
 +			gpio-export,output=<1>;
@@ -306,21 +300,22 @@
 +
 +&spi2 {
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&spi2_pc_pins>, <&spi2_irq_pins>;
++	pinctrl-0 = <&spi2_pc_pins>, <&spi2_irq_pins>, <&spi2_reset_pins>;
 +	status = "okay";
 +
 +	spi2_serial: spi2-serial@0 {
-+		compatible = "wkmic,wk2132spi";
++		compatible = "wkmic,wk2132_spi";
 +		reg = <0>;
 +		spi-max-frequency = <10000000>;
 +		poll_mode = <0>;
 +		type = <0>;
 +		enable_dma = <0>;
-+		irq_gpio=<&pio 8 15 IRQ_TYPE_LEVEL_LOW>; /* PI15/EINT27 */
++		reset_gpio = <&pio 8 9 GPIO_ACTIVE_LOW>; /* PI9 */
++		irq_gpio=<&pio 8 15 IRQ_TYPE_LEVEL_LOW>; /* PI15 */
 +		status = "okay";
 +	};
 +
-+	mcp2515: mcp2515@0 {
++	mcp2515: mcp2515@1 {
 +		compatible = "microchip,mcp2515";
 +		reg = <1>;
 +		clocks = <&can_clk8m>;
@@ -446,6 +441,11 @@
 +	spi2_irq_pins: spi2-irq-pins {
 +		pins = "PI15", "PH2";
 +		function = "irq";
++	};
++
++	spi2_reset_pins: spi2-reset-pins {
++		pins = "PI9";
++		function = "gpio_out";
 +	};
 +
 +	wifi_rst: wifi-rst-pin {
