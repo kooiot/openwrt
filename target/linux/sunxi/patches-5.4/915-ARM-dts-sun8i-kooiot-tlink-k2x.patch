@@ -49,11 +49,11 @@
 +	};
 +
 +	/* Fixed crystal dedicated to mcp251x */
-+	can_clk8m: can-clock-8m {
++	can_clk10m: can-clock-10m {
 +		compatible = "fixed-clock";
 +		#clock-cells = <0>;
-+		clock-frequency = <8000000>;
-+		clock-output-names = "can_clk8m";
++		clock-frequency = <10000000>;
++		clock-output-names = "can_clk10m";
 +	};
 +
 +	leds {
@@ -331,7 +331,7 @@
 +	mcp2515: mcp2515@1 {
 +		compatible = "microchip,mcp2515";
 +		reg = <1>;
-+		clocks = <&can_clk8m>;
++		clocks = <&can_clk10m>;
 +		interrupt-parent = <&pio>;
 +		interrupts = <7 2 IRQ_TYPE_LEVEL_LOW>; /* PH2/EINT2 */
 +		vdd-supply = <&reg_vcc_wifi_3v3>; /* VCC-WIFI */
