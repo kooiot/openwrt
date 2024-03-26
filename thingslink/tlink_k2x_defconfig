@@ -25,6 +25,7 @@ CONFIG_PACKAGE_kmod-backlight-pwm=y
 CONFIG_PACKAGE_kmod-crypto-sha256=y
 CONFIG_PACKAGE_kmod-dma-buf=y
 CONFIG_PACKAGE_kmod-drm=y
+CONFIG_PACKAGE_kmod-drm-display-helper=y
 CONFIG_PACKAGE_kmod-drm-kms-helper=y
 CONFIG_PACKAGE_kmod-drm-sun8i=y
 CONFIG_PACKAGE_kmod-drm-sun8i-dsi=y
