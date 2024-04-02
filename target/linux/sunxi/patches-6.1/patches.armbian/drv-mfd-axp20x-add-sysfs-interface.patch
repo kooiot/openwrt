@@ -11,7 +11,7 @@ diff --git a/drivers/mfd/axp20x.c b/drivers/mfd/axp20x.c
 index 597643e63..b61c5b40f 100644
 --- a/drivers/mfd/axp20x.c
 +++ b/drivers/mfd/axp20x.c
-@@ -79,6 +79,7 @@ static const struct regmap_range axp20x_volatile_ranges[] = {
+@@ -82,6 +82,7 @@ static const struct regmap_range axp20x_
  	regmap_reg_range(AXP20X_IRQ1_EN, AXP20X_IRQ5_STATE),
  	regmap_reg_range(AXP20X_ACIN_V_ADC_H, AXP20X_IPSOUT_V_HIGH_L),
  	regmap_reg_range(AXP20X_GPIO20_SS, AXP20X_GPIO3_CTRL),
@@ -19,8 +19,8 @@ index 597643e63..b61c5b40f 100644
  	regmap_reg_range(AXP20X_FG_RES, AXP20X_RDC_L),
  };
  
-@@ -888,6 +889,611 @@ static void axp20x_power_off(void)
- 	mdelay(500);
+@@ -1135,6 +1136,611 @@ static int axp20x_power_off(struct sys_o
+ 	return NOTIFY_DONE;
  }
  
 +#define kobj_to_device(x) container_of(x, struct device, kobj)
@@ -631,9 +631,9 @@ index 597643e63..b61c5b40f 100644
  int axp20x_match_device(struct axp20x_dev *axp20x)
  {
  	struct device *dev = axp20x->dev;
-@@ -1057,6 +1663,10 @@ int axp20x_device_probe(struct axp20x_dev *axp20x)
- 		pm_power_off = axp20x_power_off;
- 	}
+@@ -1339,6 +1945,10 @@ int axp20x_device_probe(struct axp20x_de
+ 					      SYS_OFF_PRIO_DEFAULT,
+ 					      axp20x_power_off, axp20x);
  
 +	if (axp20x->variant == AXP209_ID || axp20x->variant == AXP202_ID) {
 +		axp20x_sysfs_init(axp20x);
@@ -642,10 +642,10 @@ index 597643e63..b61c5b40f 100644
  	dev_info(axp20x->dev, "AXP20X driver loaded\n");
  
  	return 0;
-@@ -1070,6 +1680,10 @@ void axp20x_device_remove(struct axp20x_dev *axp20x)
- 		pm_power_off = NULL;
- 	}
+@@ -1347,6 +1957,10 @@ EXPORT_SYMBOL(axp20x_device_probe);
  
+ void axp20x_device_remove(struct axp20x_dev *axp20x)
+ {
 +	if (axp20x->variant == AXP209_ID || axp20x->variant == AXP202_ID) {
 +		axp20x_sysfs_exit(axp20x);
 +	}
@@ -655,4 +655,3 @@ index 597643e63..b61c5b40f 100644
  }
 -- 
 2.35.3
-
