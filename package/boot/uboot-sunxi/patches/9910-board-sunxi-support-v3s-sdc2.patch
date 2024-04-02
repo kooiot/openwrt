@@ -14,8 +14,8 @@
  #elif defined(CONFIG_MACH_SUN8I) || defined(CONFIG_MACH_SUN50I)
  		/* SDC2: PC5-PC6, PC8-PC16 */
  		for (pin = SUNXI_GPC(5); pin <= SUNXI_GPC(6); pin++) {
---- a/arch/arm/include/asm/arch-sunxi/gpio.h
-+++ b/arch/arm/include/asm/arch-sunxi/gpio.h
+--- a/include/sunxi_gpio.h
++++ b/include/sunxi_gpio.h
 @@ -170,6 +170,7 @@
  #define SUNXI_GPC_NAND		2
  #define SUNXI_GPC_SPI0		3

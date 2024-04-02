@@ -23,10 +23,10 @@ diff -uNra a/arch/arm/include/asm/arch-sunxi/dram.h b/arch/arm/include/asm/arch-
  #elif defined(CONFIG_MACH_SUN8I_A83T)
  #include <asm/arch/dram_sun8i_a83t.h>
  #elif defined(CONFIG_SUNXI_DRAM_DW)
-diff -uNra a/arch/arm/include/asm/arch-sunxi/gpio.h b/arch/arm/include/asm/arch-sunxi/gpio.h
---- a/arch/arm/include/asm/arch-sunxi/gpio.h	2021-12-08 11:00:23.709072012 +0800
-+++ b/arch/arm/include/asm/arch-sunxi/gpio.h	2021-12-08 11:09:47.754677395 +0800
-@@ -147,6 +147,7 @@
+diff -uNra a/include/sunxi_gpio.h b/include/sunxi_gpio.h
+--- a/include/sunxi_gpio.h	2021-12-08 11:00:23.709072012 +0800
++++ b/include/sunxi_gpio.h	2021-12-08 11:09:47.754677395 +0800
+@@ -117,6 +117,7 @@
  #define SUN5I_GPB_UART0		2
  #define SUN8I_GPB_UART2		2
  #define SUN8I_A33_GPB_UART0	3
