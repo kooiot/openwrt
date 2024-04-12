@@ -1402,6 +1402,22 @@ endef
 
 $(eval $(call KernelPackage,pwm-sun8i))
 
+define KernelPackage/pwm-sun8i-v536
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=SUN8I_V536 PWM support
+  DEPENDS:=@TARGET_sunxi
+  KCONFIG:=CONFIG_PWM \
+	  CONFIG_PWM_SUN8I_V536
+  FILES:=$(LINUX_DIR)/drivers/pwm/pwm-sun8i-v536.ko
+  AUTOLOAD:=$(call AutoProbe,pwm-sun8i-v536,1)
+endef
+
+define KernelPackage/pwm-sun8i-v536/description
+  Kernel module for SUN8I_V536 PWM support.
+endef
+
+$(eval $(call KernelPackage,pwm-sun8i-v536))
+
 define KernelPackage/mhi-bus
   SUBMENU:=$(OTHER_MENU)
   TITLE:=MHI bus

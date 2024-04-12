@@ -471,6 +471,12 @@ define U-Boot/tlink_m416
   UENV:=display
 endef
 
+define U-Boot/tlink_e1
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink E1
+  BUILD_DEVICES:=kooiot_tlink-e1
+endef
+
 define U-Boot/tlink_c4
   BUILD_SUBTARGET:=cortexa7
   NAME:=ThingsLink C4
@@ -536,6 +542,7 @@ UBOOT_TARGETS := \
 	tlink_k2x \
 	tlink_m408 \
 	tlink_m416 \
+	tlink_e1 \
 	tlink_s1 \
 	Lichee_Zero_Plus \
 	sinlinx_sin_v3s \

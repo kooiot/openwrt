@@ -1,0 +1,648 @@
+diff -Nurp a/arch/arm/dts/sun8i-t113s-mangopi-mq-r-t113.dts b/arch/arm/dts/sun8i-t113s-mangopi-mq-r-t113.dts
+--- a/arch/arm/dts/sun8i-t113s-mangopi-mq-r-t113.dts	2024-04-10 16:56:14.903177504 +0800
++++ b/arch/arm/dts/sun8i-t113s-mangopi-mq-r-t113.dts	2024-04-10 17:00:09.515133159 +0800
+@@ -33,3 +33,56 @@
+ 		interrupt-names = "host-wake";
+ 	};
+ };
++
++&spi0 {
++	pinctrl-0 = <&spi0_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++
++	flash@0 {
++		compatible = "spi-nand";
++		reg = <0>;
++
++		partitions {
++			compatible = "fixed-partitions";
++			#address-cells = <1>;
++			#size-cells = <1>;
++
++			partition@0 {
++				label = "uboot";
++				reg = <0x00000000 0x00080000>;
++			};
++
++			partition@80000 {
++				label = "ubi";
++				reg = <0x00080000 0x0fb00000>;
++			};
++		};
++	};
++};
++
++&usb_otg {
++	status = "okay";
++	dr_mode = "peripheral";
++};
++
++&usbphy {
++	usb1_vbus-supply = <&reg_vcc5v>;
++	status = "okay";
++};
++
++&ohci0 {
++	status = "okay";
++};
++
++&ohci1 {
++	status = "okay";
++};
++
++&ehci0 {
++	status = "okay";
++};
++
++&ehci1 {
++	status = "okay";
++};
+diff -Nurp a/arch/arm/include/asm/arch-sunxi/spl.h b/arch/arm/include/asm/arch-sunxi/spl.h
+--- a/arch/arm/include/asm/arch-sunxi/spl.h	2024-04-10 16:56:15.055180061 +0800
++++ b/arch/arm/include/asm/arch-sunxi/spl.h	2024-04-10 17:39:23.902819761 +0800
+@@ -16,8 +16,7 @@
+ #define SUNXI_BOOTED_FROM_NAND	1
+ #define SUNXI_BOOTED_FROM_MMC2	2
+ #define SUNXI_BOOTED_FROM_SPI	3
+-#define SUNXI_BOOTED_FROM_MMC0_HIGH	0x10
+-#define SUNXI_BOOTED_FROM_MMC2_HIGH	0x12
++#define SUNXI_BOOTED_FROM_SPINAND	4
+ 
+ /*
+  * Values taken from the F1C200s BootROM stack
+diff -Nurp a/arch/arm/include/asm/spl.h b/arch/arm/include/asm/spl.h
+--- a/arch/arm/include/asm/spl.h	2024-04-10 16:56:15.087180600 +0800
++++ b/arch/arm/include/asm/spl.h	2024-04-10 17:17:10.201830890 +0800
+@@ -22,6 +22,7 @@ enum {
+ 	BOOT_DEVICE_NOR,
+ 	BOOT_DEVICE_UART,
+ 	BOOT_DEVICE_SPI,
++	BOOT_DEVICE_SPINAND,
+ 	BOOT_DEVICE_USB,
+ 	BOOT_DEVICE_SATA,
+ 	BOOT_DEVICE_I2C,
+diff -Nurp a/arch/arm/mach-sunxi/board.c b/arch/arm/mach-sunxi/board.c
+--- a/arch/arm/mach-sunxi/board.c	2024-04-10 16:56:15.295184098 +0800
++++ b/arch/arm/mach-sunxi/board.c	2024-04-10 17:38:56.294373154 +0800
+@@ -171,6 +171,16 @@ static int gpio_init(void)
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPB(0), SUN8I_GPB_UART2);
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPB(1), SUN8I_GPB_UART2);
+ 	sunxi_gpio_set_pull(SUNXI_GPB(1), SUNXI_GPIO_PULL_UP);
++#elif CONFIG_CONS_INDEX == 3 && defined(CONFIG_MACH_SUN8I_R528)
++#if IS_ENABLED(CONFIG_UART2_PORT_E)
++	sunxi_gpio_set_cfgpin(SUNXI_GPE(2), 3);
++	sunxi_gpio_set_cfgpin(SUNXI_GPE(3), 3);
++	sunxi_gpio_set_pull(SUNXI_GPE(2), SUNXI_GPIO_PULL_UP);
++#else
++	sunxi_gpio_set_cfgpin(SUNXI_GPB(0), 7);
++	sunxi_gpio_set_cfgpin(SUNXI_GPB(1), 7);
++	sunxi_gpio_set_pull(SUNXI_GPB(1), SUNXI_GPIO_PULL_UP);
++#endif
+ #elif CONFIG_CONS_INDEX == 4 && defined(CONFIG_MACH_SUN8I_R528)
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPB(6), 7);
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPB(7), 7);
+@@ -179,8 +189,9 @@ static int gpio_init(void)
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPL(2), SUN8I_GPL_R_UART);
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPL(3), SUN8I_GPL_R_UART);
+ 	sunxi_gpio_set_pull(SUNXI_GPL(3), SUNXI_GPIO_PULL_UP);
+-#elif CONFIG_CONS_INDEX == 2 && defined(CONFIG_MACH_SUN8I) && \
+-				!defined(CONFIG_MACH_SUN8I_R40)
++#elif CONFIG_CONS_INDEX == 2 && (defined(CONFIG_MACH_SUN8I) && \
++				!defined(CONFIG_MACH_SUN8I_R40)) \
++				|| defined(CONFIG_MACH_SUN8I_R528)
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPG(6), SUN8I_GPG_UART1);
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPG(7), SUN8I_GPG_UART1);
+ 	sunxi_gpio_set_pull(SUNXI_GPG(7), SUNXI_GPIO_PULL_UP);
+@@ -227,13 +238,12 @@ static int suniv_get_boot_source(void)
+ 	switch (brom_call) {
+ 	case SUNIV_BOOTED_FROM_MMC0:
+ 		return SUNXI_BOOTED_FROM_MMC0;
+-	case SUNIV_BOOTED_FROM_SPI:
++	case SUNIV_BOOTED_FROM_NAND:
+ 		return SUNXI_BOOTED_FROM_SPI;
+ 	case SUNIV_BOOTED_FROM_MMC1:
+ 		return SUNXI_BOOTED_FROM_MMC2;
+-	/* SPI NAND is not supported yet. */
+-	case SUNIV_BOOTED_FROM_NAND:
+-		return SUNXI_INVALID_BOOT_SOURCE;
++	case SUNIV_BOOTED_FROM_SPI:
++		return SUNXI_BOOTED_FROM_SPINAND;
+ 	}
+ 	/* If we get here something went wrong try to boot from FEL.*/
+ 	printf("Unknown boot source from BROM: 0x%x\n", brom_call);
+@@ -283,6 +293,7 @@ static int sunxi_get_boot_source(void)
+ uint32_t sunxi_get_boot_device(void)
+ {
+ 	int boot_source = sunxi_get_boot_source();
++	int boot_dev = (boot_source & 0xF); /* Low nibble is device */
+ 
+ 	/*
+ 	 * When booting from the SD card or NAND memory, the "eGON.BT0"
+@@ -300,25 +311,34 @@ uint32_t sunxi_get_boot_device(void)
+ 	 * binary over USB. If it is found, it determines where SPL was
+ 	 * read from.
+ 	 */
+-	switch (boot_source) {
+-	case SUNXI_INVALID_BOOT_SOURCE:
++	if (boot_source == SUNXI_INVALID_BOOT_SOURCE)
+ 		return BOOT_DEVICE_BOARD;
++
++	switch (boot_dev) {
+ 	case SUNXI_BOOTED_FROM_MMC0:
+-	case SUNXI_BOOTED_FROM_MMC0_HIGH:
+ 		return BOOT_DEVICE_MMC1;
+ 	case SUNXI_BOOTED_FROM_NAND:
+ 		return BOOT_DEVICE_NAND;
+ 	case SUNXI_BOOTED_FROM_MMC2:
+-	case SUNXI_BOOTED_FROM_MMC2_HIGH:
+ 		return BOOT_DEVICE_MMC2;
+ 	case SUNXI_BOOTED_FROM_SPI:
+ 		return BOOT_DEVICE_SPI;
++	case SUNXI_BOOTED_FROM_SPINAND:
++		return BOOT_DEVICE_SPINAND;
+ 	}
+ 
+ 	panic("Unknown boot source %d\n", boot_source);
+ 	return -1;		/* Never reached */
+ }
+ 
++uint32_t sunxi_get_boot_position(void)
++{
++	int boot_source = sunxi_get_boot_source();
++	int boot_pos = ((boot_source >> 8) & 0xF); /* High nibble is position */
++
++	return boot_pos;
++}
++
+ #ifdef CONFIG_SPL_BUILD
+ uint32_t sunxi_get_spl_size(void)
+ {
+@@ -350,11 +370,8 @@ unsigned long board_spl_mmc_get_uboot_ra
+ 
+ 	sector = max(raw_sect, spl_size / 512);
+ 
+-	switch (sunxi_get_boot_source()) {
+-	case SUNXI_BOOTED_FROM_MMC0_HIGH:
+-	case SUNXI_BOOTED_FROM_MMC2_HIGH:
++	if (sunxi_get_boot_position() == 1) {
+ 		sector += (128 - 8) * 2;
+-		break;
+ 	}
+ 
+ 	return sector;
+diff -Nurp a/arch/arm/mach-sunxi/Kconfig b/arch/arm/mach-sunxi/Kconfig
+--- a/arch/arm/mach-sunxi/Kconfig	2024-04-10 16:56:15.295184098 +0800
++++ b/arch/arm/mach-sunxi/Kconfig	2024-04-10 17:27:48.459658682 +0800
+@@ -754,6 +754,18 @@ config UART0_PORT_F
+ 	at the same time, the system can be only booted in the FEL mode.
+ 	Only enable this if you really know what you are doing.
+ 
++config UART2_PORT_E
++	bool "UART2 on PE2 and PE3 pins"
++	---help---
++	UART2 may used pins PE2 and PE3 on the Allwinner T113 board.
++	Enable this if you are using these pins for UART2.
++
++config UART3_PORT_E
++	bool "UART3 on PE8 and PE9 pins"
++	---help---
++	UART3 may used pins PE8 and PE9 on the Allwinner T113 board.
++	Enable this if you are using these pins for UART3.
++
+ config OLD_SUNXI_KERNEL_COMPAT
+ 	bool "Enable workarounds for booting old kernels"
+ 	---help---
+@@ -1086,7 +1098,7 @@ config SPL_STACK_R_ADDR
+ 
+ config SPL_SPI_SUNXI
+ 	bool "Support for SPI Flash on Allwinner SoCs in SPL"
+-	depends on MACH_SUN4I || MACH_SUN5I || MACH_SUN7I || MACH_SUNXI_H3_H5 || MACH_SUN50I || MACH_SUN8I_R40 || SUN50I_GEN_H6 || MACH_SUNIV
++	depends on MACH_SUN4I || MACH_SUN5I || MACH_SUN7I || MACH_SUNXI_H3_H5 || MACH_SUN50I || MACH_SUN8I_R40 || SUN50I_GEN_H6 || MACH_SUN8I_R528 || MACH_SUNIV
+ 	help
+ 	  Enable support for SPI Flash. This option allows SPL to read from
+ 	  sunxi SPI Flash. It uses the same method as the boot ROM, so does
+diff -Nurp a/arch/arm/mach-sunxi/spl_spi_sunxi.c b/arch/arm/mach-sunxi/spl_spi_sunxi.c
+--- a/arch/arm/mach-sunxi/spl_spi_sunxi.c	2024-04-10 16:56:15.307184301 +0800
++++ b/arch/arm/mach-sunxi/spl_spi_sunxi.c	2024-04-10 18:02:37.280678741 +0800
+@@ -78,8 +78,11 @@
+ /*****************************************************************************/
+ 
+ #define CCM_AHB_GATING0             (0x01C20000 + 0x60)
++#if defined(CONFIG_MACH_SUN8I_R528)
++#define CCM_H6_SPI_BGR_REG          (0x02001000 + 0x96c)
++#define CCM_SPI0_CLK                (0x02001000 + 0x940)
++#elif defined(CONFIG_SUN50I_GEN_H6)
+ #define CCM_H6_SPI_BGR_REG          (0x03001000 + 0x96c)
+-#ifdef CONFIG_SUN50I_GEN_H6
+ #define CCM_SPI0_CLK                (0x03001000 + 0x940)
+ #else
+ #define CCM_SPI0_CLK                (0x01C20000 + 0xA0)
+@@ -99,6 +102,7 @@
+  * Allwinner A10/A20 SoCs were using pins PC0,PC1,PC2,PC23 for booting
+  * from SPI Flash, everything else is using pins PC0,PC1,PC2,PC3.
+  * The H6 uses PC0, PC2, PC3, PC5, the H616 PC0, PC2, PC3, PC4.
++ * The R528 uses PC2, PC3, PC4, PC5, PC6, PC7.
+  */
+ static void spi0_pinmux_setup(unsigned int pin_function)
+ {
+@@ -110,9 +114,9 @@ static void spi0_pinmux_setup(unsigned i
+ 	if (!IS_ENABLED(CONFIG_SUN50I_GEN_H6))
+ 		sunxi_gpio_set_cfgpin(SUNXI_GPC(1), pin_function);
+ 
+-	if (IS_ENABLED(CONFIG_MACH_SUN50I_H6))
++	if (IS_ENABLED(CONFIG_MACH_SUN50I_H6) || IS_ENABLED(CONFIG_MACH_SUN8I_R528))
+ 		sunxi_gpio_set_cfgpin(SUNXI_GPC(5), pin_function);
+-	if (IS_ENABLED(CONFIG_MACH_SUN50I_H616))
++	if (IS_ENABLED(CONFIG_MACH_SUN50I_H616) || IS_ENABLED(CONFIG_MACH_SUN8I_R528))
+ 		sunxi_gpio_set_cfgpin(SUNXI_GPC(4), pin_function);
+ 
+ 	/* Older generations use PC23 for CS, newer ones use PC3. */
+@@ -121,12 +125,19 @@ static void spi0_pinmux_setup(unsigned i
+ 		sunxi_gpio_set_cfgpin(SUNXI_GPC(23), pin_function);
+ 	else
+ 		sunxi_gpio_set_cfgpin(SUNXI_GPC(3), pin_function);
++
++	if (IS_ENABLED(CONFIG_MACH_SUN8I_R528))
++		sunxi_gpio_set_cfgpin(SUNXI_GPC(6), pin_function);
++	if (IS_ENABLED(CONFIG_MACH_SUN8I_R528))
++		sunxi_gpio_set_cfgpin(SUNXI_GPC(7), pin_function);
+ }
+ 
+ static bool is_sun6i_gen_spi(void)
+ {
+ 	return IS_ENABLED(CONFIG_SUNXI_GEN_SUN6I) ||
+-	       IS_ENABLED(CONFIG_SUN50I_GEN_H6);
++	       IS_ENABLED(CONFIG_SUN50I_GEN_H6) ||
++	       IS_ENABLED(CONFIG_MACH_SUN8I_R528)
++	       ;
+ }
+ 
+ static uintptr_t spi0_base_address(void)
+@@ -137,6 +148,9 @@ static uintptr_t spi0_base_address(void)
+ 	if (IS_ENABLED(CONFIG_SUN50I_GEN_H6))
+ 		return 0x05010000;
+ 
++	if (IS_ENABLED(CONFIG_MACH_SUN8I_R528))
++		return 0x04025000;
++
+ 	if (!is_sun6i_gen_spi() ||
+ 	    IS_ENABLED(CONFIG_MACH_SUNIV))
+ 		return 0x01C05000;
+@@ -152,19 +166,22 @@ static void spi0_enable_clock(void)
+ 	uintptr_t base = spi0_base_address();
+ 
+ 	/* Deassert SPI0 reset on SUN6I */
+-	if (IS_ENABLED(CONFIG_SUN50I_GEN_H6))
++	if (IS_ENABLED(CONFIG_SUN50I_GEN_H6) || IS_ENABLED(CONFIG_MACH_SUN8I_R528))
+ 		setbits_le32(CCM_H6_SPI_BGR_REG, (1U << 16) | 0x1);
+ 	else if (is_sun6i_gen_spi())
+ 		setbits_le32(SUN6I_BUS_SOFT_RST_REG0,
+ 			     (1 << AHB_RESET_SPI0_SHIFT));
+ 
+ 	/* Open the SPI0 gate */
+-	if (!IS_ENABLED(CONFIG_SUN50I_GEN_H6))
++	if (!IS_ENABLED(CONFIG_SUN50I_GEN_H6) && !IS_ENABLED(CONFIG_MACH_SUN8I_R528))
+ 		setbits_le32(CCM_AHB_GATING0, (1 << AHB_GATE_OFFSET_SPI0));
+ 
+ 	if (IS_ENABLED(CONFIG_MACH_SUNIV)) {
+ 		/* Divide by 32, clock source is AHB clock 200MHz */
+ 		writel(SPI0_CLK_DIV_BY_32, base + SUN6I_SPI0_CCTL);
++	} else if (IS_ENABLED(CONFIG_MACH_SUN8I_R528)) {
++		/* 24MHz from OSC24M */
++		writel((1 << 31), CCM_SPI0_CLK);
+ 	} else {
+ 		/* Divide by 4 */
+ 		writel(SPI0_CLK_DIV_BY_4, base + (is_sun6i_gen_spi() ?
+@@ -206,11 +223,11 @@ static void spi0_disable_clock(void)
+ 		writel(0, CCM_SPI0_CLK);
+ 
+ 	/* Close the SPI0 gate */
+-	if (!IS_ENABLED(CONFIG_SUN50I_GEN_H6))
++	if (!IS_ENABLED(CONFIG_SUN50I_GEN_H6) && !IS_ENABLED(CONFIG_MACH_SUN8I_R528))
+ 		clrbits_le32(CCM_AHB_GATING0, (1 << AHB_GATE_OFFSET_SPI0));
+ 
+ 	/* Assert SPI0 reset on SUN6I */
+-	if (IS_ENABLED(CONFIG_SUN50I_GEN_H6))
++	if (IS_ENABLED(CONFIG_SUN50I_GEN_H6) || IS_ENABLED(CONFIG_MACH_SUN8I_R528))
+ 		clrbits_le32(CCM_H6_SPI_BGR_REG, (1U << 16) | 0x1);
+ 	else if (is_sun6i_gen_spi())
+ 		clrbits_le32(SUN6I_BUS_SOFT_RST_REG0,
+@@ -221,7 +238,9 @@ static void spi0_init(void)
+ {
+ 	unsigned int pin_function = SUNXI_GPC_SPI0;
+ 
+-	if (IS_ENABLED(CONFIG_MACH_SUN50I) ||
++	if (IS_ENABLED(CONFIG_MACH_SUN8I_R528))
++		pin_function = SUNIV_GPC_SPI0;
++	else if (IS_ENABLED(CONFIG_MACH_SUN50I) ||
+ 	    IS_ENABLED(CONFIG_SUN50I_GEN_H6))
+ 		pin_function = SUN50I_GPC_SPI0;
+ 	else if (IS_ENABLED(CONFIG_MACH_SUNIV))
+@@ -341,6 +360,7 @@ static int spl_spi_load_image(struct spl
+ 	int ret = 0;
+ 	struct legacy_img_hdr *header;
+ 	uint32_t load_offset = sunxi_get_spl_size();
++	bool allow_raw = false;
+ 
+ 	header = (struct legacy_img_hdr *)CONFIG_TEXT_BASE;
+ 	load_offset = max_t(uint32_t, load_offset, CONFIG_SYS_SPI_U_BOOT_OFFS);
+@@ -376,3 +396,7 @@ static int spl_spi_load_image(struct spl
+ }
+ /* Use priorty 0 to override the default if it happens to be linked in */
+ SPL_LOAD_IMAGE_METHOD("sunxi SPI", 0, BOOT_DEVICE_SPI, spl_spi_load_image);
++
++#if defined(CONFIG_SPL_SPINAND_SUPPORT)
++SPL_LOAD_IMAGE_METHOD("sunxi SPI NAND", 0, BOOT_DEVICE_SPINAND, spl_spi_load_image);
++#endif
+diff -Nurp a/arch/riscv/dts/sunxi-d1s-t113.dtsi b/arch/riscv/dts/sunxi-d1s-t113.dtsi
+--- a/arch/riscv/dts/sunxi-d1s-t113.dtsi	2024-04-10 16:56:15.519187867 +0800
++++ b/arch/riscv/dts/sunxi-d1s-t113.dtsi	2024-04-10 18:04:04.850187902 +0800
+@@ -139,6 +139,12 @@
+ 			};
+ 
+ 			/omit-if-no-ref/
++			uart2_pe_pins: uart2-pe-pins {
++				pins = "PE2", "PE3";
++				function = "uart2";
++			};
++
++			/omit-if-no-ref/
+ 			uart3_pb_pins: uart3-pb-pins {
+ 				pins = "PB6", "PB7";
+ 				function = "uart3";
+diff -Nurp a/arch/riscv/include/asm/spl.h b/arch/riscv/include/asm/spl.h
+--- a/arch/riscv/include/asm/spl.h	2024-04-10 16:56:15.523187935 +0800
++++ b/arch/riscv/include/asm/spl.h	2024-04-10 18:04:18.458422003 +0800
+@@ -18,6 +18,7 @@ enum {
+ 	BOOT_DEVICE_NOR,
+ 	BOOT_DEVICE_UART,
+ 	BOOT_DEVICE_SPI,
++	BOOT_DEVICE_SPINAND,
+ 	BOOT_DEVICE_USB,
+ 	BOOT_DEVICE_SATA,
+ 	BOOT_DEVICE_NVME,
+diff -Nurp a/common/spl/Kconfig b/common/spl/Kconfig
+--- a/common/spl/Kconfig	2024-04-10 16:56:16.835210004 +0800
++++ b/common/spl/Kconfig	2024-04-10 18:09:55.980200835 +0800
+@@ -874,6 +874,27 @@ config SPL_MUSB_NEW
+ 	  the drivers in drivers/usb/musb-new as part of an SPL build. The
+ 	  old drivers are in drivers/usb/musb.
+ 
++config SPL_SPINAND_SUPPORT
++	bool "Support SPINAND flash"
++	help
++	  Enable support for SPINAND (Negative AND) flash in SPL. SPINAND flash
++	  can be used to allow SPL to load U-Boot from supported devices.
++
++config SPL_SPINAND_PAGE_SIZE
++        hex "SPINAND chip page size"
++        depends on SPL_SPINAND_SUPPORT
++        help
++          Number of data bytes in one page for the SPINAND chip on the
++          board, not including the OOB area.
++
++config SPL_SPINAND_BLOCK_SIZE
++        hex "SPINAND chip eraseblock size"
++        depends on SPL_SPINAND_SUPPORT
++        help
++          Number of data bytes in one eraseblock for the SPINAND chip on the
++          board. This is the multiple of SPINAND_PAGE_SIZE and the number of
++          pages.
++
+ config SPL_NAND_SUPPORT
+ 	bool "Support NAND flash"
+ 	help
+diff -Nurp a/common/spl/spl_ubi.c b/common/spl/spl_ubi.c
+--- a/common/spl/spl_ubi.c	2024-04-10 16:56:16.843210140 +0800
++++ b/common/spl/spl_ubi.c	2024-04-10 18:11:01.137311750 +0800
+@@ -12,6 +12,14 @@
+ #include <ubispl.h>
+ #include <spl.h>
+ 
++static ulong ram_spl_load_read(struct spl_load_info *load, ulong sector,
++                             ulong count, void *buf)
++{
++	char* ubi_contents = load->priv;
++	memcpy(buf, ubi_contents + sector, count);
++	return count;
++}
++
+ int spl_ubi_load_image(struct spl_image_info *spl_image,
+ 		       struct spl_boot_device *bootdev)
+ {
+@@ -21,6 +29,13 @@ int spl_ubi_load_image(struct spl_image_
+ 	int ret = 1;
+ 
+ 	switch (bootdev->boot_device) {
++#ifdef CONFIG_SPL_SPINAND_SUPPORT
++	case BOOT_DEVICE_SPINAND:
++		spinand_init();
++		info.read = spinand_spl_read_block;
++		info.peb_size = CONFIG_SPL_SPINAND_BLOCK_SIZE;
++		break;
++#endif
+ #ifdef CONFIG_SPL_NAND_SUPPORT
+ 	case BOOT_DEVICE_NAND:
+ 		nand_init();
+@@ -62,7 +77,8 @@ int spl_ubi_load_image(struct spl_image_
+ 		puts("Loading Linux failed, falling back to U-Boot.\n");
+ 	}
+ #endif
+-	header = spl_get_load_buffer(-sizeof(*header), sizeof(header));
++	/* Ensure there's enough room for the full UBI volume! */
++	header = (void*)CONFIG_SYS_LOAD_ADDR;
+ #ifdef CONFIG_SPL_UBI_LOAD_BY_VOLNAME
+ 	volumes[0].vol_id = -1;
+ 	strncpy(volumes[0].name,
+@@ -74,15 +90,35 @@ int spl_ubi_load_image(struct spl_image_
+ 	volumes[0].load_addr = (void *)header;
+ 
+ 	ret = ubispl_load_volumes(&info, volumes, 1);
+-	if (!ret)
+-		spl_parse_image_header(spl_image, bootdev, header);
++	if (ret)
++		goto out;
++
++        spl_parse_image_header(spl_image, bootdev, header);
++
++        if (IS_ENABLED(CONFIG_SPL_LOAD_FIT) &&
++            image_get_magic(header) == FDT_MAGIC) {
++                struct spl_load_info load;
++                printf("Found FIT\n");
++                load.dev = NULL;
++                load.priv = (char*)header;
++                load.filename = NULL;
++                load.bl_len = 1;
++                load.read = ram_spl_load_read;
++                ret = spl_load_simple_fit(spl_image, &load, 0, header);
++        }
++
+ out:
++#ifdef CONFIG_SPL_SPI_NAND_SUPPORT
++	if (bootdev->boot_device == BOOT_DEVICE_SPINAND)
++		spinand_deselect();
++#endif
+ #ifdef CONFIG_SPL_NAND_SUPPORT
+ 	if (bootdev->boot_device == BOOT_DEVICE_NAND)
+ 		nand_deselect();
+ #endif
+ 	return ret;
+ }
+-/* Use priorty 0 so that Ubi will override NAND and ONENAND methods */
++/* Use priority 0 so that UBI will override all NAND methods */
+ SPL_LOAD_IMAGE_METHOD("NAND", 0, BOOT_DEVICE_NAND, spl_ubi_load_image);
+ SPL_LOAD_IMAGE_METHOD("OneNAND", 0, BOOT_DEVICE_ONENAND, spl_ubi_load_image);
++SPL_LOAD_IMAGE_METHOD("SPINAND", 0, BOOT_DEVICE_SPINAND, spl_ubi_load_image);
+diff -Nurp a/configs/mangopi_mq_r_defconfig b/configs/mangopi_mq_r_defconfig
+--- a/configs/mangopi_mq_r_defconfig	2024-04-10 16:56:16.963212159 +0800
++++ b/configs/mangopi_mq_r_defconfig	2024-04-10 18:12:00.426321658 +0800
+@@ -6,10 +6,38 @@ CONFIG_MACH_SUN8I_R528=y
+ CONFIG_DRAM_CLK=792
+ CONFIG_DRAM_ZQ=8092667
+ CONFIG_SUNXI_MINIMUM_DRAM_MB=128
++CONFIG_UART2_PORT_E=y
++CONFIG_SPL_SPI_SUNXI=y
+ # CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
++CONFIG_SPL_LOAD_FIT=y
++CONFIG_SPL_LEGACY_IMAGE_FORMAT=y
++CONFIG_SPL_FIT_IMAGE_TINY=y
++CONFIG_SPL_SPINAND_SUPPORT=y
++CONFIG_SPL_SPINAND_PAGE_SIZE=0x800
++CONFIG_SPL_SPINAND_BLOCK_SIZE=0x20000
++CONFIG_SPL_UBI=y
++CONFIG_SPL_UBI_MAX_VOL_LEBS=2048
++CONFIG_SPL_UBI_MAX_PEB_SIZE=131072
++CONFIG_SPL_UBI_MAX_PEBS=2048
++CONFIG_SPL_UBI_PEB_OFFSET=4
++CONFIG_SPL_UBI_VID_OFFSET=2048
++CONFIG_SPL_UBI_LEB_START=4096
++CONFIG_SPL_UBI_INFO_ADDR=0x41000000
++CONFIG_SPL_UBI_VOL_IDS=256
++CONFIG_SPL_UBI_LOAD_MONITOR_ID=0
++CONFIG_CMD_MTD=y
++CONFIG_CMD_UBI=y
++CONFIG_MTD=y
++CONFIG_DM_MTD=y
++CONFIG_MTD_SPI_NAND=y
++# CONFIG_SPI_FLASH_USE_4K_SECTORS is not set
++CONFIG_SPI_FLASH_MTD=y
++CONFIG_MTD_UBI_FASTMAP=y
++CONFIG_MTD_UBI_FASTMAP_AUTOCONVERT=1
+ CONFIG_DRAM_SUNXI_ODT_EN=0
+ CONFIG_DRAM_SUNXI_TPR0=0x004a2195
+ CONFIG_DRAM_SUNXI_TPR11=0x340000
+ CONFIG_DRAM_SUNXI_TPR12=0x46
+ CONFIG_DRAM_SUNXI_TPR13=0x34000100
+-CONFIG_CONS_INDEX=4
++CONFIG_CONS_INDEX=2
++CONFIG_SPI=y
+diff -Nurp a/drivers/pinctrl/sunxi/pinctrl-sunxi.c b/drivers/pinctrl/sunxi/pinctrl-sunxi.c
+--- a/drivers/pinctrl/sunxi/pinctrl-sunxi.c	2024-04-10 16:56:17.527221645 +0800
++++ b/drivers/pinctrl/sunxi/pinctrl-sunxi.c	2024-04-10 18:19:18.708972008 +0800
+@@ -613,7 +613,15 @@ static const struct sunxi_pinctrl_functi
+ 	{ "uart0",	6 },	/* PB0-PB1, PB8-PB9, PE2-PE3 */
+ #endif
+ 	{ "uart1",	2 },	/* PG6-PG7 */
++#if IS_ENABLED(CONFIG_UART2_PORT_E)
++	{ "uart2",	3 },	/* PE2-PE3 */
++#else
+ 	{ "uart2",	7 },	/* PB0-PB1 */
++#endif
++#if IS_ENABLED(CONFIG_UART3_PORT_E)
++	{ "uart3",	5 },	/* PE8-PE9 */
++#else
+ 	{ "uart3",	7 },	/* PB6-PB7 */
++#endif
+ };
+
+ static const struct sunxi_pinctrl_desc __maybe_unused sun20i_d1_pinctrl_desc = { 
+diff -Nurp a/drivers/spi/spi-sunxi.c b/drivers/spi/spi-sunxi.c
+--- a/drivers/spi/spi-sunxi.c	2024-04-10 16:56:17.655223799 +0800
++++ b/drivers/spi/spi-sunxi.c	2024-04-10 18:20:56.206434624 +0800
+@@ -128,6 +128,7 @@ struct sun4i_spi_variant {
+ 	u32 fifo_depth;
+ 	bool has_soft_reset;
+ 	bool has_burst_ctl;
++	bool clock_d1;
+ };
+ 
+ struct sun4i_spi_plat {
+@@ -229,7 +230,7 @@ err_ahb:
+ 	return ret;
+ }
+ 
+-static void sun4i_spi_set_speed_mode(struct udevice *dev)
++static void sun4i_spi_adjust_clock(struct udevice *dev)
+ {
+ 	struct sun4i_spi_priv *priv = dev_get_priv(dev);
+ 	unsigned int div;
+@@ -270,6 +271,22 @@ static void sun4i_spi_set_speed_mode(str
+ 	}
+ 
+ 	writel(reg, SPI_REG(priv, SPI_CCR));
++}
++
++static void sun4i_spi_adjust_clock_d1(struct udevice *dev)
++{
++	/* Do nothing for now: We run at HOSC 24MHz by default */
++}
++
++static void sun4i_spi_set_speed_mode(struct udevice *dev)
++{
++	struct sun4i_spi_priv *priv = dev_get_priv(dev);
++	u32 reg;
++
++	if (priv->variant->clock_d1)
++		sun4i_spi_adjust_clock_d1(dev->parent);
++	else
++		sun4i_spi_adjust_clock(dev->parent);
+ 
+ 	reg = readl(SPI_REG(priv, SPI_TCR));
+ 	reg &= ~(SPI_BIT(priv, SPI_TCR_CPOL) | SPI_BIT(priv, SPI_TCR_CPHA));
+@@ -544,6 +561,15 @@ static const struct sun4i_spi_variant su
+ 	.has_burst_ctl		= true,
+ };
+ 
++static const struct sun4i_spi_variant sun50i_r329_spi_variant = {
++	.regs			= sun6i_spi_regs,
++	.bits			= sun6i_spi_bits,
++	.fifo_depth		= 64,
++	.has_soft_reset		= true,
++	.has_burst_ctl		= true,
++	.clock_d1		= true,
++};
++
+ static const struct udevice_id sun4i_spi_ids[] = {
+ 	{
+ 	  .compatible = "allwinner,sun4i-a10-spi",
+@@ -557,6 +583,10 @@ static const struct udevice_id sun4i_spi
+ 	  .compatible = "allwinner,sun8i-h3-spi",
+ 	  .data = (ulong)&sun8i_h3_spi_variant,
+ 	},
++	{
++	  .compatible = "allwinner,sun50i-r329-spi",
++	  .data = (ulong)&sun50i_r329_spi_variant,
++	},
+ 	{ /* sentinel */ }
+ };
+ 
+diff -Nurp a/arch/arm/mach-sunxi/board.c b/arch/arm/mach-sunxi/board.c
+--- a/arch/arm/mach-sunxi/board.c	2024-04-10 16:56:15.295184098 +0800
++++ b/arch/arm/mach-sunxi/board.c	2024-04-10 17:38:56.294373154 +0800
+@@ -182,9 +182,15 @@ static int gpio_init(void)
+ 	sunxi_gpio_set_pull(SUNXI_GPB(1), SUNXI_GPIO_PULL_UP);
+ #endif
+ #elif CONFIG_CONS_INDEX == 4 && defined(CONFIG_MACH_SUN8I_R528)
++#if IS_ENABLED(CONFIG_UART3_PORT_E)
++	sunxi_gpio_set_cfgpin(SUNXI_GPE(8), 5);
++	sunxi_gpio_set_cfgpin(SUNXI_GPE(9), 5);
++	sunxi_gpio_set_pull(SUNXI_GPE(9), SUNXI_GPIO_PULL_UP);
++#else
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPB(6), 7);
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPB(7), 7);
+ 	sunxi_gpio_set_pull(SUNXI_GPB(7), SUNXI_GPIO_PULL_UP);
++#endif
+ #elif CONFIG_CONS_INDEX == 5 && defined(CONFIG_MACH_SUN8I)
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPL(2), SUN8I_GPL_R_UART);
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPL(3), SUN8I_GPL_R_UART);

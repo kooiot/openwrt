@@ -1,0 +1,353 @@
+--- a/arch/arm/boot/dts/Makefile
++++ b/arch/arm/boot/dts/Makefile
+@@ -1408,7 +1408,8 @@ dtb-$(CONFIG_MACH_SUN8I) += \
+ 	sun8i-v3s-sinlinx-sin-v3s.dtb \
+ 	sun8i-v40-bananapi-m2-berry.dtb \
+ 	sun8i-t113-mangopi-dual.dtb \
+-	sun8i-t113-iot-station.dtb
++	sun8i-t113-iot-station.dtb \
++	sun8i-t113-tlink-e1.dtb
+ dtb-$(CONFIG_MACH_SUN9I) += \
+ 	sun9i-a80-optimus.dtb \
+ 	sun9i-a80-cubieboard4.dtb
+--- /dev/null
++++ b/arch/arm/boot/dts/sun8i-t113-tlink-e1.dts
+@@ -0,0 +1,338 @@
++// SPDX-License-Identifier: (GPL-2.0+ or MIT)
++// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
++
++/dts-v1/;
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/leds/common.h>
++#include <dt-bindings/pwm/pwm.h>
++#include <dt-bindings/input/input.h>
++#include <dt-bindings/input/gpio-keys.h>
++#include "sun8i-t113.dtsi"
++
++/ {
++	model = "ThingsLink E1";
++	compatible = "kooiot,tlink-e1", "allwinner,sun8i-t113";
++
++	aliases {
++		ethernet0 = &emac;
++		mmc0 = &mmc0;
++		mmc1 = &mmc2;
++		serial0 = &uart3;
++		serial1 = &uart0;
++		serial2 = &uart1;
++		serial3 = &uart4;
++		serial4 = &uart5;
++       spi0 = &spi0;
++       spi1 = &spi1;
++	};
++
++	chosen {
++		stdout-path = "serial0:115200n8";
++	};
++
++    memory@40000000 {
++		device_type = "memory";
++		reg = <0x40000000 0x8000000>;   /* SIP 128MB */
++    };
++    
++	reg_vcc: vcc {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc";
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++	};
++
++	reg_usbvbus: usbvbus {
++		compatible = "regulator-fixed";
++		regulator-name = "usbvbus";
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++		vin-supply = <&reg_vcc>;
++	};
++
++	reg_vcc_3v3: vcc-3v3 {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc-3v3";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		vin-supply = <&reg_vcc>;
++	};
++
++	// reg_avdd2v8: avdd2v8 {
++	// 	compatible = "regulator-fixed";
++	// 	regulator-name = "avdd2v8";
++	// 	regulator-min-microvolt = <2800000>;
++	// 	regulator-max-microvolt = <2800000>;
++	// 	vin-supply = <&reg_vcc_3v3>;
++	// };
++
++	reg_vdd_cpu: vdd-cpu {
++		compatible = "regulator-fixed";
++		regulator-name = "vdd-cpu";
++		regulator-min-microvolt = <900000>;
++		regulator-max-microvolt = <900000>;
++		vin-supply = <&reg_vcc>;
++	};
++
++
++	// leds {
++	// 	compatible = "gpio-leds";
++
++	// 	status_led {
++	// 		linux,default-trigger = "heartbeat";
++	// 		label = "blue:status";
++	// 		gpios = <&pio 3 22 GPIO_ACTIVE_HIGH>;
++	// 	};
++	// };
++
++    wheel_keys: gpio-keys {
++        compatible = "gpio-keys";
++        autorepeat;
++
++        key-center {
++            label = "Wheel Key Center";
++            linux,code = <KEY_ENTER>;
++            wakeup-source;
++            wakeup-event-action = <EV_ACT_ASSERTED>;
++            interrupt-parent = <&pio>;
++            interrupts = <6 8 IRQ_TYPE_LEVEL_HIGH>;     /* PG8 */
++        };
++    };
++
++	wifi_pwrseq: wifi-pwrseq {
++		compatible = "mmc-pwrseq-simple";
++		// clocks = <&ccu CLK_FANOUT1>;
++		// clock-names = "ext_clock";
++		reset-gpios = <&pio 3 21 GPIO_ACTIVE_LOW>; /* PD21 */
++		// assigned-clocks = <&ccu CLK_FANOUT1>;
++		// assigned-clock-rates = <32768>;
++		// pinctrl-0 = <&clk_pg11_pin>;
++		// pinctrl-names = "default";
++	};
++};
++
++&reg_aldo {
++    regulator-boot-on;
++    regulator-always-on;
++	regulator-min-microvolt = <1800000>;
++	regulator-max-microvolt = <1800000>;
++	vdd33-supply = <&reg_vcc_3v3>;
++};
++
++&reg_hpldo {
++	regulator-min-microvolt = <1800000>;
++	regulator-max-microvolt = <1800000>;
++	hpldoin-supply = <&reg_vcc_3v3>;
++};
++
++&cpu0 {
++	cpu-supply = <&reg_vdd_cpu>;
++};
++
++&cpu1 {
++	cpu-supply = <&reg_vdd_cpu>;
++};
++
++&wdt {
++	status = "okay";
++};
++
++&pio {
++	vcc-pb-supply = <&reg_vcc_3v3>;
++	vcc-pc-supply = <&reg_vcc_3v3>;
++	vcc-pd-supply = <&reg_vcc_3v3>;
++	vcc-pe-supply = <&reg_vcc_3v3>;
++	vcc-pf-supply = <&reg_vcc_3v3>;
++	vcc-pg-supply = <&reg_vcc_3v3>;
++
++	/omit-if-no-ref/
++	uart1_pe10_pins: uart1-pe10-pins {
++		pins = "PE10", "PE11";
++		function = "uart1";
++	};
++
++    uart2_pd1_pins: uart2-pd1-pins {
++        pins = "PD1", "PD2";
++        function = "uart2";
++    };
++
++	uart3_pe8_pins: uart3-pe8-pins {
++        pins = "PE8", "PE9";
++        function = "uart3";
++    };
++
++    uart4_pe4_pins: uart4-pe4-pins {
++        pins = "PE4", "PE5";
++        function = "uart4";
++    };
++
++    uart5_pe6_pins: uart5-pe6-pins {
++        pins = "PE6", "PE7";
++        function = "uart4";
++    };
++
++	/omit-if-no-ref/
++	spi1_pd_pins_a: spi1-pd-pins-a {
++		pins = "PD10", "PD11", "PD12", "PD13";
++		function = "spi1";
++	};
++
++	/omit-if-no-ref/
++	rgmii_pg_pins: rgmii-pg-pins {
++		pins = "PG0", "PG1", "PG2", "PG3", "PG4",
++				"PG5", "PG6", "PG7", "PG8",
++				"PG11", "PG12", "PG13", "PG14", "PG15";
++		function = "emac";
++	};
++
++	// clk_pg11_pin: clk-pg11-pin {
++	// 		pins = "PG11";
++	// 		function = "clk";
++	// };
++};
++
++&uart0 {
++	pinctrl-0 = <&uart0_pe2_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++};
++
++&uart1 {
++	pinctrl-0 = <&uart1_pe10_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++};
++
++/*
++&uart2 {
++    pinctrl-names = "default";
++    pinctrl-0 = <&uart2_pd1_pins>; 
++    status = "okay";
++};
++*/
++
++&uart3 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&uart3_pe8_pins>;
++	status = "okay";
++};
++
++&uart4 {
++	pinctrl-0 = <&uart4_pe4_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++};
++
++&uart5 {
++	pinctrl-0 = <&uart5_pe6_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++};
++
++&spi1 {
++	pinctrl-0 = <&spi1_pd_pins_a>;
++	pinctrl-names = "default";
++	status = "okay";
++	spi_slave_mode = <0>;
++	// spi_dbi_enable = <1>;
++	spi1_cs_number = <1>;
++	spi-supply = <&reg_vcc_3v3>;
++
++    // st7735s: st7735s@0 {
++	// 	reg = <0>;
++	// 	spi-max-frequency = <80000000>;
++    //     status = "okay";
++    // };
++};
++
++&mmc0 {
++	bus-width = <4>;
++	disable-wp;
++	vmmc-supply = <&reg_vcc_3v3>;
++	vqmmc-supply = <&reg_vcc_3v3>;
++	pinctrl-0 = <&mmc0_pins>;
++	pinctrl-names = "default";
++	cd-gpios = <&pio 5 6 GPIO_ACTIVE_LOW>; /* PF6 */
++	status = "okay";
++};
++
++&mmc2 {
++	bus-width = <8>;
++	non-removable;
++	vmmc-supply = <&reg_vcc_3v3>;
++	vqmmc-supply = <&reg_vcc_3v3>;
++	pinctrl-0 = <&mmc2_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++};
++
++&usb_otg {
++	dr_mode = "host";
++	status = "okay";
++};
++
++&ehci0 {
++	status = "okay";
++};
++
++// &dmic {
++// 	status = "okay";
++// };
++
++&ehci1 {
++	status = "okay";
++};
++
++
++&ohci0 {
++	status = "okay";
++};
++
++&ohci1 {
++	status = "okay";
++};
++
++
++&ths {
++	status = "okay";
++	vref-supply = <&reg_aldo>;
++};
++
++&usbphy {
++	usb0_vbus-supply = <&reg_usbvbus>;
++	usb1_vbus-supply = <&reg_usbvbus>;
++	status = "okay";
++};
++
++&mdio {
++	status = "okay";
++	ext_rmii_phy: ethernet-phy@0 {
++		compatible = "ethernet-phy-ieee802.3-c22";
++		reg = <0>;
++	};
++};
++
++&emac {
++	pinctrl-0 = <&rgmii_pg_pins>;
++	pinctrl-names = "default";
++	phy-handle = <&ext_rmii_phy>;
++	phy-mode = "rmii";
++	phy-supply = <&reg_vcc_3v3>;
++	snps,reset-gpio = <&pio 6 9 GPIO_ACTIVE_LOW>; /* PG9 */
++	snps,reset-delays-us = <0 10000 1000000>;
++	status = "okay";
++};
++/*
++&can0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&can0_pins>;
++	status = "okay";
++};
++
++&can1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&can1_pins>;
++	status = "disabled";
++};
++*/
