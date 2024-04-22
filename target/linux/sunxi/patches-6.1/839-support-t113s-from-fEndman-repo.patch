@@ -995,8 +995,8 @@ diff -Nrup a/arch/arm/boot/dts/sun8i-t113.dtsi b/arch/arm/boot/dts/sun8i-t113.dt
 +			reg = <0x4500000 0x10000>;
 +			interrupts = <GIC_SPI 46 IRQ_TYPE_LEVEL_HIGH>;
 +			interrupt-names = "macirq";
-+			clocks = <&ccu CLK_BUS_EMAC>;
-+			clock-names = "stmmaceth";
++			clocks = <&ccu CLK_BUS_EMAC>, <&ccu CLK_EMAC_25M>;
++			clock-names = "stmmaceth", "pclk";
 +			resets = <&ccu RST_BUS_EMAC>;
 +			reset-names = "stmmaceth";
 +			syscon = <&syscon>;

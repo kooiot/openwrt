@@ -12,7 +12,7 @@
  	sun9i-a80-cubieboard4.dtb
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-t113-tlink-e1.dts
-@@ -0,0 +1,338 @@
+@@ -0,0 +1,340 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 +
@@ -199,6 +199,8 @@
 +				"PG5", "PG6", "PG7", "PG8",
 +				"PG11", "PG12", "PG13", "PG14", "PG15";
 +		function = "emac";
++		drive-strength = <30>;
++		bias-pull-up;
 +	};
 +
 +	// clk_pg11_pin: clk-pg11-pin {
@@ -322,9 +324,9 @@
 +
 +&mdio {
 +	status = "okay";
-+	ext_rmii_phy: ethernet-phy@0 {
++	ext_rmii_phy: ethernet-phy@1 {
 +		compatible = "ethernet-phy-ieee802.3-c22";
-+		reg = <0>;
++		reg = <1>;
 +	};
 +};
 +
