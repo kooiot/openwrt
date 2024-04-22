@@ -9,7 +9,6 @@ include $(INCLUDE_DIR)/image.mk
 BOOTFS_SIZE=$(shell echo $$(($(CONFIG_SUNXI_SD_BOOT_PARTSIZE)*1024*1024)))
 
 DEVICE_VARS := SUNXI_DTS SUNXI_DTS_DIR
-KERNEL_LOADADDR:=0x40008000
 
 define Build/sunxi-sdcard
 	rm -f $@.boot
