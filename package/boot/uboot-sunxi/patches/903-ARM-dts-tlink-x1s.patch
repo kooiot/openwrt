@@ -12,7 +12,7 @@
  	sun8i-v40-bananapi-m2-berry.dtb
 --- /dev/null
 +++ b/configs/tlink_x1s_defconfig
-@@ -0,0 +1,17 @@
+@@ -0,0 +1,19 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
 +CONFIG_SPL=y
@@ -27,9 +27,11 @@
 +# CONFIG_SPL_DOS_PARTITION is not set
 +# CONFIG_SPL_EFI_PARTITION is not set
 +CONFIG_DEFAULT_DEVICE_TREE="sun8i-h3-tlink-x1s"
++CONFIG_SYS_CLK_FREQ=480000000
 +# CONFIG_SUN8I_EMAC=y
 +# CONFIG_USB_EHCI_HCD=y
 +# CONFIG_SYS_USB_EVENT_POLL_VIA_INT_QUEUE=y
++CONFIG_VIDEO_DE2=n
 --- /dev/null
 +++ b/arch/arm/dts/sun8i-h3-tlink-x1s.dts
 @@ -0,0 +1,91 @@
