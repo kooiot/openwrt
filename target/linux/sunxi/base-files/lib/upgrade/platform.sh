@@ -77,6 +77,10 @@ platform_check_image() {
 		tlink_check_image "sun8i-x3" "$1" && return 0
 		return 1
 		;;
+	"kooiot,tlink-e1")
+		tlink_check_image "sun8i-t113s" "$1" && return 0
+		return 1
+		;;
 	*)
 		return 0
 		;;
@@ -109,6 +113,7 @@ platform_pre_upgrade() {
 	"kooiot,tlink-k2"|\
 	"kooiot,tlink-k2x"|\
 	"kooiot,tlink-s1"|\
+	"kooiot,tlink-e1"|\
 	"kooiot,tlink-ok-a40i"|\
 	"kooiot,tlink-dj-a40i-e"|\
 	"kooiot,tlink-dr4-a40i"|\
