@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/configs/tlink_e1_defconfig
-@@ -0,0 +1,16 @@
+@@ -0,0 +1,17 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
 +CONFIG_DEFAULT_DEVICE_TREE="sun8i-t113s-tlink-e1"
@@ -17,9 +17,10 @@
 +CONFIG_DRAM_SUNXI_TPR13=0x34000100
 +CONFIG_CONS_INDEX=4
 +CONFIG_UART3_PORT_E=y
++CONFIG_MMC_SUNXI_SLOT_EXTRA=2
 --- /dev/null
 +++ b/arch/arm/dts/sun8i-t113s-tlink-e1.dts
-@@ -0,0 +1,145 @@
+@@ -0,0 +1,111 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +// Copyright (C) 2022 Arm Ltd.
 +
@@ -41,16 +42,6 @@
 +
 +	chosen {
 +		stdout-path = "serial0:115200n8";
-+	};
-+
-+	leds {
-+		compatible = "gpio-leds";
-+
-+		status {
-+			color = <LED_COLOR_ID_BLUE>;
-+			function = LED_FUNCTION_STATUS;
-+			gpios = <&pio 3 22 GPIO_ACTIVE_LOW>; /* PD22 */
-+		};
 +	};
 +
 +	/* board wide 5V supply directly from the USB-C socket */
@@ -88,11 +79,6 @@
 +		regulator-max-microvolt = <2800000>;
 +		vin-supply = <&reg_3v3>;
 +	};
-+
-+	wifi_pwrseq: wifi-pwrseq {
-+		compatible = "mmc-pwrseq-simple";
-+		reset-gpios = <&pio 6 12 GPIO_ACTIVE_LOW>; /* PG12 */
-+	};
 +};
 +
 +&cpu0 {
@@ -107,10 +93,6 @@
 +	clock-frequency = <24000000>;
 +};
 +
-+&ehci1 {
-+	status = "okay";
-+};
-+
 +&mmc0 {
 +	pinctrl-0 = <&mmc0_pins>;
 +	pinctrl-names = "default";
@@ -121,17 +103,13 @@
 +	status = "okay";
 +};
 +
-+&mmc1 {
-+	pinctrl-0 = <&mmc1_pins>;
-+	pinctrl-names = "default";
-+	vmmc-supply = <&reg_3v3>;
++&mmc2 {
++	bus-width = <8>;
 +	non-removable;
-+	bus-width = <4>;
-+	mmc-pwrseq = <&wifi_pwrseq>;
-+	status = "okay";
-+};
-+
-+&ohci1 {
++	vmmc-supply = <&reg_3v3>;
++	vqmmc-supply = <&reg_3v3>;
++	pinctrl-0 = <&mmc2_pins>;
++	pinctrl-names = "default";
 +	status = "okay";
 +};
 +
@@ -151,17 +129,6 @@
 +&uart3 {
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&uart3_pe_pins>;
-+	status = "okay";
-+};
-+
-+/* The USB-C socket has its CC pins pulled to GND, so is hardwired as a UFP. */
-+&usb_otg {
-+	dr_mode = "peripheral";
-+	status = "okay";
-+};
-+
-+&usbphy {
-+	usb1_vbus-supply = <&reg_vcc5v>;
 +	status = "okay";
 +};
 +
