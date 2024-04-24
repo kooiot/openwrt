@@ -339,3 +339,18 @@ define KernelPackage/can-rockchip-can-fd/description
 endef
 
 $(eval $(call KernelPackage,can-rockchip-can-fd))
+
+
+define KernelPackage/can-sunxi
+    TITLE:=AllWinner sunXi CAN bus support
+    KCONFIG:=CONFIG_CAN_SUN4I
+    FILES:=$(LINUX_DIR)/drivers/net/can/sun4i_can.ko
+    AUTOLOAD:=$(call AutoProbe,sun4i_can)
+	$(call AddDepends/can,@TARGET_sunxi)
+endef
+
+define KernelPackage/can-sunxi/description
+ CAN bus support for the AllWinner sunXi SoC's
+endef
+
+$(eval $(call KernelPackage,can-sunxi))

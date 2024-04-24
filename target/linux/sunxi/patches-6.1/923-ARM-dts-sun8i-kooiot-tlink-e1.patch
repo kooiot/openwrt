@@ -12,7 +12,7 @@
  	sun9i-a80-cubieboard4.dtb
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-t113-tlink-e1.dts
-@@ -0,0 +1,340 @@
+@@ -0,0 +1,391 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 +
@@ -125,6 +125,58 @@
 +		// pinctrl-0 = <&clk_pg11_pin>;
 +		// pinctrl-names = "default";
 +	};
++
++	gpio_export {
++		compatible = "gpio-export";
++		#size-cells = <0>;
++
++		vdd_5v {
++			gpio-export,name = "vdd_5v";
++			gpio-export,output=<1>;
++			gpios = <&pio 3 15 GPIO_ACTIVE_HIGH>; /* PD15 */
++		};
++
++		hub_reset {
++			gpio-export,name = "hub_reset";
++			gpio-export,output=<1>;
++			gpios = <&pio 4 0 GPIO_ACTIVE_LOW>; /* PE0 */
++		};
++
++		/* J6 USB_B */
++		usb2_power {
++			gpio-export,name = "usb2_power";
++			gpio-export,output=<1>;
++			gpios = <&pio 6 6 GPIO_ACTIVE_HIGH>; /* PG6 */
++		};
++
++		/* J7 USB_B */
++		usb3_power {
++			gpio-export,name = "usb3_power";
++			gpio-export,output=<1>;
++			gpios = <&pio 6 7 GPIO_ACTIVE_HIGH>; /* PG7 */
++		};
++
++		/* J9 HOST */
++		usb4_power {
++			gpio-export,name = "usb4_power";
++			gpio-export,output=<1>;
++			gpios = <&pio 6 8 GPIO_ACTIVE_HIGH>; /* PG8 */
++		};
++
++		/* WIFI POWER */
++		wifi_power {
++			gpio-export,name = "wifi_power";
++			gpio-export,output=<1>;
++			gpios = <&pio 3 17 GPIO_ACTIVE_HIGH>; /* PD17 */
++		};
++
++		/* 4G POWER */
++		pcie_power {
++			gpio-export,name = "pcie_power";
++			gpio-export,output=<1>;
++			gpios = <&pio 4 1 GPIO_ACTIVE_HIGH>; /* PE1 */
++		};
++	};
 +};
 +
 +&reg_aldo {
@@ -194,9 +246,8 @@
 +	};
 +
 +	/omit-if-no-ref/
-+	rgmii_pg_pins: rgmii-pg-pins {
-+		pins = "PG0", "PG1", "PG2", "PG3", "PG4",
-+				"PG5", "PG6", "PG7", "PG8",
++	mii_pg_pins: mii-pg-pins {
++		pins = "PG0", "PG1", "PG2", "PG3", "PG4", "PG5",
 +				"PG11", "PG12", "PG13", "PG14", "PG15";
 +		function = "emac";
 +		drive-strength = <30>;
@@ -331,7 +382,7 @@
 +};
 +
 +&emac {
-+	pinctrl-0 = <&rgmii_pg_pins>;
++	pinctrl-0 = <&mii_pg_pins>;
 +	pinctrl-names = "default";
 +	phy-handle = <&ext_rmii_phy>;
 +	phy-mode = "rmii";
@@ -340,7 +391,7 @@
 +	snps,reset-delays-us = <0 10000 1000000>;
 +	status = "okay";
 +};
-+/*
++
 +&can0 {
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&can0_pins>;
@@ -350,6 +401,6 @@
 +&can1 {
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&can1_pins>;
-+	status = "disabled";
++	status = "okay";
 +};
-+*/
++

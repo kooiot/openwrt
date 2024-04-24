@@ -15,7 +15,7 @@ diff -Nrup a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
 diff -Nrup a/arch/arm/boot/dts/sun8i-t113.dtsi b/arch/arm/boot/dts/sun8i-t113.dtsi
 --- a/arch/arm/boot/dts/sun8i-t113.dtsi	1970-01-01 08:00:00.000000000 +0800
 +++ b/arch/arm/boot/dts/sun8i-t113.dtsi	2024-04-02 19:03:17.700439075 +0800
-@@ -0,0 +1,1387 @@
+@@ -0,0 +1,1385 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2021-2022 Samuel Holland <samuel@sholland.org>
 +
@@ -1352,9 +1352,8 @@ diff -Nrup a/arch/arm/boot/dts/sun8i-t113.dtsi b/arch/arm/boot/dts/sun8i-t113.dt
 +                #interrupt-cells = <3>;
 +        };
 +
-+/*
 +		can0: can@02504000 {
-+			compatible = "allwinner,sun4i-a10-can";
++			compatible = "allwinner,sun20i-d1-can";
 +			reg = <0x02504000 0x400>;
 +			interrupts = <GIC_SPI 21 IRQ_TYPE_LEVEL_HIGH>;
 +			clocks = <&ccu CLK_BUS_CAN0>;
@@ -1364,7 +1363,7 @@ diff -Nrup a/arch/arm/boot/dts/sun8i-t113.dtsi b/arch/arm/boot/dts/sun8i-t113.dt
 +		};
 +
 +		can1: can@02504400 {
-+			compatible = "allwinner,sun4i-a10-can";
++			compatible = "allwinner,sun20i-d1-can";
 +			reg = <0x02504400 0x400>;
 +			interrupts = <GIC_SPI 22 IRQ_TYPE_LEVEL_HIGH>;
 +			clocks = <&ccu CLK_BUS_CAN1>;
@@ -1372,7 +1371,6 @@ diff -Nrup a/arch/arm/boot/dts/sun8i-t113.dtsi b/arch/arm/boot/dts/sun8i-t113.dt
 +			resets = <&ccu RST_BUS_CAN1>;
 +			status = "disabled";
 +		};
-+*/
 +	};
 +	thermal-zones {
 +		cpu-thermal {
