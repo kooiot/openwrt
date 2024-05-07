@@ -1,5 +1,5 @@
---- a/dev.c
-+++ b/dev.c
+--- a/uqmi/dev.c
++++ b/uqmi/dev.c
 @@ -349,13 +349,22 @@
  	} __packed msgbuf;
  	struct ustream *us = &qmi->sf.stream;
