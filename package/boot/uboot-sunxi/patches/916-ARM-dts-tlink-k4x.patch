@@ -1,5 +1,5 @@
 --- /dev/null
-+++ b/configs/tlink_k2x_defconfig
++++ b/configs/tlink_k4x_defconfig
 @@ -0,0 +1,32 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
@@ -8,16 +8,16 @@
 +CONFIG_DRAM_CLK=576
 +CONFIG_DRAM_ZQ=3881979
 +# CONFIG_SUNXI_DRAM_DW_R40_DUAL_RANK is not set
-+CONFIG_MMC0_CD_PIN="PH3"
++CONFIG_MMC0_CD_PIN="PB8"
 +CONFIG_MMC_SUNXI_SLOT_EXTRA=2
-+CONFIG_USB0_VBUS_PIN="PH13"
++CONFIG_USB0_VBUS_PIN="PC18"
 +CONFIG_AHCI=y
 +CONFIG_SUNXI_DRAM_LPDDR3_STOCK=y
 +# CONFIG_NR_DRAM_BANKS is not set
 +# CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
 +CONFIG_SPL_I2C_SUPPORT=y
 +# CONFIG_CMD_FLASH is not set
-+CONFIG_DEFAULT_DEVICE_TREE="sun8i-r40-tlink-k2x"
++CONFIG_DEFAULT_DEVICE_TREE="sun8i-r40-tlink-k4x"
 +CONFIG_SCSI_AHCI=y
 +CONFIG_MII=y
 +CONFIG_SUN8I_EMAC=y
@@ -27,9 +27,9 @@
 +CONFIG_AXP_ALDO1_VOLT=3300
 +CONFIG_AXP_ALDO2_VOLT=1800
 +CONFIG_AXP_DLDO1_VOLT=3300
-+CONFIG_AXP_DLDO4_VOLT=2500
++CONFIG_AXP_DLDO4_VOLT=1800
 +CONFIG_AXP_ELDO2_VOLT=1200
-+CONFIG_AXP_ELDO3_VOLT=2800
++CONFIG_AXP_ELDO3_VOLT=2500
 +CONFIG_SCSI=y
 +CONFIG_USB_ECHI_HCD=y
 +CONFIG_USB_OCHI_HCD=y
@@ -38,16 +38,16 @@
 @@ -547,6 +547,7 @@
  	sun8i-r40-bananapi-m2-ultra.dtb \
 	sun8i-r40-tlink-k1.dtb \
-	sun8i-r40-tlink-k2.dtb \
-+	sun8i-r40-tlink-k2x.dtb \
+	sun8i-r40-tlink-k2x.dtb \
++	sun8i-r40-tlink-k4x.dtb \
 	sun8i-v40-bananapi-m2-berry.dtb \
 	sun8i-t3-tlink-m408.dtb
  dtb-$(CONFIG_MACH_SUN8I_V3S) += \
 --- /dev/null
-+++ b/arch/arm/dts/sun8i-r40-tlink-k2x.dts
-@@ -0,0 +1,286 @@
++++ b/arch/arm/dts/sun8i-r40-tlink-k4x.dts
+@@ -0,0 +1,223 @@
 +/*
-+ * Copyright (C) 2022 Dirk Chang <dirk@kooiot.com>
++ * Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 + *
 + */
 +
@@ -57,13 +57,12 @@
 +#include <dt-bindings/gpio/gpio.h>
 +
 +/ {
-+	model = "ThingsLink K2X";
-+	compatible = "kooiot,tlink-k2x", "allwinner,sun8i-r40";
++	model = "ThingsLink K4X";
++	compatible = "kooiot,tlink-k4x", "allwinner,sun8i-r40";
 +
 +	aliases {
 +		ethernet0 = &gmac;
 +		ethernet1 = &emac;
-+		ethernet2 = &xr819;
 +		serial0 = &uart0;
 +		mmc0 = &mmc0;
 +		mmc1 = &mmc2;
@@ -77,8 +76,8 @@
 +		compatible = "gpio-leds";
 +
 +		status {
-+			label = "kooiot:green:status";
-+			gpios = <&pio 6 7 GPIO_ACTIVE_LOW>; /* PG7 */
++			label = "green:status";
++			gpios = <&pio 6 8 GPIO_ACTIVE_HIGH>; /* PG8 */
 +			linux,default-trigger = "heartbeat";
 +		};
 +	};
@@ -91,18 +90,8 @@
 +		regulator-min-microvolt = <3300000>;
 +		regulator-max-microvolt = <3300000>;
 +		vin-supply = <&reg_dcdc1>;
-+		gpio = <&pio 8 14 GPIO_ACTIVE_LOW>; /* PI14 CARD0-PWR*/
++		gpio = <&pio 2 16 GPIO_ACTIVE_LOW>; /* PC16 CARD0-PWR*/
 +		// enable-active-high;
-+	};
-+
-+	reg_usb_vcc5v0: usb-vcc5v0 {
-+		compatible = "regulator-fixed";
-+		regulator-name = "vcc5v0";
-+		regulator-always-on;
-+		regulator-min-microvolt = <5000000>;
-+		regulator-max-microvolt = <5000000>;
-+		gpio = <&pio 8 16 GPIO_ACTIVE_HIGH>; /* PI16 */
-+		enable-active-high;
 +	};
 +};
 +
@@ -110,14 +99,14 @@
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&emac_mii_pins>;
 +	phy-handle = <&emac_phy>;
-+	phy-supply = <&reg_dldo1 &reg_dldo2 &reg_dldo3>;
++	phy-supply = <&reg_dcdc1>;
 +	phy-mode = "mii";
 +	status = "okay";
 +};
 +
 +&emac_mdio {
 +	status = "okay";
-+	phy-supply = <&reg_dldo1 &reg_dldo2 &reg_dldo3>;
++	phy-supply = <&reg_dcdc1>;
 +	reset-gpios = <&pio 7 27 GPIO_ACTIVE_LOW>; /* PH27 */
 +	reset-assert-us = <10000>;
 +	reset-deassert-us = <1000000>;
@@ -132,7 +121,7 @@
 +	pinctrl-0 = <&gmac_rgmii_pins>;
 +	phy-handle = <&phy1>;
 +	phy-mode = "rgmii";
-+	phy-supply = <&reg_dldo1 &reg_dldo2 &reg_dldo3>;
++	phy-supply = <&reg_dcdc1>;
 +	snps,reset-gpio = <&pio 0 9 GPIO_ACTIVE_LOW>; /* PA9 */
 +	snps,reset-delays-us = <0 10000 1000000>;
 +	status = "okay";
@@ -163,39 +152,15 @@
 +
 +#include "axp22x.dtsi"
 +
-+/* SD Card */
 +&mmc0 {
 +	vmmc-supply = <&reg_vcc3v3_sdc>;
 +	bus-width = <4>;
-+	cd-gpios = <&pio 7 3 GPIO_ACTIVE_LOW>; /* PH3 */
++	cd-gpios = <&pio 1 8 GPIO_ACTIVE_LOW>; /* PB3 */
 +	status = "okay";
 +};
 +
-+/* SDIO (P26) */
-+&mmc1 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&mmc1_pg_pins>;
-+	// vmmc-supply = <&reg_vcc_wifi_3v3>;
-+	// vqmmc-supply = <&reg_aldo1>;
-+	// mmc-pwrseq = <&wifi_pwrseq>;
-+	bus-width = <4>;
-+	max-frequency = <16000000>;
-+	non-removable;
-+	status = "okay";
-+
-+	xr819: sdio_wifi@1 {
-+		reg = <1>;
-+		compatible = "xradio,xr819";
-+		interrupt-parent = <&pio>;
-+		interrupts = <7 7 IRQ_TYPE_EDGE_RISING>; /* PH7 */
-+		interrupt-names = "host-wake";
-+		// local-mac-address = [dc 44 6d c0 ff ee];
-+	};
-+};
-+
-+/* eMMC */
 +&mmc2 {
-+	vmmc-supply = <&reg_eldo1 &reg_eldo2 &reg_eldo3>;
++	vmmc-supply = <&reg_dcdc1>;
 +	vqmmc-supply = <&reg_aldo2>;
 +	bus-width = <8>;
 +	non-removable;
@@ -210,35 +175,33 @@
 +	vcc-pd-supply = <&reg_dcdc1>;
 +	vcc-pe-supply = <&reg_dcdc1>;
 +	vcc-pf-supply = <&reg_dcdc1>;
-+	vcc-pg-supply = <&reg_eldo1 &reg_eldo2 &reg_eldo3>;
++	vcc-pg-supply = <&reg_dcdc1>;
 +};
 +
 +&reg_aldo1 {
-+	regulator-always-on;
-+	regulator-min-microvolt = <1800000>;
-+	regulator-max-microvolt = <1800000>;
-+	regulator-name = "vcc-wifi-1v8";
++	regulator-min-microvolt = <3300000>;
++	regulator-max-microvolt = <3300000>;
++	regulator-name = "vcc-wifi-io";
 +};
 +
 +&reg_aldo2 {
 +	regulator-always-on;
 +	regulator-min-microvolt = <1800000>;
 +	regulator-max-microvolt = <1800000>;
-+	regulator-name = "vdd1v8-lpddr";
++	regulator-name = "vcc-pc";
 +};
 +
 +&reg_aldo3 {
 +	regulator-always-on;
 +	regulator-min-microvolt = <3000000>;
 +	regulator-max-microvolt = <3000000>;
-+	regulator-name = "avcc";  // vcc-pll-avcc
++	regulator-name = "vcc-pll";
 +};
 +
 +&reg_dc1sw {
-+	regulator-always-on;
 +	regulator-min-microvolt = <3300000>;
 +	regulator-max-microvolt = <3300000>;
-+	regulator-name = "vcc-emac-phy";
++	regulator-name = "vcc-wifi";
 +};
 +
 +&reg_dcdc1 {
@@ -269,66 +232,40 @@
 +	regulator-name = "vcc-dram";
 +};
 +
-+&reg_dc5ldo {
-+	regulator-min-microvolt = <1200000>;
-+	regulator-max-microvolt = <1200000>;
-+	regulator-name = "vdd1v2-sata";
-+};
-+
 +&reg_dldo1 {
++	regulator-always-on;
 +	regulator-min-microvolt = <3300000>;
 +	regulator-max-microvolt = <3300000>;
-+	regulator-name = "vdd3v3-io";
++	regulator-name = "vcc-eth-io";
 +};
 +
 +&reg_dldo2 {
 +	regulator-always-on;
 +	regulator-min-microvolt = <3300000>;
 +	regulator-max-microvolt = <3300000>;
-+	regulator-name = "vdd3v3-io-2";
++	regulator-name = "vcc-eth-io-2";
 +};
 +
 +&reg_dldo3 {
-+	regulator-always-on;
-+	regulator-min-microvolt = <3300000>;
-+	regulator-max-microvolt = <3300000>;
-+	regulator-name = "vdd3v3-io-3";
++	regulator-min-microvolt = <1800000>;
++	regulator-max-microvolt = <1800000>;
++	regulator-name = "vcc-wifi-1v8";
 +};
 +
 +&reg_dldo4 {
-+	regulator-min-microvolt = <2500000>;
-+	regulator-max-microvolt = <2500000>;
-+	regulator-name = "vdd2v5-sata";
-+};
-+
-+&reg_eldo1 {
-+	regulator-always-on;
-+	regulator-min-microvolt = <3300000>;
-+	regulator-max-microvolt = <3300000>;
-+	regulator-name = "vcc-wifi";
-+};
-+
-+&reg_eldo2 {
-+	regulator-always-on;
-+	regulator-min-microvolt = <3300000>;
-+	regulator-max-microvolt = <3300000>;
-+	regulator-name = "vcc-wifi-2";
++	regulator-min-microvolt = <1800000>;
++	regulator-max-microvolt = <1800000>;
++	regulator-name = "vcc-wifi-1v8-2";
 +};
 +
 +&reg_eldo3 {
-+	regulator-always-on;
-+	regulator-min-microvolt = <3300000>;
-+	regulator-max-microvolt = <3300000>;
-+	regulator-name = "vcc-wifi-3";
++	regulator-min-microvolt = <2500000>;
++	regulator-max-microvolt = <2500000>;
++	regulator-name = "vdd1v2-sata";
 +};
 +
 +&uart0 {
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&uart0_pb_pins>;
-+	status = "okay";
-+};
-+
-+&usbphy {
-+	usb0_vbus-supply = <&reg_usb_vcc5v0>;
 +	status = "okay";
 +};

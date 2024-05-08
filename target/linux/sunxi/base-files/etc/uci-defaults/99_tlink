@@ -245,6 +245,7 @@ tlink_default() {
 
 	case "$(board_name)" in
 		"kooiot,tlink-k2x"|\
+		"kooiot,tlink-k4x"|\
 		"kooiot,tlink-k2")
 			tlink_init_5g
 			;;
@@ -298,6 +299,7 @@ case "$(board_name)" in
 "kooiot,tlink-k1"|\
 "kooiot,tlink-k2"|\
 "kooiot,tlink-k2x"|\
+"kooiot,tlink-k4x"|\
 "kooiot,tlink-s1"|\
 "kooiot,tlink-m408"|\
 "kooiot,tlink-m416"|\
