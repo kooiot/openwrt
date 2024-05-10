@@ -1,0 +1,25 @@
+diff -Nurp a/arch/arm/mach-sunxi/board.c b/arch/arm/mach-sunxi/board.c
+--- a/arch/arm/mach-sunxi/board.c
++++ b/arch/arm/mach-sunxi/board.c
+@@ -195,6 +195,10 @@ static int gpio_init(void)
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPL(2), SUN8I_GPL_R_UART);
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPL(3), SUN8I_GPL_R_UART);
+ 	sunxi_gpio_set_pull(SUNXI_GPL(3), SUNXI_GPIO_PULL_UP);
++#elif CONFIG_CONS_INDEX == 5 && defined(CONFIG_MACH_SUN8I_R528)
++	sunxi_gpio_set_cfgpin(SUNXI_GPD(7), 5);
++	sunxi_gpio_set_cfgpin(SUNXI_GPD(8), 5);
++	sunxi_gpio_set_pull(SUNXI_GPD(8), SUNXI_GPIO_PULL_UP);
+ #elif CONFIG_CONS_INDEX == 2 && (defined(CONFIG_MACH_SUN8I) && \
+ 				!defined(CONFIG_MACH_SUN8I_R40)) \
+ 				|| defined(CONFIG_MACH_SUN8I_R528)
+diff -Nurp a/drivers/pinctrl/sunxi/pinctrl-sunxi.c b/drivers/pinctrl/sunxi/pinctrl-sunxi.c
+--- a/drivers/pinctrl/sunxi/pinctrl-sunxi.c
++++ b/drivers/pinctrl/sunxi/pinctrl-sunxi.c
+@@ -623,6 +623,7 @@ static const struct sunxi_pinctrl_functi
+ #else
+ 	{ "uart3",	7 },	/* PB6-PB7 */
+ #endif
++	{ "uart4",	5 },	/* PD7-PD8 */
+ };
+ 
+ static const struct sunxi_pinctrl_desc __maybe_unused sun20i_d1_pinctrl_desc = {
