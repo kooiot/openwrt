@@ -64,15 +64,6 @@ define Device/friendlyarm_nanopi-r4s
 endef
 TARGET_DEVICES += friendlyarm_nanopi-r4s
 
-define Device/friendlyarm_nanopi-r4se
-  DEVICE_VENDOR := FriendlyARM
-  DEVICE_MODEL := NanoPi R4SE
-  DEVICE_VARIANT := 4GB LPDDR4
-  SOC := rk3399
-  DEVICE_PACKAGES := kmod-r8168 -urngd
-endef
-TARGET_DEVICES += friendlyarm_nanopi-r4se
-
 define Device/friendlyarm_nanopi-r4s-enterprise
   DEVICE_VENDOR := FriendlyARM
   DEVICE_MODEL := NanoPi R4S Enterprise Edition
@@ -87,7 +78,7 @@ define Device/friendlyarm_nanopi-r5c
   DEVICE_VENDOR := FriendlyARM
   DEVICE_MODEL := NanoPi R5C
   SOC := rk3568
-  DEVICE_PACKAGES := kmod-r8169 kmod-rtw88-8822ce rtl8822ce-firmware wpad-basic-mbedtls kmod-nvme kmod-scsi-core
+  DEVICE_PACKAGES := kmod-r8169 kmod-rtw88-8822ce rtl8822ce-firmware wpad-basic-mbedt
 endef
 TARGET_DEVICES += friendlyarm_nanopi-r5c
 
@@ -95,7 +86,7 @@ define Device/friendlyarm_nanopi-r5s
   DEVICE_VENDOR := FriendlyARM
   DEVICE_MODEL := NanoPi R5S
   SOC := rk3568
-  DEVICE_PACKAGES := kmod-r8169 kmod-nvme kmod-scsi-core
+  DEVICE_PACKAGES := kmod-r8169
 endef
 TARGET_DEVICES += friendlyarm_nanopi-r5s
 
@@ -149,7 +140,6 @@ define Device/pine64_rockpro64
   DEVICE_VENDOR := Pine64
   DEVICE_MODEL := RockPro64
   SOC := rk3399
-  DEVICE_PACKAGES := -urngd
 endef
 TARGET_DEVICES += pine64_rockpro64
 
