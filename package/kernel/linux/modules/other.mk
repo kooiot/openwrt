@@ -931,6 +931,21 @@ endef
 $(eval $(call KernelPackage,serial-ch432))
 
 
+define KernelPackage/serial-ch9434
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=CH9434 SPI to UART Support
+  KCONFIG:=CONFIG_SERIAL_CH9434
+  FILES:=$(LINUX_DIR)/drivers/tty/serial/ch9434.ko
+  AUTOLOAD:=$(call AutoLoad,50,ch9434,1)
+endef
+
+define KernelPackage/serial-ch9434/description
+ Kernel module for CH9434 SPI to UARTs
+endef
+
+$(eval $(call KernelPackage,serial-ch9434))
+
+
 define KernelPackage/regmap-core
   SUBMENU:=$(OTHER_MENU)
   TITLE:=Generic register map support

@@ -384,8 +384,7 @@ define Device/kooiot_tlink-k4x
     kmod-usb-net kmod-usb-net-asix \
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
-    kmod-serial-wk2xxx-spi kmod-can kmod-can-mcp251x \
-	kmod-serial-ch432 \
+    kmod-serial-ch9434 kmod-can kmod-can-mcp251x \
 	kmod-can-bcm kmod-can-raw ip-full\
 	kmod-motorcomm-yt8521s kmod-motorcomm-yt8512c \
     uqmi fdisk usbutils freeioe wwanleds \

@@ -1,6 +1,6 @@
 --- a/drivers/tty/serial/Kconfig
 +++ b/drivers/tty/serial/Kconfig
-@@ -79,6 +79,13 @@
+@@ -79,6 +79,20 @@
  	  your boot loader (lilo or loadlin) about how to pass options to the
  	  kernel at boot time.)
  
@@ -11,16 +11,24 @@
 +	help
 +	  This selects support for ch432 serial ports.
 +
++config SERIAL_CH9434
++	tristate "SERIAL_CH9434 serial support"
++	depends on SPI
++	select SERIAL_CORE
++	help
++	  This selects support for ch9434 serial ports.
++
  config SERIAL_EARLYCON_ARM_SEMIHOST
  	bool "Early console using ARM semihosting"
  	depends on ARM64 || ARM
 --- a/drivers/tty/serial/Makefile
 +++ b/drivers/tty/serial/Makefile
-@@ -29,6 +29,7 @@
+@@ -29,6 +29,8 @@
  
  obj-$(CONFIG_SERIAL_AMBA_PL010) += amba-pl010.o
  obj-$(CONFIG_SERIAL_AMBA_PL011) += amba-pl011.o
 +obj-$(CONFIG_SERIAL_CH432) += ch432.o
++obj-$(CONFIG_SERIAL_CH9434) += ch9434.o
  obj-$(CONFIG_SERIAL_CLPS711X) += clps711x.o
  obj-$(CONFIG_SERIAL_PXA_NON8250) += pxa.o
  obj-$(CONFIG_SERIAL_PNX8XXX) += pnx8xxx_uart.o

@@ -10,7 +10,7 @@
  	sun8i-s3-olinuxino.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k4x.dts
-@@ -0,0 +1,631 @@
+@@ -0,0 +1,640 @@
 +/*
 + * Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 + *
@@ -292,16 +292,19 @@
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&spi0_pc_pins>, <&spi0_cs0_pc_pin>, <&spi0_irq_pins>, <&spi0_reset_pins>;
 +	status = "okay";
-+	wk2xxx_spi0: wk2xxx-spi0@00 {
-+		status = "okay";
-+		compatible = "wkmic,wk2xxx_spi";
-+		reg = <0x00>;
++	spidev@0 {
++		#address-cells = <1>;
++		#size-cells = <1>;
++		compatible = "ch943x_spi";
++		reg = <0 0>;
 +		spi-max-frequency = <10000000>;
-+		poll_mode = <0>;
-+		type = <0>;
-+		enable_dma = <0>;
-+		reset_gpio = <&pio 1 2 GPIO_ACTIVE_HIGH>; /* PB2 */
-+		irq_gpio=<&pio 8 15 IRQ_TYPE_LEVEL_LOW>; /* PI15 */
++		interrupt-parent = <&pio>;
++		interrupts = <8 15 IRQ_TYPE_EDGE_RISING>; /* PI15 */
++		// reset_gpio = <&pio 1 2 GPIO_ACTIVE_HIGH>; /* PB2 */
++		port0_rs485_mode;
++		port1_rs485_mode;
++		port2_rs485_mode;
++		port3_rs485_mode;
 +	};
 +};
 +
@@ -309,16 +312,19 @@
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&spi1_pi_pins>, <&spi1_cs0_pi_pin>, <&spi1_irq_pins>, <&spi1_reset_pins>;
 +	status = "okay";
-+	wk2xxx_spi1: wk2xxx-spi1@00 {
-+		status = "okay";
-+		compatible = "wkmic,wk2xxx_spi";
-+		reg = <0x00>;
++	spidev@0 {
++		#address-cells = <1>;
++		#size-cells = <1>;
++		compatible = "ch943x_spi";
++		reg = <0 0>;
 +		spi-max-frequency = <10000000>;
-+		poll_mode = <0>;
-+		type = <0>;
-+		enable_dma = <0>;
-+		reset_gpio = <&pio 1 3 GPIO_ACTIVE_HIGH>; /* PB3 */
-+		irq_gpio=<&pio 7 2 IRQ_TYPE_LEVEL_LOW>; /* PH2 */
++		interrupt-parent = <&pio>;
++		interrupts = <7 2 IRQ_TYPE_EDGE_RISING>; /* PH2 */
++		// reset_gpio = <&pio 1 3 GPIO_ACTIVE_HIGH>; /* PB3 */
++		port0_rs485_mode;
++		port1_rs485_mode;
++		port2_rs485_mode;
++		port3_rs485_mode;
 +	};
 +};
 +
@@ -326,16 +332,19 @@
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&spi2_pc_pins>, <&spi2_irq_pins>, <&spi2_reset_pins>;
 +	status = "okay";
-+	wk2xxx_spi2: wk2xxx-spi2@00 {
-+		status = "okay";
-+		compatible = "wkmic,wk2xxx_spi";
-+		reg = <0x00>;
++	spidev@0 {
++		#address-cells = <1>;
++		#size-cells = <1>;
++		compatible = "ch943x_spi";
++		reg = <0 0>;
 +		spi-max-frequency = <10000000>;
-+		poll_mode = <0>;
-+		type = <0>;
-+		enable_dma = <0>;
-+		reset_gpio = <&pio 1 3 GPIO_ACTIVE_HIGH>; /* PI9 */
-+		irq_gpio=<&pio 7 3 IRQ_TYPE_LEVEL_LOW>; /* PH3 */
++		interrupt-parent = <&pio>;
++		interrupts = <7 3 IRQ_TYPE_EDGE_RISING>; /* PH3 */
++		// reset_gpio = <&pio 1 4 GPIO_ACTIVE_HIGH>; /* PB4 */
++		port0_rs485_mode;
++		port1_rs485_mode;
++		port2_rs485_mode;
++		port3_rs485_mode;
 +	};
 +};
 +
@@ -456,7 +465,7 @@
 +	};
 +
 +	spi2_reset_pins: spi2-reset-pins {
-+		pins = "PB3";
++		pins = "PB4";
 +		function = "gpio_out";
 +	};
 +
