@@ -12,7 +12,7 @@
  	sun9i-a80-cubieboard4.dtb
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-t113-tlink-e1.dts
-@@ -0,0 +1,362 @@
+@@ -0,0 +1,378 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 +
@@ -23,7 +23,7 @@
 +#include <dt-bindings/pwm/pwm.h>
 +#include <dt-bindings/input/input.h>
 +#include <dt-bindings/input/gpio-keys.h>
-+#include "sun8i-t113.dtsi"
++#include "sun8i-t113s.dtsi"
 +
 +/ {
 +	model = "ThingsLink E1";
@@ -33,9 +33,10 @@
 +		ethernet0 = &emac;
 +		mmc0 = &mmc0;
 +		mmc1 = &mmc2;
++		mmc2 = &mmc1;
 +		serial0 = &uart4;
-+		serial1 = &uart2;
-+		serial2 = &uart1;
++		serial1 = &uart1;
++		serial2 = &uart2;
 +		serial3 = &uart3;
 +	};
 +
@@ -60,7 +61,7 @@
 +		regulator-name = "usbvbus";
 +		regulator-min-microvolt = <5000000>;
 +		regulator-max-microvolt = <5000000>;
-+		gpio = <&pio 2 7 GPIO_ACTIVE_LOW>; /* PC7 */
++		gpio = <&pio 3 9 GPIO_ACTIVE_LOW>; /* PD19 */
 +		vin-supply = <&reg_vcc>;
 +	};
 +
@@ -105,19 +106,19 @@
 +	 		label = "blue:status";
 +	 		gpios = <&pio 3 22 GPIO_ACTIVE_HIGH>;
 +	 	};
-+		*/
 +
 +		modem {
 +			label = "kooiot:green:modem";
-+			gpios = <&pio 4 0 GPIO_ACTIVE_HIGH>; /* PE0 */
++			gpios = <&pio 4 0 GPIO_ACTIVE_HIGH>; // PE0
 +			default-state = "off";
 +		};
 +
 +		csq {
 +			label = "kooiot:green:csq";
-+			gpios = <&pio 4 1 GPIO_ACTIVE_HIGH>; /* PE1 */
++			gpios = <&pio 4 1 GPIO_ACTIVE_HIGH>; // PE1
 +			default-state = "off";
 +		};
++		*/
 +
 +		cloud {
 +			label = "kooiot:green:cloud";
@@ -164,19 +165,16 @@
 +	};
 +};
 +
-+&reg_aldo {
-+    regulator-boot-on;
-+    regulator-always-on;
-+	regulator-min-microvolt = <1800000>;
-+	regulator-max-microvolt = <1800000>;
-+	vdd33-supply = <&reg_vcc_3v3>;
++
++&dcxo {
++	clock-frequency = <24000000>;
 +};
 +
-+&reg_hpldo {
-+	regulator-min-microvolt = <1800000>;
-+	regulator-max-microvolt = <1800000>;
-+	hpldoin-supply = <&reg_vcc_3v3>;
++/*
++&codec {
++	status = "okay";
 +};
++*/
 +
 +&cpu0 {
 +	cpu-supply = <&reg_vdd_cpu>;
@@ -300,8 +298,26 @@
 +	status = "okay";
 +};
 +
++&mmc1 {
++	bus-width = <4>;
++	// mmc-pwrseq = <&wifi_pwrseq>;
++	non-removable;
++	vmmc-supply = <&reg_vcc_3v3>;
++	vqmmc-supply = <&reg_ldoa>;
++	pinctrl-0 = <&mmc1_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++
++	aw869a: sdio_wifi@1 {
++        reg = <1>;
++        interrupt-parent = <&pio>;
++        interrupts = <6 10 IRQ_TYPE_LEVEL_HIGH>; /* PG10 */
++        interrupt-names = "host-wake";
++	};
++};
++
 +&mmc2 {
-+	bus-width = <8>;
++	bus-width = <4>;
 +	non-removable;
 +	vmmc-supply = <&reg_vcc_3v3>;
 +	vqmmc-supply = <&reg_vcc_3v3>;
@@ -335,7 +351,7 @@
 +
 +&ths {
 +	status = "okay";
-+	vref-supply = <&reg_aldo>;
++	vref-supply = <&reg_ldoa>;
 +};
 +
 +&usbphy {
@@ -346,9 +362,9 @@
 +
 +&mdio {
 +	status = "okay";
-+	ext_rmii_phy: ethernet-phy@1 {
++	ext_rmii_phy: ethernet-phy@3 {
 +		compatible = "ethernet-phy-ieee802.3-c22";
-+		reg = <1>;
++		reg = <3>;
 +	};
 +};
 +
@@ -359,7 +375,7 @@
 +	phy-mode = "rmii";
 +	phy-supply = <&reg_vcc_3v3>;
 +	snps,reset-gpio = <&pio 4 13 GPIO_ACTIVE_LOW>; /* PE13 */
-+	snps,reset-delays-us = <0 10000 1000000>;
++	snps,reset-delays-us = <0 50000 5000000>;
 +	status = "okay";
 +};
 +
