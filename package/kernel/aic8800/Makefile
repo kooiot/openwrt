@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2017 OpenWrt.org
+# Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 #
 # This is free software, licensed under the GNU General Public License v2.
 # See /LICENSE for more information.
@@ -14,6 +14,8 @@ PKG_RELEASE:=1
 PKG_MAINTAINER:=Dirk Chang <dirk@kooiot.com>
 PKG_LICENSE:=GPLv2
 
+PKG_BUILD_PARALLEL:=1
+
 include $(INCLUDE_DIR)/package.mk
 
 define KernelPackage/aic8800
@@ -21,11 +23,11 @@ define KernelPackage/aic8800
   TITLE:=AIC8800 AW869A wifi-drivers support
   DEPENDS:=@TARGET_sunxi +kmod-mac80211 \
 	+@DRIVER_11AC_SUPPORT +@DRIVER_11N_SUPPORT
+  KCONFIG:=CONFIG_AIC8800_WLAN_SUPPORT=m \
+  	CONFIG_AIC_WLAN_SUPPORT=m \
+	CONFIG_AIC_INTF_SDIO=y
   FILES:=$(PKG_BUILD_DIR)/aic8800_fdrv/aic8800_fdrv.ko \
 	$(PKG_BUILD_DIR)/aic8800_bsp/aic8800_bsp.ko
-  KCONFIG:=CONFIG_AIC8800_WLAN_SUPPORT \
-  	CONFIG_AIC_WLAN_SUPPORT \
-	CONFIG_AIC_INTF_SDIO
   AUTOLOAD:=$(call AutoProbe,aic8800_fdrv aic8800_bsp)
 endef
 
@@ -52,6 +54,10 @@ define Build/Compile
 		M="$(PKG_BUILD_DIR)" \
 		NOSTDINC_FLAGS="$(NOSTDINC_FLAGS)" \
 		modules
+endef
+
+define KernelPackage/aic8800/install
+	$(INSTALL_DIR) $(1)/lib/firmware/xr819
 endef
 
 $(eval $(call KernelPackage,aic8800))
