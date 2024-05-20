@@ -1,0 +1,25 @@
+--- a/drivers/usb/serial/option.c	2021-12-09 13:27:51.486959755 +0800
++++ b/drivers/usb/serial/option.c	2021-12-09 13:33:28.643788446 +0800
+@@ -617,6 +617,12 @@
+ /* Luat Air72*U series based on UNISOC UIS8910 uses UNISOC's vendor ID */
+ #define LUAT_PRODUCT_AIR720U			0x4e00
+ 
++/* Fibocom products */
++#define FIBOCOM_VENDOR_ID			0x1782
++#define FIBOCOM_PRODUCT_MC61531		0x4d10
++#define FIBOCOM_PRODUCT_MC61532		0x4d11
++#define FIBOCOM_PRODUCT_MC61533		0x4d12
++
+ /* Device flags */
+ 
+ /* Highest interface number which can be used with NCTRL() and RSVD() */
+@@ -2267,6 +2273,9 @@
+ 	  .driver_info = RSVD(4) | RSVD(5) | RSVD(6) },
+ 	{ USB_DEVICE(0x1782, 0x4d10) },						/* Fibocom L610 (AT mode) */
+ 	{ USB_DEVICE_INTERFACE_CLASS(0x1782, 0x4d11, 0xff) },			/* Fibocom L610 (ECM/RNDIS mode) */
++	{ USB_DEVICE(FIBOCOM_VENDOR_ID, FIBOCOM_PRODUCT_MC61531) },		/* Fibocom MC61531 */
++	{ USB_DEVICE(FIBOCOM_VENDOR_ID, FIBOCOM_PRODUCT_MC61532) },		/* Fibocom MC61532 */
++	{ USB_DEVICE(FIBOCOM_VENDOR_ID, FIBOCOM_PRODUCT_MC61533) },		/* Fibocom MC61533 */
+ 	{ USB_DEVICE_AND_INTERFACE_INFO(0x2cb7, 0x0001, 0xff, 0xff, 0xff) },	/* Fibocom L716-EU (ECM/RNDIS mode) */
+ 	{ USB_DEVICE(0x2cb7, 0x0104),						/* Fibocom NL678 series */
+ 	  .driver_info = RSVD(4) | RSVD(5) },

@@ -1,0 +1,39 @@
+--- a/drivers/net/ethernet/realtek/r8169_main.c
++++ b/drivers/net/ethernet/realtek/r8169_main.c
+@@ -28,6 +28,7 @@
+ #include <linux/bitfield.h>
+ #include <linux/prefetch.h>
+ #include <linux/ipv6.h>
++#include <linux/of.h>
+ #include <asm/unaligned.h>
+ #include <net/ip6_checksum.h>
+ 
+@@ -5284,6 +5285,9 @@
+ 	struct net_device *dev;
+ 	u16 xid;
+ 
++	char buf[IFNAMSIZ];
++	int alias_id;
++
+ 	dev = devm_alloc_etherdev(&pdev->dev, sizeof (*tp));
+ 	if (!dev)
+ 		return -ENOMEM;
+@@ -5446,6 +5450,18 @@
+ 	if (rc)
+ 		return rc;
+ 
++	if (pdev->dev.of_node) {
++		dev_info(&pdev->dev, "OF node:%pOF\n", pdev->dev.of_node);
++		alias_id = of_alias_get_id(pdev->dev.of_node, "ethernet");
++		if (alias_id >= 0) {
++			dev_info(&pdev->dev, "Got alias ethernet%d node:%pOF\n", alias_id, pdev->dev.of_node);
++			snprintf(buf, IFNAMSIZ, "eth%d", alias_id);
++			strlcpy(dev->name, buf, IFNAMSIZ);
++		}
++	} else {
++		dev_info(&pdev->dev, "mising OF node\n");
++	}
++
+ 	rc = register_netdev(dev);
+ 	if (rc)
+ 		return rc;

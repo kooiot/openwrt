@@ -1,0 +1,30 @@
+--- a/drivers/i2c/busses/Kconfig
++++ b/drivers/i2c/busses/Kconfig
+@@ -855,6 +855,17 @@
+ 	  This driver can also be built as a module.  If so, the module
+ 	  will be called i2c-mv64xxx.
+ 
++config I2C_SUNXI
++	tristate "SUNXI I2C controller"
++	depends on ARCH_SUNXI
++	default y if MACH_SUNXI
++	help
++	  If you say yes to this option, support will be included for the
++	  I2C interface from Allwinner Technology SUNXI platform.
++
++	  This driver can also be built as a module. If so, the module
++	  will be called i2c-sunxi.
++
+ config I2C_MXS
+ 	tristate "Freescale i.MX28 I2C interface"
+ 	depends on SOC_IMX28 || COMPILE_TEST
+--- a/drivers/i2c/busses/Makefile
++++ a/drivers/i2c/busses/Makefile
+@@ -112,6 +112,7 @@
+ i2c-stm32f7-drv-objs := i2c-stm32f7.o i2c-stm32.o
+ obj-$(CONFIG_I2C_STM32F7)	+= i2c-stm32f7-drv.o
+ obj-$(CONFIG_I2C_SUN6I_P2WI)	+= i2c-sun6i-p2wi.o
++obj-$(CONFIG_I2C_SUNXI)		+= i2c-sunxi.o
+ obj-$(CONFIG_I2C_SYNQUACER)	+= i2c-synquacer.o
+ obj-$(CONFIG_I2C_TEGRA)		+= i2c-tegra.o
+ obj-$(CONFIG_I2C_TEGRA_BPMP)	+= i2c-tegra-bpmp.o

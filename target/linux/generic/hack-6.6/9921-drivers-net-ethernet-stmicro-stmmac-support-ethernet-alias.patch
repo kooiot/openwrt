@@ -1,0 +1,23 @@
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c
+@@ -436,6 +436,8 @@
+ 	plat->bus_id = of_alias_get_id(np, "ethernet");
+ 	if (plat->bus_id < 0)
+ 		plat->bus_id = 0;
++	else
++		dev_info(&pdev->dev, "Got alias ethernet%d node:%pOF\n", plat->bus_id, np);
+ 
+ 	/* Default to phy auto-detection */
+ 	plat->phy_addr = -1;
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+@@ -7364,6 +7364,9 @@
+ 		if (ret)
+ 			goto error_xpcs_setup;
+ 	}
++	if (priv->plat->bus_id > 0) {
++		sprintf(ndev->name, "eth%d", priv->plat->bus_id);
++	}
+ 
+ 	ret = stmmac_phy_setup(priv);
+ 	if (ret) {
