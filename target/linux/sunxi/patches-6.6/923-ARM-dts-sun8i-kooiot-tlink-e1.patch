@@ -12,7 +12,7 @@
  	sun9i-a80-cubieboard4.dtb
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-t113-tlink-e1.dts
-@@ -0,0 +1,378 @@
+@@ -0,0 +1,397 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 +
@@ -144,25 +144,34 @@
 +		pcie_reset {
 +			gpio-export,name = "pcie_reset";
 +			gpio-export,output=<0>;
-+			gpios = <&pio 6 10 GPIO_ACTIVE_HIGH>; /* PD0 */
++			gpios = <&pio 3 10 GPIO_ACTIVE_HIGH>; /* PD0 */
 +		};
++		/*
 +		pcie_power {
 +			gpio-export,name = "pcie_power";
-+			gpio-export,output=<0>;
-+			gpios = <&pio 6 20 GPIO_ACTIVE_LOW>; /* PD20 */
++			gpio-export,output=<1>;
++			gpios = <&pio 3 20 GPIO_ACTIVE_HIGH>; // PD20
 +		};
++		*/
 +	};
 +
 +	wifi_pwrseq: wifi-pwrseq {
 +		compatible = "mmc-pwrseq-simple";
-+		// clocks = <&ccu CLK_FANOUT1>;
-+		// clock-names = "ext_clock";
-+		// reset-gpios = <&pio 3 21 GPIO_ACTIVE_LOW>; /* PD21 */
++		clocks = <&ccu CLK_FANOUT1>;
++		clock-names = "ext_clock";
++		reset-gpios = <&pio 3 20 GPIO_ACTIVE_LOW>; /* PD20 */
 +		// assigned-clocks = <&ccu CLK_FANOUT1>;
 +		// assigned-clock-rates = <32768>;
 +		// pinctrl-0 = <&clk_pg11_pin>;
 +		// pinctrl-names = "default";
 +	};
++};
++
++&reg_ldoa {
++	regulator-name = "vcc-wifi-1v8";
++	regulator-min-microvolt = <1800000>;
++	regulator-max-microvolt = <1800000>; 
++	ldo-in-supply = <&reg_vcc_3v3>;
 +};
 +
 +
@@ -194,7 +203,7 @@
 +	vcc-pd-supply = <&reg_vcc_3v3>;
 +	vcc-pe-supply = <&reg_vcc_3v3>;
 +	vcc-pf-supply = <&reg_vcc_3v3>;
-+	vcc-pg-supply = <&reg_vcc_3v3>;
++	vcc-pg-supply = <&reg_ldoa>;
 +
 +	/omit-if-no-ref/
 +	uart1_pd21_pins: uart1-pd21-pins {
@@ -264,6 +273,7 @@
 +};
 +
 +&i2c0 {
++	compatible = "allwinner,sun8i-twi";
 +	pinctrl-0 = <&i2c0_pb_pins>;
 +	pinctrl-names = "default";
 +	status = "okay";
@@ -276,6 +286,7 @@
 +};
 +
 +&i2c3 {
++	compatible = "allwinner,sun8i-twi";
 +	pinctrl-0 = <&i2c3_pb_pins>;
 +	pinctrl-names = "default";
 +	status = "okay";
@@ -299,13 +310,18 @@
 +};
 +
 +&mmc1 {
-+	bus-width = <4>;
-+	// mmc-pwrseq = <&wifi_pwrseq>;
-+	non-removable;
++	pinctrl-names = "default";
++	pinctrl-0 = <&mmc1_pins>;
 +	vmmc-supply = <&reg_vcc_3v3>;
 +	vqmmc-supply = <&reg_ldoa>;
-+	pinctrl-0 = <&mmc1_pins>;
-+	pinctrl-names = "default";
++	mmc-pwrseq = <&wifi_pwrseq>;
++	bus-width = <4>;
++	max-frequency = <15000000>;
++	non-removable;
++	no-sd;
++	cap-sdio-irq;
++	keep-power-in-suspend;
++	ignore-pm-notify;
 +	status = "okay";
 +
 +	aw869a: sdio_wifi@1 {
@@ -328,7 +344,7 @@
 +
 +&usb_otg {
 +	dr_mode = "otg";
-+	status = "okay";
++	status = "disabled";
 +};
 +
 +&ehci0 {
@@ -382,12 +398,15 @@
 +&can0 {
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&can0_pins>;
-+	status = "okay";
++	status = "disabled";
 +};
 +
 +&can1 {
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&can1_pins>;
-+	status = "okay";
++	status = "disabled";
 +};
 +
++&rtc {
++	status = "disabled";
++};
