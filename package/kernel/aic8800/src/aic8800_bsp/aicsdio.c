@@ -20,7 +20,7 @@
 #include "aic_bsp_driver.h"
 #include <linux/version.h>
 
-#ifdef CONFIG_PLATFORM_ALLWINNER_1
+#ifdef CONFIG_PLATFORM_ALLWINNER
 extern void sunxi_mmc_rescan_card(unsigned ids);
 extern void sunxi_wlan_set_power(int on);
 extern int  sunxi_wlan_get_bus_index(void);
@@ -186,7 +186,9 @@ static int aicbsp_sdio_probe(struct sdio_func *func,
 	int err = -ENODEV;
 	int i = 0;
 
-	bsp_dbg("%s:%d\n", __func__, func->num);
+	bsp_dbg("%s:%d vid:0x%04X  did:0x%04X\n", __func__, func->num,
+		func->vendor, func->device);
+
 	for (i = 0; i < sizeof(aicdev_match_table) / sizeof(aicdev_match_table[0]); i++) {
 		if (func->vendor == aicdev_match_table[i].vid && func->device == aicdev_match_table[i].pid) {
 			aic_matched_ic = &aicdev_match_table[i];
@@ -344,12 +346,15 @@ static struct sdio_driver aicbsp_sdio_driver = {
 
 static int aicbsp_platform_power_on(void)
 {
-#ifdef CONFIG_PLATFORM_ALLWINNER_1
+#ifdef CONFIG_PLATFORM_ALLWINNER
 	int ret = 0;
 	struct semaphore aic_chipup_sem;
 	bsp_dbg("%s\n", __func__);
+	/*
 	if (aicbsp_bus_index < 0)
 		 aicbsp_bus_index = sunxi_wlan_get_bus_index();
+		 */
+	aicbsp_bus_index = 1;
 	if (aicbsp_bus_index < 0)
 		return aicbsp_bus_index;
 
@@ -359,9 +364,9 @@ static int aicbsp_platform_power_on(void)
 		bsp_dbg("%s aicbsp_reg_sdio_notify fail(%d)\n", __func__, ret);
 			return ret;
 	}
-	sunxi_wlan_set_power(1);
+	// sunxi_wlan_set_power(1);
 	mdelay(50);
-	sunxi_mmc_rescan_card(aicbsp_bus_index);
+	// sunxi_mmc_rescan_card(aicbsp_bus_index);
 
 	if (down_timeout(&aic_chipup_sem, msecs_to_jiffies(2000)) == 0) {
 		aicbsp_unreg_sdio_notify();
@@ -369,7 +374,7 @@ static int aicbsp_platform_power_on(void)
 	}
 
 	aicbsp_unreg_sdio_notify();
-	sunxi_wlan_set_power(0);
+	// sunxi_wlan_set_power(0);
 	return -1;
 #else
 	return 0;
@@ -378,24 +383,28 @@ static int aicbsp_platform_power_on(void)
 
 static void aicbsp_platform_power_off(void)
 {
-#ifdef CONFIG_PLATFORM_ALLWINNER_1
-	if (aicbsp_bus_index < 0)
-		 aicbsp_bus_index = sunxi_wlan_get_bus_index();
+#ifdef CONFIG_PLATFORM_ALLWINNER
+	if (aicbsp_bus_index < 0) {
+		aicbsp_bus_index = 1;
+		// aicbsp_bus_index = sunxi_wlan_get_bus_index();
+	}
 	if (aicbsp_bus_index < 0) {
 		bsp_dbg("no aicbsp_bus_index\n");
 		return;
 	}
-	sunxi_wlan_set_power(0);
+	// sunxi_wlan_set_power(0);
 	mdelay(100);
-	sunxi_mmc_rescan_card(aicbsp_bus_index);
+	// sunxi_mmc_rescan_card(aicbsp_bus_index);
 #endif
 	bsp_dbg("%s\n", __func__);
 }
 
 static int aicbsp_sdio_init(void)
 {
-	if (sdio_register_driver(&aicbsp_sdio_driver))
+	if (sdio_register_driver(&aicbsp_sdio_driver)) {
+		bsp_dbg("%s, failed\n", __func__);
 		return -1;
+	}
 
 	return 0;
 }
@@ -1257,7 +1266,7 @@ static void aicwf_sdio_hal_irqhandler_func2(struct sdio_func *func)
 			pkt = aicwf_sdio_readmessages(aicdev);
 		}
 	} else {
-	#ifndef CONFIG_PLATFORM_ALLWINNER_1
+	#ifndef CONFIG_PLATFORM_ALLWINNER
 		bsp_err("Interrupt but no data\n");
 	#endif
 	}

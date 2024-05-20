@@ -386,7 +386,7 @@ enum chip_rev {
 #define AICBT_LPM_ENABLE_DEFAULT    1
 #define AICBT_TXPWR_LVL_DEFAULT     AICBT_TXPWR_LVL
 
-#define FEATURE_SDIO_CLOCK          70000000 // 0: default, other: target clock rate
+#define FEATURE_SDIO_CLOCK          0 //70000000 // 0: default, other: target clock rate
 #define FEATURE_SDIO_PHASE          2        // 0: default, 2: 180°
 
 struct aicbt_patch_table {

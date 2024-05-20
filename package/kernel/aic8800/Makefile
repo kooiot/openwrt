@@ -28,7 +28,7 @@ define KernelPackage/aic8800
 	CONFIG_AIC_INTF_SDIO=y
   FILES:=$(PKG_BUILD_DIR)/aic8800_fdrv/aic8800_fdrv.ko \
 	$(PKG_BUILD_DIR)/aic8800_bsp/aic8800_bsp.ko
-  AUTOLOAD:=$(call AutoProbe,aic8800_fdrv aic8800_bsp)
+  AUTOLOAD:=$(call AutoProbe,aic8800_fdrv)
 endef
 
 define KernelPackage/aic8800/description
