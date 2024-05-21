@@ -12,7 +12,7 @@
  	sun9i-a80-cubieboard4.dtb
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-t113-tlink-e1.dts
-@@ -0,0 +1,397 @@
+@@ -0,0 +1,415 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 +
@@ -38,6 +38,10 @@
 +		serial1 = &uart1;
 +		serial2 = &uart2;
 +		serial3 = &uart3;
++		i2c0 = &i2c0;
++		i2c1 = &i2c1;
++		i2c2 = &i2c2;
++		i2c3 = &i2c3;
 +	};
 +
 +	chosen {
@@ -144,22 +148,33 @@
 +		pcie_reset {
 +			gpio-export,name = "pcie_reset";
 +			gpio-export,output=<0>;
-+			gpios = <&pio 3 10 GPIO_ACTIVE_HIGH>; /* PD0 */
++			gpios = <&pio 3 0 GPIO_ACTIVE_HIGH>; /* PD0 */
 +		};
++
 +		/*
++		*/
++		pg12 {
++			gpio-export,name = "pg12";
++			gpio-export,output=<1>;
++			gpios = <&pio 6 12 GPIO_ACTIVE_HIGH>; // PG12
++		};
++
 +		pcie_power {
 +			gpio-export,name = "pcie_power";
 +			gpio-export,output=<1>;
-+			gpios = <&pio 3 20 GPIO_ACTIVE_HIGH>; // PD20
++			gpios = <&pio 3 20 GPIO_ACTIVE_HIGH>; /* PD20 */
 +		};
-+		*/
 +	};
 +
 +	wifi_pwrseq: wifi-pwrseq {
 +		compatible = "mmc-pwrseq-simple";
-+		clocks = <&ccu CLK_FANOUT1>;
-+		clock-names = "ext_clock";
-+		reset-gpios = <&pio 3 20 GPIO_ACTIVE_LOW>; /* PD20 */
++		pinctrl-names = "default";
++		pinctrl-0 = <&wifi_rst>;
++		post-power-on-delay-ms = <50>;
++		// reset-gpios = <&pio 6 12 GPIO_ACTIVE_LOW>; /* PG12 */
++
++		// clocks = <&ccu CLK_FANOUT1>;
++		// clock-names = "ext_clock";
 +		// assigned-clocks = <&ccu CLK_FANOUT1>;
 +		// assigned-clock-rates = <32768>;
 +		// pinctrl-0 = <&clk_pg11_pin>;
@@ -246,6 +261,11 @@
 +		drive-strength = <30>;
 +		bias-pull-up;
 +	};
++
++	wifi_rst: wifi-rst-pin {
++		pins = "PG12";
++		function = "gpio_out";
++	};
 +};
 +
 +&uart1 {
@@ -273,7 +293,6 @@
 +};
 +
 +&i2c0 {
-+	compatible = "allwinner,sun8i-twi";
 +	pinctrl-0 = <&i2c0_pb_pins>;
 +	pinctrl-names = "default";
 +	status = "okay";
@@ -286,7 +305,6 @@
 +};
 +
 +&i2c3 {
-+	compatible = "allwinner,sun8i-twi";
 +	pinctrl-0 = <&i2c3_pb_pins>;
 +	pinctrl-names = "default";
 +	status = "okay";
@@ -314,7 +332,7 @@
 +	pinctrl-0 = <&mmc1_pins>;
 +	vmmc-supply = <&reg_vcc_3v3>;
 +	vqmmc-supply = <&reg_ldoa>;
-+	mmc-pwrseq = <&wifi_pwrseq>;
++	// mmc-pwrseq = <&wifi_pwrseq>;
 +	bus-width = <4>;
 +	max-frequency = <15000000>;
 +	non-removable;

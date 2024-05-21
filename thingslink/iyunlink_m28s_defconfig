@@ -1,0 +1,10 @@
+CONFIG_TARGET_ramips=y
+CONFIG_TARGET_ramips_mt76x8=y
+CONFIG_TARGET_ramips_mt76x8_DEVICE_iyunlink_m28s=y
+CONFIG_LUCI_LANG_zh_Hans=y
+CONFIG_PACKAGE_libinih=y
+CONFIG_PACKAGE_luci-i18n-base-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-firewall-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-freeioe-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-opkg-zh-cn=y
+CONFIG_PACKAGE_tio=y
