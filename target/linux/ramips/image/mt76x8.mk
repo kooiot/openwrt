@@ -1144,6 +1144,51 @@ define Device/kooiot_tlink-c35-32m
 endef
 TARGET_DEVICES += kooiot_tlink-c35-32m
 
+define Device/kooiot_tlink-c4-16m
+  IMAGE_SIZE := 16064k
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink C4
+  DEVICE_VARIANT := 16M
+  DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
+	kmod-usb-uhci kmod-usb-net kmod-usb-net-cdc-ether \
+	kmod-usb-net-cdc-ncm kmod-usb-serial kmod-usb-serial-option \
+	kmod-gpio-button-hotplug kmod-leds-gpio \
+	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
+	kmod-usb-serial-qualcomm \
+	kmod-usb-net-qmi-wwan kmod-usb-serial-cp210x \
+	luci-app-freeioe luci-proto-qmi luci-proto-3g \
+	uqmi fdisk usbutils freeioe wwanleds
+endef
+TARGET_DEVICES += kooiot_tlink-c4-16m
+
+define Device/kooiot_tlink-c4-32m
+  IMAGE_SIZE := 32448k
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink C4
+  DEVICE_VARIANT := 32M
+  DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
+	kmod-usb-uhci kmod-usb-net kmod-usb-net-cdc-ether \
+	kmod-usb-net-cdc-ncm kmod-usb-serial kmod-usb-serial-option \
+	kmod-gpio-button-hotplug kmod-leds-gpio \
+	kmod-ledtrig-heartbeat kmod-ledtrig-gpio \
+	kmod-usb-serial-qualcomm \
+	kmod-usb-net-qmi-wwan kmod-usb-serial-cp210x \
+	luci-app-freeioe luci-proto-qmi luci-proto-3g \
+	uqmi fdisk usbutils freeioe wwanleds
+endef
+TARGET_DEVICES += kooiot_tlink-c4-32m
+
+define Device/iyunlink_m28s
+  IMAGE_SIZE := 32448k
+  DEVICE_VENDOR := IYUNLINK
+  DEVICE_MODEL := M28S
+  DEVICE_VARIANT := 16M
+  DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci \
+	kmod-usb-uhci kmod-usb-net kmod-usb-net-cdc-ether \
+	kmod-usb-net-cdc-ncm kmod-usb-serial kmod-usb-serial-option
+endef
+TARGET_DEVICES += iyunlink_m28s
+
 define Device/wiznet_wizfi630s
   IMAGE_SIZE := 32448k
   DEVICE_VENDOR := WIZnet
@@ -1243,3 +1288,4 @@ define Device/zyxel_keenetic-extra-ii
 	check-size | zyimage -d 6162 -v "ZyXEL Keenetic Extra II"
 endef
 TARGET_DEVICES += zyxel_keenetic-extra-ii
+

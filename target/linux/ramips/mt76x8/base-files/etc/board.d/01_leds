@@ -187,6 +187,11 @@ kooiot,tlink-c35-16m|\
 kooiot,tlink-c35-32m)
 	ucidef_set_led_netdev "wifi_led" "wifi" "green:wifi" "wlan0"
 	;;
+kooiot,tlink-c4-16m|\
+kooiot,tlink-c4-32m|\
+iyunlink,m28s)
+	ucidef_set_led_netdev "modem" "modem" "green:modem" "wwan0"
+	;;
 esac
 
 board_config_flush

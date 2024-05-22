@@ -1,0 +1,135 @@
+#include "mt7628an.dtsi"
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+
+/{
+	compatible = "kooiot,tlink-c4-32m", "mediatek,mt7628an-soc";
+	model = "ThingsLink C4 (32M)";
+
+	aliases {
+		led-boot = &led_status;
+		led-failsafe = &led_status;
+		led-upgrade = &led_status;
+		serial1 = &uart1;
+	};
+
+	chosen {
+		bootargs = "console=ttyS0,57600";
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		led_status: status {
+			label = "greeen:status";
+			gpios = <&gpio 44 GPIO_ACTIVE_LOW>;
+			linux,default-trigger = "heartbeat";
+		};
+
+		led_modem: modem {
+			label = "green:modem";
+			gpios = <&gpio 0 GPIO_ACTIVE_LOW>;
+		};
+	};
+
+	keys {
+		compatible = "gpio-keys";
+
+		reset {
+			label = "reset";
+			gpios = <&gpio 38 GPIO_ACTIVE_HIGH>;
+			linux,code = <KEY_RESTART>;
+		};
+
+		sim_det {
+			label = "BTN_0";
+			gpios = <&gpio 11 1>; 
+			linux,code = <0x100>;
+		};
+	};
+
+	gpio_export {
+			compatible = "gpio-export";
+			#size-cells = <0>;
+
+			pcie_power {
+				gpio-export,name = "pcie_power";
+				gpio-export,output = <1>;
+				gpios = <&gpio 3 GPIO_ACTIVE_HIGH>;
+			};
+
+	};
+
+	watchdog {
+		compatible = "linux,wdt-gpio";
+		gpios = <&gpio 2 GPIO_ACTIVE_HIGH>;
+		hw_algo = "toggle";
+		hw_margin_ms = <1300>;
+		always-running;
+	};
+};
+
+&state_default {
+	gpio {
+		groups = "gpio", "wled_an", "i2s";
+		function = "gpio";
+	};
+};
+
+&ethernet {
+	mtd-mac-address = <&factory 0x4>;
+};
+
+&wmac {
+	status = "okay";
+};
+
+&spi0 {
+	status = "okay";
+
+	flash@0 {
+		compatible = "jedec,spi-nor";
+		reg = <0>;
+		spi-max-frequency = <40000000>;
+		// spi-max-frequency = <10000000>;
+
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			partition@0 {
+				label = "u-boot";
+				reg = <0x0 0x30000>;
+				read-only;
+			};
+
+			partition@30000 {
+				label = "u-boot-env";
+				reg = <0x30000 0x10000>;
+				read-only;
+			};
+
+			factory: partition@40000 {
+				label = "factory";
+				reg = <0x40000 0x10000>;
+				read-only;
+			};
+
+			partition@50000 {
+				compatible = "denx,uimage";
+				label = "firmware";
+				reg = <0x50000 0x1fb0000>;
+			};
+		};
+	};
+};
+
+&uart1 {
+	status = "okay";
+};
+
+&usbphy {
+	status = "okay";
+};

@@ -55,6 +55,18 @@ tlink_default() {
 		"kooiot,tlink-c2-v2")
 			tlink_add_4g_wan 3 2
 			;;
+		"kooiot,tlink-c4-16m" | \
+		"kooiot,tlink-c4-32m" | \
+		"iyunlink,m28s")
+			# You need to use query usbmode
+			#	AT+SYSNV=0,"usbmode"
+			#	if it is not 2 // Eight Serials
+			#	Then set it to 2
+			#	AT+SYSNV=1,"usbmode",2
+			#	And reboot it
+			#	AT+TRB
+			tlink_add_4g_wan 0 5
+			;;
 		*)
 			tlink_add_4g_wan 2 1
 			;;
@@ -82,7 +94,10 @@ case "$(board_name)" in
 "kooiot,tlink-c3-16m" | \
 "kooiot,tlink-c3-32m" | \
 "kooiot,tlink-c35-16m" | \
-"kooiot,tlink-c35-32m" )
+"kooiot,tlink-c35-32m" | \
+"kooiot,tlink-c4-16m" | \
+"kooiot,tlink-c4-32m" | \
+"iyunlink,m28s")
 	tlink_default
 	;;
 esac

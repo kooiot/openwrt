@@ -16,7 +16,9 @@ case "$(board_name)" in
 "kooiot,tlink-c3-16m" | \
 "kooiot,tlink-c3-32m" | \
 "kooiot,tlink-c35-16m" | \
-"kooiot,tlink-c35-32m" )
+"kooiot,tlink-c35-32m" | \
+"kooiot,tlink-c4-16m" | \
+"kooiot,tlink-c4-32m" )
 	cpu_freq_cur="580000000"
 	cpu_freq_min="580000000"
 	cpu_freq_max="580000000"
