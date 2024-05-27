@@ -1,0 +1,323 @@
+--- a/arch/arm/boot/dts/allwinner/Makefile
++++ b/arch/arm/boot/dts/allwinner/Makefile
+@@ -339,7 +339,8 @@ dtb-$(CONFIG_MACH_SUN8I) += \
+ 	sun8i-v40-bananapi-m2-berry.dtb \
+ 	sun8i-t113-mangopi-dual.dtb \
+	sun8i-t113-iot-station.dtb \
+-	sun8i-t113-tlink-rp-t113.dtb
++	sun8i-t113-tlink-rp-t113.dtb \
++	sun8i-t113-tlink-dly-e102.dtb
+ dtb-$(CONFIG_MACH_SUN9I) += \
+ 	sun9i-a80-optimus.dtb \
+ 	sun9i-a80-cubieboard4.dtb
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/sun8i-t113-tlink-dly-e102.dts
+@@ -0,0 +1,308 @@
++// SPDX-License-Identifier: (GPL-2.0+ or MIT)
++// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
++
++/dts-v1/;
++
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/leds/common.h>
++#include <dt-bindings/pwm/pwm.h>
++#include <dt-bindings/input/input.h>
++#include <dt-bindings/input/gpio-keys.h>
++#include "sun8i-t113s.dtsi"
++
++/ {
++	model = "ThingsLink DLY-E102";
++	compatible = "kooiot,dly-e102", "allwinner,sun8i-t113";
++
++	aliases {
++		ethernet0 = &emac;
++		mmc0 = &mmc0;
++		serial0 = &uart0;
++		serial1 = &uart1;
++		serial2 = &uart2;
++		spi0 = &spi0;
++	};
++
++	chosen {
++		stdout-path = "serial0:115200n8";
++	};
++
++	reg_vcc: vcc {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc";
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++	};
++
++	reg_usbvbus: usbvbus {
++		compatible = "regulator-fixed";
++		regulator-name = "usbvbus";
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++		vin-supply = <&reg_vcc>;
++	};
++
++	reg_vcc_3v3: vcc-3v3 {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc-3v3";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		vin-supply = <&reg_vcc>;
++	};
++
++	reg_vdd_cpu: vdd-cpu {
++		compatible = "regulator-fixed";
++		regulator-name = "vdd-cpu";
++		regulator-min-microvolt = <900000>;
++		regulator-max-microvolt = <900000>;
++		vin-supply = <&reg_vcc>;
++	};
++
++	leds {
++		compatible = "gpio-leds";
++
++		status_led: status-led {
++			linux,default-trigger = "heartbeat";
++			label = "kooiot:green:status";
++			gpios = <&pio 6 11 GPIO_ACTIVE_HIGH>; /* PG11 */
++		};
++
++		csq {
++			label = "kooiot:green:csq";
++			gpios = <&pio 4 17 GPIO_ACTIVE_HIGH>; /* PE17 */
++			default-state = "off";
++		};
++	};
++
++	gpio_keys {
++		compatible = "gpio-keys";
++
++		reset {
++			label = "reset";
++			linux,code = <KEY_RESTART>;
++			gpios = <&pio 4 12 GPIO_ACTIVE_LOW>; /* PE0 */
++		};
++	};
++
++	gpio_export {
++		compatible = "gpio-export";
++		#size-cells = <0>;
++
++		pcie_reset {
++			gpio-export,name = "pcie_reset";
++			gpio-export,output=<1>;
++			gpios = <&pio 3 2 GPIO_ACTIVE_LOW>; /* PD2 */
++		};
++
++		pcie_power {
++			gpio-export,name = "pcie_power";
++			gpio-export,output=<1>;
++			gpios = <&pio 3 0 GPIO_ACTIVE_HIGH>; /* PD0 */
++		};
++	};
++};
++
++&reg_ldoa {
++	regulator-name = "vcc-wifi-1v8";
++	regulator-min-microvolt = <1800000>;
++	regulator-max-microvolt = <1800000>; 
++	ldo-in-supply = <&reg_vcc_3v3>;
++};
++
++&cpu0 {
++	cpu-supply = <&reg_vdd_cpu>;
++};
++
++&cpu1 {
++	cpu-supply = <&reg_vdd_cpu>;
++};
++
++&wdt {
++	status = "okay";
++};
++
++&pio {
++	vcc-pb-supply = <&reg_vcc_3v3>;
++	vcc-pc-supply = <&reg_vcc_3v3>;
++	vcc-pd-supply = <&reg_vcc_3v3>;
++	vcc-pe-supply = <&reg_vcc_3v3>;
++	vcc-pf-supply = <&reg_vcc_3v3>;
++	vcc-pg-supply = <&reg_vcc_3v3>;
++
++	uart0_pg17_pins: uart0-pg17-pins {
++	    pins = "PG17", "PG18";
++	    function = "uart0";
++	};
++
++	uart1_pb8_pins: uart1-pb8-pins {
++	    pins = "PB8", "PB9";
++	    function = "uart1";
++	};
++
++	uart2_pb0_pins: uart2-pb0-pins {
++	    pins = "PB0", "PB1";
++	    function = "uart2";
++	};
++
++	uart3_pb6_pins: uart3-pb6-pins {
++	    pins = "PB6", "PB7";
++	    function = "uart3";
++	};
++
++	/omit-if-no-ref/
++	i2c0_pb10_pins: i2c0-pb10-pins {
++		pins = "PB10", "PB11";
++		function = "i2c0";
++	};
++
++	/omit-if-no-ref/
++	rgmii_pg_pins: rgmii-pg-pins {
++		pins = "PG0", "PG1", "PG2", "PG3", "PG4", "PG5",
++				"PG6", "PG7", "PG8", "PG9", "PG10",
++				"PG12", "PG13", "PG14", "PG15";
++		function = "gmac";
++		drive-strength = <30>;
++		bias-pull-up;
++	};
++};
++
++&uart0 {
++	pinctrl-0 = <&uart0_pg17_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++};
++
++&uart1 {
++	pinctrl-0 = <&uart1_pb8_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++};
++
++&uart2 {
++	pinctrl-0 = <&uart2_pb0_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++};
++
++&uart3 {
++	pinctrl-0 = <&uart3_pb6_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++};
++
++&i2c0 {
++	pinctrl-0 = <&i2c0_pb10_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++};
++
++&spi0 {
++	pinctrl-0 = <&spi0_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++
++	flash@0 {
++		compatible = "spi-nand";
++		reg = <0>;
++
++		partitions {
++			compatible = "fixed-partitions";
++			#address-cells = <1>;
++			#size-cells = <1>;
++
++			partition@0 {
++				label = "boot0";
++				reg = <0x00000000 0x00100000>;
++			};
++
++			partition@100000 {
++				label = "uboot";
++				reg = <0x00100000 0x00300000>;
++			};
++
++			partition@400000 {
++				label = "secure_storage";
++				reg = <0x00400000 0x00100000>;
++			};
++
++			partition@500000 {
++				label = "sys";
++				reg = <0x00500000 0x0fb00000>;
++			};
++		};
++	};
++};
++
++&mmc0 {
++	pinctrl-0 = <&mmc0_pins>;
++	pinctrl-names = "default";
++	bus-width = <4>;
++	vmmc-supply = <&reg_vcc_3v3>;
++	vqmmc-supply = <&reg_vcc_3v3>;
++	cd-gpios = <&pio 5 6 (GPIO_ACTIVE_LOW)>;  /* PF6 */
++	disable-wp;
++	status = "okay";
++};
++
++&ehci0 {
++	status = "okay";
++};
++
++&ehci1 {
++	status = "okay";
++};
++
++
++&ohci0 {
++	status = "okay";
++};
++
++&ohci1 {
++	status = "okay";
++};
++
++&ths {
++	status = "okay";
++	vref-supply = <&reg_ldoa>;
++};
++
++&usbphy {
++	usb0_vbus-supply = <&reg_usbvbus>;
++	usb1_vbus-supply = <&reg_usbvbus>;
++	status = "okay";
++};
++
++&mdio {
++	ext_rgmii_phy: ethernet-phy@1 {
++		compatible = "ethernet-phy-ieee802.3-c22";
++		reg = <1>;
++	};
++};
++
++&emac {
++	pinctrl-0 = <&rgmii_pg_pins>;
++	pinctrl-names = "default";
++	phy-handle = <&ext_rgmii_phy>;
++	phy-mode = "rgmii-id";
++	phy-supply = <&reg_vcc_3v3>;
++	status = "disabled";
++};
++
++/*
++&can0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&can0_pins>;
++	status = "okay";
++};
++
++&can1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&can1_pins>;
++	status = "disabled";
++};
++*/
++
++&rtc {
++	status = "disabled";
++};

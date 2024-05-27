@@ -1,18 +1,18 @@
 --- a/arch/arm/boot/dts/allwinner/Makefile
 +++ b/arch/arm/boot/dts/allwinner/Makefile
-@@ -339,7 +339,8 @@ dtb-$(CONFIG_MACH_SUN8I) += \
- 	sun8i-v40-bananapi-m2-berry.dtb \
+@@ -340,7 +340,8 @@ dtb-$(CONFIG_MACH_SUN8I) += \
  	sun8i-t113-mangopi-dual.dtb \
-	sun8i-t113-iot-station.dtb \
--	sun8i-t113-tlink-rp-t113.dtb
-+	sun8i-t113-tlink-rp-t113.dtb \
+ 	sun8i-t113-iot-station.dtb \
+ 	sun8i-t113-tlink-rp-t113.dtb \
+-	sun8i-t113-tlink-dly-e102.dtb
++	sun8i-t113-tlink-dly-e102.dtb \
 +	sun8i-t113-tlink-e1.dtb
  dtb-$(CONFIG_MACH_SUN9I) += \
  	sun9i-a80-optimus.dtb \
  	sun9i-a80-cubieboard4.dtb
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-t113-tlink-e1.dts
-@@ -0,0 +1,415 @@
+@@ -0,0 +1,418 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 +
@@ -152,12 +152,12 @@
 +		};
 +
 +		/*
-+		*/
 +		pg12 {
 +			gpio-export,name = "pg12";
 +			gpio-export,output=<1>;
 +			gpios = <&pio 6 12 GPIO_ACTIVE_HIGH>; // PG12
 +		};
++		*/
 +
 +		pcie_power {
 +			gpio-export,name = "pcie_power";
@@ -169,7 +169,7 @@
 +	wifi_pwrseq: wifi-pwrseq {
 +		compatible = "mmc-pwrseq-simple";
 +		pinctrl-names = "default";
-+		pinctrl-0 = <&wifi_rst>;
++		// pinctrl-0 = <&wifi_rst>;
 +		post-power-on-delay-ms = <50>;
 +		// reset-gpios = <&pio 6 12 GPIO_ACTIVE_LOW>; /* PG12 */
 +
@@ -399,6 +399,9 @@
 +	ext_rmii_phy: ethernet-phy@3 {
 +		compatible = "ethernet-phy-ieee802.3-c22";
 +		reg = <3>;
++		tlink,yt8512b-hack;
++		motorcomm,led0 = <0x30>;
++		motorcomm,led1 = <0x331>;
 +	};
 +};
 +
@@ -409,7 +412,7 @@
 +	phy-mode = "rmii";
 +	phy-supply = <&reg_vcc_3v3>;
 +	snps,reset-gpio = <&pio 4 13 GPIO_ACTIVE_LOW>; /* PE13 */
-+	snps,reset-delays-us = <0 50000 5000000>;
++	snps,reset-delays-us = <0 100000 10000000>;
 +	status = "okay";
 +};
 +

@@ -10,6 +10,9 @@ BOOTFS_SIZE=$(shell echo $$(($(CONFIG_SUNXI_SD_BOOT_PARTSIZE)*1024*1024)))
 
 DEVICE_VARS := SUNXI_DTS SUNXI_DTS_DIR
 
+UBIFS_OPTS := -F -m 2048 -e 124KiB -c 4096 -U
+# UBI_OPTS = -m 2048 -p 128KiB -s 512 -O 2048
+
 define Build/sunxi-sdcard
 	rm -f $@.boot
 	rm -rf $@.bootfs
@@ -47,6 +50,18 @@ define Device/Default
   IMAGE/sdcard.img.gz := sunxi-sdcard | append-metadata | gzip
   SUNXI_DTS_DIR :=allwinner/
   SUNXI_DTS = $$(SUNXI_DTS_DIR)$$(SOC)-$(lastword $(subst _, ,$(1)))
+endef
+
+define Device/NAND
+  BLOCKSIZE := 128k
+  PAGESIZE := 2048
+  SUBPAGESIZE := 512
+  VID_HDR_OFFSET := 2048
+  FILESYSTEMS += ubifs
+  KERNEL := kernel-bin | append-dtb | lzma | uImage lzma
+  KERNEL_INITRAMFS := kernel-bin | append-dtb | lzma | uImage lzma
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+  IMAGE/factory.bin := mkbrnimg | check-size
 endef
 
 include $(SUBTARGET).mk

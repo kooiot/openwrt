@@ -1,0 +1,396 @@
+diff -Nurp a/arch/arm/mach-sunxi/spl_spi_sunxi.c b/arch/arm/mach-sunxi/spl_spi_sunxi.c
+--- a/arch/arm/mach-sunxi/spl_spi_sunxi.c	2024-05-27 11:50:52.389470311 +0800
++++ b/arch/arm/mach-sunxi/spl_spi_sunxi.c	2024-05-27 12:10:05.652696064 +0800
+@@ -106,9 +106,12 @@
+  */
+ static void spi0_pinmux_setup(unsigned int pin_function)
+ {
+-	/* All chips use PC0 and PC2. */
+-	sunxi_gpio_set_cfgpin(SUNXI_GPC(0), pin_function);
++	/* All chips use PC2. */
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPC(2), pin_function);
++	
++	/* All chips except R528 use PC0. */
++	if (!IS_ENABLED(CONFIG_MACH_SUN8I_R528))
++		sunxi_gpio_set_cfgpin(SUNXI_GPC(0), pin_function);
+ 
+ 	/* All chips except H6 and H616 use PC1. */
+ 	if (!IS_ENABLED(CONFIG_SUN50I_GEN_H6))
+@@ -266,77 +269,139 @@ static void spi0_deinit(void)
+ 
+ #define SPI_READ_MAX_SIZE 60 /* FIFO size, minus 4 bytes of the header */
+ 
+-static void sunxi_spi0_read_data(u8 *buf, u32 addr, u32 bufsize,
+-				 ulong spi_ctl_reg,
+-				 ulong spi_ctl_xch_bitmask,
+-				 ulong spi_fifo_reg,
+-				 ulong spi_tx_reg,
+-				 ulong spi_rx_reg,
+-				 ulong spi_bc_reg,
+-				 ulong spi_tc_reg,
+-				 ulong spi_bcc_reg)
++static void sunxi_spi0_xfer(const u8 *txbuf, u32 txlen,
++			    u8 *rxbuf, u32 rxlen,
++			    ulong spi_ctl_reg,
++			    ulong spi_ctl_xch_bitmask,
++			    ulong spi_fifo_reg,
++			    ulong spi_tx_reg,
++			    ulong spi_rx_reg,
++			    ulong spi_bc_reg,
++			    ulong spi_tc_reg,
++			    ulong spi_bcc_reg)
+ {
+-	writel(4 + bufsize, spi_bc_reg); /* Burst counter (total bytes) */
+-	writel(4, spi_tc_reg);           /* Transfer counter (bytes to send) */
++	writel(txlen + rxlen, spi_bc_reg); /* Burst counter (total bytes) */
++	writel(txlen, spi_tc_reg);         /* Transfer counter (bytes to send) */
+ 	if (spi_bcc_reg)
+-		writel(4, spi_bcc_reg);  /* SUN6I also needs this */
++		writel(txlen, spi_bcc_reg);  /* SUN6I also needs this */
+ 
+-	/* Send the Read Data Bytes (03h) command header */
+-	writeb(0x03, spi_tx_reg);
+-	writeb((u8)(addr >> 16), spi_tx_reg);
+-	writeb((u8)(addr >> 8), spi_tx_reg);
+-	writeb((u8)(addr), spi_tx_reg);
++	for (u32 i = 0; i < txlen; i++)
++		writeb(*(txbuf++), spi_tx_reg);
+ 
+ 	/* Start the data transfer */
+ 	setbits_le32(spi_ctl_reg, spi_ctl_xch_bitmask);
+ 
+ 	/* Wait until everything is received in the RX FIFO */
+-	while ((readl(spi_fifo_reg) & 0x7F) < 4 + bufsize)
++	while ((readl(spi_fifo_reg) & 0x7F) < txlen + rxlen)
+ 		;
+ 
+-	/* Skip 4 bytes */
+-	readl(spi_rx_reg);
++	/* Skip txlen bytes */
++	for (u32 i = 0; i < txlen; i++)
++		readb(spi_rx_reg);
+ 
+ 	/* Read the data */
+-	while (bufsize-- > 0)
+-		*buf++ = readb(spi_rx_reg);
++	while (rxlen-- > 0)
++		*rxbuf++ = readb(spi_rx_reg);
++}
++
++static void spi0_xfer(const u8 *txbuf, u32 txlen, u8 *rxbuf, u32 rxlen)
++{
++	uintptr_t base = spi0_base_address();
++
++	if (is_sun6i_gen_spi()) {
++		sunxi_spi0_xfer(txbuf, txlen, rxbuf, rxlen,
++				base + SUN6I_SPI0_TCR,
++				SUN6I_TCR_XCH,
++				base + SUN6I_SPI0_FIFO_STA,
++				base + SUN6I_SPI0_TXD,
++				base + SUN6I_SPI0_RXD,
++				base + SUN6I_SPI0_MBC,
++				base + SUN6I_SPI0_MTC,
++				base + SUN6I_SPI0_BCC);
++	} else {
++		sunxi_spi0_xfer(txbuf, txlen, rxbuf, rxlen,
++				base + SUN4I_SPI0_CTL,
++				SUN4I_CTL_XCH,
++				base + SUN4I_SPI0_FIFO_STA,
++				base + SUN4I_SPI0_TX,
++				base + SUN4I_SPI0_RX,
++				base + SUN4I_SPI0_BC,
++				base + SUN4I_SPI0_TC,
++				0);
++	}
++}
++
++#if defined(CONFIG_SPL_SPINAND_SUPPORT)
++static int spi0_nand_switch_page(u32 page)
++{
++	unsigned count;
++	u8 buf[4];
++
++	/* Configure the Page Data Read (13h) command header */
++	buf[0] = 0x13;
++	buf[1] = (u8)(page >> 16);
++	buf[2] = (u8)(page >> 8);
++	buf[3] = (u8)(page);
++
++	spi0_xfer(buf, 4, NULL, 0);
++
++	/* Wait for NAND chip to exit busy state */
++	buf[0] = 0x0f;
++	buf[1] = 0xc0;
++
++	/* Load a NAND page can take up to 2-decimal-digit microseconds */
++	for (count = 0; count < 100; count ++) {
++		udelay(1);
++		spi0_xfer(buf, 2, buf+2, 1);
++		if (!(buf[2] & 0x1))
++			return 0;
++	}
++
++	return -ETIMEDOUT;
++}
++
++static void spi0_nand_reset(void)
++{
++	u8 buf[1];
+ 
+-	/* tSHSL time is up to 100 ns in various SPI flash datasheets */
+-	udelay(1);
++	/* Configure the Device RESET (ffh) command */
++	buf[0] = 0xff;
++
++	spi0_xfer(buf, 1, NULL, 0);
++
++	/* Wait for the NAND to finish resetting */
++	udelay(10);
+ }
++#endif
+ 
+-static void spi0_read_data(void *buf, u32 addr, u32 len)
++static void spi0_read_data(void *buf, u32 addr, u32 len, u32 addr_len)
+ {
+ 	u8 *buf8 = buf;
+ 	u32 chunk_len;
+-	uintptr_t base = spi0_base_address();
++	u8 txbuf[4];
+ 
+ 	while (len > 0) {
+ 		chunk_len = len;
++
++		/* Configure the Read Data Bytes (03h) command header */
++		txbuf[0] = 0x03;
++		if (addr_len == 3) {
++			txbuf[1] = (u8)(addr >> 16);
++			txbuf[2] = (u8)(addr >> 8);
++			txbuf[3] = (u8)(addr);
++		} else if (addr_len == 2) {
++			txbuf[1] = (u8)(addr >> 8);
++			txbuf[2] = (u8)(addr);
++			txbuf[3] = 0; /* dummy */
++		}
++
+ 		if (chunk_len > SPI_READ_MAX_SIZE)
+ 			chunk_len = SPI_READ_MAX_SIZE;
+ 
+-		if (is_sun6i_gen_spi()) {
+-			sunxi_spi0_read_data(buf8, addr, chunk_len,
+-					     base + SUN6I_SPI0_TCR,
+-					     SUN6I_TCR_XCH,
+-					     base + SUN6I_SPI0_FIFO_STA,
+-					     base + SUN6I_SPI0_TXD,
+-					     base + SUN6I_SPI0_RXD,
+-					     base + SUN6I_SPI0_MBC,
+-					     base + SUN6I_SPI0_MTC,
+-					     base + SUN6I_SPI0_BCC);
+-		} else {
+-			sunxi_spi0_read_data(buf8, addr, chunk_len,
+-					     base + SUN4I_SPI0_CTL,
+-					     SUN4I_CTL_XCH,
+-					     base + SUN4I_SPI0_FIFO_STA,
+-					     base + SUN4I_SPI0_TX,
+-					     base + SUN4I_SPI0_RX,
+-					     base + SUN4I_SPI0_BC,
+-					     base + SUN4I_SPI0_TC,
+-					     0);
+-		}
++		spi0_xfer(txbuf, 4, buf8, chunk_len);
++
++		/* tSHSL time is up to 100 ns in various SPI flash datasheets */
++		udelay(1);
+ 
+ 		len  -= chunk_len;
+ 		buf8 += chunk_len;
+@@ -344,52 +409,123 @@ static void spi0_read_data(void *buf, u3
+ 	}
+ }
+ 
+-static ulong spi_load_read(struct spl_load_info *load, ulong sector,
+-			   ulong count, void *buf)
++static ulong spi_load_read_nor(struct spl_load_info *load, ulong sector,
++			       ulong count, void *buf)
+ {
+-	spi0_read_data(buf, sector, count);
++	spi0_read_data(buf, sector, count, 3);
+ 
+ 	return count;
+ }
+ 
++#if defined(CONFIG_SPL_SPINAND_SUPPORT)
++static ulong spi_load_read_nand(struct spl_load_info *load, ulong sector,
++			       ulong count, void *buf)
++{
++	const ulong pagesize = CONFIG_SPL_SPINAND_PAGE_SIZE;
++	ulong remain = count;
++
++	while (remain) {
++		ulong count_in_page = min(remain, pagesize - (sector % pagesize));
++		ulong current_page = sector / pagesize;
++		if (spi0_nand_switch_page(current_page) != 0)
++			return 0;
++		spi0_read_data(buf, sector % pagesize, count_in_page, 2);
++		remain -= count_in_page;
++		sector += count_in_page;
++		buf += count_in_page;
++	}
++
++	return count;
++}
++
++void spinand_init(void)
++{
++	spi0_init();
++	spi0_nand_reset();
++}
++
++void spinand_deinit(void)
++{
++	spi0_deinit();
++}
++
++int spinand_spl_read_block(int block, int offset, int len, void *dst)
++{
++       ulong byte_offset = (block * CONFIG_SPL_SPINAND_BLOCK_SIZE) + offset;
++       spi_load_read_nand(NULL, byte_offset, len, dst);
++       return 0;
++}
++
++#endif
++
+ /*****************************************************************************/
+ 
+-static int spl_spi_load_image(struct spl_image_info *spl_image,
+-			      struct spl_boot_device *bootdev)
++static int spl_spi_try_load(struct spl_image_info *spl_image,
++			    struct spl_boot_device *bootdev,
++			    struct spl_load_info *load, u32 offset,
++			    bool allow_raw)
+ {
+ 	int ret = 0;
+ 	struct legacy_img_hdr *header;
+-	uint32_t load_offset = sunxi_get_spl_size();
+-	bool allow_raw = false;
+-
+ 	header = (struct legacy_img_hdr *)CONFIG_TEXT_BASE;
+-	load_offset = max_t(uint32_t, load_offset, CONFIG_SYS_SPI_U_BOOT_OFFS);
+-
+-	spi0_init();
+ 
+-	spi0_read_data((void *)header, load_offset, 0x40);
++	if (load->read(load, offset, 0x40, (void *)header) == 0)
++		return -EINVAL;
+ 
+         if (IS_ENABLED(CONFIG_SPL_LOAD_FIT) &&
+ 		image_get_magic(header) == FDT_MAGIC) {
+-		struct spl_load_info load;
+ 
+ 		debug("Found FIT image\n");
+-		load.dev = NULL;
+-		load.priv = NULL;
+-		load.filename = NULL;
+-		load.bl_len = 1;
+-		load.read = spi_load_read;
+-		ret = spl_load_simple_fit(spl_image, &load,
+-					  load_offset, header);
++		ret = spl_load_simple_fit(spl_image, load,
++					  offset, header);
+ 	} else {
++		if (!allow_raw && image_get_magic(header) != IH_MAGIC)
++			return -EINVAL;
++
+ 		ret = spl_parse_image_header(spl_image, bootdev, header);
+ 		if (ret)
+ 			return ret;
+ 
+-		spi0_read_data((void *)spl_image->load_addr,
+-			       load_offset, spl_image->size);
++		if (load->read(load, offset, spl_image->size,
++			       (void *)spl_image->load_addr) == 0)
++			ret = -EINVAL;
+ 	}
+ 
++	return ret;
++}
++
++static int spl_spi_load_image(struct spl_image_info *spl_image,
++			      struct spl_boot_device *bootdev)
++{
++	int ret = 0;
++	uint32_t load_offset = sunxi_get_spl_size();
++	struct spl_load_info load;
++	bool allow_raw = false;
++
++	load_offset = max_t(uint32_t, load_offset, CONFIG_SYS_SPI_U_BOOT_OFFS);
++
++	load.dev = NULL;
++	load.priv = NULL;
++	load.filename = NULL;
++	load.bl_len = 1;
++
++	spi0_init();
++
++	switch (bootdev->boot_device) {
++#if defined(CONFIG_SPL_SPINAND_SUPPORT)
++	case BOOT_DEVICE_SPINAND:
++		spi0_nand_reset();
++		load.read = spi_load_read_nand;
++		break;
++#endif
++	case BOOT_DEVICE_SPI:
++		load.read = spi_load_read_nor;
++		allow_raw = true;
++		break;
++	}
++
++	ret = spl_spi_try_load(spl_image, bootdev, &load, load_offset, allow_raw);
++
+ 	spi0_deinit();
+ 
+ 	return ret;
+diff -Nurp a/doc/board/allwinner/sunxi.rst b/doc/board/allwinner/sunxi.rst
+--- a/doc/board/allwinner/sunxi.rst	2024-05-27 11:50:54.665506278 +0800
++++ b/doc/board/allwinner/sunxi.rst	2024-05-27 12:15:26.705899099 +0800
+@@ -251,7 +251,8 @@ the SPI flash content from Linux, using
+ 
+     # apt-get install mtd-utils
+     # mtdinfo
+-    # flashcp -v u-boot-sunxi-with-spl.bin /dev/mtdX
++    # mtd_debug erase /dev/mtdX 0 0xf0000
++    # mtd_debug write /dev/mtdX 0 0xf0000 u-boot-sunxi-with-spl.bin
+ 
+ ``/dev/mtdX`` needs to be replaced with the respective device name, as listed
+ in the output of ``mtdinfo``.
+diff -Nurp a/drivers/mtd/ubi/Kconfig b/drivers/mtd/ubi/Kconfig
+--- a/drivers/mtd/ubi/Kconfig	2024-05-27 11:50:53.233483648 +0800
++++ b/drivers/mtd/ubi/Kconfig	2024-05-27 12:21:40.239921995 +0800
+@@ -9,6 +9,7 @@ config UBI_SILENCE_MSG
+ 
+ config MTD_UBI
+ 	bool "Enable UBI - Unsorted block images"
++	depends on MTD
+ 	select RBTREE
+ 	select MTD_PARTITIONS
+ 	help
+diff -Nurp a/include/nand.h b/include/nand.h
+--- a/include/nand.h	2024-05-27 11:50:55.093513041 +0800
++++ b/include/nand.h	2024-05-27 12:28:05.094041727 +0800
+@@ -10,6 +10,7 @@
+ 
+ #include <config.h>
+ 
++extern void spinand_init(void);
+ extern void nand_init(void);
+ unsigned long nand_size(void);
+ 
+@@ -107,7 +108,9 @@ int nand_get_lock_status(struct mtd_info
+ u32 nand_spl_adjust_offset(u32 sector, u32 offs);
+ int nand_spl_load_image(uint32_t offs, unsigned int size, void *dst);
+ int nand_spl_read_block(int block, int offset, int len, void *dst);
++int spinand_spl_read_block(int block, int offset, int len, void *dst);
+ void nand_deselect(void);
++void spinand_deselect(void);
+ 
+ #ifdef CONFIG_SYS_NAND_SELECT_DEVICE
+ void board_nand_select_device(struct nand_chip *nand, int chip);

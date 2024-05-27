@@ -483,6 +483,12 @@ define U-Boot/tlink_e1
   BUILD_DEVICES:=kooiot_tlink-e1
 endef
 
+define U-Boot/tlink_dly_e102
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink DLY-E102
+  BUILD_DEVICES:=kooiot_tlink-dly-e102
+endef
+
 define U-Boot/tlink_rp_t113
   BUILD_SUBTARGET:=cortexa7
   NAME:=RP T113-S3 board
@@ -557,6 +563,7 @@ UBOOT_TARGETS := \
 	tlink_m416 \
 	tlink_e1 \
 	tlink_s1 \
+	tlink_dly_e102 \
 	tlink_rp_t113 \
 	Lichee_Zero_Plus \
 	sinlinx_sin_v3s \
