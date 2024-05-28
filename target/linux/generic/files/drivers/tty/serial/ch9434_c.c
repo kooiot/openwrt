@@ -34,6 +34,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/of_gpio.h>
 #include <linux/serial.h>
 #include <linux/serial_core.h>
 #include <linux/serial_reg.h>
@@ -232,6 +233,7 @@ struct ch943x_port {
 	u8 ver[4];
 	unsigned char buf[65536];
 	struct ch943x_one p[0];
+	int reset_gpio;
 };
 
 struct ch943x_port *g_ch943x_port;
@@ -1314,6 +1316,29 @@ static const struct uart_ops ch943x_ops = {
 	.pm = ch943x_pm,
 };
 
+static int ch943x_spi_rstgpio_parse_dt(struct device *dev, int *reset_gpio)
+{
+	enum of_gpio_flags reset_flags; 
+	*reset_gpio = of_get_named_gpio_flags(dev->of_node, "reset_gpio", 0, &reset_flags);
+	if (!gpio_is_valid(*reset_gpio)){
+		dev_err(dev, "Invalid reset_gpio: %d\n", *reset_gpio);
+		return -1;
+	}
+
+	if(	*reset_gpio){
+		if (gpio_request(*reset_gpio , "reset_gpio")){
+			dev_err(dev, "Request gpio failed!! reset_gpio: %d!\n", *reset_gpio);
+			gpio_free(*reset_gpio);
+			return  IRQ_NONE;
+		}
+	}
+
+	// output high at begining
+	gpio_direction_output(*reset_gpio, 1);
+
+	return 0;
+}
+
 static int ch943x_probe(struct spi_device *spi, struct ch943x_devtype *devtype, int irq, unsigned long flags)
 {
 	unsigned long freq;
@@ -1347,6 +1372,21 @@ static int ch943x_probe(struct spi_device *spi, struct ch943x_devtype *devtype, 
 
 	mutex_init(&s->mutex);
 	mutex_init(&s->mutex_bus_access);
+
+	//Obtain the GPIO number of RST signal
+	ret = ch943x_spi_rstgpio_parse_dt(&spi->dev, &s->reset_gpio);
+	if(ret!=0){
+		dev_err(&spi->dev, "%s parse reset_gpio failed. reset_gpio= 0x%d\n", __func__, s->reset_gpio);
+		ret = s->reset_gpio;
+		return 1;
+	}
+
+	/*reset chip*/
+	mdelay(10);
+	gpio_set_value(s->reset_gpio, 0);
+	mdelay(10);
+	gpio_set_value(s->reset_gpio, 1);
+	mdelay(10);
 
 	for (i = 0; i < devtype->nr_uart; i++) {
 		/* Initialize port data */
@@ -1421,8 +1461,8 @@ static int ch943x_probe(struct spi_device *spi, struct ch943x_devtype *devtype, 
 	ch943x_port_write(&s->p[0].port, CH943X_CLK_REG, CH943X_CLK_EXT_BIT | CH943X_CLK_PLL_BIT | clkdiv);
 
 	ret = devm_request_threaded_irq(dev, irq, ch943x_ist_top, ch943x_ist,
-					//					IRQF_ONESHOT | flags, dev_name(dev), s);
-					flags, dev_name(dev), s);
+										IRQF_ONESHOT | flags, dev_name(dev), s);
+					// flags, dev_name(dev), s);
 	mdelay(200);
 	dev_dbg(dev, "%s - devm_request_threaded_irq =%d result:%d\n", __func__, irq, ret);
 	g_ch943x_port = s;
@@ -1529,7 +1569,7 @@ int ch9434_create_sysfs(struct spi_device *spi)
 static int ch943x_spi_probe(struct spi_device *spi)
 {
 	struct ch943x_devtype *devtype = &ch943x_devtype;
-	unsigned long flags = IRQF_TRIGGER_FALLING;
+	unsigned long flags = IRQF_TRIGGER_LOW;
 	int ret;
 	u32 save;
 
@@ -1569,7 +1609,7 @@ static int ch943x_spi_probe(struct spi_device *spi)
 	}
 #endif
 
-	ch9434_create_sysfs(spi);
+	// ch9434_create_sysfs(spi);
 
 out:
 	return ret;
