@@ -43,7 +43,7 @@
 #include <linux/uaccess.h>
 
 #define DRIVER_AUTHOR "WCH"
-#define DRIVER_DESC   "SPI serial driver for ch9434."
+#define DRIVER_DESC   "SPI serial driver for ch9434_b."
 #define VERSION_DESC  "V1.2 On 2023.10"
 
 #ifndef PORT_SC16IS7XX
@@ -53,7 +53,7 @@
 #define USE_IRQ_FROM_DTS
 #define GPIO_NUMBER 0
 #define USE_SPI_MODE
-#define CH943X_NAME_SPI "ch943x_spi"
+#define CH943X_NAME_SPI "ch943x_spi_b"
 
 #define IOCTL_MAGIC	       'W'
 #define IOCTL_CMD_GPIOENABLE   _IOW(IOCTL_MAGIC, 0x80, u16)
@@ -581,7 +581,7 @@ static void ch943x_raw_read(struct uart_port *port, u8 reg, unsigned char *buf, 
 #endif
 
 static struct ch943x_devtype ch943x_devtype = {
-	.name = "CH943X",
+	.name = "CH943X_B",
 	.nr_uart = 4,
 };
 
@@ -1337,7 +1337,7 @@ static int ch943x_probe(struct spi_device *spi, struct ch943x_devtype *devtype, 
 
 	/* Register UART driver */
 	s->uart.owner = THIS_MODULE;
-	s->uart.dev_name = "ttyWCH";
+	s->uart.dev_name = "ttyWCHB";
 	s->uart.nr = devtype->nr_uart;
 	ret = uart_register_driver(&s->uart);
 	if (ret) {
@@ -1470,7 +1470,7 @@ static int ch943x_remove(struct device *dev)
 
 static const struct of_device_id __maybe_unused ch943x_dt_ids[] = {
 	{
-		.compatible = "wch,ch943x",
+		.compatible = "wch,ch943x_b",
 		.data = &ch943x_devtype,
 	},
 	{},
@@ -1514,7 +1514,7 @@ int ch9434_create_sysfs(struct spi_device *spi)
 		return -EIO;
 	}
 
-	err = sysfs_create_link(NULL, &spi->dev.kobj, "ch9434");
+	err = sysfs_create_link(NULL, &spi->dev.kobj, "ch9434_b");
 	if (err < 0) {
 		dev_err(&spi->dev, "Failed to create link!");
 		return -EIO;
@@ -1615,7 +1615,7 @@ module_init(ch943x_init);
 static void __exit ch943x_exit(void)
 {
 	printk(KERN_INFO KBUILD_MODNAME ": "
-					"ch943x driver exit.\n");
+					"ch943x_b driver exit.\n");
 	spi_unregister_driver(&ch943x_spi_uart_driver);
 }
 module_exit(ch943x_exit);
