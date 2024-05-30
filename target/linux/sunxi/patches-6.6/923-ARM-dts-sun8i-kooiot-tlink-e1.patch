@@ -412,7 +412,7 @@
 +	phy-mode = "rmii";
 +	phy-supply = <&reg_vcc_3v3>;
 +	snps,reset-gpio = <&pio 4 13 GPIO_ACTIVE_LOW>; /* PE13 */
-+	snps,reset-delays-us = <0 100000 10000000>;
++	snps,reset-delays-us = <0 50000 5000000>;
 +	status = "okay";
 +};
 +

@@ -12,7 +12,7 @@
  	sun9i-a80-cubieboard4.dtb
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-t113-tlink-dly-e102.dts
-@@ -0,0 +1,308 @@
+@@ -0,0 +1,312 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 +
@@ -123,6 +123,10 @@
 +	regulator-min-microvolt = <1800000>;
 +	regulator-max-microvolt = <1800000>; 
 +	ldo-in-supply = <&reg_vcc_3v3>;
++};
++
++&dcxo {
++	clock-frequency = <24000000>;
 +};
 +
 +&cpu0 {
