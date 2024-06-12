@@ -1,11 +1,11 @@
 --- a/arch/arm/boot/dts/allwinner/Makefile
 +++ b/arch/arm/boot/dts/allwinner/Makefile
-@@ -340,7 +340,8 @@ dtb-$(CONFIG_MACH_SUN8I) += \
- 	sun8i-t113-mangopi-dual.dtb \
+@@ -341,7 +341,8 @@ dtb-$(CONFIG_MACH_SUN8I) += \
  	sun8i-t113-iot-station.dtb \
  	sun8i-t113-tlink-rp-t113.dtb \
--	sun8i-t113-tlink-dly-e102.dtb
-+	sun8i-t113-tlink-dly-e102.dtb \
+	sun8i-t113-tlink-dly-e102.dtb \
+-	sun8i-t113-tlink-dly-e102-spinand.dtb
++	sun8i-t113-tlink-dly-e102-spinand.dtb \
 +	sun8i-t113-tlink-e1.dtb
  dtb-$(CONFIG_MACH_SUN9I) += \
  	sun9i-a80-optimus.dtb \

@@ -1,0 +1,5 @@
+setenv mtdids spi-nand0=0
+setenv mtdparts mtdparts=0:1M(boot),-(ubi0)
+setenv bootcmd ubifsmount ubi0:kernel; ubifsload $kernel_addr_r uImage; ubifsload $fdt_addr_r dtb; bootm 0x41000000 - 0x41800000
+setenv bootargs console=ttyS0,115200 earlyprintk panic=5 rootwait ubi.mtd=1,2048 rootfstype=ubifs root=ubi0:rootfs rw
+run bootcmd

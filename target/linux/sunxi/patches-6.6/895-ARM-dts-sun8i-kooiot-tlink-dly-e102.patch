@@ -12,7 +12,7 @@
  	sun9i-a80-cubieboard4.dtb
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-t113-tlink-dly-e102.dts
-@@ -0,0 +1,312 @@
+@@ -0,0 +1,330 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 +
@@ -175,6 +175,18 @@
 +		function = "i2c0";
 +	};
 +
++	spi0_pc_pins: spi0-pc-pins {
++		pins = "PC2", "PC4", "PC5", "PC6", "PC7";
++		function = "spi0";
++	};
++
++	spi0_cs0_pin: spi0-cs-pin {
++		pins = "PC3";
++		function = "spi0";
++		drive-strength = <10>;
++		bias-pull-up;
++	};
++
 +	/omit-if-no-ref/
 +	rgmii_pg_pins: rgmii-pg-pins {
 +		pins = "PG0", "PG1", "PG2", "PG3", "PG4", "PG5",
@@ -217,14 +229,15 @@
 +};
 +
 +&spi0 {
-+	pinctrl-0 = <&spi0_pins>;
++	pinctrl-0 = <&spi0_pc_pins &spi0_cs0_pin>;
 +	pinctrl-names = "default";
 +	status = "okay";
 +
-+	flash@0 {
++	flash: spinand@0 {
 +		compatible = "spi-nand";
 +		reg = <0>;
 +
++		/*
 +		partitions {
 +			compatible = "fixed-partitions";
 +			#address-cells = <1>;
@@ -233,23 +246,28 @@
 +			partition@0 {
 +				label = "boot0";
 +				reg = <0x00000000 0x00100000>;
++				read-only;
 +			};
 +
 +			partition@100000 {
 +				label = "uboot";
 +				reg = <0x00100000 0x00300000>;
++				read-only;
 +			};
 +
 +			partition@400000 {
-+				label = "secure_storage";
++				label = "factory";
 +				reg = <0x00400000 0x00100000>;
++				read-only;
 +			};
 +
 +			partition@500000 {
-+				label = "sys";
++				label = "ubi";
 +				reg = <0x00500000 0x0fb00000>;
++				compatible = "linux,ubi";
 +			};
 +		};
++		*/
 +	};
 +};
 +

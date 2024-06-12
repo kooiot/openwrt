@@ -665,5 +665,30 @@ define Device/kooiot_tlink-dly-e102
     blockd kmod-usb-storage \
 	usb-otg-sunxi kmod-usb-gadget-serial
   SOC := sun8i-t113
+  IMAGES := sdcard.img.gz
 endef
 TARGET_DEVICES += kooiot_tlink-dly-e102
+
+define Device/kooiot_tlink-dly-e102-spinand
+  $(Device/NAND)
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink DLY-E102 (SPI NAND)
+  DEVICE_PACKAGES:=kmod-rtc-sunxi \
+    wpad-basic-mbedtls \
+    kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+	kmod-can-bcm kmod-can-raw ip-full\
+    uqmi fdisk usbutils freeioe wwanleds \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    blockd kmod-usb-storage \
+	usb-otg-sunxi kmod-usb-gadget-serial
+  SOC := sun8i-t113
+  IMAGES := ubispinand.img.gz
+  IMAGE/factory.img := append-kernel | pad-to $$$$(CONFIG_TARGET_KERNEL_PARTSIZE) | \
+	append-ubi | pad-to $$$$(CONFIG_TARGET_ROOTFS_PARTSIZE)
+endef
+TARGET_DEVICES += kooiot_tlink-dly-e102-spinand
