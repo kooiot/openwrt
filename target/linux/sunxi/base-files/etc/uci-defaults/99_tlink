@@ -71,8 +71,17 @@ tlink_add_4g_wan() {
 	lsusb -d "1508:1001" > /dev/null
 	if [ $? -eq 0 ]
 	then
+		echo "Fibocom NL668-CN found!" > /dev/kmsg
 		AT_PORT='/dev/ttyUSB1'
 		AT_PORT_INFO='/dev/ttyUSB2'
+	fi
+	# detec Fibocom MC611-CN
+	lsusb -d "2cb7:0a0b" > /dev/null
+	if [ $? -eq 0 ]
+	then
+		echo "Fibocom FM661-CN found!" > /dev/kmsg
+		AT_PORT='/dev/ttyUSB0' # USB3-AT USB0-MODEM
+		AT_PORT_INFO='/dev/ttyUSB3'
 	fi
 
 	uci set network.4g_wan='interface'
