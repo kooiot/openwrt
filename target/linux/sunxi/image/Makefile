@@ -104,12 +104,13 @@ define Device/NAND
   UBINIZE_OPTS := -vv
   FILESYSTEMS := ubifs
   KERNEL := kernel-bin | lzma | uImage lzma | sunxi-kernelubifs
-  IMAGES := ubispinand.img.gz
-  IMAGE/ubispinand.img.gz := \
+  IMAGES := factory.img sysupgrade.bin
+  IMAGE/factory.img := \
 	  sunxi-spl-bin | \
       pad-to $$(CONFIG_SUN8I_V3S_OFFSET_UBI) | \
-      append-ubi | \
-      gzip
+      append-ubi
+  IMAGE/sysupgrade.bin := \
+	  sysupgrade-tar | append-metadata
 endef
 
 include $(SUBTARGET).mk

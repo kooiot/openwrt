@@ -62,6 +62,23 @@ do_product_sn_kooiot() {
 	fi
 }
 
+do_product_sn_kooiot_nand() {
+	if [ ! -f /etc/fw_env.config ]; then
+		case "$(board_name)" in
+			"kooiot,tlink-dly-e102-spinand")
+				echo "/dev/ubi0:ubootenv	0x0	0x1f000 	0x1f000" > /etc/fw_env.config
+				echo "/dev/ubi0:ubootenv2	0x0	0x1f000 	0x1f000" >> /etc/fw_env.config
+				;;
+		esac
+	fi
+	val=$(fw_printenv | grep sn=)	
+	[ -z "$val" ] && val="sn=UNKNOWN"
+	product_sn="${val:3:16}"
+	mkdir -p /tmp/sysinfo
+
+	[ -e /tmp/sysinfo/product_sn ] || echo ${product_sn} > /tmp/sysinfo/product_sn
+}
+
 do_kooiot_tlink_generic() {
 	. /lib/functions.sh
 
@@ -81,6 +98,7 @@ do_kooiot_tlink_generic() {
 	"kooiot,tlink-qh-x40"|\
 	"kooiot,tlink-m408"|\
 	"kooiot,tlink-m416"|\
+	"kooiot,tlink-dly-e102"|\
 	"kooiot,tlink-r1")
 		do_product_sn_kooiot_emmc
 		;;
@@ -93,6 +111,9 @@ do_kooiot_tlink_generic() {
 		;;
 	"kooiot,tlink-k2x")
 		do_product_sn_kooiot_nvmem "2" "0050"
+		;;
+	"kooiot,tlink-dly-e102-spinand")
+		do_product_sn_kooiot_nand
 		;;
 	esac
 

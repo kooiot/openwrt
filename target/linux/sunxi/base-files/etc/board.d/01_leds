@@ -31,6 +31,10 @@ kooiot,tlink-k2x)
 kooiot,tlink-s1)
 	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "wwan0"
 	;;
+kooiot,tlink-dly-e102|\
+kooiot,tlink-dly-e102-spinand)
+	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "wwan0"
+	;;
 esac
 
 board_config_flush

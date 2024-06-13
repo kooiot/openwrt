@@ -28,7 +28,7 @@
 +
 +/ {
 +	model = "ThingsLink DLY-E102";
-+	compatible = "kooiot,dly-e102", "allwinner,sun8i-t113";
++	compatible = "kooiot,tlink-dly-e102", "allwinner,sun8i-t113";
 +
 +	aliases {
 +		ethernet0 = &emac;
@@ -106,8 +106,8 @@
 +
 +		pcie_reset {
 +			gpio-export,name = "pcie_reset";
-+			gpio-export,output=<1>;
-+			gpios = <&pio 3 2 GPIO_ACTIVE_LOW>; /* PD2 */
++			gpio-export,output=<0>;
++			gpios = <&pio 3 2 GPIO_ACTIVE_HIGH>; /* PD2 */
 +		};
 +
 +		pcie_power {
@@ -192,7 +192,7 @@
 +		pins = "PG0", "PG1", "PG2", "PG3", "PG4", "PG5",
 +				"PG6", "PG7", "PG8", "PG9", "PG10",
 +				"PG12", "PG13", "PG14", "PG15";
-+		function = "gmac";
++		function = "emac";
 +		drive-strength = <30>;
 +		bias-pull-up;
 +	};
@@ -311,9 +311,9 @@
 +};
 +
 +&mdio {
-+	ext_rgmii_phy: ethernet-phy@1 {
++	ext_rgmii_phy: ethernet-phy@0 {
 +		compatible = "ethernet-phy-ieee802.3-c22";
-+		reg = <1>;
++		reg = <0>;
 +	};
 +};
 +
@@ -323,7 +323,7 @@
 +	phy-handle = <&ext_rgmii_phy>;
 +	phy-mode = "rgmii-id";
 +	phy-supply = <&reg_vcc_3v3>;
-+	status = "disabled";
++	status = "okay";
 +};
 +
 +/*

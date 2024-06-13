@@ -687,8 +687,5 @@ define Device/kooiot_tlink-dly-e102-spinand
     blockd kmod-usb-storage \
 	usb-otg-sunxi kmod-usb-gadget-serial
   SOC := sun8i-t113
-  IMAGES := ubispinand.img.gz
-  IMAGE/factory.img := append-kernel | pad-to $$$$(CONFIG_TARGET_KERNEL_PARTSIZE) | \
-	append-ubi | pad-to $$$$(CONFIG_TARGET_ROOTFS_PARTSIZE)
 endef
 TARGET_DEVICES += kooiot_tlink-dly-e102-spinand

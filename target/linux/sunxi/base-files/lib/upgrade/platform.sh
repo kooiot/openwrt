@@ -21,6 +21,13 @@ tlink_check_image() {
 platform_check_image() {
 	local diskdev partdev diff
 
+	case "$(board_name)" in
+		"kooiot,tlink-dly-e102-spinand")
+			nand_do_platform_check "$(board_name)" "$1"
+			return $?
+			;;
+	esac
+
 	export_bootdevice && export_partdevice diskdev 0 || {
 		echo "Unable to determine upgrade device"
 		return 1
@@ -81,6 +88,10 @@ platform_check_image() {
 		tlink_check_image "sun8i-t113s" "$1" && return 0
 		return 1
 		;;
+	"kooiot,tlink-dly-e102")
+		tlink_check_image "sun8i-t113s" "$1" && return 0
+		return 1
+		;;
 	*)
 		return 0
 		;;
@@ -121,6 +132,8 @@ platform_pre_upgrade() {
 	"kooiot,tlink-qh-x40"|\
 	"kooiot,tlink-m408"|\
 	"kooiot,tlink-m416"|\
+	"kooiot,tlink-dly-e102"|\
+	"kooiot,tlink-dly-e102-spinand"|\
 	"kooiot,tlink-r1")
 		platform_kooiot_pre_upgrade
 		;;
@@ -129,6 +142,13 @@ platform_pre_upgrade() {
 
 platform_copy_config() {
 	local partdev
+
+	case "$(board_name)" in
+		"kooiot,tlink-dly-e102-spinand")
+			echo "Backup configuration is not supported!!!!"
+			return 0;
+			;;
+	esac
 
 	if export_partdevice partdev 1; then
 		mount -o rw,noatime "/dev/$partdev" /mnt
@@ -139,6 +159,16 @@ platform_copy_config() {
 
 platform_do_upgrade() {
 	local diskdev partdev diff
+
+	case "$(board_name)" in
+		"kooiot,tlink-dly-e102-spinand")
+			echo "Do SPI-NAND sysupgrade!!!"
+			CI_KERNPART="kernel"
+			CI_UBIPART="ubi0"
+			nand_do_upgrade "$1"
+			return $?
+			;;
+	esac
 
 	export_bootdevice && export_partdevice diskdev 0 || {
 		echo "Unable to determine upgrade device"
