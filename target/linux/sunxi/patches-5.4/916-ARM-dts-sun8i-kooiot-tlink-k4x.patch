@@ -10,7 +10,7 @@
  	sun8i-s3-olinuxino.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k4x.dts
-@@ -0,0 +1,721 @@
+@@ -0,0 +1,744 @@
 +/*
 + * Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 + *
@@ -82,11 +82,13 @@
 +			gpios = <&pio 8 6 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>; /* PI6 */
 +		};
 +
++		/*
 +		uart_rst1 {
 +			label = "uart_rst1";
 +			linux,code = <101>;
-+			gpios = <&pio 8 9 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>; /* PI9 */
++			gpios = <&pio 8 9 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>; // PI9
 +		};
++		*/
 +	};
 +
 +	gpio_export {
@@ -251,6 +253,27 @@
 +		vin-supply = <&reg_vcc5v0>;
 +		gpio = <&pio 6 11 GPIO_ACTIVE_HIGH>; /* PG11 */
 +		enable-active-high;
++	};
++
++	watchdog {
++		compatible = "linux,wdt-gpio";
++		vcc-supply=<&wdt_en>;
++		gpios = <&pio 1 12 GPIO_ACTIVE_HIGH>; /* PB12 */
++		hw_algo = "toggle";
++		hw_margin_ms = <200>;
++		always-running;
++	};
++
++	/* watchdog enable pin */
++	wdt_en: fixedregulator@0 {
++		compatible = "regulator-fixed";
++		regulator-always-on;
++		regulator-boot-on;
++		regulator-name = "wdt_en";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		gpios = <&pio 1 10 GPIO_ACTIVE_LOW>; /* PB10 */
++		startup-delay-us=<3000000>; // 3 seconds
 +	};
 +};
 +
