@@ -164,7 +164,7 @@ platform_do_upgrade() {
 		"kooiot,tlink-dly-e102-spinand")
 			echo "Do SPI-NAND sysupgrade!!!"
 			CI_KERNPART="kernel"
-			CI_UBIPART="ubi0"
+			CI_UBIPART="ubi"
 			nand_do_upgrade "$1"
 			return $?
 			;;

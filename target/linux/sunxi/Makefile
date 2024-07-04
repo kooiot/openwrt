@@ -8,7 +8,7 @@ ARCH:=arm
 BOARD:=sunxi
 BOARDNAME:=Allwinner ARM SoCs
 # FEATURES:=fpu usb ext4 display rootfs-part rtc squashfs usbgadget
-FEATURES:=usb ext4 display rootfs-part rtc squashfs nand ubifs boot-part
+FEATURES:=usb display rootfs-part rtc squashfs nand boot-part
 SUBTARGETS:=cortexa8 cortexa7 cortexa53
 
 KERNEL_PATCHVER:=6.6

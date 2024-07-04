@@ -12,7 +12,7 @@
  	sun9i-a80-cubieboard4.dtb
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-t113-tlink-e1.dts
-@@ -0,0 +1,418 @@
+@@ -0,0 +1,428 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 +
@@ -104,31 +104,31 @@
 +	leds {
 +		compatible = "gpio-leds";
 +
-+		/*
 +	 	status_led {
 +	 		linux,default-trigger = "heartbeat";
 +	 		label = "blue:status";
-+	 		gpios = <&pio 3 22 GPIO_ACTIVE_HIGH>;
++	 		gpios = <&pio 4 11 GPIO_ACTIVE_HIGH>;
 +	 	};
 +
++		/*
 +		modem {
 +			label = "kooiot:green:modem";
-+			gpios = <&pio 4 0 GPIO_ACTIVE_HIGH>; // PE0
++			gpios = <&pio 4 0 GPIO_ACTIVE_HIGH>; // PE0  Need to fix
 +			default-state = "off";
 +		};
 +
 +		csq {
 +			label = "kooiot:green:csq";
-+			gpios = <&pio 4 1 GPIO_ACTIVE_HIGH>; // PE1
++			gpios = <&pio 4 1 GPIO_ACTIVE_HIGH>; // PE1  Need to fix
 +			default-state = "off";
 +		};
-+		*/
 +
 +		cloud {
 +			label = "kooiot:green:cloud";
-+			gpios = <&pio 4 11 GPIO_ACTIVE_HIGH>; /* PE11 */
++			gpios = <&pio 4 11 GPIO_ACTIVE_HIGH>; // PE11
 +			default-state = "off";
 +		};
++		*/
 +	};
 +
 +	gpio_keys {
@@ -262,6 +262,11 @@
 +		bias-pull-up;
 +	};
 +
++	emac_rst_pin: emac-rst-pin {
++		pins = "PE13";
++		function = "gpio_out";
++	};
++
 +	wifi_rst: wifi-rst-pin {
 +		pins = "PG12";
 +		function = "gpio_out";
@@ -325,6 +330,11 @@
 +	pinctrl-names = "default";
 +	cd-gpios = <&pio 5 6 GPIO_ACTIVE_LOW>; /* PF6 */
 +	status = "okay";
++};
++
++&mmc1_pins {
++	drive-strength = <40>;
++	bias-pull-up;
 +};
 +
 +&mmc1 {
@@ -412,7 +422,7 @@
 +	phy-mode = "rmii";
 +	phy-supply = <&reg_vcc_3v3>;
 +	snps,reset-gpio = <&pio 4 13 GPIO_ACTIVE_LOW>; /* PE13 */
-+	snps,reset-delays-us = <0 50000 5000000>;
++	snps,reset-delays-us = <0 50000 500000>;
 +	status = "okay";
 +};
 +

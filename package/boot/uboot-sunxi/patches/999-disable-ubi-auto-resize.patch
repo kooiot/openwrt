@@ -1,0 +1,12 @@
+--- a/drivers/mtd/ubi/vtbl.c
++++ b/drivers/mtd/ubi/vtbl.c
+@@ -657,6 +657,9 @@ static int init_volumes(struct ubi_devic
+ 	ubi->rsvd_pebs += reserved_pebs;
+ 	ubi->avail_pebs -= reserved_pebs;
+ 
++	// Dislabe ubi autoresize, as this cause kernel cannot load ubi fs
++	ubi->autoresize_vol_id = -1;
++
+ 	return 0;
+ }
+ 

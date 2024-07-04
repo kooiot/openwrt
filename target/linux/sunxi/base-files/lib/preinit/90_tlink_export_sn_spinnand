@@ -1,0 +1,25 @@
+do_product_sn_kooiot_nand() {
+	if [ ! -f /etc/fw_env.config ]; then
+		echo "fw_env.config missing!!!!" > /dev/kmsg
+		return 1
+	fi
+	val=$(fw_printenv | grep sn=)	
+	[ -z "$val" ] && val="sn=UNKNOWN"
+	product_sn="${val:3:16}"
+	mkdir -p /tmp/sysinfo
+
+	[ -e /tmp/sysinfo/product_sn ] || echo ${product_sn} > /tmp/sysinfo/product_sn
+}
+
+do_kooiot_tlink_spinnand() {
+	. /lib/functions.sh
+
+	case "$(board_name)" in
+	"kooiot,tlink-dly-e102-spinand")
+		do_product_sn_kooiot_nand
+		;;
+	esac
+
+}
+
+boot_hook_add preinit_mount_root do_kooiot_tlink_spinnand
