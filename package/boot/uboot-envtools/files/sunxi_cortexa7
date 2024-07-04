@@ -16,7 +16,6 @@ ubootenv_add_ubi_default() {
 	local envdev2=/dev/$(nand_find_volume $envubi ubootenv2)
 	ubootenv_add_uci_config "$envdev" "0x0" "0x1f000" "0x1f000" "1"
 	ubootenv_add_uci_config "$envdev2" "0x0" "0x1f000" "0x1f000" "1"
-	echo "UBI U-Boot env config file init" > /dev/kmsg
 }
 
 board=$(board_name)
