@@ -55,11 +55,12 @@ proto_3g_setup() {
 				ec20)
 					service="umts"
 					chat="/etc/chatscripts/3g_ec20.chat"
+				;;
 				fibocom)
 					service="umts"
 					chat="/etc/chatscripts/3g_fibocom.chat"
 				;;
-				*) chat="/etc/chatscripts/3g.chat"
+				*) chat="/etc/chatscripts/3g.chat";;
 			esac
 
 			cardinfo=$(gcom -d "$device" -s /etc/gcom/getcardinfo.gcom)
