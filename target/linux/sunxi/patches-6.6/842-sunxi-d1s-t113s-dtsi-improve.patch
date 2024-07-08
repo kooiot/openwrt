@@ -1,5 +1,5 @@
---- a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi	2024-05-11 17:53:54.817246645 +0800
-+++ b/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi	2024-05-11 17:54:14.628903221 +0800
+--- a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
++++ b/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
 @@ -396,6 +396,17 @@
  			ranges;
  			#address-cells = <1>;
@@ -18,8 +18,8 @@
  		};
  
  		dma: dma-controller@3002000 {
---- a/arch/arm/boot/dts/allwinner/sun8i-t113s.dtsi	2024-05-11 16:52:24.845762652 +0800
-+++ b/arch/arm/boot/dts/allwinner/sun8i-t113s.dtsi	2024-05-11 18:22:20.234679637 +0800
+--- a/arch/arm/boot/dts/allwinner/sun8i-t113s.dtsi
++++ b/arch/arm/boot/dts/allwinner/sun8i-t113s.dtsi
 @@ -31,6 +31,49 @@
  		};
  	};
@@ -70,8 +70,8 @@
  	gic: interrupt-controller@1c81000 {
  		compatible = "arm,gic-400";
  		reg = <0x03021000 0x1000>,
---- a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi	2024-05-11 17:53:54.817246645 +0800
-+++ b/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi	2024-05-11 17:54:14.628903221 +0800
+--- a/arch/arm/boot/dts/allwinner/sun8i-t113s.dtsi
++++ b/arch/arm/boot/dts/allwinner/sun8i-t113s.dtsi
 @@ -6,6 +6,7 @@
  #include <dt-bindings/interrupt-controller/arm-gic.h>
  #include <riscv/allwinner/sunxi-d1s-t113.dtsi>
