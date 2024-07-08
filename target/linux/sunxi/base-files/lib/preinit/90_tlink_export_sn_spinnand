@@ -1,7 +1,12 @@
 do_product_sn_kooiot_nand() {
 	if [ ! -f /etc/fw_env.config ]; then
-		echo "fw_env.config missing!!!!" > /dev/kmsg
-		return 1
+		if [ ! -f /etc/config/ubootenv ]; then
+			echo "U-Boot env settings missing!!!!" > /dev/kmsg
+			return 1
+		fi
+		. /lib/uboot-envtools.sh
+		. /lib/functions.sh
+		ubootenv_add_app_config
 	fi
 	val=$(fw_printenv | grep sn=)	
 	[ -z "$val" ] && val="sn=UNKNOWN"
