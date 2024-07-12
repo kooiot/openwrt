@@ -84,7 +84,8 @@ case "$(board_name)" in
 			NVMEM_PATH="/sys/bus/i2c/devices/4-0050/4-00500/nvmem"
 		fi
 		;;
-	"kooiot,tlink-k2")
+	"kooiot,tlink-k2"|\
+	"kooiot,tlink-k4x")
 		NVMEM_PATH="/sys/bus/i2c/devices/3-0050/eeprom"
 		if [ ! -f ${NVMEM_PATH} ]; then
 			NVMEM_PATH="/sys/bus/i2c/devices/3-0050/3-00501/nvmem"

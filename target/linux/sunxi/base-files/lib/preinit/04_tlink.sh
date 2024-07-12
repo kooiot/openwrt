@@ -87,7 +87,8 @@ do_kooiot_tlink_generic() {
 	"kooiot,tlink-k1")
 		do_product_sn_kooiot_nvmem "4" "0050"
 		;;
-	"kooiot,tlink-k2")
+	"kooiot,tlink-k2"|\
+	"kooiot,tlink-k4x")
 		do_product_sn_kooiot_nvmem "3" "0050"
 		;;
 	"kooiot,tlink-k2x")

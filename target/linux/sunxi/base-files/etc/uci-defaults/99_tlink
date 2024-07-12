@@ -167,6 +167,7 @@ tlink_init_4g() {
 
 tlink_add_5g_wan() {
 	# detect port by lsusb
+	# EC20 USB2-AT USB3-MODEM
 	local AT_PORT_INFO='/dev/ttyUSB2'
 	local AT_PORT='/dev/ttyUSB3'
 	lsusb -d "2dee:4d52" > /dev/null
@@ -237,6 +238,7 @@ tlink_default() {
 
 	case "$(board_name)" in
 		"kooiot,tlink-k2x"|\
+		"kooiot,tlink-k4x"|\
 		"kooiot,tlink-k2")
 			tlink_init_5g
 			;;
@@ -290,6 +292,7 @@ case "$(board_name)" in
 "kooiot,tlink-k1"|\
 "kooiot,tlink-k2"|\
 "kooiot,tlink-k2x"|\
+"kooiot,tlink-k4x"|\
 "kooiot,tlink-s1"|\
 "kooiot,tlink-ok-a40i"|\
 "kooiot,tlink-dj-a40i-e"|\
