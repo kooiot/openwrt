@@ -1,13 +1,13 @@
 --- a/arch/arm/boot/dts/Makefile
 +++ b/arch/arm/boot/dts/Makefile
-@@ -1132,6 +1132,7 @@
-	sun8i-r40-tlink-k1.dtb \
-	sun8i-r40-tlink-k2.dtb \
-	sun8i-r40-tlink-k2x.dtb \
+@@ -1280,6 +1280,7 @@
+ 	sun8i-r40-tlink-k1.dtb \
+ 	sun8i-r40-tlink-k2.dtb \
+ 	sun8i-r40-tlink-k2x.dtb \
 +	sun8i-r40-tlink-k4x.dtb \
-	sun8i-t3-tlink-m408.dtb \
- 	sun8i-s3-lichee-zero-plus.dtb \
- 	sun8i-s3-olinuxino.dtb \
+ 	sun8i-r40-tlink-dj-a40i-e.dtb \
+ 	sun8i-r40-tlink-qh-x40.dtb \
+ 	sun8i-r40-tlink-nano-a40i.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-r40-tlink-k4x.dts
 @@ -0,0 +1,744 @@
