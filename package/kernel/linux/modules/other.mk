@@ -761,6 +761,25 @@ endef
 $(eval $(call KernelPackage,serial-xr14xx-usb))
 
 
+define KernelPackage/serial-ch9434
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=CH9434 SPI to UART Support
+  KCONFIG:=CONFIG_SERIAL_CH9434 \
+		   CONFIG_SERIAL_CH9434_B \
+		   CONFIG_SERIAL_CH9434_C
+  FILES:=$(LINUX_DIR)/drivers/tty/serial/ch9434.ko \
+		 $(LINUX_DIR)/drivers/tty/serial/ch9434_b.ko \
+		 $(LINUX_DIR)/drivers/tty/serial/ch9434_c.ko
+  AUTOLOAD:=$(call AutoLoad,50,ch9434 ch9434_b ch9434_c,1)
+endef
+
+define KernelPackage/serial-ch9434/description
+ Kernel module for CH9434 SPI to UARTs
+endef
+
+$(eval $(call KernelPackage,serial-ch9434))
+
+
 define KernelPackage/regmap-core
   SUBMENU:=$(OTHER_MENU)
   TITLE:=Generic register map support

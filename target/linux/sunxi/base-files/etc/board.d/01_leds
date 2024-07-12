@@ -20,7 +20,8 @@ kooiot,tlink-r1)
 	ucidef_set_led_default "power" "power" "kooiot:blue:power" "1"
 	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "wwan0"
 	;;
-kooiot,tlink-k2)
+kooiot,tlink-k2|\
+kooiot,tlink-k4x)
 	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "wwan0"
 	;;
 kooiot,tlink-k2x)

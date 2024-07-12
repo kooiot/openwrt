@@ -1,0 +1,42 @@
+--- a/drivers/tty/serial/Kconfig
++++ b/drivers/tty/serial/Kconfig
+@@ -79,6 +79,27 @@ config SERIAL_AMBA_PL011_CONSOLE
+ 	  your boot loader (lilo or loadlin) about how to pass options to the
+ 	  kernel at boot time.)
+ 
++config SERIAL_CH9434
++	tristate "SERIAL_CH9434 serial support"
++	depends on SPI
++	select SERIAL_CORE
++	help
++	  This selects support for ch9434 serial ports.
++
++config SERIAL_CH9434_B
++	tristate "SERIAL_CH9434_B serial support"
++	depends on SPI
++	select SERIAL_CORE
++	help
++	  This selects support for ch9434_b serial ports.
++
++config SERIAL_CH9434_C
++	tristate "SERIAL_CH9434_C serial support"
++	depends on SPI
++	select SERIAL_CORE
++	help
++	  This selects support for ch9434_c serial ports.
++
+ config SERIAL_EARLYCON_SEMIHOST
+ 	bool "Early console using Arm compatible semihosting"
+ 	depends on ARM64 || ARM || RISCV
+--- a/drivers/tty/serial/Makefile
++++ b/drivers/tty/serial/Makefile
+@@ -32,6 +32,9 @@ obj-$(CONFIG_SERIAL_XR14XX_USB) += xr14x
+
+ obj-$(CONFIG_SERIAL_AMBA_PL010) += amba-pl010.o
+ obj-$(CONFIG_SERIAL_AMBA_PL011) += amba-pl011.o
++obj-$(CONFIG_SERIAL_CH9434) += ch9434.o
++obj-$(CONFIG_SERIAL_CH9434_B) += ch9434_b.o
++obj-$(CONFIG_SERIAL_CH9434_C) += ch9434_c.o
+ obj-$(CONFIG_SERIAL_CLPS711X) += clps711x.o
+ obj-$(CONFIG_SERIAL_PXA_NON8250) += pxa.o
+ obj-$(CONFIG_SERIAL_SA1100) += sa1100.o

@@ -117,6 +117,73 @@ tlink_k2_wk_spi() {
 	esac
 }
 
+tlink_k2_ch432_spi() {
+	case "$DEVICENAME" in
+		ttyWCH0)
+			rm /dev/ttyS7
+			ln -s /dev/$DEVICENAME /dev/ttyS7
+			;;
+		ttyWCH1)
+			rm /dev/ttyS8
+			ln -s /dev/$DEVICENAME /dev/ttyS8
+			;;
+	esac
+}
+
+tlink_k4x_ch_spi() {
+	case "$DEVICENAME" in
+		ttyWCH0)
+			rm /dev/ttyS5
+			ln -s /dev/$DEVICENAME /dev/ttyS5
+			;;
+		ttyWCH1)
+			rm /dev/ttyS6
+			ln -s /dev/$DEVICENAME /dev/ttyS6
+			;;
+		ttyWCH2)
+			rm /dev/ttyS7
+			ln -s /dev/$DEVICENAME /dev/ttyS7
+			;;
+		ttyWCH3)
+			rm /dev/ttyS8
+			ln -s /dev/$DEVICENAME /dev/ttyS8
+			;;
+		ttyWCHB0)
+			rm /dev/ttyS9
+			ln -s /dev/$DEVICENAME /dev/ttyS9
+			;;
+		ttyWCHB1)
+			rm /dev/ttyS10
+			ln -s /dev/$DEVICENAME /dev/ttyS10
+			;;
+		ttyWCHB2)
+			rm /dev/ttyS11
+			ln -s /dev/$DEVICENAME /dev/ttyS11
+			;;
+		ttyWCHB3)
+			rm /dev/ttyS12
+			ln -s /dev/$DEVICENAME /dev/ttyS12
+			;;
+		ttyWCHC0)
+			rm /dev/ttyS13
+			ln -s /dev/$DEVICENAME /dev/ttyS13
+			;;
+		ttyWCHC1)
+			rm /dev/ttyS14
+			ln -s /dev/$DEVICENAME /dev/ttyS14
+			;;
+		ttyWCHC2)
+			rm /dev/ttyS15
+			ln -s /dev/$DEVICENAME /dev/ttyS15
+			;;
+		ttyWCHC3)
+			rm /dev/ttyS16
+			ln -s /dev/$DEVICENAME /dev/ttyS16
+			;;
+	esac
+}
+
+
 case $board in
 kooiot,tlink-m408)
 	tlink_m408_xr_usb
@@ -130,6 +197,10 @@ kooiot,tlink-k1)
 kooiot,tlink-k2|\
 kooiot,tlink-k2x)
 	tlink_k2_wk_spi
+	tlink_k2_ch432_spi
+	;;
+kooiot,tlink-k4x)
+	tlink_k4x_ch_spi
 	;;
 esac
 
