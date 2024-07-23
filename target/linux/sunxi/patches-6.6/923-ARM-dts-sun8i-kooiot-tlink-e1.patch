@@ -350,7 +350,7 @@
 +	cap-sdio-irq;
 +	keep-power-in-suspend;
 +	ignore-pm-notify;
-+	status = "okay";
++	status = "disabled";
 +
 +	aw869a: sdio_wifi@1 {
 +        reg = <1>;
@@ -409,7 +409,7 @@
 +	ext_rmii_phy: ethernet-phy@3 {
 +		compatible = "ethernet-phy-ieee802.3-c22";
 +		reg = <3>;
-+		tlink,yt8512b-hack;
++		// tlink,yt8512b-hack;
 +		motorcomm,led0 = <0x30>;
 +		motorcomm,led1 = <0x331>;
 +	};
