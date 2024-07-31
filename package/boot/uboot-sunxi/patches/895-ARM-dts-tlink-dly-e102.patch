@@ -48,7 +48,7 @@
 +CONFIG_DRAM_SUNXI_TPR13=0x34050100
 --- /dev/null
 +++ b/arch/arm/dts/sun8i-t113s-tlink-dly-e102.dts
-@@ -0,0 +1,166 @@
+@@ -0,0 +1,167 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +// Copyright (C) 2022 Arm Ltd.
 +
@@ -115,6 +115,16 @@
 +	status = "okay";
 +};
 +
++&mmc2 {
++	bus-width = <8>;
++	non-removable;
++	vmmc-supply = <&reg_3v3>;
++	vqmmc-supply = <&reg_3v3>;
++	pinctrl-0 = <&mmc2_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++};
++
 +&pio {
 +	vcc-pb-supply = <&reg_3v3>;
 +	vcc-pd-supply = <&reg_3v3>;
@@ -147,19 +157,10 @@
 +	cpu-supply = <&reg_vcc_core>;
 +};
 +
-+&mmc1 {
-+	rtl8189ftv: wifi@1 {
-+		reg = <1>;
-+		interrupt-parent = <&pio>;
-+		interrupts = <6 10 IRQ_TYPE_LEVEL_LOW>; /* PG10 = WL_WAKE_AP */
-+		interrupt-names = "host-wake";
-+	};
-+};
-+
 +&spi0 {
 +	pinctrl-0 = <&spi0_pins>;
 +	pinctrl-names = "default";
-+	status = "okay";
++	status = "disabled";
 +
 +	flash: spinand@0 {
 +		#address-cells = <1>;

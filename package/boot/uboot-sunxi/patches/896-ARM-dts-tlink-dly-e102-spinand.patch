@@ -65,7 +65,7 @@
 +CONFIG_DRAM_SUNXI_TPR13=0x34050100
 --- /dev/null
 +++ b/arch/arm/dts/sun8i-t113s-tlink-dly-e102-spinand.dts
-@@ -0,0 +1,29 @@
+@@ -0,0 +1,33 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +// Copyright (C) 2022 Arm Ltd.
 +
@@ -76,6 +76,10 @@
 +/ {
 +	model = "ThingsLink DLY-E102 (SPI-NAND)";
 +	compatible = "kooiot,tlink-dly-e102-spinand", "allwinner,sun8i-t113s";
++};
++
++&spi0 {
++	status = "okay";
 +};
 +
 +&flash {

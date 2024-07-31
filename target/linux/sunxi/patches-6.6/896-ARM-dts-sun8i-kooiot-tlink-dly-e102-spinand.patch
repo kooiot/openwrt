@@ -12,7 +12,7 @@
  	sun9i-a80-cubieboard4.dtb
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-t113-tlink-dly-e102-spinand.dts
-@@ -0,0 +1,33 @@
+@@ -0,0 +1,37 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 +
@@ -27,6 +27,10 @@
 +	chosen {
 +		bootargs = "root=/dev/fit0 rootwait";
 +	};
++};
++
++&spi0 {
++	status = "okay";
 +};
 +
 +&flash {
