@@ -9,12 +9,19 @@ rockchip_setup_interfaces()
 	local board="$1"
 
 	case "$board" in
+	friendlyarm,nanopc-t6|\
+	friendlyarm,nanopi-r5c|\
+	firefly,rk3568-roc-pc|\
+	radxa,e25)
+		ucidef_set_interfaces_lan_wan 'eth0' 'eth1'
+		;;
 	hinlink,opc-h66k|\
 	friendlyarm,nanopi-r2c|\
 	friendlyarm,nanopi-r2c-plus|\
 	friendlyarm,nanopi-r2s|\
 	friendlyarm,nanopi-r4s|\
 	friendlyarm,nanopi-r4s-enterprise|\
+	radxa,rockpi-e|\
 	xunlong,orangepi-r1-plus|\
 	xunlong,orangepi-r1-plus-lts)
 		ucidef_set_interfaces_lan_wan 'eth1' 'eth0'
@@ -27,12 +34,7 @@ rockchip_setup_interfaces()
 		ucidef_set_interface "lan3" device "eth3" protocol "static"
 		;;
 	kooiot,tlink-r4x-1)
-		ucidef_set_interface_lan_wan "eth0" "eth1"
-		;;
-	firefly,rk3568-roc-pc|\
-	friendlyarm,nanopi-r5c|\
-	radxa,e25)
-		ucidef_set_interfaces_lan_wan 'eth0' 'eth1'
+		ucidef_set_interfaces_lan_wan "eth0" "eth1"
 		;;
 	hinlink,opc-h68k|\
 	fastrhino,r68s)
@@ -44,6 +46,9 @@ rockchip_setup_interfaces()
 		;;
 	friendlyarm,nanopi-r5s)
 		ucidef_set_interfaces_lan_wan 'eth1 eth2' 'eth0'
+		;;
+	friendlyarm,nanopi-r6s)
+		ucidef_set_interfaces_lan_wan 'eth0 eth2' 'eth1'
 		;;
 	sinovoip,rk3568-bpi-r2pro)
 		ucidef_set_interfaces_lan_wan 'lan0 lan1 lan2 lan3' 'eth0'
@@ -66,6 +71,7 @@ rockchip_setup_macs()
 	hinlink,opc-h68k|\
 	hinlink,opc-h69k|\
 	firefly,rk3568-roc-pc|\
+	friendlyarm,nanopc-t6|\
 	friendlyarm,nanopi-r2c|\
 	friendlyarm,nanopi-r2s)
 		wan_mac=$(macaddr_generate_from_mmc_cid mmcblk0)
@@ -82,7 +88,8 @@ rockchip_setup_macs()
 		wan_mac=$(get_mac_binary "/sys/bus/i2c/devices/2-0051/eeprom" 0xfa)
 		lan_mac=$(macaddr_setbit_la "$wan_mac")
 		;;
-	friendlyarm,nanopi-r5c)
+	friendlyarm,nanopi-r5c|\
+	friendlyarm,nanopi-r6s)
 		wan_mac=$(macaddr_generate_from_mmc_cid mmcblk*)
 		lan_mac=$(macaddr_add "$wan_mac" 1)
 		;;

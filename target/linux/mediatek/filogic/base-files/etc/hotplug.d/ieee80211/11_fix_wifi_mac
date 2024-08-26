@@ -75,6 +75,7 @@ case "$board" in
 		[ "$PHYNBR" = "0" ] && echo "$addr" > /sys${DEVPATH}/macaddress
 		[ "$PHYNBR" = "1" ] && macaddr_setbit_la $(macaddr_add $addr 1) > /sys${DEVPATH}/macaddress
 		;;
+	cudy,ap3000outdoor-v1|\
 	cudy,m3000-v1|\
 	cudy,wr3000-v1)
 		addr=$(mtd_get_mac_binary bdinfo 0xde00)
@@ -158,6 +159,9 @@ case "$board" in
 	tplink,tl-xdr6086|\
 	tplink,tl-xdr6088)
 		[ "$PHYNBR" = "0" ] && get_mac_label > /sys${DEVPATH}/macaddress
+		;;
+	tplink,tl-xtr8488)
+		[ "$PHYNBR" = "1" ] && get_mac_label > /sys${DEVPATH}/macaddress
 		;;
 	ubnt,unifi-6-plus)
 		addr=$(mtd_get_mac_binary EEPROM 0x6)

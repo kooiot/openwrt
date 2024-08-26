@@ -507,6 +507,23 @@ define Device/confiabits_mt7981
 endef
 TARGET_DEVICES += confiabits_mt7981
 
+define Device/cudy_ap3000outdoor-v1
+  DEVICE_VENDOR := Cudy
+  DEVICE_MODEL := AP3000 Outdoor
+  DEVICE_VARIANT := v1
+  DEVICE_DTS := mt7981b-cudy-ap3000outdoor-v1
+  DEVICE_DTS_DIR := ../dts
+  SUPPORTED_DEVICES += R51
+  UBINIZE_OPTS := -E 5
+  BLOCKSIZE := 128k
+  PAGESIZE := 2048
+  IMAGE_SIZE := 65536k
+  KERNEL_IN_UBI := 1
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware
+endef
+TARGET_DEVICES += cudy_ap3000outdoor-v1
+
 define Device/cudy_m3000-v1
   DEVICE_VENDOR := Cudy
   DEVICE_MODEL := M3000
@@ -1167,9 +1184,19 @@ define Device/tplink_tl-xdr6088
 endef
 TARGET_DEVICES += tplink_tl-xdr6088
 
+define Device/tplink_tl-xtr8488
+  DEVICE_MODEL := TL-XTR8488
+  DEVICE_DTS := mt7986a-tplink-tl-xtr8488
+  $(call Device/tplink_tl-xdr-common)
+  DEVICE_PACKAGES += kmod-mt7915-firmware
+  ARTIFACT/preloader.bin := mt7986-bl2 spim-nand-ddr4
+  ARTIFACT/bl31-uboot.fip := mt7986-bl31-uboot tplink_tl-xtr8488
+endef
+TARGET_DEVICES += tplink_tl-xtr8488
+
 define Device/ubnt_unifi-6-plus
   DEVICE_VENDOR := Ubiquiti
-  DEVICE_MODEL := UniFi 6 Plus
+  DEVICE_MODEL := UniFi U6+
   DEVICE_DTS := mt7981a-ubnt-unifi-6-plus
   DEVICE_DTS_DIR := ../dts
   DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware e2fsprogs f2fsck mkf2fs fdisk partx-utils
@@ -1451,7 +1478,7 @@ endef
 TARGET_DEVICES += zyxel_ex5601-t0-ubootmod
 
 define Device/zyxel_ex5700-telenor
-  DEVICE_VENDOR := ZyXEL
+  DEVICE_VENDOR := Zyxel
   DEVICE_MODEL := EX5700 (Telenor)
   DEVICE_DTS := mt7986a-zyxel-ex5700-telenor
   DEVICE_DTS_DIR := ../dts
@@ -1465,7 +1492,7 @@ endef
 TARGET_DEVICES += zyxel_ex5700-telenor
 
 define Device/zyxel_nwa50ax-pro
-  DEVICE_VENDOR := ZyXEL
+  DEVICE_VENDOR := Zyxel
   DEVICE_MODEL := NWA50AX Pro
   DEVICE_DTS := mt7981b-zyxel-nwa50ax-pro
   DEVICE_DTS_DIR := ../dts
