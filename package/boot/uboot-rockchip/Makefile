@@ -167,6 +167,21 @@ define U-Boot/radxa-cm3-io-rk3566
     radxa_cm3-io
 endef
 
+define U-Boot/radxa-zero-3-rk3566
+  $(U-Boot/rk3566/Default)
+  NAME:=ZERO 3E/3W
+  BUILD_DEVICES:= \
+    radxa_zero-3e \
+    radxa_zero-3w
+endef
+
+define U-Boot/rock-3c-rk3566
+  $(U-Boot/rk3566/Default)
+  NAME:=ROCK 3C
+  BUILD_DEVICES:= \
+    radxa_rock-3c
+endef
+
 # RK3568 boards
 
 define U-Boot/rk3568/Default
@@ -230,6 +245,13 @@ define U-Boot/rock-3a-rk3568
     radxa_rock-3a
 endef
 
+define U-Boot/rock-3b-rk3568
+  $(U-Boot/rk3568/Default)
+  NAME:=ROCK 3B
+  BUILD_DEVICES:= \
+    radxa_rock-3b
+endef
+
 
 # RK3588 boards
 
@@ -240,18 +262,18 @@ define U-Boot/rk3588/Default
   TPL:=rk3588_ddr_lp4_2112MHz_lp5_2400MHz_v1.16.bin
 endef
 
-define U-Boot/rock5b-rk3588
-  $(U-Boot/rk3588/Default)
-  NAME:=ROCK 5B
-  BUILD_DEVICES:= \
-    radxa_rock-5b
-endef
-
 define U-Boot/nanopc-t6-rk3588
   $(U-Boot/rk3588/Default)
   NAME:=NanoPC T6
   BUILD_DEVICES:= \
     friendlyarm_nanopc-t6
+endef
+
+define U-Boot/rock5b-rk3588
+  $(U-Boot/rk3588/Default)
+  NAME:=ROCK 5B
+  BUILD_DEVICES:= \
+    radxa_rock-5b
 endef
 
 
@@ -289,13 +311,16 @@ UBOOT_TARGETS := \
   station-p2-rk3568 \
   rock-pi-e-v3-rk3328 \
   radxa-cm3-io-rk3566 \
+  radxa-zero-3-rk3566 \
+  rock-3c-rk3566 \
   bpi-r2-pro-rk3568 \
   nanopi-r5c-rk3568 \
   nanopi-r5s-rk3568 \
   radxa-e25-rk3568 \
   rock-3a-rk3568 \
-  rock5b-rk3588 \
+  rock-3b-rk3568 \
   nanopc-t6-rk3588 \
+  rock5b-rk3588 \
   nanopi-r6s-rk3588s \
   rock5a-rk3588s
 

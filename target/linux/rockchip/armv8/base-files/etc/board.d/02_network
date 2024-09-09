@@ -12,7 +12,8 @@ rockchip_setup_interfaces()
 	friendlyarm,nanopc-t6|\
 	friendlyarm,nanopi-r5c|\
 	firefly,rk3568-roc-pc|\
-	radxa,e25)
+	radxa,e25|\
+	radxa,rock-3b)
 		ucidef_set_interfaces_lan_wan 'eth0' 'eth1'
 		;;
 	hinlink,opc-h66k|\
