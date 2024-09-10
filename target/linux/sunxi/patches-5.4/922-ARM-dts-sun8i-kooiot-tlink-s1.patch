@@ -10,7 +10,7 @@
  	sun8i-t3-cqa3t-bv3.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-s3-tlink-s1.dts
-@@ -0,0 +1,217 @@
+@@ -0,0 +1,219 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
@@ -137,6 +137,8 @@
 +		interrupt-parent = <&pio>;
 +		interrupts = <6 13 IRQ_TYPE_EDGE_RISING>; /* PG13/EINT13 */
 +		interrupt-names = "host-wake";
++		nvmem-cells = <&chipid>;
++		nvmem-cell-names = "chipid";
 +		local-mac-address = [dc 44 6d c0 ff ee];
 +	};
 +};

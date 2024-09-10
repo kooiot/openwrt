@@ -1,0 +1,10 @@
+--- a/main.c
++++ b/main.c
+@@ -136,6 +136,7 @@
+ 	.remove_interface  = xradio_remove_interface,
+ 	.change_interface  = xradio_change_interface,
+ 	.tx                = xradio_tx,
++	//.wake_tx_queue     = ieee80211_handle_wake_tx_queue,
+ 	.hw_scan           = xradio_hw_scan,
+ #ifdef ROAM_OFFLOAD
+ 	.sched_scan_start  = xradio_hw_sched_scan_start,
