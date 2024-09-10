@@ -412,7 +412,7 @@ define KernelPackage/drm-sun8i
   TITLE:=SUN8I SOCs DRM support
   DEPENDS:=@TARGET_sunxi @DISPLAY_SUPPORT \
     +kmod-drm +kmod-drm-kms-helper +kmod-lib-crc-ccitt \
-    +LINUX_6_1:kmod-drm-display-helper
+    +kmod-drm-display-helper
   KCONFIG:= \
     CONFIG_DRM_SUN4I \
 	CONFIG_MEDIA_CEC_SUPPORT=y \
