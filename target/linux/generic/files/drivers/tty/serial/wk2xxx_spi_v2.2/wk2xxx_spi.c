@@ -1689,12 +1689,21 @@ static struct spi_driver wk2xxx_driver;
 static int rockchip_spi_parse_dt(struct device *dev)
 {
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
+	int irq_gpio, irq; 
+#else
 	int irq_gpio, irq_flags, irq; 
+#endif
+
 #ifdef _DEBUG_WK_FUNCTION
 	printk(KERN_ALERT "%s!!--in--\n", __func__);
 #endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
+	irq_gpio = of_get_named_gpio(dev->of_node, "irq_gpio", 0);
+#else
 	irq_gpio = of_get_named_gpio_flags(dev->of_node, "irq_gpio", 0,(enum of_gpio_flags *)&irq_flags);
+#endif
 	if (!gpio_is_valid(irq_gpio))
 	{
 		printk(KERN_ERR"invalid wk2xxx_irq_gpio: %d\n", irq_gpio);
@@ -1737,11 +1746,17 @@ static int rockchip_spi_parse_dt(struct device *dev)
 static int wk2xxx_spi_rstgpio_parse_dt(struct device *dev,int *rst_gpio)
 {
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0)
 	enum of_gpio_flags rst_flags; 
+#endif
 #ifdef _DEBUG_WK_FUNCTION
 	printk(KERN_ALERT "%s!!--in--\n", __func__);
 #endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
+	*rst_gpio = of_get_named_gpio(dev->of_node, "reset_gpio", 0);
+#else
 	*rst_gpio = of_get_named_gpio_flags(dev->of_node, "reset_gpio", 0,&rst_flags);
+#endif
 	if (!gpio_is_valid(*rst_gpio)){
 		printk(KERN_ERR"invalid wk2xxx_rst_gpio: %d\n", *rst_gpio);
 		return -1;

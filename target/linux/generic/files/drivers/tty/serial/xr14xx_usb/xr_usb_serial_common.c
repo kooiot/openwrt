@@ -52,7 +52,12 @@
 #include <linux/list.h>
 #include "linux/version.h"
 #include <asm/io.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
+#include <linux/gpio/consumer.h>
+#include <linux/gpio/driver.h>
+#else
 #include <linux/gpio.h>
+#endif
 #include <linux/idr.h>
 #include <linux/delay.h>
 #include <linux/of.h>
@@ -735,8 +740,13 @@ static void xr_usb_serial_tty_close(struct tty_struct *tty, struct file *filp)
 	tty_port_close(&xr_usb_serial->port, tty, filp);
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
+static ssize_t xr_usb_serial_tty_write(struct tty_struct *tty,
+					const unsigned char *buf, size_t count)
+#else
 static int xr_usb_serial_tty_write(struct tty_struct *tty,
 					const unsigned char *buf, int count)
+#endif
 {
 	struct xr_usb_serial *xr_usb_serial = tty->driver_data;
 	int stat;
