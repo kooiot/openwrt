@@ -2,7 +2,7 @@ PKG_DRIVERS += \
 	rtl8180 rtl8187 \
 	rtlwifi rtlwifi-pci rtlwifi-btcoexist rtlwifi-usb rtl8192c-common \
 	rtl8192ce rtl8192se rtl8192de rtl8192cu rtl8723bs rtl8821ae \
-	rtl8xxxu rtw88
+	rtl8xxxu rtw88 rtl8188eu
 
 config-$(call config_package,rtl8180) += RTL8180
 config-$(call config_package,rtl8187) += RTL8187
@@ -24,6 +24,9 @@ config-y += RTL8XXXU_UNTESTED
 
 config-$(call config_package,rtl8723bs) += RTL8723BS
 config-y += STAGING
+
+config-$(call config_package,rtl8188eu) += R8188EU
+config-y += 88EU_AP_MODE
 
 config-$(call config_package,rtw88) += RTW88 RTW88_CORE RTW88_PCI
 config-y += RTW88_8822BE RTW88_8822CE RTW88_8723DE
@@ -203,4 +206,19 @@ define KernelPackage/rtl8723bs/description
  This option enables support for RTL8723BS SDIO drivers, such as the wifi found
  on the 1st gen Intel Compute Stick, the CHIP and many other Intel Atom and ARM
  based devices.
+endef
+
+define KernelPackage/rtl8188eu
+  $(call KernelPackage/mac80211/Default)
+  TITLE:=Realtek RTL8188EU USB Wireless driver (staging)
+  DEPENDS+= @USB_SUPPORT +@DRIVER_WEXT_SUPPORT +kmod-mac80211 +kmod-lib80211 +@DRIVER_11AC_SUPPORT +@DRIVER_11N_SUPPORT
+  FILES:=$(PKG_BUILD_DIR)/drivers/staging/rtl8188eu/r8188eu.ko
+  KCONFIG:=\
+    CONFIG_STAGING=y \
+    CONFIG_88EU_AP_MODE=y
+  AUTOLOAD:=$(call AutoProbe,r8188eu)
+endef
+
+define KernelPackage/rtl8188eu/description
+  Kernel modules for RealTek RTL8188EU support
 endef
