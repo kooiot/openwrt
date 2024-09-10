@@ -11,22 +11,22 @@ diff --git a/drivers/spi/spidev.c b/drivers/spi/spidev.c
 index d13dc15cc191..456eca57ee4f 100644
 --- a/drivers/spi/spidev.c
 +++ b/drivers/spi/spidev.c
-@@ -704,6 +704,7 @@ static const struct file_operations spidev_fops = {
+@@ -704,6 +704,7 @@ static const struct file_operations spid
  static struct class *spidev_class;
- 
+
  static const struct spi_device_id spidev_spi_ids[] = {
 +	{ .name = "spi-dev" },
+ 	{ .name = "bh2228fv" },
  	{ .name = "dh2228fv" },
  	{ .name = "ltc2488" },
- 	{ .name = "sx1301" },
-@@ -728,10 +729,12 @@ static int spidev_of_check(struct device *dev)
+@@ -729,10 +730,12 @@ static int spidev_of_check(struct device
  		return 0;
- 
+
  	dev_err(dev, "spidev listed directly in DT is not supported\n");
 +	dev_info(dev, "Use a compatible alias string like spi-dev in DT\n");
  	return -EINVAL;
  }
- 
+
  static const struct of_device_id spidev_dt_ids[] = {
 +	{ .compatible = "armbian,spi-dev", .data = &spidev_of_check },
  	{ .compatible = "cisco,spi-petra", .data = &spidev_of_check },

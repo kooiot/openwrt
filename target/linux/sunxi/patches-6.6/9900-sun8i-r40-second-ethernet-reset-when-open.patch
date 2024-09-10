@@ -38,21 +38,22 @@
  	struct net_device *ndev;
  	int ret = 0;
  	const struct emac_quirks *quirks;
-+	enum of_gpio_flags flags;
++	// enum of_gpio_flags flags = GPIOF_OUT_INIT_LOW;
  
  	int alias_id;
  
-@@ -1053,6 +1067,32 @@
+@@ -1053,6 +1067,33 @@
  		goto out_assert_reset;
  	}
  
-+	db->phyrst = of_get_named_gpio_flags(pdev->dev.of_node, "reset-gpios", 0,
-+						&flags);
++	/*db->phyrst = of_get_named_gpio_flags(pdev->dev.of_node, "reset-gpios", 0,
++						&flags);*/
++	db->phyrst = of_get_named_gpio(pdev->dev.of_node, "reset-gpios", 0);
 +	if (gpio_is_valid(db->phyrst)) {
 +
-+		flags = (flags == OF_GPIO_ACTIVE_LOW ? GPIOF_OUT_INIT_LOW : GPIOF_OUT_INIT_HIGH);
++		// flags = (flags == OF_GPIO_ACTIVE_LOW ? GPIOF_OUT_INIT_LOW : GPIOF_OUT_INIT_HIGH);
 +
-+		ret = devm_gpio_request_one(&pdev->dev, db->phyrst, flags,
++		ret = devm_gpio_request_one(&pdev->dev, db->phyrst, /* flags */GPIOF_OUT_INIT_LOW,
 +					    "sun4i_emac_reset");
 +		if (ret) {
 +			dev_err(&pdev->dev, "failed to request reset gpio %d: %d\n",
@@ -62,7 +63,7 @@
 +		}
 +
 +		dev_err(&pdev->dev, "%s sun4i-emac reset gpio %d flags %d\n",
-+				__func__, db->phyrst, flags);;
++				__func__, db->phyrst, /*flags*/ GPIOF_OUT_INIT_LOW);
 +		// msleep(20);
 +		gpio_set_value(db->phyrst, 0);
 +		udelay(200);
@@ -75,7 +76,7 @@
  	ret = sunxi_sram_claim(&pdev->dev);
  	if (ret) {
  		dev_err(&pdev->dev, "Error couldn't map SRAM to device\n");
-@@ -1122,6 +1162,9 @@
+@@ -1122,6 +1163,9 @@
  out:
  	dev_err(db->dev, "not found (%d).\n", ret);
  
@@ -85,7 +86,7 @@
  	free_netdev(ndev);
  
  	return ret;
-@@ -1143,6 +1186,8 @@
+@@ -1143,6 +1187,8 @@
  	reset_control_assert(db->reset);
  	irq_dispose_mapping(ndev->irq);
  	iounmap(db->membase);

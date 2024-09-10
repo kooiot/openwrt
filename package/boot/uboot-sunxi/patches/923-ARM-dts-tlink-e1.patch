@@ -72,7 +72,7 @@
 +		compatible = "regulator-fixed";
 +		regulator-name = "vcc-wifi-3v3";
 +		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>; /* PD20 EXT-P-EN pin */
++		regulator-max-microvolt = <3300000>;
 +		vin-supply = <&reg_vcc5v>;
 +	};
 +

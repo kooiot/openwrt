@@ -12,7 +12,7 @@
  	sun9i-a80-cubieboard4.dtb
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-t113-tlink-e1.dts
-@@ -0,0 +1,428 @@
+@@ -0,0 +1,420 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 +
@@ -31,6 +31,7 @@
 +
 +	aliases {
 +		ethernet0 = &emac;
++		ethernet1 = &usb_eth1;
 +		mmc0 = &mmc0;
 +		mmc1 = &mmc2;
 +		mmc2 = &mmc1;
@@ -65,7 +66,7 @@
 +		regulator-name = "usbvbus";
 +		regulator-min-microvolt = <5000000>;
 +		regulator-max-microvolt = <5000000>;
-+		gpio = <&pio 3 9 GPIO_ACTIVE_LOW>; /* PD19 */
++		//gpio = <&pio 3 9 GPIO_ACTIVE_LOW>; // PD19 
 +		vin-supply = <&reg_vcc>;
 +	};
 +
@@ -107,28 +108,28 @@
 +	 	status_led {
 +	 		linux,default-trigger = "heartbeat";
 +	 		label = "blue:status";
-+	 		gpios = <&pio 4 11 GPIO_ACTIVE_HIGH>;
++	 		gpios = <&pio 4 11 GPIO_ACTIVE_HIGH>; /* PE11 */
 +	 	};
 +
-+		/*
 +		modem {
 +			label = "kooiot:green:modem";
-+			gpios = <&pio 4 0 GPIO_ACTIVE_HIGH>; // PE0  Need to fix
++			gpios = <&pio 3 17 GPIO_ACTIVE_HIGH>; /* PD17 */
 +			default-state = "off";
 +		};
 +
++		/*
 +		csq {
 +			label = "kooiot:green:csq";
 +			gpios = <&pio 4 1 GPIO_ACTIVE_HIGH>; // PE1  Need to fix
 +			default-state = "off";
 +		};
++		*/
 +
 +		cloud {
 +			label = "kooiot:green:cloud";
-+			gpios = <&pio 4 11 GPIO_ACTIVE_HIGH>; // PE11
++			gpios = <&pio 3 18 GPIO_ACTIVE_HIGH>; /* PD18 */
 +			default-state = "off";
 +		};
-+		*/
 +	};
 +
 +	gpio_keys {
@@ -145,19 +146,17 @@
 +		compatible = "gpio-export";
 +		#size-cells = <0>;
 +
++		eth1_reset {
++			gpio-export,name = "eth1_reset";
++			gpio-export,output=<0>;
++			gpios = <&pio 3 19 GPIO_ACTIVE_HIGH>; /* PD19 */
++		};
++
 +		pcie_reset {
 +			gpio-export,name = "pcie_reset";
 +			gpio-export,output=<0>;
-+			gpios = <&pio 3 0 GPIO_ACTIVE_HIGH>; /* PD0 */
++			gpios = <&pio 3 3 GPIO_ACTIVE_HIGH>; /* PD3 */
 +		};
-+
-+		/*
-+		pg12 {
-+			gpio-export,name = "pg12";
-+			gpio-export,output=<1>;
-+			gpios = <&pio 6 12 GPIO_ACTIVE_HIGH>; // PG12
-+		};
-+		*/
 +
 +		pcie_power {
 +			gpio-export,name = "pcie_power";
@@ -169,9 +168,9 @@
 +	wifi_pwrseq: wifi-pwrseq {
 +		compatible = "mmc-pwrseq-simple";
 +		pinctrl-names = "default";
-+		// pinctrl-0 = <&wifi_rst>;
++		pinctrl-0 = <&wifi_rst>;
 +		post-power-on-delay-ms = <50>;
-+		// reset-gpios = <&pio 6 12 GPIO_ACTIVE_LOW>; /* PG12 */
++		reset-gpios = <&pio 6 12 GPIO_ACTIVE_LOW>; /* PG13 */
 +
 +		// clocks = <&ccu CLK_FANOUT1>;
 +		// clock-names = "ext_clock";
@@ -242,24 +241,9 @@
 +    };
 +
 +	/omit-if-no-ref/
-+	i2c0_pb_pins: i2c0-pb-pins {
-+		pins = "PB2", "PB3";
-+		function = "i2c0";
-+	};
-+
-+	/omit-if-no-ref/
 +	i2c3_pb_pins: i2c3-pb-pins {
 +		pins = "PB6", "PB7";
 +		function = "i2c3";
-+	};
-+
-+	/omit-if-no-ref/
-+	mii_pg_pins: mii-pg-pins {
-+		pins = "PG0", "PG1", "PG2", "PG3", "PG4", "PG5",
-+				"PG11", "PG12", "PG13", "PG14", "PG15";
-+		function = "emac";
-+		drive-strength = <30>;
-+		bias-pull-up;
 +	};
 +
 +	emac_rst_pin: emac-rst-pin {
@@ -268,7 +252,7 @@
 +	};
 +
 +	wifi_rst: wifi-rst-pin {
-+		pins = "PG12";
++		pins = "PG13";
 +		function = "gpio_out";
 +	};
 +};
@@ -297,8 +281,8 @@
 +	status = "okay";
 +};
 +
-+&i2c0 {
-+	pinctrl-0 = <&i2c0_pb_pins>;
++&i2c3 {
++	pinctrl-0 = <&i2c3_pb_pins>;
 +	pinctrl-names = "default";
 +	status = "okay";
 +
@@ -307,12 +291,6 @@
 +		reg = <0x32>;
 +		status = "okay";
 +	};
-+};
-+
-+&i2c3 {
-+	pinctrl-0 = <&i2c3_pb_pins>;
-+	pinctrl-names = "default";
-+	status = "okay";
 +
 +	at24c02: eeprom@50 {
 +		compatible = "atmel,24c02";
@@ -355,7 +333,7 @@
 +	aw869a: sdio_wifi@1 {
 +        reg = <1>;
 +        interrupt-parent = <&pio>;
-+        interrupts = <6 10 IRQ_TYPE_LEVEL_HIGH>; /* PG10 */
++        interrupts = <6 11 IRQ_TYPE_LEVEL_HIGH>; /* PG11 */
 +        interrupt-names = "host-wake";
 +	};
 +};
@@ -375,8 +353,22 @@
 +	status = "disabled";
 +};
 +
++&sid {
++	chipid: chipid@0 {
++		reg = <0x0 0x10>;
++	};
++};
++
 +&ehci0 {
 +	status = "okay";
++	#address-cells = <1>;
++	#size-cells = <0>;
++	usb_eth1: asix@1 {
++		reg = <1>;
++		nvmem-cells = <&chipid>;
++		nvmem-cell-names = "chipid";
++		local-mac-address = [00 00 00 00 00 00];
++	};
 +};
 +
 +&ehci1 {

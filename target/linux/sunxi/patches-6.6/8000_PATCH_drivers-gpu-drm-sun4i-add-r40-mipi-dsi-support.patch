@@ -106,7 +106,7 @@ index 75d8e60c149d..e0b3c5330b9a 100644
  
 -static void sun8i_tcon_top_unbind(struct device *dev, struct device *master,
 -				  void *data)
-+static int sun8i_tcon_top_remove(struct platform_device *pdev)
++static void sun8i_tcon_top_remove(struct platform_device *pdev)
  {
 +	struct device *dev = &pdev->dev;
  	struct sun8i_tcon_top *tcon_top = dev_get_drvdata(dev);
