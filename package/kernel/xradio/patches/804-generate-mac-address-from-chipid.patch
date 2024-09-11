@@ -1,0 +1,95 @@
+--- a/main.c	2024-09-10 13:26:52.453806531 +0800
++++ b/main.c	2024-09-10 13:26:45.783927187 +0800
+@@ -14,6 +14,10 @@
+ #include <linux/of_net.h>
+ #include <linux/mmc/sdio_func.h>
+ #include <linux/version.h>
++#ifdef CONFIG_MACH_SUN8I
++#include <linux/crc32.h>
++#include <linux/nvmem-consumer.h>
++#endif
+ 
+ #include "xradio.h"
+ #include "fwio.h"
+@@ -497,6 +501,55 @@ void xradio_unregister_common(struct iee
+ 	hw_priv->driver_ready = 0;
+ }
+ 
++#ifdef CONFIG_MACH_SUN8I
++/**
++ * Generate mac address from chipid as what u-boot does
++ */
++static int eth_hw_addr_nvmem_sun8i_chipid(struct device* dev, u8* buf)
++{
++	static u8 offset = 0;
++	struct nvmem_cell *cell;
++	ssize_t cell_size;
++	u32 *chipid;
++
++	dev_info(dev, "%s: usb device of_node:%pOF offset:%d\n", __func__, dev->of_node, offset);
++
++	cell = devm_nvmem_cell_get(dev, "chipid");
++	if (IS_ERR(cell)) {
++		dev_info(dev, "Failed to get chipid nvmem cell. %ld\n", (long)cell);
++		return -1;
++	};
++
++	chipid = (u32 *)nvmem_cell_read(cell, &cell_size);
++	devm_nvmem_cell_put(dev, cell);
++	if (cell_size < 16) {
++		kfree(chipid);
++		return -1;
++	}
++
++	dev_info(dev, "Using the MAC address generated from nvmem[chipid].\n");
++	chipid[3] = crc32_be(0, (unsigned char *)&chipid[1], 12) + offset;
++
++	/* Ensure the NIC specific bytes of the mac are not all 0 */
++	if ((chipid[3] & 0xffffff) == 0)
++		chipid[3] |= 0x800000;
++
++	/* Non OUI / registered MAC address */
++	buf[0] = 0xB0;
++	buf[1] = 0xC9;
++	buf[2] = (chipid[3] >> 24) & 0xff;
++	buf[3] = (chipid[3] >> 16) & 0xff;
++	buf[4] = (chipid[3] >>  8) & 0xff;
++	buf[5] = (chipid[3] >>  0) & 0xff;
++
++	kfree(chipid);
++
++	offset++;
++
++	return 0;
++}
++#endif
++
+ int xradio_core_init(struct sdio_func* func)
+ {
+ 	int err = -ENOMEM;
+@@ -525,7 +578,11 @@ int xradio_core_init(struct sdio_func* f
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 13, 0)
+ 	// fill in mac addresses
+ 	if (hw_priv->pdev->of_node) {
++#ifdef CONFIG_MACH_SUN8I
++		err = eth_hw_addr_nvmem_sun8i_chipid(hw_priv->pdev, addr);
++#else
+ 		err = of_get_mac_address(hw_priv->pdev->of_node, addr);
++#endif
+ 	}
+ 	if (err < 0) {
+ 		dev_warn(hw_priv->pdev, "no mac address provided, using random\n");
+@@ -534,7 +591,13 @@ int xradio_core_init(struct sdio_func* f
+ #else
+ 	// fill in mac addresses
+ 	if (hw_priv->pdev->of_node) {
++#ifdef CONFIG_MACH_SUN8I
++		err = eth_hw_addr_nvmem_sun8i_chipid(hw_priv->pdev, randomaddr);
++		if (err == 0)
++			addr = randomaddr;
++#else
+ 		addr = of_get_mac_address(hw_priv->pdev->of_node);
++#endif
+ 	}
+ 	if (!addr) {
+ 		dev_warn(hw_priv->pdev, "no mac address provided, using random\n");
