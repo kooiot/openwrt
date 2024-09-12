@@ -421,7 +421,7 @@
 +&can0 {
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&can0_pins>;
-+	status = "disabled";
++	status = "okay";
 +};
 +
 +&can1 {
