@@ -360,6 +360,28 @@ define Device/confiabits_mt7981
 endef
 TARGET_DEVICES += confiabits_mt7981
 
+define Device/cudy_m3000-v1
+  DEVICE_VENDOR := Cudy
+  DEVICE_MODEL := M3000
+  DEVICE_VARIANT := v1
+  DEVICE_DTS := mt7981b-cudy-m3000-v1
+  DEVICE_DTS_DIR := ../dts
+  SUPPORTED_DEVICES += R37
+  DEVICE_DTS_LOADADDR := 0x44000000
+  BLOCKSIZE := 128k
+  PAGESIZE := 2048
+  IMAGE_SIZE := 65536k
+  KERNEL_IN_UBI := 1
+  KERNEL := kernel-bin | lzma | \
+	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb
+  KERNEL_INITRAMFS := kernel-bin | lzma | \
+	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
+  IMAGES := sysupgrade.bin
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+  DEVICE_PACKAGES := kmod-mt7981-firmware mt7981-wo-firmware
+endef
+TARGET_DEVICES += cudy_m3000-v1
+
 define Device/cudy_re3000-v1
   DEVICE_VENDOR := Cudy
   DEVICE_MODEL := RE3000
@@ -830,7 +852,7 @@ TARGET_DEVICES += tplink_tl-xdr6088
 
 define Device/ubnt_unifi-6-plus
   DEVICE_VENDOR := Ubiquiti
-  DEVICE_MODEL := UniFi 6 Plus
+  DEVICE_MODEL := UniFi U6+
   DEVICE_DTS := mt7981a-ubnt-unifi-6-plus
   DEVICE_DTS_DIR := ../dts
   DEVICE_PACKAGES := kmod-mt7981-firmware mt7981-wo-firmware e2fsprogs f2fsck mkf2fs fdisk partx-utils

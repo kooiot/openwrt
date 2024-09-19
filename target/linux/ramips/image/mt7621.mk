@@ -2068,6 +2068,7 @@ TARGET_DEVICES += sercomm_na502
 
 define Device/sercomm_na502s
   $(Device/nand)
+  $(Device/uimage-lzma-loader)
   IMAGE_SIZE := 20971520
   DEVICE_VENDOR := SERCOMM
   DEVICE_MODEL := NA502S
@@ -2454,7 +2455,7 @@ TARGET_DEVICES += ubnt_edgerouter-x-sfp
 define Device/ubnt_unifi-6-lite
   $(Device/dsa-migration)
   DEVICE_VENDOR := Ubiquiti
-  DEVICE_MODEL := UniFi 6 Lite
+  DEVICE_MODEL := UniFi U6 Lite
   DEVICE_DTS_CONFIG := config@1
   DEVICE_DTS_LOADADDR := 0x87000000
   DEVICE_PACKAGES += kmod-mt7603 kmod-mt7915-firmware -uboot-envtools
