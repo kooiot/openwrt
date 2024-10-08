@@ -12,7 +12,7 @@
  	sun9i-a80-cubieboard4.dtb
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-t113-tlink-dly-e102.dts
-@@ -0,0 +1,343 @@
+@@ -0,0 +1,428 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 +
@@ -37,7 +37,12 @@
 +		serial0 = &uart0;
 +		serial1 = &uart1;
 +		serial2 = &uart2;
++		serial3 = &uart3;
++		serial4 = &uart4;
 +		spi0 = &spi0;
++		led-boot = &status_led;
++		led-failsafe = &status_led;
++		led-upgrade = &status_led;
 +	};
 +
 +	chosen {
@@ -86,7 +91,13 @@
 +
 +		csq {
 +			label = "kooiot:green:csq";
-+			gpios = <&pio 4 17 GPIO_ACTIVE_HIGH>; /* PE17 */
++			gpios = <&pio 4 11 GPIO_ACTIVE_HIGH>; /* PE11 */
++			default-state = "off";
++		};
++
++		cloud {
++			label = "kooiot:green:cloud";
++			gpios = <&pio 3 19 GPIO_ACTIVE_HIGH>; /* PD19 */
 +			default-state = "off";
 +		};
 +	};
@@ -97,13 +108,27 @@
 +		reset {
 +			label = "reset";
 +			linux,code = <KEY_RESTART>;
-+			gpios = <&pio 4 12 GPIO_ACTIVE_LOW>; /* PE0 */
++			gpios = <&pio 3 3 GPIO_ACTIVE_LOW>; /* PD3 */
 +		};
 +	};
 +
-+	gpio_export {
++	gpio_export: gpio-export {
 +		compatible = "gpio-export";
 +		#size-cells = <0>;
++
++		eth1_reset {
++			gpio-export,name = "eth1_reset";
++			gpio-export,output=<0>;
++			gpios = <&pio 4 12 GPIO_ACTIVE_HIGH>; /* PE12 */
++		};
++
++		/*
++		lan2_reset {
++			gpio-export,name = "lan2_reset";
++			gpio-export,output=<0>;
++			gpios = <&pio 4 13 GPIO_ACTIVE_HIGH>; // PE13
++		};
++		*/
 +
 +		pcie_reset {
 +			gpio-export,name = "pcie_reset";
@@ -114,8 +139,35 @@
 +		pcie_power {
 +			gpio-export,name = "pcie_power";
 +			gpio-export,output=<1>;
-+			gpios = <&pio 3 0 GPIO_ACTIVE_HIGH>; /* PD0 */
++			gpios = <&pio 3 0 GPIO_ACTIVE_HIGH>; /* PD1 */
 +		};
++
++		power_lost {
++			gpio-export,name = "power_lost";
++			gpio-export,direction_may_change = <1>;
++			gpios = <&pio 3 18 GPIO_ACTIVE_LOW>; /* PD18 */
++		};
++	};
++
++	watchdog {
++		compatible = "linux,wdt-gpio";
++		vcc-supply=<&wdt_en>;
++		gpios = <&pio 3 5 GPIO_ACTIVE_HIGH>; /* PD5 */
++		hw_algo = "toggle";
++		hw_margin_ms = <1000>;
++		always-running;
++	};
++
++	/* watchdog enable pin */
++	wdt_en: fixedregulator@0 {
++		compatible = "regulator-fixed";
++		regulator-always-on;
++		regulator-boot-on;
++		regulator-name = "wdt_en";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		gpios = <&pio 3 17 GPIO_ACTIVE_LOW>; /* PD17 */
++		startup-delay-us=<10000000>; // 10 seconds
 +	};
 +};
 +
@@ -168,6 +220,16 @@
 +	uart3_pb6_pins: uart3-pb6-pins {
 +	    pins = "PB6", "PB7";
 +	    function = "uart3";
++	};
++
++	uart4_pe4_pins: uart4-pe4-pins {
++	    pins = "PE4", "PE5";
++	    function = "uart4";
++	};
++
++	uart5_pe6_pins: uart5-pe6-pins {
++	    pins = "PE6", "PE7";
++	    function = "uart5";
 +	};
 +
 +	/omit-if-no-ref/
@@ -223,10 +285,28 @@
 +	status = "okay";
 +};
 +
++&uart4 {
++	pinctrl-0 = <&uart4_pe4_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++};
++
++&uart5 {
++	pinctrl-0 = <&uart5_pe6_pins>;
++	pinctrl-names = "default";
++	status = "disabled";
++};
++
 +&i2c0 {
 +	pinctrl-0 = <&i2c0_pb10_pins>;
 +	pinctrl-names = "default";
 +	status = "okay";
++
++	rtc@6f {
++		compatible = "isil,isl1208";
++		reg = <0x6f>;
++		status = "okay";
++	};
 +};
 +
 +&spi0 {
@@ -327,6 +407,9 @@
 +	ext_rgmii_phy: ethernet-phy@0 {
 +		compatible = "ethernet-phy-ieee802.3-c22";
 +		reg = <0>;
++		motorcomm,led0 = <0x0>;
++		motorcomm,led1 = <0x1f80>;
++		motorcomm,led2 = <0x24>;
 +	};
 +};
 +
@@ -336,6 +419,8 @@
 +	phy-handle = <&ext_rgmii_phy>;
 +	phy-mode = "rgmii-id";
 +	phy-supply = <&reg_vcc_3v3>;
++	snps,reset-gpio = <&pio 6 9 GPIO_ACTIVE_LOW>; /* PG13 */
++	snps,reset-delays-us = <0 10000 1000000>;
 +	status = "okay";
 +};
 +

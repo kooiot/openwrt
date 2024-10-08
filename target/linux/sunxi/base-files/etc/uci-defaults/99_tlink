@@ -324,6 +324,7 @@ case "$(board_name)" in
 "kooiot,tlink-m416"|\
 "kooiot,tlink-dly-e102"|\
 "kooiot,tlink-dly-e102-spinand"|\
+"kooiot,tlink-dly-e204"|\
 "kooiot,tlink-r1")
 	tlink_default
 	;;

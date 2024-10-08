@@ -10,8 +10,8 @@
  
  #define PHY_MODE_MARVELL	0x0000
  #define MII_MARVELL_LED_CTRL	0x0018
-@@ -674,6 +677,55 @@
- 	return usbnet_resume(intf);
+@@ -822,6 +825,55 @@ static int ax88772_phylink_setup(struct
+ 	return 0;
  }
  
 +#ifdef CONFIG_MACH_SUN8I
@@ -65,8 +65,8 @@
 +
  static int ax88772_bind(struct usbnet *dev, struct usb_interface *intf)
  {
- 	int ret, i;
-@@ -684,9 +736,14 @@
+ 	struct asix_common_private *priv;
+@@ -837,9 +889,14 @@ static int ax88772_bind(struct usbnet *d
  	usbnet_get_endpoints(dev, intf);
  
  	/* Maybe the boot loader passed the MAC address via device tree */

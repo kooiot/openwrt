@@ -82,6 +82,7 @@ do_kooiot_tlink_generic() {
 	"kooiot,tlink-m408"|\
 	"kooiot,tlink-m416"|\
 	"kooiot,tlink-dly-e102"|\
+	"kooiot,tlink-dly-e204"|\
 	"kooiot,tlink-r1")
 		do_product_sn_kooiot_emmc
 		;;

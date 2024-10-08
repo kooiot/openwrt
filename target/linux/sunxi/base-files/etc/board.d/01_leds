@@ -33,7 +33,8 @@ kooiot,tlink-s1)
 	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "wwan0"
 	;;
 kooiot,tlink-dly-e102|\
-kooiot,tlink-dly-e102-spinand)
+kooiot,tlink-dly-e102-spinand|\
+kooiot,tlink-dly-e204)
 	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "wwan0"
 	;;
 esac

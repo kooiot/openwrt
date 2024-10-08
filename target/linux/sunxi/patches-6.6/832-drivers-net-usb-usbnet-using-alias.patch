@@ -1,6 +1,6 @@
---- a/drivers/net/usb/usbnet.c	2021-12-12 13:09:19.991570759 +0800
-+++ b/drivers/net/usb/usbnet.c	2021-12-12 13:09:09.635611101 +0800
-@@ -33,6 +33,7 @@
+--- a/drivers/net/usb/usbnet.c
++++ b/drivers/net/usb/usbnet.c
+@@ -30,6 +30,7 @@
  #include <linux/slab.h>
  #include <linux/kernel.h>
  #include <linux/pm_runtime.h>
@@ -8,7 +8,7 @@
  
  /*-------------------------------------------------------------------------*/
  
-@@ -1637,6 +1638,10 @@
+@@ -1671,6 +1672,10 @@ usbnet_probe (struct usb_interface *udev
  	const char			*name;
  	struct usb_driver 	*driver = to_usb_driver(udev->dev.driver);
  
@@ -19,7 +19,7 @@
  	/* usbnet already took usb runtime pm, so have to enable the feature
  	 * for usb interface, otherwise usb_autopm_get_interface may return
  	 * failure if RUNTIME_PM is enabled.
-@@ -1782,6 +1787,17 @@
+@@ -1822,6 +1827,17 @@ usbnet_probe (struct usb_interface *udev
  		}
  	}
  

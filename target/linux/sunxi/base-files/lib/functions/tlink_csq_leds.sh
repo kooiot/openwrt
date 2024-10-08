@@ -114,6 +114,9 @@ case $(board_name) in
 	kooiot,tlink-m416)
 		tlink_csq_leds_mixed
 		;;
+	kooiot,tlink-dly-e102|\
+	kooiot,tlink-dly-e102-spinnand|\
+	kooiot,tlink-dly-e204|\
 	kooiot,tlink-k2|\
 	kooiot,tlink-k2x|\
 	kooiot,tlink-k4x)

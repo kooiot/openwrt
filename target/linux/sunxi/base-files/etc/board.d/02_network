@@ -16,6 +16,7 @@ sunxi_setup_interfaces()
 	kooiot,tlink-k2x|\
 	kooiot,tlink-k4x|\
 	kooiot,tlink-e1|\
+	kooiot,tlink-dly-e204|\
 	kooiot,tlink-r1)
 		ucidef_set_interfaces_lan_wan "eth0" "eth1"
 		;;

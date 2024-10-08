@@ -86,11 +86,9 @@ platform_check_image() {
 		tlink_check_image "sun8i-x3" "$1" && return 0
 		return 1
 		;;
-	"kooiot,tlink-e1")
-		tlink_check_image "sun8i-t113s" "$1" && return 0
-		return 1
-		;;
-	"kooiot,tlink-dly-e102")
+	"kooiot,tlink-e1"|\
+	"kooiot,tlink-dly-e102"|\
+	"kooiot,tlink-dly-e204")
 		tlink_check_image "sun8i-t113s" "$1" && return 0
 		return 1
 		;;
@@ -137,6 +135,7 @@ platform_pre_upgrade() {
 	"kooiot,tlink-m416"|\
 	"kooiot,tlink-dly-e102"|\
 	"kooiot,tlink-dly-e102-spinand"|\
+	"kooiot,tlink-dly-e204"|\
 	"kooiot,tlink-r1")
 		platform_kooiot_pre_upgrade
 		;;
