@@ -13,6 +13,17 @@ define Device/friendlyarm_nanopi-neo3
 endef
 TARGET_DEVICES += friendlyarm_nanopi-neo3
 
+define Device/armsom_sige7
+  DEVICE_VENDOR := ArmSoM
+  DEVICE_MODEL := Sige7
+  DEVICE_ALT0_VENDOR := Bananapi
+  DEVICE_ALT0_MODEL := BPi-M7
+  SOC := rk3588
+  DEVICE_DTS := rockchip/rk3588-armsom-sige7
+  DEVICE_PACKAGES := kmod-r8169
+endef
+TARGET_DEVICES += armsom_sige7
+
 define Device/firefly_roc-rk3328-cc
   DEVICE_VENDOR := Firefly
   DEVICE_MODEL := ROC-RK3328-CC
@@ -136,6 +147,14 @@ $(call Device/hinlink_common)
   DEVICE_PACKAGES += kmod-mt7916-firmware kmod-usb-serial-option uqmi
 endef
 TARGET_DEVICES += hinlink_opc-h69k
+
+define Device/friendlyarm_nanopi-r6c
+  DEVICE_VENDOR := FriendlyARM
+  DEVICE_MODEL := NanoPi R6C
+  SOC := rk3588s
+  DEVICE_PACKAGES := kmod-r8169
+endef
+TARGET_DEVICES += friendlyarm_nanopi-r6c
 
 define Device/friendlyarm_nanopi-r6s
   DEVICE_VENDOR := FriendlyARM
