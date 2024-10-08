@@ -1584,6 +1584,20 @@ endef
 
 $(eval $(call KernelPackage,usb-net-pl))
 
+define KernelPackage/usb-net-ch397
+  TITLE:=QingHeng CH397 USB ethernet support
+  KCONFIG:=CONFIG_USB_NET_CH397
+  FILES:=$(LINUX_DIR)/drivers/net/usb/ch397.ko
+  AUTOLOAD:=$(call AutoProbe,ch397)
+  $(call AddDepends/usb-net)
+endef
+
+define KernelPackage/usb-net-ch397/description
+ Kernel support for QingHeng CH397 USB ethernet chip
+endef
+
+$(eval $(call KernelPackage,usb-net-ch397))
+
 define KernelPackage/usb-hid
   TITLE:=Support for USB Human Input Devices
   KCONFIG:=CONFIG_HID_SUPPORT=y CONFIG_USB_HID CONFIG_USB_HIDDEV=y
