@@ -503,6 +503,12 @@ define U-Boot/tlink_dly_e102_spinand
   UENV_NAND:=nand
 endef
 
+define U-Boot/tlink_dly_e204
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink DLY-E204
+  BUILD_DEVICES:=kooiot_tlink-dly-e204
+endef
+
 define U-Boot/tlink_rp_t113
   BUILD_SUBTARGET:=cortexa7
   NAME:=RP T113-S3 board
@@ -580,6 +586,7 @@ UBOOT_TARGETS := \
 	tlink_s1 \
 	tlink_dly_e102 \
 	tlink_dly_e102_spinand \
+	tlink_dly_e204 \
 	tlink_rp_t113 \
 	Lichee_Zero_Plus \
 	sinlinx_sin_v3s \

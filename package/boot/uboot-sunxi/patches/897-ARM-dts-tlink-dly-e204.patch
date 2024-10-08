@@ -1,0 +1,218 @@
+--- /dev/null
++++ b/configs/tlink_dly_e204_defconfig
+@@ -0,0 +1,45 @@
++CONFIG_ARM=y
++CONFIG_ARCH_SUNXI=y
++CONFIG_DEFAULT_DEVICE_TREE="sun8i-t113s-tlink-dly-e204"
++CONFIG_SPL=y
++CONFIG_MACH_SUN8I_R528=y
++CONFIG_DRAM_CLK=792
++CONFIG_DRAM_ZQ=8092667
++CONFIG_MMC0_CD_PIN="PF6"
++CONFIG_MMC_SUNXI_SLOT_EXTRA=2
++CONFIG_SUNXI_MINIMUM_DRAM_MB=128
++CONFIG_CONS_INDEX=1
++CONFIG_UART0_PORT_G=y
++CONFIG_SPL_SPI_SUNXI=y
++# CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
++CONFIG_SPL_LOAD_FIT=y
++CONFIG_SPL_LEGACY_IMAGE_FORMAT=y
++CONFIG_SPL_FIT_IMAGE_TINY=y
++CONFIG_SPL_SPINAND_SUPPORT=y
++CONFIG_SPL_SPINAND_PAGE_SIZE=0x800
++CONFIG_SPL_SPINAND_BLOCK_SIZE=0x20000
++CONFIG_SPL_UBI=y
++CONFIG_SPL_UBI_MAX_VOL_LEBS=2048
++CONFIG_SPL_UBI_MAX_PEB_SIZE=131072
++CONFIG_SPL_UBI_MAX_PEBS=2048
++CONFIG_SPL_UBI_PEB_OFFSET=4
++CONFIG_SPL_UBI_VID_OFFSET=2048
++CONFIG_SPL_UBI_LEB_START=4096
++CONFIG_SPL_UBI_INFO_ADDR=0x41000000
++CONFIG_SPL_UBI_VOL_IDS=256
++CONFIG_SPL_UBI_LOAD_MONITOR_ID=0
++CONFIG_CMD_MTD=y
++CONFIG_CMD_UBI=y
++CONFIG_MTD=y
++CONFIG_DM_MTD=y
++CONFIG_MTD_SPI_NAND=y
++# CONFIG_SPI_FLASH_USE_4K_SECTORS is not set
++CONFIG_SPI=y
++CONFIG_SPI_FLASH_MTD=y
++CONFIG_MTD_UBI_FASTMAP=y
++CONFIG_MTD_UBI_FASTMAP_AUTOCONVERT=1
++CONFIG_DRAM_SUNXI_ODT_EN=0
++CONFIG_DRAM_SUNXI_TPR0=0x004a2195
++CONFIG_DRAM_SUNXI_TPR11=0x770000
++CONFIG_DRAM_SUNXI_TPR12=0x2
++CONFIG_DRAM_SUNXI_TPR13=0x34050100
+--- /dev/null
++++ b/arch/arm/dts/sun8i-t113s-tlink-dly-e204.dts
+@@ -0,0 +1,167 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++// Copyright (C) 2022 Arm Ltd.
++
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/leds/common.h>
++
++/dts-v1/;
++
++#include "sun8i-t113s.dtsi"
++
++/ {
++	model = "ThingsLink DLY-E204";
++	compatible = "kooiot,tlink-dly-e204", "allwinner,sun8i-t113s";
++
++	aliases {
++		serial0 = &uart0;
++	};
++
++	chosen {
++		stdout-path = "serial0:115200n8";
++	};
++
++	/* board wide 5V supply directly from the USB-C socket */
++	reg_vcc5v: regulator-5v {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc-5v";
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++		regulator-always-on;
++	};
++
++	/* SY8008 DC/DC regulator on the board */
++	reg_3v3: regulator-3v3 {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc-3v3";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		vin-supply = <&reg_vcc5v>;
++	};
++
++	/* SY8008 DC/DC regulator on the board, also supplying VDD-SYS */
++	reg_vcc_core: regulator-core {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc-core";
++		regulator-min-microvolt = <880000>;
++		regulator-max-microvolt = <880000>;
++		vin-supply = <&reg_vcc5v>;
++	};
++};
++
++&dcxo {
++	clock-frequency = <24000000>;
++};
++
++
++&mmc0 {
++	pinctrl-0 = <&mmc0_pins>;
++	pinctrl-names = "default";
++	vmmc-supply = <&reg_3v3>;
++	cd-gpios = <&pio 5 6 GPIO_ACTIVE_LOW>; /* PF6 */
++	disable-wp;
++	bus-width = <4>;
++	status = "okay";
++};
++
++&mmc2 {
++	bus-width = <8>;
++	non-removable;
++	vmmc-supply = <&reg_3v3>;
++	vqmmc-supply = <&reg_3v3>;
++	pinctrl-0 = <&mmc2_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++};
++
++&pio {
++	vcc-pb-supply = <&reg_3v3>;
++	vcc-pd-supply = <&reg_3v3>;
++	vcc-pe-supply = <&reg_3v3>;
++	vcc-pf-supply = <&reg_3v3>;
++	vcc-pg-supply = <&reg_3v3>;
++
++	uart0_pg_pins: uart0-pg-pins {
++        pins = "PG17", "PG18";
++        function = "uart0";
++    };
++};
++
++&uart0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&uart0_pg_pins>;
++	status = "okay";
++};
++
++&usbphy {
++	usb1_vbus-supply = <&reg_vcc5v>;
++	status = "okay";
++};
++
++&cpu0 {
++	cpu-supply = <&reg_vcc_core>;
++};
++
++&cpu1 {
++	cpu-supply = <&reg_vcc_core>;
++};
++
++&spi0 {
++	pinctrl-0 = <&spi0_pins>;
++	pinctrl-names = "default";
++	status = "disabled";
++
++	flash: spinand@0 {
++		#address-cells = <1>;
++		#size-cells = <1>;
++		compatible = "spi-nand";
++		reg = <0>;
++		spi-max-frequency = <50000000>;
++		/*
++		partitions {
++			compatible = "fixed-partitions";
++			#address-cells = <1>;
++			#size-cells = <1>;
++
++			partition@0 {
++				label = "boot0";
++				reg = <0x00000000 0x00100000>;
++				read-only;
++			};
++
++			partition@100000 {
++				label = "uboot";
++				reg = <0x00100000 0x00300000>;
++				read-only;
++			};
++
++			partition@400000 {
++				label = "factory";
++				reg = <0x00400000 0x00100000>;
++				read-only;
++			};
++
++			partition@500000 {
++				label = "ubi";
++				reg = <0x00500000 0x0fb00000>;
++			};
++		};
++		*/
++	};
++};
++
++&ohci0 {
++	status = "okay";
++};
++
++&ohci1 {
++	status = "okay";
++};
++
++&ehci0 {
++	status = "okay";
++};
++
++&ehci1 {
++	status = "okay";
++};
