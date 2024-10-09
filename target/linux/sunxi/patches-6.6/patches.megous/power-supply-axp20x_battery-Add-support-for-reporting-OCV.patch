@@ -14,7 +14,7 @@ diff --git a/drivers/power/supply/axp20x_battery.c b/drivers/power/supply/axp20x
 index f24520719a74..bad981c349ff 100644
 --- a/drivers/power/supply/axp20x_battery.c
 +++ b/drivers/power/supply/axp20x_battery.c
-@@ -180,6 +180,25 @@ static int axp20x_get_constant_charge_current(struct axp20x_batt_ps *axp,
+@@ -180,6 +180,25 @@ static int axp20x_get_constant_charge_cu
  	return 0;
  }
  
@@ -40,7 +40,7 @@ index f24520719a74..bad981c349ff 100644
  static int axp20x_battery_get_prop(struct power_supply *psy,
  				   enum power_supply_property psp,
  				   union power_supply_propval *val)
-@@ -277,6 +296,9 @@ static int axp20x_battery_get_prop(struct power_supply *psy,
+@@ -277,6 +296,9 @@ static int axp20x_battery_get_prop(struc
  		val->intval *= 1000;
  		break;
  
@@ -50,13 +50,13 @@ index f24520719a74..bad981c349ff 100644
  	case POWER_SUPPLY_PROP_CAPACITY:
  		/* When no battery is present, return capacity is 100% */
  		ret = regmap_read(axp20x_batt->regmap, AXP20X_PWR_OP_MODE,
-@@ -498,6 +520,7 @@ static enum power_supply_property axp20x_battery_props[] = {
+@@ -498,6 +520,7 @@ static enum power_supply_property axp20x
  	POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT,
  	POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX,
  	POWER_SUPPLY_PROP_HEALTH,
 +	POWER_SUPPLY_PROP_VOLTAGE_OCV,
- 	POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN,
- 	POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN,
+ 	POWER_SUPPLY_PROP_VOLTAGE_MAX,
+ 	POWER_SUPPLY_PROP_VOLTAGE_MIN,
  	POWER_SUPPLY_PROP_CAPACITY,
 -- 
 Armbian
