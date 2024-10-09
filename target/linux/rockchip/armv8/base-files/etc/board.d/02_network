@@ -9,12 +9,6 @@ rockchip_setup_interfaces()
 	local board="$1"
 
 	case "$board" in
-	friendlyarm,nanopc-t6|\
-	friendlyarm,nanopi-r5c|\
-	firefly,rk3568-roc-pc)
-		ucidef_set_interfaces_lan_wan 'eth0' 'eth1'
-		;;
-	hinlink,opc-h66k|\
 	armsom,sige7|\
 	friendlyarm,nanopi-r2c|\
 	friendlyarm,nanopi-r2c-plus|\
@@ -22,31 +16,15 @@ rockchip_setup_interfaces()
 	friendlyarm,nanopi-r4s|\
 	friendlyarm,nanopi-r4s-enterprise|\
 	friendlyarm,nanopi-r6c|\
+	hinlink,opc-h66k|\
 	radxa,rockpi-e|\
 	xunlong,orangepi-r1-plus|\
 	xunlong,orangepi-r1-plus-lts)
 		ucidef_set_interfaces_lan_wan 'eth1' 'eth0'
 		;;
-	kooiot,tlink-r4x|\
-	kooiot,tlink-r7)
-		ucidef_set_interface_lan "eth0"
-		ucidef_set_interface "lan1" device "eth1" protocol "static"
-		ucidef_set_interface "lan2" device "eth2" protocol "static"
-		ucidef_set_interface "lan3" device "eth3" protocol "static"
-		;;
-	kooiot,tlink-r4x-1)
-		ucidef_set_interfaces_lan_wan "eth0" "eth1"
-		;;
-	hinlink,opc-h68k|\
-	fastrhino,r68s)
-		ucidef_set_interfaces_lan_wan 'eth0 eth2 eth3' 'eth1'
-		;;
-	hinlink,opc-h69k|\
-	friendlyarm,nanopi-r5s)
-		ucidef_set_interfaces_lan_wan "eth1 eth2" "eth0"
-		;;
 	friendlyarm,nanopc-t6|\
 	friendlyarm,nanopi-r5c|\
+	firefly,rk3568-roc-pc|\
 	radxa,e25|\
 	radxa,rock-3b)
 		ucidef_set_interfaces_lan_wan 'eth0' 'eth1'
@@ -59,6 +37,23 @@ rockchip_setup_interfaces()
 		;;
 	sinovoip,rk3568-bpi-r2pro)
 		ucidef_set_interfaces_lan_wan 'lan0 lan1 lan2 lan3' 'eth0'
+		;;
+	hinlink,opc-h68k)
+		ucidef_set_interfaces_lan_wan 'eth0 eth2 eth3' 'eth1'
+		;;
+	hinlink,opc-h69k|\
+	friendlyarm,nanopi-r5s)
+		ucidef_set_interfaces_lan_wan "eth1 eth2" "eth0"
+		;;
+	kooiot,tlink-r4x|\
+	kooiot,tlink-r7)
+		ucidef_set_interface_lan "eth0"
+		ucidef_set_interface "lan1" device "eth1" protocol "static"
+		ucidef_set_interface "lan2" device "eth2" protocol "static"
+		ucidef_set_interface "lan3" device "eth3" protocol "static"
+		;;
+	kooiot,tlink-r4x-1)
+		ucidef_set_interfaces_lan_wan "eth0" "eth1"
 		;;
 	*)
 		ucidef_set_interface_lan 'eth0'
