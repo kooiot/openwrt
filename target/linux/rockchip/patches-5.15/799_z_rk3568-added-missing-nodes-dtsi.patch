@@ -289,7 +289,7 @@
 +					type = "passive";
 +				};
 +				cpu_crit: cpu_crit {
-+					temperature = <105000>;
++					temperature = <125000>;
 +					hysteresis = <2000>;
 +					type = "critical";
 +				};
