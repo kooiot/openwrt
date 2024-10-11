@@ -36,6 +36,7 @@ define U-Boot/tlink-r4x
   ATF:=rk3568_bl31.elf
   TEE_FILE:=rk3568_bl32.bin
   DDR_FILE:=rk3568_ddr_1560MHz.bin
+  DDR_LOW_FILE:=rk3568_ddr_528MHz.bin
   UBOOT_SOC_PLAT:=rk3568
 endef
 
@@ -49,6 +50,7 @@ define U-Boot/tlink-r7
   ATF:=rk3568_bl31.elf
   TEE_FILE:=rk3568_bl32.bin
   DDR_FILE:=rk3568_ddr_1560MHz.bin
+  DDR_LOW_FILE:=rk3568_ddr_528MHz.bin
   UBOOT_SOC_PLAT:=rk3568
 endef
 
@@ -92,6 +94,10 @@ endef
 
 define Build/InstallDev
 	$(INSTALL_DIR) $(STAGING_DIR_IMAGE)
+
+	$(if $(strip $(DDR_LOW_FILE)),
+		$(CP) $(PKG_BUILD_DIR)/idbloader_low.img $(STAGING_DIR_IMAGE)/$(BUILD_VARIANT)-idbloader_low.img)
+
 	$(CP) $(PKG_BUILD_DIR)/idbloader.img $(STAGING_DIR_IMAGE)/$(BUILD_VARIANT)-idbloader.img
 	$(CP) $(PKG_BUILD_DIR)/u-boot.itb $(STAGING_DIR_IMAGE)/$(BUILD_VARIANT)-u-boot.itb
 	$(CP) $(PKG_BUILD_DIR)/boot.scr $(STAGING_DIR_IMAGE)/$(BUILD_VARIANT)-boot.scr
@@ -113,6 +119,10 @@ define Build/idbloader-image
 
 	$(PKG_BUILD_DIR)/tools/mkimage -n $(UBOOT_SOC_PLAT) -T rksd \
 		-d  $(STAGING_DIR_IMAGE)/$(DDR_FILE):$(PKG_BUILD_DIR)/spl/u-boot-spl.bin $(PKG_BUILD_DIR)/idbloader.img
+
+	$(if $(strip $(DDR_LOW_FILE)),
+		$(PKG_BUILD_DIR)/tools/mkimage -n $(UBOOT_SOC_PLAT) -T rksd \
+			-d  $(STAGING_DIR_IMAGE)/$(DDR_LOW_FILE):$(PKG_BUILD_DIR)/spl/u-boot-spl.bin $(PKG_BUILD_DIR)/idbloader_low.img)
 endef
 
 define Build/build-bootscript
