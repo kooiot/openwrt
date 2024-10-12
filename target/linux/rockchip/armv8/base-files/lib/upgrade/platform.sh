@@ -1,6 +1,6 @@
 tlink_get_type_magic() {
-	# 0x4c0cc
-	local skip_base=311500
+	# 0x800943
+	local skip_base=8390979
 	local skip_offset=$(($skip_base))
 	local name_len=$2
 	get_image "$1" | dd bs=1 count=$name_len skip=$skip_offset 2>/dev/null | hexdump -v -n $name_len -e '/1 "%c"'
@@ -9,9 +9,11 @@ tlink_get_type_magic() {
 tlink_check_image() {
 	local cur_name=$(board_name)
 	local name_len=${#cur_name}
-	local typemagic="$(tlink_get_type_magic "$1" $name_len)"
-	[ "${typemagic}" != "$(board_name)" ] && {
-		echo "Invalid image, bad type: $typemagic $(board_name)"
+	local name_len_s=$((name_len-7))
+	local cur_name_s=${cur_name:7}
+	local typemagic="$(tlink_get_type_magic "$1" $name_len_s)"
+	[ "${typemagic}"x != "${cur_name:7}"x ] && {
+		echo "Invalid image, bad type:${typemagic}!=${cur_name:7}."
 		return 1
 	}
 	return 0
