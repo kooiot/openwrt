@@ -37,10 +37,12 @@ define Build/InstallDev
 	$(CP) $(PKG_BUILD_DIR)/bin/rk35/rk3568_bl31_v1.32.elf $(STAGING_DIR_IMAGE)/rk3568_bl31.elf
 	$(CP) $(PKG_BUILD_DIR)/bin/rk35/rk3568_bl32_v2.08.bin $(STAGING_DIR_IMAGE)/rk3568_bl32.bin
 	$(CP) $(PKG_BUILD_DIR)/bin/rk35/rk3568_ddr_1560MHz_v1.13.bin $(STAGING_DIR_IMAGE)/rk3568_ddr_1560MHz.bin
+	$(CP) $(PKG_BUILD_DIR)/bin/rk35/rk3568_ddr_528MHz_v1.13.bin $(STAGING_DIR_IMAGE)/rk3568_ddr_528MHz.bin
 
 	$(CP) $(PKG_BUILD_DIR)/tools/ddrbin_param.txt $(PKG_BUILD_DIR)/ddrbin_param_new.txt
 	$(SED) 's/uart baudrate=/uart baudrate=115200/g' $(PKG_BUILD_DIR)/ddrbin_param_new.txt
 	$(PKG_BUILD_DIR)/tools/ddrbin_tool $(PKG_BUILD_DIR)/ddrbin_param_new.txt  $(STAGING_DIR_IMAGE)/rk3568_ddr_1560MHz.bin
+	$(PKG_BUILD_DIR)/tools/ddrbin_tool $(PKG_BUILD_DIR)/ddrbin_param_new.txt  $(STAGING_DIR_IMAGE)/rk3568_ddr_528MHz.bin
 endef
 
 define Package/arm-trusted-firmware-rkbin/install
