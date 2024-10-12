@@ -837,10 +837,10 @@
 	wk@1 {
 		compatible = "wkmic,wk2xxx_i2c";
 		reg = <0x01>;
-		interrupt-parent = <&gpio4>;
-		interrupts = <RK_PC4 IRQ_TYPE_LEVEL_LOW>;
-		reset_gpio=<&gpio4 RK_PC7 GPIO_ACTIVE_HIGH>;
-		// irq_gpio= <&gpio4 RK_PC4 IRQ_TYPE_LEVEL_LOW>;
+		// interrupt-parent = <&gpio4>;
+		// interrupts = <RK_PC4 IRQ_TYPE_LEVEL_LOW>;
+		reset_gpio=<&gpio4 RK_PC7 GPIO_ACTIVE_LOW>;
+		irq_gpio= <&gpio4 RK_PC4 IRQ_TYPE_LEVEL_LOW>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&wk2xxx_irq_pin &wk2xxx_reset_pin>;
 		status = "okay";
@@ -1068,7 +1068,7 @@
 			rockchip,pins = <4 RK_PC4 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 		wk2xxx_reset_pin: wk2xxx-reset-pin {
-			rockchip,pins = <4 RK_PC7 RK_FUNC_GPIO &pcfg_pull_none>;
+			rockchip,pins = <4 RK_PC7 RK_FUNC_GPIO &pcfg_pull_up>;
 		};
 	};
 

@@ -1,5 +1,26 @@
 REQUIRE_IMAGE_METADATA=1
 
+tlink_get_type_magic() {
+	# 0x800943
+	local skip_base=8390979
+	local skip_offset=$(($skip_base))
+	local name_len=$2
+	get_image_dd "$1" bs=1 count=$name_len skip=$skip_offset 2>/dev/null | hexdump -v -n $name_len -e '/1 "%c"'
+}
+
+tlink_check_image() {
+	local cur_name=$(board_name)
+	local name_len=${#cur_name}
+	local name_len_s=$((name_len-7))
+	local cur_name_s=${cur_name:7}
+	local typemagic="$(tlink_get_type_magic "$1" $name_len_s)"
+	[ "${typemagic}"x != "${cur_name:7}"x ] && {
+		echo "Invalid image, bad type:${typemagic}!=${cur_name:7}."
+		return 1
+	}
+	return 0
+}
+
 platform_check_image() {
 	local diskdev partdev diff
 
@@ -22,9 +43,21 @@ platform_check_image() {
 
 	if [ -n "$diff" ]; then
 		echo "Partition layout has changed. Full image will be written."
-		ask_bool 0 "Abort" && exit 1
-		return 0
+		#ask_bool 0 "Abort" && exit 1
+		#return 0
+		return 1
 	fi
+
+	case "$(board_name)" in
+		"kooiot,tlink-r4x" | \
+		"kooiot,tlink-r7")
+			tlink_check_image "$1" && return 0
+			return 1
+			;;
+		*)
+			return 0
+			;;
+	esac
 }
 
 platform_copy_config() {

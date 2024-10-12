@@ -1,32 +1,16 @@
-From f9ae6e992d3d9e80357fee7d65ba0fe2dd37ae1f Mon Sep 17 00:00:00 2001
-From: hmz007 <hmz007@gmail.com>
-Date: Tue, 19 Nov 2019 14:21:51 +0800
-Subject: [PATCH] arm64: dts: nanopi-r2: add rk3328-dmc relate node
-
-Signed-off-by: hmz007 <hmz007@gmail.com>
----
- .../rockchip/rk3328-dram-default-timing.dtsi  | 311 ++++++++++++++++++
- .../dts/rockchip/rk3328-nanopi-r2-common.dtsi |  85 ++++-
- include/dt-bindings/clock/rockchip-ddr.h      |  63 ++++
- include/dt-bindings/memory/rk3328-dram.h      | 159 +++++++++
- 4 files changed, 617 insertions(+), 1 deletion(-)
- create mode 100644 arch/arm64/boot/dts/rockchip/rk3328-dram-default-timing.dtsi
- create mode 100644 include/dt-bindings/clock/rockchip-ddr.h
- create mode 100644 include/dt-bindings/memory/rk3328-dram.h
-
---- a/arch/arm64/boot/dts/rockchip/rk3328-nanopi-r2s.dts
-+++ b/arch/arm64/boot/dts/rockchip/rk3328-nanopi-r2s.dts
+--- a/arch/arm64/boot/dts/rockchip/rk3328-orangepi-r1-plus.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-orangepi-r1-plus.dts
 @@ -8,6 +8,7 @@
- #include <dt-bindings/input/input.h>
- #include <dt-bindings/leds/common.h>
+ 
  #include <dt-bindings/gpio/gpio.h>
+ #include <dt-bindings/leds/common.h>
 +#include "rk3328-dram-default-timing.dtsi"
  #include "rk3328.dtsi"
  
  / {
-@@ -123,6 +124,72 @@
+@@ -89,6 +90,71 @@
  		regulator-boot-on;
- 		vin-supply = <&vdd_5v>;
+ 		vin-supply = <&vcc_sys>;
  	};
 +
 +	dmc: dmc {
@@ -42,7 +26,6 @@ Signed-off-by: hmz007 <hmz007@gmail.com>
 +		auto-min-freq = <786000>;
 +		auto-freq-en = <0>;
 +		#cooling-cells = <2>;
-+		status = "okay";
 +
 +		ddr_power_model: ddr_power_model {
 +			compatible = "ddr_power_model";
@@ -97,30 +80,19 @@ Signed-off-by: hmz007 <hmz007@gmail.com>
  };
  
  &cpu0 {
-@@ -141,6 +208,10 @@
- 	cpu-supply = <&vdd_arm>;
+--- a/arch/arm64/boot/dts/rockchip/rk3328-orangepi-r1-plus-lts.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-orangepi-r1-plus-lts.dts
+@@ -14,6 +14,13 @@
+ 	compatible = "xunlong,orangepi-r1-plus-lts", "rockchip,rk3328";
  };
  
-+&dfi {
-+	status = "okay";
++&dmc_opp_table {
++	/delete-node/ opp-798000000;
++	/delete-node/ opp-840000000;
++	/delete-node/ opp-924000000;
++	/delete-node/ opp-1056000000;
 +};
 +
- &display_subsystem {
- 	status = "disabled";
- };
-@@ -208,6 +279,7 @@
- 				regulator-name = "vdd_log";
- 				regulator-always-on;
- 				regulator-boot-on;
-+				regulator-init-microvolt = <1075000>;
- 				regulator-min-microvolt = <712500>;
- 				regulator-max-microvolt = <1450000>;
- 				regulator-ramp-delay = <12500>;
-@@ -222,6 +294,7 @@
- 				regulator-name = "vdd_arm";
- 				regulator-always-on;
- 				regulator-boot-on;
-+				regulator-init-microvolt = <1225000>;
- 				regulator-min-microvolt = <712500>;
- 				regulator-max-microvolt = <1450000>;
- 				regulator-ramp-delay = <12500>;
+ &gmac2io {
+ 	phy-handle = <&yt8531c>;
+ 	tx_delay = <0x19>;
