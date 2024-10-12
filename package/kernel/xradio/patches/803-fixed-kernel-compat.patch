@@ -37,3 +37,14 @@
  {
  	struct xradio_common *hw_priv = dev->priv;
  	struct xradio_vif *priv = NULL;
+--- a/main.c
++++ b/main.c
+@@ -171,7 +171,7 @@ static const struct ieee80211_ops xradio
+ #if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 2, 0))
+ 	.wake_tx_queue		= ieee80211_handle_wake_tx_queue,
+ #endif
+-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 9, 0))
++#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 9, 0)) || defined(BUILD_OPENWRT)
+        .add_chanctx = ieee80211_emulate_add_chanctx,
+        .remove_chanctx = ieee80211_emulate_remove_chanctx,
+        .change_chanctx = ieee80211_emulate_change_chanctx,
