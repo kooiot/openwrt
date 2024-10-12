@@ -9,3 +9,31 @@
  	ieee80211_tx_status_skb(hw_priv->hw, skb);
  #else
  	ieee80211_tx_status(hw_priv->hw, skb)
+--- a/sta.h
++++ b/sta.h
+@@ -31,7 +31,11 @@
+ /* mac80211 API								*/
+ 
+ int xradio_start(struct ieee80211_hw *dev);
++#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 54))
++void xradio_stop(struct ieee80211_hw *dev, bool suspend);
++#else
+ void xradio_stop(struct ieee80211_hw *dev);
++#endif
+ int xradio_add_interface(struct ieee80211_hw *dev, struct ieee80211_vif *vif);
+ void xradio_remove_interface(struct ieee80211_hw *dev, struct ieee80211_vif *vif);
+ int xradio_change_interface(struct ieee80211_hw *dev,
+--- a/sta.c
++++ b/sta.c
+@@ -117,7 +117,11 @@ out:
+ 	return ret;
+ }
+ 
++#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 54))
++void xradio_stop(struct ieee80211_hw *dev, bool suspend)
++#else
+ void xradio_stop(struct ieee80211_hw *dev)
++#endif
+ {
+ 	struct xradio_common *hw_priv = dev->priv;
+ 	struct xradio_vif *priv = NULL;
