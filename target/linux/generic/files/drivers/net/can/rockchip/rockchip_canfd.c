@@ -24,7 +24,6 @@
 #include <linux/types.h>
 #include <linux/can/dev.h>
 #include <linux/can/error.h>
-#include <linux/can/led.h>
 #include <linux/reset.h>
 #include <linux/pm_runtime.h>
 #include <linux/rockchip/cpu.h>
@@ -674,8 +673,6 @@ static int rockchip_canfd_rx(struct net_device *ndev)
 	stats->rx_bytes += cf->len;
 	netif_rx(skb);
 
-	can_led_event(ndev, CAN_LED_EVENT_RX);
-
 	return 1;
 }
 
@@ -714,9 +711,6 @@ static int rockchip_canfd_rx_poll(struct napi_struct *napi, int quota)
 		while (work_done < quota)
 			work_done += rockchip_canfd_rx(ndev);
 	}
-
-	if (work_done)
-		can_led_event(ndev, CAN_LED_EVENT_RX);
 
 	if (work_done < 6) {
 		napi_complete_done(napi, work_done);
@@ -824,9 +818,8 @@ static irqreturn_t rockchip_canfd_interrupt(int irq, void *dev_id)
 				     !(quota & 0x3),
 				     0, 5000000, false, rcan, CAN_CMD);
 		rockchip_canfd_write(rcan, CAN_CMD, 0);
-		can_get_echo_skb(ndev, 0, 0);
+		stats->tx_bytes += can_get_echo_skb(ndev, 0, 0);
 		netif_wake_queue(ndev);
-		can_led_event(ndev, CAN_LED_EVENT_TX);
 	}
 
 	if (isr & RX_FINISH_INT) {
@@ -878,7 +871,6 @@ static int rockchip_canfd_open(struct net_device *ndev)
 		goto exit_can_start;
 	}
 
-	can_led_event(ndev, CAN_LED_EVENT_OPEN);
 	if (rcan->mode == ROCKCHIP_RK3568_CAN_MODE_V2)
 		napi_enable(&rcan->napi);
 
@@ -903,7 +895,6 @@ static int rockchip_canfd_close(struct net_device *ndev)
 		napi_disable(&rcan->napi);
 	rockchip_canfd_stop(ndev);
 	close_candev(ndev);
-	can_led_event(ndev, CAN_LED_EVENT_STOP);
 	pm_runtime_put(rcan->dev);
 	cancel_delayed_work_sync(&rcan->tx_err_work);
 
@@ -1083,7 +1074,7 @@ static int rockchip_canfd_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev, "ROCKCHIP_RK3568_CAN_MODE_V2\n");
 		rcan->mode = ROCKCHIP_RK3568_CAN_MODE_V2;
 	} else {
-		dev_info(&pdev->dev, "cpu_version: %d\n", rockchip_get_cpu_version());
+		dev_info(&pdev->dev, "cpu_version: %lu\n", rockchip_get_cpu_version());
 	}
 
 	rcan->base = addr;
@@ -1134,7 +1125,7 @@ static int rockchip_canfd_probe(struct platform_device *pdev)
 
 	if (rcan->mode == ROCKCHIP_RK3568_CAN_MODE_V2) {
 		rcan->txtorx = 0;
-		netif_napi_add(ndev, &rcan->napi, rockchip_canfd_rx_poll, 6);
+		netif_napi_add_weight(ndev, &rcan->napi, rockchip_canfd_rx_poll, 6);
 	}
 	dev_err(&pdev->dev, "%s: rcan->txtorx(%d)\n", __func__, rcan->txtorx);
 
@@ -1164,8 +1155,6 @@ static int rockchip_canfd_probe(struct platform_device *pdev)
 			DRV_NAME, err);
 		goto err_disableclks;
 	}
-
-	devm_can_led_init(ndev);
 
 	return 0;
 
