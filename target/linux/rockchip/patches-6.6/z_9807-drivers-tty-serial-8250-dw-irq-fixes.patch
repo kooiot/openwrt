@@ -4,9 +4,9 @@
 
  static int dw8250_handle_irq(struct uart_port *p)
  {
-+#ifndef CONFIG_ARCH_ROCKCHIP
++//#ifndef CONFIG_ARCH_ROCKCHIP
  	struct uart_8250_port *up = up_to_u8250p(p);
-+#endif
++//#endif
  	struct dw8250_data *d = to_dw8250_data(p->private_data);
  	unsigned int iir = p->serial_in(p, UART_IIR);
  	bool rx_timeout = (iir & 0x3f) == UART_IIR_RX_TIMEOUT;
@@ -31,9 +31,9 @@
 +#else
 +	if ((iir & 0x3f) == UART_IIR_RX_TIMEOUT) {
 +		spin_lock_irqsave(&p->lock, flags);
-+		usr = p->serial_in(p, d->usr_reg);
++		usr = p->serial_in(p, d->pdata->usr_reg);
 +		status = p->serial_in(p, UART_LSR);
-+		rfl = p->serial_in(p, DW_UART_RFL);
++		rfl = p->serial_in(p, UART_RFL);
 +		if (!(status & (UART_LSR_DR | UART_LSR_BI)) && !(usr & 0x1) && (rfl == 0))
 +			(void) p->serial_in(p, UART_RX);
 +

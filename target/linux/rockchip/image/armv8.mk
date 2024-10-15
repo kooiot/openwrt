@@ -354,7 +354,7 @@ define Device/kooiot_tlink-r4x
   KERNEL := kernel-bin
   SOC := rk3568
   UBOOT_DEVICE_NAME := tlink-r4x
-  IMAGE/sysupgrade.img.gz := boot-common | boot-script-rk | pine64-img | gzip | append-metadata
+  IMAGE/sysupgrade.img.gz := boot-common | boot-script-rk | tlink-img | gzip | append-metadata
   DEVICE_PACKAGES:=kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
     kmod-ledtrig-netdev kmod-ledtrig-gpio \
@@ -382,7 +382,7 @@ define Device/kooiot_tlink-r7
   KERNEL := kernel-bin
   SOC := rk3568
   UBOOT_DEVICE_NAME := tlink-r7
-  IMAGE/sysupgrade.img.gz := boot-common | boot-script-rk | pine64-img | gzip | append-metadata
+  IMAGE/sysupgrade.img.gz := boot-common | boot-script-rk | tlink-img | gzip | append-metadata
   DEVICE_PACKAGES:=kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
     kmod-ledtrig-netdev kmod-ledtrig-gpio \

@@ -1,8 +1,8 @@
---- a/arch/arm64/boot/dts/rockchip/rk356x.dtsi
-+++ b/arch/arm64/boot/dts/rockchip/rk356x.dtsi
-@@ -170,6 +170,12 @@
- 		};
- 	};
+--- a/arch/arm64/boot/dts/rockchip/rk3568.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3568.dtsi
+@@ -8,6 +8,12 @@
+ / {
+ 	compatible = "rockchip,rk3568";
 
 +	cpuinfo {
 +		compatible = "rockchip,cpuinfo";
@@ -10,6 +10,6 @@
 +		nvmem-cell-names = "id", "cpu-version", "cpu-code";
 +	};
 +
- 	display_subsystem: display-subsystem {
- 		compatible = "rockchip,display-subsystem";
- 		ports = <&vop_out>;
+ 	sata0: sata@fc000000 {
+ 		compatible = "rockchip,rk3568-dwc-ahci", "snps,dwc-ahci";
+ 		reg = <0 0xfc000000 0 0x1000>;
