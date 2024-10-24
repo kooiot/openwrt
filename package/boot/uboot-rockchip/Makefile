@@ -252,6 +252,22 @@ define U-Boot/rock-3b-rk3568
     radxa_rock-3b
 endef
 
+define U-Boot/tlink-r4x-rk3568
+  $(U-Boot/rk3568/Default)
+  BUILD_SUBTARGET:=armv8
+  NAME:=ThingsLink R4x
+  BUILD_DEVICES:= \
+       kooiot_tlink-r4x
+endef
+
+define U-Boot/tlink-r7-rk3568
+  $(U-Boot/rk3568/Default)
+  BUILD_SUBTARGET:=armv8
+  NAME:=ThingsLink R7
+  BUILD_DEVICES:= \
+       kooiot_tlink-r7
+endef
+
 
 # RK3588 boards
 
@@ -333,6 +349,8 @@ UBOOT_TARGETS := \
   radxa-e25-rk3568 \
   rock-3a-rk3568 \
   rock-3b-rk3568 \
+  tlink-r4x-rk3568 \
+  tlink-r7-rk3568 \
   nanopc-t6-rk3588 \
   rock5b-rk3588 \
   sige7-rk3588 \

@@ -353,8 +353,8 @@ define Device/kooiot_tlink-r4x
   DEVICE_MODEL := ThingsLink R4x (RK3568)
   KERNEL := kernel-bin
   SOC := rk3568
-  UBOOT_DEVICE_NAME := tlink-r4x
-  IMAGE/sysupgrade.img.gz := boot-common | boot-script-rk | tlink-img | gzip | append-metadata
+  BOOT_SCRIPT := tlink
+  UBOOT_DEVICE_NAME := tlink-r4x-rk3568
   DEVICE_PACKAGES:=kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
     kmod-ledtrig-netdev kmod-ledtrig-gpio \
@@ -381,7 +381,7 @@ define Device/kooiot_tlink-r7
   DEVICE_MODEL := ThingsLink R7 (RK3568)
   KERNEL := kernel-bin
   SOC := rk3568
-  UBOOT_DEVICE_NAME := tlink-r7
+  UBOOT_DEVICE_NAME := tlink-r7-rk3568
   IMAGE/sysupgrade.img.gz := boot-common | boot-script-rk | tlink-img | gzip | append-metadata
   DEVICE_PACKAGES:=kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \

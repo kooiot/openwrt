@@ -1,13 +1,3 @@
---- a/arch/arm/dts/Makefile
-+++ b/arch/arm/dts/Makefile
-@@ -171,6 +171,7 @@ dtb-$(CONFIG_ROCKCHIP_RK3568) += \
- 	rk3566-radxa-cm3-io.dtb \
- 	rk3568-mrkaio-m68s.dtb \
- 	rk3568-nanopi-r5s.dtb \
-+	rk3568-opc-h68k.dtb \
- 	rk3568-evb.dtb \
- 	rk3568-rock-3a.dtb
- 
 --- /dev/null
 +++ b/arch/arm/dts/rk3568-opc-h68k-u-boot.dtsi
 @@ -0,0 +1,16 @@
@@ -28,7 +18,7 @@
 +	status = "okay";
 +};
 --- /dev/null
-+++ b/arch/arm/dts/rk3568-opc-h68k.dts
++++ b/dts/upstream/src/arch/arm64/rockchip/rk3568-opc-h68k.dts
 @@ -0,0 +1,24 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +
@@ -67,7 +57,7 @@
 +CONFIG_NR_DRAM_BANKS=2
 +CONFIG_HAS_CUSTOM_SYS_INIT_SP_ADDR=y
 +CONFIG_CUSTOM_SYS_INIT_SP_ADDR=0xc00000
-+CONFIG_DEFAULT_DEVICE_TREE="rk3568-opc-h68k"
++CONFIG_DEFAULT_DEVICE_TREE="rockchip/rk3568-opc-h68k"
 +CONFIG_ROCKCHIP_RK3568=y
 +CONFIG_SPL_ROCKCHIP_COMMON_BOARD=y
 +CONFIG_SPL_SERIAL=y

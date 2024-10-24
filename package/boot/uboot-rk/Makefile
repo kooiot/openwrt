@@ -27,12 +27,12 @@ endef
 
 ## RK3568 boards
 
-define U-Boot/tlink-r4x
+define U-Boot/tlink-r4x-1
   BUILD_SUBTARGET:=armv8
   NAME:=ThingsLink RK3568
   BUILD_DEVICES:= \
-    kooiot_tlink-r4x
-  DEPENDS:=+PACKAGE_u-boot-tlink-r4x:arm-trusted-firmware-rkbin
+    kooiot_tlink-r4x-1
+  DEPENDS:=+PACKAGE_u-boot-tlink-r4x-1:arm-trusted-firmware-rkbin
   PKG_BUILD_DEPENDS:=arm-trusted-firmware-rkbin
   ATF:=rk3568_bl31.elf
   TEE_FILE:=rk3568_bl32.bin
@@ -41,11 +41,11 @@ define U-Boot/tlink-r4x
   UBOOT_SOC_PLAT:=rk3568
 endef
 
-define U-Boot/tlink-r7
+define U-Boot/tlink-r7-1
   BUILD_SUBTARGET:=armv8
   NAME:=ThingsLink RK3568
   BUILD_DEVICES:= \
-    kooiot_tlink-r7
+    kooiot_tlink-r7-1
   DEPENDS:=+PACKAGE_u-boot-tlink-r7:arm-trusted-firmware-rkbin
   PKG_BUILD_DEPENDS:=arm-trusted-firmware-rkbin
   ATF:=rk3568_bl31.elf
@@ -69,8 +69,8 @@ define U-Boot/firefly-rk3568
 endef
 
 UBOOT_TARGETS := \
-  tlink-r4x \
-  tlink-r7 \
+  tlink-r4x-1 \
+  tlink-r7-1 \
   firefly-rk3568
 
 UBOOT_CONFIGURE_VARS += USE_PRIVATE_LIBGCC=yes
