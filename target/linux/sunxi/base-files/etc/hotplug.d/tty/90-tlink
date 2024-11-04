@@ -199,7 +199,8 @@ kooiot,tlink-k2x)
 	tlink_k2_wk_spi
 	tlink_k2_ch432_spi
 	;;
-kooiot,tlink-k4x)
+kooiot,tlink-k4a|\
+kooiot,tlink-k4b)
 	tlink_k4x_ch_spi
 	;;
 esac

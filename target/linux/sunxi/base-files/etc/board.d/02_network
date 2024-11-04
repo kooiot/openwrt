@@ -77,7 +77,8 @@ kooiot,tlink-k1)
 	ucidef_set_interface_lan "eth0 eth1"
 	;;
 kooiot,tlink-k2|\
-kooiot,tlink-k4x|\
+kooiot,tlink-k4a|\
+kooiot,tlink-k4g|\
 kooiot,tlink-m408|\
 kooiot,tlink-m416)
 #	tlink_setup_macs
