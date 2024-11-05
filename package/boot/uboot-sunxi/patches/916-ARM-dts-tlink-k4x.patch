@@ -1,5 +1,5 @@
 --- /dev/null
-+++ b/configs/tlink_k4x_defconfig
++++ b/configs/tlink_k4a_defconfig
 @@ -0,0 +1,32 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
@@ -17,7 +17,42 @@
 +# CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
 +CONFIG_SPL_I2C_SUPPORT=y
 +# CONFIG_CMD_FLASH is not set
-+CONFIG_DEFAULT_DEVICE_TREE="sun8i-r40-tlink-k4x"
++CONFIG_DEFAULT_DEVICE_TREE="sun8i-r40-tlink-k4a"
++CONFIG_SCSI_AHCI=y
++CONFIG_MII=y
++CONFIG_SUN8I_EMAC=y
++CONFIG_AXP_GPIO=y
++CONFIG_AXP_DCDC3_VOLT=1200
++CONFIG_AXP_DCDC5_VOLT=1200
++CONFIG_AXP_ALDO1_VOLT=3300
++CONFIG_AXP_ALDO2_VOLT=1800
++CONFIG_AXP_DLDO1_VOLT=3300
++CONFIG_AXP_DLDO4_VOLT=1800
++CONFIG_AXP_ELDO2_VOLT=1200
++CONFIG_AXP_ELDO3_VOLT=2500
++CONFIG_SCSI=y
++CONFIG_USB_ECHI_HCD=y
++CONFIG_USB_OCHI_HCD=y
+--- /dev/null
++++ b/configs/tlink_k4g_defconfig
+@@ -0,0 +1,32 @@
++CONFIG_ARM=y
++CONFIG_ARCH_SUNXI=y
++CONFIG_SPL=y
++CONFIG_MACH_SUN8I_R40=y
++CONFIG_DRAM_CLK=576
++CONFIG_DRAM_ZQ=3881979
++# CONFIG_SUNXI_DRAM_DW_R40_DUAL_RANK is not set
++CONFIG_MMC0_CD_PIN="PB8"
++CONFIG_MMC_SUNXI_SLOT_EXTRA=2
++CONFIG_USB0_VBUS_PIN="PC18"
++CONFIG_AHCI=y
++CONFIG_SUNXI_DRAM_LPDDR3_STOCK=y
++# CONFIG_NR_DRAM_BANKS is not set
++# CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
++CONFIG_SPL_I2C_SUPPORT=y
++# CONFIG_CMD_FLASH is not set
++CONFIG_DEFAULT_DEVICE_TREE="sun8i-r40-tlink-k4g"
 +CONFIG_SCSI_AHCI=y
 +CONFIG_MII=y
 +CONFIG_SUN8I_EMAC=y
@@ -35,16 +70,17 @@
 +CONFIG_USB_OCHI_HCD=y
 +++ a/arch/arm/dts/Makefile
 +++ b/arch/arm/dts/Makefile
-@@ -550,6 +550,7 @@
+@@ -550,6 +550,8 @@
 	sun8i-r40-tlink-k1.dtb \
 	sun8i-r40-tlink-k2.dtb \
 	sun8i-r40-tlink-k2x.dtb \
-+	sun8i-r40-tlink-k4x.dtb \
++	sun8i-r40-tlink-k4a.dtb \
++	sun8i-r40-tlink-k4g.dtb \
 	sun8i-r40-tlink-dj-a40i-e.dtb \
 	sun8i-r40-tlink-qh-x40.dtb \
 	sun8i-r40-tlink-nano-a40i.dtb \
 --- /dev/null
-+++ b/arch/arm/dts/sun8i-r40-tlink-k4x.dts
++++ b/arch/arm/dts/sun8i-r40-tlink-k4x.dtsi
 @@ -0,0 +1,223 @@
 +/*
 + * Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
@@ -268,4 +304,38 @@
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&uart0_pb_pins>;
 +	status = "okay";
++};
+--- /dev/null
++++ b/arch/arm/dts/sun8i-r40-tlink-k4a.dts
+@@ -0,0 +1,14 @@
++/*
++ * Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
++ *
++ */
++
++/dts-v1/;
++#include "sun8i-r40-tlink-k4x.dtsi"
++
++#include <dt-bindings/gpio/gpio.h>
++
++/ {
++	model = "ThingsLink K4A";
++	compatible = "kooiot,tlink-k4a", "kooiot,tlink-k4x", "allwinner,sun8i-r40";
++};
+--- /dev/null
++++ b/arch/arm/dts/sun8i-r40-tlink-k4g.dts
+@@ -0,0 +1,14 @@
++/*
++ * Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
++ *
++ */
++
++/dts-v1/;
++#include "sun8i-r40-tlink-k4x.dtsi"
++
++#include <dt-bindings/gpio/gpio.h>
++
++/ {
++	model = "ThingsLink K4G";
++	compatible = "kooiot,tlink-k4g", "kooiot,tlink-k4x", "allwinner,sun8i-r40";
 +};

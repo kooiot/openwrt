@@ -57,7 +57,7 @@
 +#include <dt-bindings/gpio/gpio.h>
 +
 +/ {
-+	model = "ThingsLink K2X";
++	model = "ThingsLink K2x";
 +	compatible = "kooiot,tlink-k2x", "allwinner,sun8i-r40";
 +
 +	aliases {
