@@ -537,9 +537,9 @@ endef
 TARGET_DEVICES += kooiot_tlink-k2x
 
 
-define Device/kooiot_tlink-k4x
+define Device/kooiot_tlink-k4a
   DEVICE_VENDOR := KooIoT
-  DEVICE_MODEL := ThingsLink K4X
+  DEVICE_MODEL := ThingsLink K4A
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
     kmod-sun4i-emac kmod-rtc-sd3078 \
     kmod-xradio melsem-xr819-firmware wpad-basic-wolfssl \
@@ -561,7 +561,34 @@ define Device/kooiot_tlink-k4x
     kmod-eeprom-at24
   SOC := sun8i-r40
 endef
-TARGET_DEVICES += kooiot_tlink-k4x
+TARGET_DEVICES += kooiot_tlink-k4a
+
+
+define Device/kooiot_tlink-k4g
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink K4G
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
+    kmod-sun4i-emac kmod-rtc-sd3078 \
+    kmod-xradio melsem-xr819-firmware wpad-basic-wolfssl \
+    kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-usb-net kmod-usb-net-asix \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+    kmod-serial-ch9434 kmod-can kmod-can-mcp251x \
+    kmod-can-bcm kmod-can-raw ip-full\
+    kmod-motorcomm-yt8521s kmod-motorcomm-yt8512c \
+    uqmi fdisk usbutils freeioe wwanleds \
+    luci-proto-qmi luci-proto-3g luci-proto-ncm \
+    luci-app-freeioe tinc-freeioe-tunnel\
+    ser2net shellinabox iperf3 ethtool minicom \
+    blockd kmod-usb-storage kmod-drm-sunxi \
+    usb-otg-sunxi kmod-usb-gadget-serial \
+    kmod-eeprom-at24
+  SOC := sun8i-r40
+endef
+TARGET_DEVICES += kooiot_tlink-k4g
 
 
 define Device/kooiot_tlink-m408

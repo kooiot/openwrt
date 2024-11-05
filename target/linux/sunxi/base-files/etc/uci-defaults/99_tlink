@@ -238,7 +238,8 @@ tlink_default() {
 
 	case "$(board_name)" in
 		"kooiot,tlink-k2x"|\
-		"kooiot,tlink-k4x"|\
+		"kooiot,tlink-k4a"|\
+		"kooiot,tlink-k4g"|\
 		"kooiot,tlink-k2")
 			tlink_init_5g
 			;;
@@ -292,7 +293,8 @@ case "$(board_name)" in
 "kooiot,tlink-k1"|\
 "kooiot,tlink-k2"|\
 "kooiot,tlink-k2x"|\
-"kooiot,tlink-k4x"|\
+"kooiot,tlink-k4a"|\
+"kooiot,tlink-k4g"|\
 "kooiot,tlink-s1"|\
 "kooiot,tlink-ok-a40i"|\
 "kooiot,tlink-dj-a40i-e"|\
