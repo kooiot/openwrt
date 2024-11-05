@@ -73,8 +73,8 @@ CONFIG_TARGET_sunxi_cortexa7=y
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-qh-x40 is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-r1 is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-s1 is not set
-# CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-x1 is not set
-CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-x1s=y
+CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-x1=y
+# CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-x1s is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-x3 is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_lemaker_bananapi is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_lemaker_bananapro is not set
@@ -101,12 +101,13 @@ CONFIG_HAS_SUBTARGETS=y
 CONFIG_HAS_DEVICES=y
 CONFIG_TARGET_BOARD="sunxi"
 CONFIG_TARGET_SUBTARGET="cortexa7"
-CONFIG_TARGET_PROFILE="DEVICE_kooiot_tlink-x1s"
+CONFIG_TARGET_PROFILE="DEVICE_kooiot_tlink-x1"
 CONFIG_TARGET_ARCH_PACKAGES="arm_cortex-a7_neon-vfpv4"
 CONFIG_DEFAULT_TARGET_OPTIMIZATION="-Os -pipe"
 CONFIG_CPU_TYPE="cortex-a7+neon-vfpv4"
 CONFIG_LINUX_5_15=y
 CONFIG_DEFAULT_base-files=y
+CONFIG_DEFAULT_blockd=y
 CONFIG_DEFAULT_busybox=y
 CONFIG_DEFAULT_ca-bundle=y
 CONFIG_DEFAULT_dnsmasq=y
@@ -125,7 +126,7 @@ CONFIG_DEFAULT_kmod-ledtrig-gpio=y
 CONFIG_DEFAULT_kmod-ledtrig-heartbeat=y
 CONFIG_DEFAULT_kmod-ledtrig-netdev=y
 CONFIG_DEFAULT_kmod-nft-offload=y
-CONFIG_DEFAULT_kmod-rtc-sd3078=y
+CONFIG_DEFAULT_kmod-rtc-rx8010=y
 CONFIG_DEFAULT_kmod-rtc-sunxi=y
 CONFIG_DEFAULT_kmod-usb-net=y
 CONFIG_DEFAULT_kmod-usb-net-asix=y
@@ -508,7 +509,7 @@ CONFIG_FEED_kooiot=y
 #
 # Base system
 #
-# CONFIG_PACKAGE_attendedsysupgrade-common is not set
+CONFIG_PACKAGE_attendedsysupgrade-common=y
 # CONFIG_PACKAGE_auc is not set
 CONFIG_PACKAGE_base-files=y
 CONFIG_PACKAGE_block-mount=y
@@ -1658,7 +1659,7 @@ CONFIG_PACKAGE_procd-ujail=y
 CONFIG_PACKAGE_rpcd=y
 CONFIG_PACKAGE_rpcd-mod-file=y
 CONFIG_PACKAGE_rpcd-mod-iwinfo=y
-# CONFIG_PACKAGE_rpcd-mod-rpcsys is not set
+CONFIG_PACKAGE_rpcd-mod-rpcsys=y
 CONFIG_PACKAGE_rpcd-mod-ucode=y
 # CONFIG_PACKAGE_selinux-policy is not set
 # CONFIG_PACKAGE_snapshot-tool is not set
@@ -1760,7 +1761,7 @@ CONFIG_ZABBIX_POSTGRESQL=y
 #
 # Boot Loaders
 #
-CONFIG_PACKAGE_u-boot-tlink_x1s=y
+CONFIG_PACKAGE_u-boot-tlink_x1=y
 # end of Boot Loaders
 
 #
@@ -1968,8 +1969,8 @@ CONFIG_PACKAGE_rtl8192cu-firmware=y
 # CONFIG_PACKAGE_rtl8192de-firmware is not set
 CONFIG_PACKAGE_rtl8192eu-firmware=y
 # CONFIG_PACKAGE_rtl8192se-firmware is not set
-# CONFIG_PACKAGE_rtl8723au-firmware is not set
-# CONFIG_PACKAGE_rtl8723bu-firmware is not set
+CONFIG_PACKAGE_rtl8723au-firmware=y
+CONFIG_PACKAGE_rtl8723bu-firmware=y
 # CONFIG_PACKAGE_rtl8761a-firmware is not set
 # CONFIG_PACKAGE_rtl8761b-firmware is not set
 # CONFIG_PACKAGE_rtl8761bu-firmware is not set
@@ -2636,11 +2637,11 @@ CONFIG_PACKAGE_kmod-regmap-i2c=y
 # CONFIG_PACKAGE_kmod-rtc-pcf2127 is not set
 # CONFIG_PACKAGE_kmod-rtc-pcf8563 is not set
 # CONFIG_PACKAGE_kmod-rtc-rs5c372a is not set
-# CONFIG_PACKAGE_kmod-rtc-rx8010 is not set
+CONFIG_PACKAGE_kmod-rtc-rx8010=y
 # CONFIG_PACKAGE_kmod-rtc-rx8025 is not set
 # CONFIG_PACKAGE_kmod-rtc-rx8025t is not set
 # CONFIG_PACKAGE_kmod-rtc-s35390a is not set
-CONFIG_PACKAGE_kmod-rtc-sd3078=y
+# CONFIG_PACKAGE_kmod-rtc-sd3078 is not set
 CONFIG_PACKAGE_kmod-rtc-sunxi=y
 # CONFIG_PACKAGE_kmod-sdhci is not set
 # CONFIG_PACKAGE_kmod-serial-8250 is not set
@@ -2654,7 +2655,6 @@ CONFIG_PACKAGE_kmod-rtc-sunxi=y
 # CONFIG_PACKAGE_kmod-tpm is not set
 # CONFIG_PACKAGE_kmod-tpm-i2c-atmel is not set
 # CONFIG_PACKAGE_kmod-tpm-i2c-infineon is not set
-# CONFIG_PACKAGE_kmod-ubootenv-nvram is not set
 # CONFIG_PACKAGE_kmod-wdt-sp805 is not set
 # CONFIG_PACKAGE_kmod-zram is not set
 # end of Other modules
@@ -2861,6 +2861,7 @@ CONFIG_PACKAGE_kmod-rt2x00-lib=y
 # CONFIG_PACKAGE_RT2X00_LIB_DEBUGFS is not set
 # CONFIG_PACKAGE_RT2X00_DEBUG is not set
 CONFIG_PACKAGE_kmod-rt2x00-usb=y
+# CONFIG_PACKAGE_kmod-rtl8188eu is not set
 # CONFIG_PACKAGE_kmod-rtl8188fu is not set
 # CONFIG_PACKAGE_kmod-rtl8192cu is not set
 # CONFIG_PACKAGE_kmod-rtl8192eu is not set
@@ -2870,7 +2871,10 @@ CONFIG_PACKAGE_kmod-rt2x00-usb=y
 # CONFIG_PACKAGE_kmod-rtl8812au-ct is not set
 # CONFIG_PACKAGE_kmod-rtl8812au-mw is not set
 # CONFIG_PACKAGE_kmod-rtl8812cu is not set
+# CONFIG_PACKAGE_kmod-rtl8821cu is not set
+# CONFIG_PACKAGE_kmod-rtl8822cu is not set
 CONFIG_PACKAGE_kmod-rtl8xxxu=y
+# CONFIG_PACKAGE_kmod-rtw88-usb is not set
 # CONFIG_PACKAGE_kmod-wl12xx is not set
 # CONFIG_PACKAGE_kmod-wl18xx is not set
 # CONFIG_PACKAGE_kmod-wlcore is not set
@@ -2918,10 +2922,6 @@ CONFIG_PACKAGE_wwanleds=y
 #
 # SymLink Projects
 #
-# CONFIG_PACKAGE_symlink-projects-symgrid-com is not set
-# CONFIG_PACKAGE_symlink-projects-symid-fl-top is not set
-# CONFIG_PACKAGE_symlink-projects-tlink-k2x is not set
-# CONFIG_PACKAGE_symlink-projects-tlink-r4x is not set
 # end of SymLink Projects
 
 #
@@ -2938,7 +2938,7 @@ CONFIG_PACKAGE_process-monitor=y
 CONFIG_PACKAGE_robot-client=m
 CONFIG_PACKAGE_robot-pong=m
 CONFIG_PACKAGE_robot-server=m
-# CONFIG_PACKAGE_robot-web is not set
+CONFIG_PACKAGE_robot-web=m
 # CONFIG_PACKAGE_start-stop-daemon is not set
 # CONFIG_PACKAGE_xr-usb-watch is not set
 # end of Utilities
@@ -2947,15 +2947,15 @@ CONFIG_PACKAGE_robot-server=m
 # CONFIG_PACKAGE_bmr200_freeioe is not set
 CONFIG_PACKAGE_factory-tlink=m
 CONFIG_PACKAGE_focas-ubus=m
-CONFIG_PACKAGE_freeioe=m
+CONFIG_PACKAGE_freeioe=y
 # CONFIG_PACKAGE_kooiot is not set
 # CONFIG_PACKAGE_sdlnrj-xfrm is not set
 # CONFIG_PACKAGE_sdlnrj-xfrm-client is not set
-CONFIG_PACKAGE_skynet=m
+CONFIG_PACKAGE_skynet=y
 # CONFIG_PACKAGE_strip-ioe is not set
 # CONFIG_PACKAGE_symlink is not set
-CONFIG_PACKAGE_symlink-openssl-v1=y
-CONFIG_PACKAGE_symlink-psn=y
+# CONFIG_PACKAGE_symlink-openssl-v1 is not set
+# CONFIG_PACKAGE_symlink-psn is not set
 # CONFIG_PACKAGE_tlink-usb2lcd is not set
 CONFIG_PACKAGE_tlink-utility=y
 # end of KooIoT
@@ -4071,7 +4071,7 @@ CONFIG_OPENSSL_ENGINE_BUILTIN=y
 # CONFIG_PACKAGE_libopenssl-conf is not set
 # CONFIG_PACKAGE_libopenssl-gost_engine is not set
 # CONFIG_PACKAGE_libopenssl-legacy is not set
-CONFIG_PACKAGE_libopenssl-v1=y
+# CONFIG_PACKAGE_libopenssl-v1 is not set
 # CONFIG_PACKAGE_libwolfssl is not set
 
 #
@@ -4150,7 +4150,7 @@ CONFIG_WOLFSSL_ALT_NAMES=y
 # CONFIG_boost-coroutine-exclude is not set
 # CONFIG_boost-fiber-exclude is not set
 # CONFIG_PACKAGE_boringssl is not set
-# CONFIG_PACKAGE_cJSON is not set
+CONFIG_PACKAGE_cJSON=m
 # CONFIG_PACKAGE_ccid is not set
 # CONFIG_PACKAGE_check is not set
 # CONFIG_PACKAGE_confuse is not set
@@ -4251,7 +4251,7 @@ CONFIG_LIBCURL_PROXY=y
 # CONFIG_LIBCURL_THREADED_RESOLVER is not set
 # CONFIG_LIBCURL_ZLIB is not set
 # CONFIG_LIBCURL_ZSTD is not set
-CONFIG_LIBCURL_UNIX_SOCKETS=y
+# CONFIG_LIBCURL_UNIX_SOCKETS is not set
 # CONFIG_LIBCURL_LIBCURL_OPTION is not set
 # CONFIG_LIBCURL_VERBOSE is not set
 # CONFIG_PACKAGE_libcurl-gnutls is not set
@@ -4275,7 +4275,7 @@ CONFIG_LIBCURL_UNIX_SOCKETS=y
 # CONFIG_PACKAGE_libelf is not set
 # CONFIG_PACKAGE_libesmtp is not set
 # CONFIG_PACKAGE_libestr is not set
-# CONFIG_PACKAGE_libev is not set
+CONFIG_PACKAGE_libev=y
 CONFIG_PACKAGE_libevdev=y
 # CONFIG_PACKAGE_libevent2 is not set
 # CONFIG_PACKAGE_libevent2-core is not set
@@ -4550,7 +4550,7 @@ CONFIG_PACKAGE_libuv=y
 # CONFIG_PACKAGE_libwebp is not set
 # CONFIG_PACKAGE_libwebsockets-full is not set
 # CONFIG_PACKAGE_libwebsockets-mbedtls is not set
-# CONFIG_PACKAGE_libwebsockets-openssl is not set
+CONFIG_PACKAGE_libwebsockets-openssl=m
 # CONFIG_PACKAGE_libwrap is not set
 # CONFIG_PACKAGE_libxerces-c is not set
 # CONFIG_PACKAGE_libxerces-c-samples is not set
@@ -4698,7 +4698,7 @@ CONFIG_PACKAGE_luci-mod-system=y
 # CONFIG_PACKAGE_luci-app-ahcp is not set
 # CONFIG_PACKAGE_luci-app-apinger is not set
 # CONFIG_PACKAGE_luci-app-aria2 is not set
-# CONFIG_PACKAGE_luci-app-attendedsysupgrade is not set
+CONFIG_PACKAGE_luci-app-attendedsysupgrade=y
 # CONFIG_PACKAGE_luci-app-babeld is not set
 # CONFIG_PACKAGE_luci-app-banip is not set
 # CONFIG_PACKAGE_luci-app-bcp38 is not set
@@ -4722,7 +4722,7 @@ CONFIG_PACKAGE_luci-app-ddns=y
 # CONFIG_PACKAGE_luci-app-eoip is not set
 # CONFIG_PACKAGE_luci-app-example is not set
 CONFIG_PACKAGE_luci-app-firewall=y
-# CONFIG_PACKAGE_luci-app-freeioe is not set
+CONFIG_PACKAGE_luci-app-freeioe=y
 # CONFIG_PACKAGE_luci-app-frpc is not set
 # CONFIG_PACKAGE_luci-app-frps is not set
 # CONFIG_PACKAGE_luci-app-fwknopd is not set
@@ -4733,11 +4733,11 @@ CONFIG_PACKAGE_luci-app-firewall=y
 # CONFIG_PACKAGE_luci-app-ledtrig-rssi is not set
 # CONFIG_PACKAGE_luci-app-ledtrig-switch is not set
 # CONFIG_PACKAGE_luci-app-ledtrig-usbport is not set
-# CONFIG_PACKAGE_luci-app-lldpd is not set
 # CONFIG_PACKAGE_luci-app-lorawan-basicstation is not set
 # CONFIG_PACKAGE_luci-app-lxc is not set
 # CONFIG_PACKAGE_luci-app-minidlna is not set
 # CONFIG_PACKAGE_luci-app-mjpg-streamer is not set
+# CONFIG_PACKAGE_luci-app-mosquitto is not set
 # CONFIG_PACKAGE_luci-app-mwan3 is not set
 # CONFIG_PACKAGE_luci-app-natmap is not set
 # CONFIG_PACKAGE_luci-app-nextdns is not set
@@ -4849,6 +4849,40 @@ CONFIG_PACKAGE_luci-lib-nixio=y
 # CONFIG_PACKAGE_luci-lib-px5g is not set
 # end of 6. Libraries
 
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-ar is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-bg is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-bn is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-ca is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-cs is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-da is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-de is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-el is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-es is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-fi is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-fr is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-he is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-hi is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-hu is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-it is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-ja is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-ko is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-lt is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-mr is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-ms is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-nl is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-no is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-pl is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-pt is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-pt-br is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-ro is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-ru is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-sk is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-sv is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-tr is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-uk is not set
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-vi is not set
+CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-zh-cn=y
+# CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-zh-tw is not set
 # CONFIG_PACKAGE_luci-i18n-base-ar is not set
 # CONFIG_PACKAGE_luci-i18n-base-bg is not set
 # CONFIG_PACKAGE_luci-i18n-base-bn is not set
@@ -4951,6 +4985,38 @@ CONFIG_PACKAGE_luci-i18n-ddns-zh-cn=y
 # CONFIG_PACKAGE_luci-i18n-firewall-vi is not set
 CONFIG_PACKAGE_luci-i18n-firewall-zh-cn=y
 # CONFIG_PACKAGE_luci-i18n-firewall-zh-tw is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-ar is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-bg is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-bn is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-ca is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-cs is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-da is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-de is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-el is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-es is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-fi is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-fr is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-he is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-hi is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-hu is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-it is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-ja is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-ko is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-mr is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-ms is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-no is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-pl is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-pt is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-pt-br is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-ro is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-ru is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-sk is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-sv is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-tr is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-uk is not set
+# CONFIG_PACKAGE_luci-i18n-freeioe-vi is not set
+CONFIG_PACKAGE_luci-i18n-freeioe-zh-cn=y
+# CONFIG_PACKAGE_luci-i18n-freeioe-zh-tw is not set
 # CONFIG_PACKAGE_luci-i18n-opkg-ar is not set
 # CONFIG_PACKAGE_luci-i18n-opkg-bg is not set
 # CONFIG_PACKAGE_luci-i18n-opkg-bn is not set
@@ -5337,11 +5403,12 @@ CONFIG_PACKAGE_ddns-scripts-services=y
 # CONFIG_PACKAGE_knot-host is not set
 # CONFIG_PACKAGE_knot-keymgr is not set
 # CONFIG_PACKAGE_knot-nsupdate is not set
+# CONFIG_PACKAGE_knot-resolver is not set
 
 #
 # Configuration
 #
-CONFIG_PACKAGE_knot-resolver_dnstap=y
+# CONFIG_PACKAGE_knot-resolver_dnstap is not set
 # end of Configuration
 
 # CONFIG_PACKAGE_knot-tests is not set
@@ -6005,7 +6072,7 @@ CONFIG_PACKAGE_iw=y
 # CONFIG_PACKAGE_modemmanager is not set
 # CONFIG_PACKAGE_mosquitto-client-nossl is not set
 # CONFIG_PACKAGE_mosquitto-client-ssl is not set
-# CONFIG_PACKAGE_mosquitto-nossl is not set
+CONFIG_PACKAGE_mosquitto-nossl=y
 # CONFIG_PACKAGE_mosquitto-ssl is not set
 # CONFIG_PACKAGE_mstpd is not set
 # CONFIG_PACKAGE_mtr-json is not set
@@ -6444,7 +6511,7 @@ CONFIG_PACKAGE_mkf2fs=y
 # CONFIG_PACKAGE_kitty-terminfo is not set
 # CONFIG_PACKAGE_minicom is not set
 # CONFIG_PACKAGE_picocom is not set
-# CONFIG_PACKAGE_rtty-mbedtls is not set
+CONFIG_PACKAGE_rtty-mbedtls=y
 # CONFIG_PACKAGE_rtty-nossl is not set
 # CONFIG_PACKAGE_rtty-openssl is not set
 # CONFIG_PACKAGE_rtty-wolfssl is not set
