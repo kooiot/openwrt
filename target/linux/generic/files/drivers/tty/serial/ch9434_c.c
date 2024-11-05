@@ -484,10 +484,7 @@ void ch943x_raw_write(struct uart_port *port, const void *reg, unsigned char *bu
 	struct spi_message m;
 	int writesum = 0;
 	int i;
-	u8 *txbuf;
-	txbuf = kmalloc(2048, GFP_KERNEL);
-	if (!txbuf)
-		return;
+	u8 *txbuf = kmalloc(2048, GFP_KERNEL);
 
 	struct spi_transfer x = {
 		.tx_buf = txbuf,
@@ -504,6 +501,9 @@ void ch943x_raw_write(struct uart_port *port, const void *reg, unsigned char *bu
 #endif
 		},
 	};
+
+	if (!txbuf)
+		return;
 
 	if (s->spi_contmode) {
 		txbuf[0] = *(u8 *)reg;
@@ -554,16 +554,15 @@ static void ch943x_raw_read(struct uart_port *port, u8 reg, unsigned char *buf, 
 	u8 cmd = (0x00 | reg) + (port->line * 0x10);
 	ssize_t status;
 	struct spi_message m;
-	u8 *rxbuf;
-
-	rxbuf = (u8 *)kmalloc(4096, GFP_KERNEL);
-	if (!rxbuf)
-		return;
+	u8 *rxbuf = (u8 *)kmalloc(4096, GFP_KERNEL);
 
 	struct spi_transfer x = {
 		.rx_buf = rxbuf,
 		.tx_buf = rxbuf,
 	};
+
+	if (!rxbuf)
+		return;
 
 	rxbuf[0] = cmd;
 	x.len = len + 2;
@@ -645,7 +644,7 @@ static int ch943x_scr_test(struct uart_port *port)
 {
 	struct ch943x_port *s = dev_get_drvdata(port->dev);
 	u8 val;
-	u8 i;
+	// u8 i;
 
 	dev_vdbg(&s->spi_dev->dev, "******Uart %d SPR Test Start******\n", port->line);
 
