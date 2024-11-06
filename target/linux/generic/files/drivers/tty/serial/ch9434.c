@@ -645,7 +645,7 @@ static int ch943x_scr_test(struct uart_port *port)
 {
 	struct ch943x_port *s = dev_get_drvdata(port->dev);
 	u8 val;
-	u8 i;
+	// u8 i;
 
 	dev_vdbg(&s->spi_dev->dev, "******Uart %d SPR Test Start******\n", port->line);
 
@@ -1318,8 +1318,9 @@ static const struct uart_ops ch943x_ops = {
 
 static int ch943x_spi_rstgpio_parse_dt(struct device *dev, int *reset_gpio)
 {
-	enum of_gpio_flags reset_flags; 
-	*reset_gpio = of_get_named_gpio_flags(dev->of_node, "reset_gpio", 0, &reset_flags);
+	// enum of_gpio_flags reset_flags; 
+	// *reset_gpio = of_get_named_gpio_flags(dev->of_node, "reset_gpio", 0, &reset_flags);
+	*reset_gpio = of_get_named_gpio(dev->of_node, "reset_gpio", 0);
 	if (!gpio_is_valid(*reset_gpio)){
 		dev_err(dev, "Invalid reset_gpio: %d\n", *reset_gpio);
 		return -1;
