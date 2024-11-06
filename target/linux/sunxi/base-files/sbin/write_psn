@@ -85,7 +85,8 @@ case "$(board_name)" in
 		fi
 		;;
 	"kooiot,tlink-k2"|\
-	"kooiot,tlink-k4x"|\
+	"kooiot,tlink-k4a"|\
+	"kooiot,tlink-k4g"|\
 	"kooiot,tlink-e1")
 		NVMEM_PATH="/sys/bus/i2c/devices/3-0050/eeprom"
 		if [ ! -f ${NVMEM_PATH} ]; then

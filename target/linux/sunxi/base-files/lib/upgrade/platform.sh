@@ -1,7 +1,7 @@
 tlink_get_type_magic() {
 	local skip_base=8236
 	local skip_offset=$(($1+$skip_base+1))
-	local name_len=$3
+	local name_len=$(($3-7))
 	get_image "$2" | dd bs=1 count=$name_len skip=$skip_offset 2>/dev/null | hexdump -v -n $name_len -e '/1 "%c"'
 }
 
@@ -68,7 +68,8 @@ platform_check_image() {
 	"kooiot,tlink-k1"|\
 	"kooiot,tlink-k2"|\
 	"kooiot,tlink-k2x"|\
-	"kooiot,tlink-k4x")
+	"kooiot,tlink-k4a"|\
+	"kooiot,tlink-k4g")
 		tlink_check_image "sun8i-r40" "$1" && return 0
 		return 1
 		;;
@@ -123,7 +124,8 @@ platform_pre_upgrade() {
 	"kooiot,tlink-k1"|\
 	"kooiot,tlink-k2"|\
 	"kooiot,tlink-k2x"|\
-	"kooiot,tlink-k4x"|\
+	"kooiot,tlink-k4a"|\
+	"kooiot,tlink-k4g"|\
 	"kooiot,tlink-s1"|\
 	"kooiot,tlink-e1"|\
 	"kooiot,tlink-ok-a40i"|\

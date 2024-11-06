@@ -1,16 +1,17 @@
 --- a/arch/arm/boot/dts/allwinner/Makefile
 +++ b/arch/arm/boot/dts/allwinner/Makefile
-@@ -321,6 +321,7 @@
+@@ -321,6 +321,8 @@
  	sun8i-r40-tlink-k1.dtb \
  	sun8i-r40-tlink-k2.dtb \
  	sun8i-r40-tlink-k2x.dtb \
-+	sun8i-r40-tlink-k4x.dtb \
++	sun8i-r40-tlink-k4a.dtb \
++	sun8i-r40-tlink-k4g.dtb \
  	sun8i-r40-tlink-dj-a40i-e.dtb \
  	sun8i-r40-tlink-qh-x40.dtb \
  	sun8i-r40-tlink-nano-a40i.dtb \
 --- /dev/null
-+++ b/arch/arm/boot/dts/allwinner/sun8i-r40-tlink-k4x.dts
-@@ -0,0 +1,744 @@
++++ b/arch/arm/boot/dts/allwinner/sun8i-r40-tlink-k4x.dtsi
+@@ -0,0 +1,781 @@
 +/*
 + * Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 + *
@@ -25,9 +26,6 @@
 +#include <dt-bindings/pinctrl/sun4i-a10.h>
 +
 +/ {
-+	model = "ThingsLink K4X";
-+	compatible = "kooiot,tlink-k4x", "allwinner,sun8i-r40";
-+
 +	aliases {
 +		ethernet0 = &gmac;
 +		ethernet1 = &emac;
@@ -145,6 +143,12 @@
 +			gpios = <&pio 8 8 GPIO_ACTIVE_HIGH>; /* PI8 */
 +		};
 +
++		hub_reset {
++			gpio-export,name = "hub_reset";
++			gpio-export,output=<0>;
++			gpios = <&pio 3 14 GPIO_ACTIVE_HIGH>; /* PD14 */
++		};
++
 +		eth2_reset {
 +			gpio-export,name = "eth2_reset";
 +			gpio-export,output=<0>;
@@ -157,25 +161,26 @@
 +			gpios = <&pio 8 5 GPIO_ACTIVE_HIGH>; /* PI5 */
 +		};
 +
-+		/*
-+		ch9434_0_reset {
++		ch9434_0_reset: ch9434-0-reset {
 +			gpio-export,name = "ch9434_0_reset";
 +			gpio-export,output=<1>;
 +			gpios = <&pio 1 2 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>; // PB2 //
++			status = "disabled";
 +		};
 +
-+		ch9434_1_reset {
++		ch9434_1_reset: ch9434-1-reset {
 +			gpio-export,name = "ch9434_1_reset";
 +			gpio-export,output=<1>;
 +			gpios = <&pio 1 3 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>; // PB3 //
++			status = "disabled";
 +		};
 +
-+		ch9434_2_reset {
++		ch9434_2_reset: ch9434-2-reset {
 +			gpio-export,name = "ch9434_2_reset";
 +			gpio-export,output=<1>;
 +			gpios = <&pio 1 4 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>; // PB4 //
++			status = "disabled";
 +		};
-+		*/
 +	};
 +
 +	reg_vcc3v3_sdc: vcc3v3-sdc {
@@ -224,7 +229,7 @@
 +		regulator-always-on;
 +		regulator-min-microvolt = <5000000>;
 +		regulator-max-microvolt = <5000000>;
-+		gpio = <&pio 3 13 GPIO_ACTIVE_HIGH>; /* PD12 */
++		gpio = <&pio 3 13 GPIO_ACTIVE_HIGH>; /* PD13 */
 +		enable-active-high;
 +	};
 +
@@ -274,6 +279,14 @@
 +		regulator-max-microvolt = <3300000>;
 +		gpios = <&pio 1 10 GPIO_ACTIVE_LOW>; /* PB10 */
 +		startup-delay-us=<3000000>; // 3 seconds
++	};
++
++	/* Fixed crystal dedicated to mcp251x */
++	can_clk16m: can-clock-16m {
++		compatible = "fixed-clock";
++		#clock-cells = <0>;
++		clock-frequency = <16000000>;
++		clock-output-names = "can_clk16m";
 +	};
 +};
 +
@@ -384,7 +397,7 @@
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&spi0_pc_pins>, <&spi0_cs0_pc_pin>, <&spi0_irq_pins>; //, <&spi0_reset_pins>;
 +	status = "okay";
-+	spidev@0 {
++	ch9434_0: spidev@0 {
 +		#address-cells = <1>;
 +		#size-cells = <1>;
 +		compatible = "ch943x_spi";
@@ -397,6 +410,7 @@
 +		// port1_rs485_mode;
 +		// port2_rs485_mode;
 +		// port3_rs485_mode;
++		status = "disabled";
 +	};
 +};
 +
@@ -404,7 +418,7 @@
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&spi1_pi_pins>, <&spi1_cs0_pi_pin>, <&spi1_irq_pins>; //, <&spi1_reset_pins>;
 +	status = "okay";
-+	spidev@0 {
++	ch9434_1: spidev@0 {
 +		#address-cells = <1>;
 +		#size-cells = <1>;
 +		compatible = "ch943x_spi_b";
@@ -417,6 +431,18 @@
 +		// port1_rs485_mode;
 +		// port2_rs485_mode;
 +		// port3_rs485_mode;
++		status = "disabled";
++	};
++
++	mcp2515_1: mcp2515-1@0 {
++		compatible = "microchip,mcp2515";
++		reg = <0 1>;
++		clocks = <&can_clk16m>;
++		interrupt-parent = <&pio>;
++		interrupts = <7 2 IRQ_TYPE_LEVEL_LOW>; /* PH2/EINT2 */
++		vdd-supply = <&reg_vcc_uart_3v3>; /* VCC-WIFI */
++		spi-max-frequency = <10000000>;
++		status = "disabled";
 +	};
 +};
 +
@@ -424,7 +450,7 @@
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&spi2_pc_pins>, <&spi2_irq_pins>; //, <&spi2_reset_pins>;
 +	status = "okay";
-+	spidev@0 {
++	ch9434_2: spidev@0 {
 +		#address-cells = <1>;
 +		#size-cells = <1>;
 +		compatible = "ch943x_spi_c";
@@ -437,6 +463,18 @@
 +		// port1_rs485_mode;
 +		// port2_rs485_mode;
 +		// port3_rs485_mode;
++		status = "disabled";
++	};
++
++	mcp2515_2: mcp2515-2@0 {
++		compatible = "microchip,mcp2515";
++		reg = <0 1>;
++		clocks = <&can_clk16m>;
++		interrupt-parent = <&pio>;
++		interrupts = <7 3 IRQ_TYPE_LEVEL_LOW>; /* PH3/EINT3 */
++		vdd-supply = <&reg_vcc_uart_3v3>; /* VCC-WIFI */
++		spi-max-frequency = <10000000>;
++		status = "disabled";
 +	};
 +};
 +
@@ -753,5 +791,164 @@
 +	usb0_vbus-supply = <&reg_usb_vcc5v0>;
 +	// usb1_id_det-gpios = <&pio 1 13 GPIO_ACTIVE_HIGH>; /* PB13 */
 +	usb1_vbus-supply = <&reg_usb_vcc5v0>;
++	status = "okay";
++};
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/sun8i-r40-tlink-k4a.dts
+@@ -0,0 +1,129 @@
++/*
++ * Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
++ *
++ */
++
++/dts-v1/;
++#include "sun8i-r40-tlink-k4x.dtsi"
++
++/ {
++	model = "ThingsLink K4a";
++	compatible = "kooiot,tlink-k4a", "allwinner,sun8i-r40";
++	aliases {
++		serial9 = &uart7;
++	};
++
++	gpio_export_2 {
++		pinctrl-names = "default";
++		pinctrl-0 = <&gpio_pd_pins>;
++		compatible = "gpio-export";
++		#size-cells = <0>;
++
++		do_1_en {
++			gpio-export,name = "do_1_en";
++			gpio-export,output=<1>;
++			gpios = <&pio 3 4 GPIO_ACTIVE_LOW>; /* PD4 */
++		};
++
++		do_1 {
++			gpio-export,name = "do_1";
++			gpio-export,output=<1>;
++			gpios = <&pio 3 5 GPIO_ACTIVE_LOW>; /* PD5 */
++		};
++
++		do_2_en {
++			gpio-export,name = "do_2_en";
++			gpio-export,output=<1>;
++			gpios = <&pio 3 6 GPIO_ACTIVE_LOW>; /* PD6 */
++		};
++
++		do_2 {
++			gpio-export,name = "do_2";
++			gpio-export,output=<1>;
++			gpios = <&pio 3 7 GPIO_ACTIVE_LOW>; /* PD7 */
++		};
++
++		do_3_en {
++			gpio-export,name = "do_3_en";
++			gpio-export,output=<1>;
++			gpios = <&pio 3 8 GPIO_ACTIVE_LOW>; /* PD8 */
++		};
++
++		do_3 {
++			gpio-export,name = "do_3";
++			gpio-export,output=<1>;
++			gpios = <&pio 3 9 GPIO_ACTIVE_LOW>; /* PD9 */
++		};
++
++		do_4_en {
++			gpio-export,name = "do_4_en";
++			gpio-export,output=<1>;
++			gpios = <&pio 3 10 GPIO_ACTIVE_LOW>; /* PD10 */
++		};
++
++		do_4 {
++			gpio-export,name = "do_4";
++			gpio-export,output=<1>;
++			gpios = <&pio 3 11 GPIO_ACTIVE_LOW>; /* PD11 */
++		};
++
++		di_1 {
++			gpio-export,name = "di_1";
++			gpio-export,direction_may_change = <1>;
++			gpios = <&pio 3 0 GPIO_ACTIVE_HIGH>; /* PD0 */
++		};
++
++		di_2 {
++			gpio-export,name = "di_2";
++			gpio-export,direction_may_change = <1>;
++			gpios = <&pio 3 1 GPIO_ACTIVE_HIGH>; /* PD1 */
++		};
++
++		di_3 {
++			gpio-export,name = "di_3";
++			gpio-export,direction_may_change = <1>;
++			gpios = <&pio 3 2 GPIO_ACTIVE_HIGH>; /* PD2 */
++		};
++
++		di_4 {
++			gpio-export,name = "di_4";
++			gpio-export,direction_may_change = <1>;
++			gpios = <&pio 3 3 GPIO_ACTIVE_HIGH>; /* PD3 */
++		};
++	};
++};
++
++&uart7 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&uart7_pi_pins>;
++	status = "okay";
++};
++
++&ch9434_1_reset {
++	status = "okay";
++};
++
++&ch9434_2_reset {
++	status = "okay";
++};
++
++&ch9434_0 {
++	status = "okay";
++};
++
++&mcp2515_1 {
++	status = "okay";
++};
++
++&mcp2515_2 {
++	status = "okay";
++};
++
++&pio {
++	gpio_pd_pins: gpio-pd-pins {
++		pins = "PD0", "PD1", "PD2", "PD3", "PD4",
++			"PD5", "PD6", "PD7", "PD8",
++				"PD9", "PD10", "PD11";
++		function = "gpio_out";
++	};
++};
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/sun8i-r40-tlink-k4g.dts
+@@ -0,0 +1,24 @@
++/*
++ * Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
++ *
++ */
++
++/dts-v1/;
++#include "sun8i-r40-tlink-k4x.dtsi"
++
++/ {
++	model = "ThingsLink K4g";
++	compatible = "kooiot,tlink-k4g", "allwinner,sun8i-r40";
++};
++
++&ch9434_0 {
++	status = "okay";
++};
++
++&ch9434_1 {
++	status = "okay";
++};
++
++&ch9434_2 {
 +	status = "okay";
 +};
