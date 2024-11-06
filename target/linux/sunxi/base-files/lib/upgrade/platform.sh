@@ -1,7 +1,7 @@
 tlink_get_type_magic() {
 	local skip_base=8236
 	local skip_offset=$(($1+$skip_base+1))
-	local name_len=$3
+	local name_len=$(($3-7))
 	get_image "$2" | dd bs=1 count=$name_len skip=$skip_offset 2>/dev/null | hexdump -v -n $name_len -e '/1 "%c"'
 }
 
