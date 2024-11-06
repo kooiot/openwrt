@@ -9,7 +9,7 @@
  dtb-$(CONFIG_MACH_SUN8I_H3) += \
  	sun8i-h2-plus-bananapi-m2-zero.dtb \
  	sun8i-h2-plus-libretech-all-h3-cc.dtb \
-@@ -798,19 +800,40 @@ dtb-$(CONFIG_MACH_SUN8I_H3) += \
+@@ -798,19 +800,41 @@ dtb-$(CONFIG_MACH_SUN8I_H3) += \
  	sun8i-h3-orangepi-plus2e.dtb \
  	sun8i-h3-orangepi-zero-plus2.dtb \
  	sun8i-h3-rervision-dvk.dtb \
@@ -30,7 +30,8 @@
 +	sun8i-r40-tlink-nano-a40i.dtb \
 +	sun8i-r40-tlink-k2.dtb \
 +	sun8i-r40-tlink-k2x.dtb \
-+	sun8i-r40-tlink-k4x.dtb \
++	sun8i-r40-tlink-k4a.dtb \
++	sun8i-r40-tlink-k4g.dtb \
 +	sun8i-t3-tlink-m408.dtb \
 +	sun8i-t3-tlink-m416.dtb
  dtb-$(CONFIG_MACH_SUN8I_V3S) += \

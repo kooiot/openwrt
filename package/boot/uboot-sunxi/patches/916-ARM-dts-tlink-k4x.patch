@@ -1,8 +1,9 @@
 --- /dev/null
-+++ b/configs/tlink_k4x_defconfig
-@@ -0,0 +1,32 @@
++++ b/configs/tlink_k4a_defconfig
+@@ -0,0 +1,37 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
++CONFIG_DEFAULT_DEVICE_TREE="sun8i-r40-tlink-k4a"
 +CONFIG_SPL=y
 +CONFIG_MACH_SUN8I_R40=y
 +CONFIG_DRAM_CLK=576
@@ -11,15 +12,19 @@
 +CONFIG_MMC0_CD_PIN="PB8"
 +CONFIG_MMC_SUNXI_SLOT_EXTRA=2
 +CONFIG_USB0_VBUS_PIN="PC18"
++# CONFIG_HAS_ARMV7_SECURE_BASE is not set
 +CONFIG_AHCI=y
 +CONFIG_SUNXI_DRAM_LPDDR3_STOCK=y
 +# CONFIG_NR_DRAM_BANKS is not set
 +# CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
-+CONFIG_SPL_I2C_SUPPORT=y
-+# CONFIG_CMD_FLASH is not set
-+CONFIG_DEFAULT_DEVICE_TREE="sun8i-r40-tlink-k4x"
++CONFIG_SPL_I2C=y
 +CONFIG_SCSI_AHCI=y
 +CONFIG_MII=y
++CONFIG_SYS_64BIT_LBA=y
++CONFIG_SYS_I2C_MVTWSI=y
++CONFIG_SYS_I2C_SLAVE=0x7f
++CONFIG_SYS_I2C_SPEED=400000
++CONFIG_RGMII=y
 +CONFIG_SUN8I_EMAC=y
 +CONFIG_AXP_GPIO=y
 +CONFIG_AXP_DCDC3_VOLT=1200
@@ -34,8 +39,48 @@
 +CONFIG_USB_ECHI_HCD=y
 +CONFIG_USB_OCHI_HCD=y
 --- /dev/null
-+++ b/arch/arm/dts/sun8i-r40-tlink-k4x.dts
-@@ -0,0 +1,223 @@
++++ b/configs/tlink_k4g_defconfig
+@@ -0,0 +1,37 @@
++CONFIG_ARM=y
++CONFIG_ARCH_SUNXI=y
++CONFIG_DEFAULT_DEVICE_TREE="sun8i-r40-tlink-k4g"
++CONFIG_SPL=y
++CONFIG_MACH_SUN8I_R40=y
++CONFIG_DRAM_CLK=576
++CONFIG_DRAM_ZQ=3881979
++# CONFIG_SUNXI_DRAM_DW_R40_DUAL_RANK is not set
++CONFIG_MMC0_CD_PIN="PB8"
++CONFIG_MMC_SUNXI_SLOT_EXTRA=2
++CONFIG_USB0_VBUS_PIN="PC18"
++# CONFIG_HAS_ARMV7_SECURE_BASE is not set
++CONFIG_AHCI=y
++CONFIG_SUNXI_DRAM_LPDDR3_STOCK=y
++# CONFIG_NR_DRAM_BANKS is not set
++# CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
++CONFIG_SPL_I2C=y
++CONFIG_SCSI_AHCI=y
++CONFIG_MII=y
++CONFIG_SYS_64BIT_LBA=y
++CONFIG_SYS_I2C_MVTWSI=y
++CONFIG_SYS_I2C_SLAVE=0x7f
++CONFIG_SYS_I2C_SPEED=400000
++CONFIG_RGMII=y
++CONFIG_SUN8I_EMAC=y
++CONFIG_AXP_GPIO=y
++CONFIG_AXP_DCDC3_VOLT=1200
++CONFIG_AXP_DCDC5_VOLT=1200
++CONFIG_AXP_ALDO1_VOLT=3300
++CONFIG_AXP_ALDO2_VOLT=1800
++CONFIG_AXP_DLDO1_VOLT=3300
++CONFIG_AXP_DLDO4_VOLT=1800
++CONFIG_AXP_ELDO2_VOLT=1200
++CONFIG_AXP_ELDO3_VOLT=2500
++CONFIG_SCSI=y
++CONFIG_USB_ECHI_HCD=y
++CONFIG_USB_OCHI_HCD=y
+--- /dev/null
++++ b/arch/arm/dts/sun8i-r40-tlink-k4x.dtsi
+@@ -0,0 +1,220 @@
 +/*
 + * Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 + *
@@ -47,9 +92,6 @@
 +#include <dt-bindings/gpio/gpio.h>
 +
 +/ {
-+	model = "ThingsLink K4X";
-+	compatible = "kooiot,tlink-k4x", "allwinner,sun8i-r40";
-+
 +	aliases {
 +		ethernet0 = &gmac;
 +		ethernet1 = &emac;
@@ -258,4 +300,38 @@
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&uart0_pb_pins>;
 +	status = "okay";
++};
+--- /dev/null
++++ b/arch/arm/dts/sun8i-r40-tlink-k4a.dts
+@@ -0,0 +1,14 @@
++/*
++ * Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
++ *
++ */
++
++/dts-v1/;
++#include "sun8i-r40-tlink-k4x.dtsi"
++
++#include <dt-bindings/gpio/gpio.h>
++
++/ {
++	model = "ThingsLink K4A";
++	compatible = "kooiot,tlink-k4a", "kooiot,tlink-k4x", "allwinner,sun8i-r40";
++};
+--- /dev/null
++++ b/arch/arm/dts/sun8i-r40-tlink-k4g.dts
+@@ -0,0 +1,14 @@
++/*
++ * Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
++ *
++ */
++
++/dts-v1/;
++#include "sun8i-r40-tlink-k4x.dtsi"
++
++#include <dt-bindings/gpio/gpio.h>
++
++/ {
++	model = "ThingsLink K4G";
++	compatible = "kooiot,tlink-k4g", "kooiot,tlink-k4x", "allwinner,sun8i-r40";
 +};

@@ -458,15 +458,22 @@ endef
 
 define U-Boot/tlink_k2x
   BUILD_SUBTARGET:=cortexa7
-  NAME:=ThingsLink K2X
+  NAME:=ThingsLink K2x
   BUILD_DEVICES:=kooiot_tlink-k2x
   UENV:=display
 endef
 
-define U-Boot/tlink_k4x
+define U-Boot/tlink_k4a
   BUILD_SUBTARGET:=cortexa7
-  NAME:=ThingsLink K4X
-  BUILD_DEVICES:=kooiot_tlink-k4x
+  NAME:=ThingsLink K4A
+  BUILD_DEVICES:=kooiot_tlink-k4a
+  UENV:=display
+endef
+
+define U-Boot/tlink_k4g
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink K4G
+  BUILD_DEVICES:=kooiot_tlink-k4g
   UENV:=display
 endef
 
@@ -579,7 +586,8 @@ UBOOT_TARGETS := \
 	tlink_k1 \
 	tlink_k2 \
 	tlink_k2x \
-	tlink_k4x \
+	tlink_k4a \
+	tlink_k4g \
 	tlink_m408 \
 	tlink_m416 \
 	tlink_e1 \
