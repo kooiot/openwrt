@@ -53,19 +53,19 @@
 +
 +		status {
 +			label = "kooiot:green:status";
-+			gpios = <&pio 6 8 GPIO_ACTIVE_LOW>; /* PG8 */
++			gpios = <&pio 6 8 GPIO_ACTIVE_HIGH>; /* PG8 */
 +			linux,default-trigger = "heartbeat";
-+		};
-+
-+		modem {
-+			label = "kooiot:green:modem";
-+			gpios = <&pio 6 9 GPIO_ACTIVE_LOW>; /* PG9 */
-+			default-state = "off";
 +		};
 +
 +		csq {
 +			label = "kooiot:green:csq";
-+			gpios = <&pio 6 10 GPIO_ACTIVE_LOW>; /* PG10 */
++			gpios = <&pio 6 9 GPIO_ACTIVE_HIGH>; /* PG9 */
++			default-state = "off";
++		};
++
++		modem {
++			label = "kooiot:green:modem";
++			gpios = <&pio 6 10 GPIO_ACTIVE_HIGH>; /* PG10 */
 +			default-state = "off";
 +		};
 +	};
