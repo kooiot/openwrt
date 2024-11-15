@@ -375,7 +375,7 @@ define Device/kooiot_tlink-r4x
 	kmod-i2c-fusb30x \
 	kmod-mmc kmod-brcmfmac \
 	kmod-can kmod-can-rockchip-canfd \
-	kmod-ata-ahci kmod-ata-ahci-platform \
+	kmod-ata-ahci kmod-ata-ahci-dwc \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
     tlink-r7-firmware wpad-basic-mbedtls \
     tinc-freeioe-tunnel iperf3 \
@@ -389,8 +389,8 @@ define Device/kooiot_tlink-r7
   DEVICE_MODEL := ThingsLink R7 (RK3568)
   KERNEL := kernel-bin
   SOC := rk3568
+  BOOT_SCRIPT := tlink
   UBOOT_DEVICE_NAME := tlink-r7-rk3568
-  IMAGE/sysupgrade.img.gz := boot-common | boot-script-rk | tlink-img | gzip | append-metadata
   DEVICE_PACKAGES:=kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
     kmod-ledtrig-netdev kmod-ledtrig-gpio \
@@ -403,7 +403,7 @@ define Device/kooiot_tlink-r7
 	kmod-i2c-fusb30x \
 	kmod-mmc kmod-brcmfmac \
 	kmod-can kmod-can-rockchip-canfd \
-	kmod-ata-ahci kmod-ata-ahci-platform \
+	kmod-ata-ahci kmod-ata-ahci-dwc \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
     tlink-r7-firmware wpad-basic-mbedtls \
     tinc-freeioe-tunnel iperf3 \
