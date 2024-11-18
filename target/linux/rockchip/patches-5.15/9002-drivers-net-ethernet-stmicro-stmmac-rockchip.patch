@@ -12,24 +12,24 @@
  {
  	struct device *dev = &bsp_priv->pdev->dev;
  	u32 con0, con1;
-+	u32 val;
++	// u32 val;
  
  	if (IS_ERR(bsp_priv->grf)) {
  		dev_err(dev, "Missing rockchip,grf property\n");
  		return;
  	}
-+	dev_info(dev, "set_to_rgmii: id: %d from %pOF\n", bsp_priv->id, dev->of_node);
++	// dev_info(dev, "set_to_rgmii: id: %d from %pOF\n", bsp_priv->id, dev->of_node);
  
  	con0 = (bsp_priv->id == 1) ? RK3568_GRF_GMAC1_CON0 :
  				     RK3568_GRF_GMAC0_CON0;
  	con1 = (bsp_priv->id == 1) ? RK3568_GRF_GMAC1_CON1 :
  				     RK3568_GRF_GMAC0_CON1;
  
-+	val = RK3568_GMAC_CLK_RX_DL_CFG(rx_delay) | RK3568_GMAC_CLK_TX_DL_CFG(tx_delay);
-+	dev_info(dev, "%s: con0: %x from %pOF\n", __func__, val, dev->of_node);
++	// val = RK3568_GMAC_CLK_RX_DL_CFG(rx_delay) | RK3568_GMAC_CLK_TX_DL_CFG(tx_delay);
++	// dev_info(dev, "%s: con0: %x from %pOF\n", __func__, val, dev->of_node);
 +
-+	val = RK3568_GMAC_PHY_INTF_SEL_RGMII | RK3568_GMAC_RXCLK_DLY_ENABLE | RK3568_GMAC_TXCLK_DLY_ENABLE;
-+	dev_info(dev, "%s: con1: %x from %pOF\n", __func__, val, dev->of_node);
++	// val = RK3568_GMAC_PHY_INTF_SEL_RGMII | RK3568_GMAC_RXCLK_DLY_ENABLE | RK3568_GMAC_TXCLK_DLY_ENABLE;
++	// dev_info(dev, "%s: con1: %x from %pOF\n", __func__, val, dev->of_node);
 +
  	regmap_write(bsp_priv->grf, con0,
  		     RK3568_GMAC_CLK_RX_DL_CFG(rx_delay) |
