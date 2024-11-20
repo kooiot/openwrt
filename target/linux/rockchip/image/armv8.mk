@@ -373,6 +373,7 @@ define Device/kooiot_tlink-r4x
 	kmod-usb-net-cdc-mbim kmod-usb-net-rndis \
 	kmod-usb-xhci-pci upd72020x-firmware \
 	kmod-i2c-fusb30x \
+	kmod-phy-realtek kmod-r8168 \
 	kmod-mmc kmod-brcmfmac \
 	kmod-can kmod-can-rockchip-canfd \
 	kmod-ata-ahci kmod-ata-ahci-dwc \
@@ -401,6 +402,7 @@ define Device/kooiot_tlink-r7
 	kmod-usb-net-cdc-mbim kmod-usb-net-rndis \
 	kmod-usb-xhci-pci upd72020x-firmware \
 	kmod-i2c-fusb30x \
+	kmod-phy-realtek kmod-r8168 \
 	kmod-mmc kmod-brcmfmac \
 	kmod-can kmod-can-rockchip-canfd \
 	kmod-ata-ahci kmod-ata-ahci-dwc \
