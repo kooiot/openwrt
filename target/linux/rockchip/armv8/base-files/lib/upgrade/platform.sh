@@ -1,8 +1,8 @@
 REQUIRE_IMAGE_METADATA=1
 
 tlink_get_type_magic() {
-	# 0x3437b
-	local skip_base=213883
+	# 0x2dcfb
+	local skip_base=187643
 	local skip_offset=$(($skip_base))
 	local name_len=$2
 	get_image_dd "$1" bs=1 count=$name_len skip=$skip_offset 2>/dev/null | hexdump -v -n $name_len -e '/1 "%c"'
