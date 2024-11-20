@@ -137,8 +137,6 @@ CONFIG_PACKAGE_siridb-server=y
 CONFIG_PACKAGE_symlink-openssl-v1=y
 CONFIG_PACKAGE_symlink-psn=y
 CONFIG_PACKAGE_tio=y
-CONFIG_PACKAGE_tlink-r4x-firmware=y
-# CONFIG_PACKAGE_tlink-r7-firmware is not set
 CONFIG_PACKAGE_tlink-usb2lcd=y
 # CONFIG_PACKAGE_ucode-mod-lua is not set
 CONFIG_PACKAGE_yajl=y

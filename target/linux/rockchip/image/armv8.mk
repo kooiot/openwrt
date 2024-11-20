@@ -378,7 +378,7 @@ define Device/kooiot_tlink-r4x
 	kmod-can kmod-can-rockchip-canfd \
 	kmod-ata-ahci kmod-ata-ahci-dwc \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    tlink-r7-firmware wpad-basic-mbedtls \
+    tlink-r4x-firmware wpad-basic-mbedtls \
     tinc-freeioe-tunnel iperf3 \
     uqmi fdisk usbutils freeioe wwanleds \
     blockd kmod-eeprom-at24 fdisk
