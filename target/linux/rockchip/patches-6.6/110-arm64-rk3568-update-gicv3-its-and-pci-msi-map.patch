@@ -1,20 +1,3 @@
---- a/arch/arm64/Kconfig
-+++ b/arch/arm64/Kconfig
-@@ -1152,6 +1152,14 @@ config SOCIONEXT_SYNQUACER_PREITS
- 
- 	  If unsure, say Y.
- 
-+config ROCKCHIP_ERRATUM_114514
-+	bool "Rockchip RK3568 force no_local_cache"
-+	default y
-+	help
-+	  They consider this as a SoC implement design instead of a bug.
-+
-+	  If unsure, say Y.
-+
- endmenu # "ARM errata workarounds via the alternatives framework"
- 
- choice
 --- a/arch/arm64/boot/dts/rockchip/rk3568.dtsi
 +++ b/arch/arm64/boot/dts/rockchip/rk3568.dtsi
 @@ -64,7 +64,7 @@
@@ -83,7 +66,7 @@
  	};
  
  	usb_host0_ehci: usb@fd800000 {
-@@ -977,7 +984,7 @@
+@@ -990,7 +997,7 @@
  		num-ib-windows = <6>;
  		num-ob-windows = <2>;
  		max-link-speed = <2>;
