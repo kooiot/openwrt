@@ -1,0 +1,38 @@
+From 067740fce295e7b941b3aaeb5e161316eae0e6f5 Mon Sep 17 00:00:00 2001
+From: Inochi Amaoto <inochiama@outlook.com>
+Date: Thu, 19 Oct 2023 07:18:50 +0800
+Subject: [PATCH 19/89] dt-bindings: riscv: Add SOPHGO Huashan Pi board
+ compatibles
+
+Document the compatible strings for the SOPHGO Huashan Pi board which
+uses the SOPHGO CV1812H SoC.
+
+Signed-off-by: Inochi Amaoto <inochiama@outlook.com>
+Link: https://en.sophgo.com/product/introduce/huashan.html
+Link: https://en.sophgo.com/product/introduce/cv181xH.html
+Acked-by: Chen Wang <unicorn_wang@outlook.com>
+Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+Reviewed-by: Jisheng Zhang <jszhang@kernel.org>
+Signed-off-by: Conor Dooley <conor.dooley@microchip.com>
+---
+ Documentation/devicetree/bindings/riscv/sophgo.yaml | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/riscv/sophgo.yaml b/Documentation/devicetree/bindings/riscv/sophgo.yaml
+index 86748c5390be..9bc813dad098 100644
+--- a/Documentation/devicetree/bindings/riscv/sophgo.yaml
++++ b/Documentation/devicetree/bindings/riscv/sophgo.yaml
+@@ -22,6 +22,10 @@ properties:
+           - enum:
+               - milkv,duo
+           - const: sophgo,cv1800b
++      - items:
++          - enum:
++              - sophgo,huashan-pi
++          - const: sophgo,cv1812h
+       - items:
+           - enum:
+               - milkv,pioneer
+-- 
+2.45.2
+

@@ -1,0 +1,51 @@
+From c16344437fbbe1b2930deab8ff6676b8a3a2a56e Mon Sep 17 00:00:00 2001
+From: Inochi Amaoto <inochiama@outlook.com>
+Date: Sat, 9 Mar 2024 17:02:54 +0800
+Subject: [PATCH 38/89] clk: sophgo: Add clock support for SG2000 SoC
+
+Add init code for SG2000 SoC.
+
+Signed-off-by: Inochi Amaoto <inochiama@outlook.com>
+Link: https://github.com/sophgo/sophgo-doc/releases/tag/sg2000-datasheet-v1.0-alpha
+Link: https://lore.kernel.org/r/IA1PR20MB49537156E71B64483F15C0F2BB262@IA1PR20MB4953.namprd20.prod.outlook.com
+Signed-off-by: Stephen Boyd <sboyd@kernel.org>
+---
+ drivers/clk/sophgo/clk-cv1800.c | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+diff --git a/drivers/clk/sophgo/clk-cv1800.c b/drivers/clk/sophgo/clk-cv1800.c
+index c7d4aa6c8343..956de5b21a80 100644
+--- a/drivers/clk/sophgo/clk-cv1800.c
++++ b/drivers/clk/sophgo/clk-cv1800.c
+@@ -1437,6 +1437,20 @@ static const struct cv1800_clk_desc cv1810_desc = {
+ 	.pre_init	= cv1810_pre_init,
+ };
+ 
++static int sg2000_pre_init(struct device *dev, void __iomem *base,
++			   struct cv1800_clk_ctrl *ctrl,
++			   const struct cv1800_clk_desc *desc)
++{
++	cv18xx_clk_disable_auto_pd(base);
++
++	return 0;
++}
++
++static const struct cv1800_clk_desc sg2000_desc = {
++	.clks_data	= &cv1810_hw_clks,
++	.pre_init	= sg2000_pre_init,
++};
++
+ static int cv1800_clk_init_ctrl(struct device *dev, void __iomem *reg,
+ 				struct cv1800_clk_ctrl *ctrl,
+ 				const struct cv1800_clk_desc *desc)
+@@ -1506,6 +1520,7 @@ static int cv1800_clk_probe(struct platform_device *pdev)
+ static const struct of_device_id cv1800_clk_ids[] = {
+ 	{ .compatible = "sophgo,cv1800-clk", .data = &cv1800_desc },
+ 	{ .compatible = "sophgo,cv1810-clk", .data = &cv1810_desc },
++	{ .compatible = "sophgo,sg2000-clk", .data = &sg2000_desc },
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(of, cv1800_clk_ids);
+-- 
+2.45.2
+

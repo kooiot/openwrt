@@ -1,0 +1,33 @@
+From 086543662932f33b950cc560135b69ba2e16bea3 Mon Sep 17 00:00:00 2001
+From: Haylen Chu <heylenay@outlook.com>
+Date: Tue, 18 Jun 2024 09:16:14 +0000
+Subject: [PATCH 48/89] riscv: dts: sophgo: disable write-protection for milkv
+ duo
+
+Milkv Duo does not have a write-protect pin, so disable write protect
+to prevent SDcards misdetected as read-only.
+
+Fixes: 89a7056ed4f7 ("riscv: dts: sophgo: add sdcard support for milkv duo")
+Signed-off-by: Haylen Chu <heylenay@outlook.com>
+Link: https://lore.kernel.org/r/SEYPR01MB4221943C7B101DD2318DA0D3D7CE2@SEYPR01MB4221.apcprd01.prod.exchangelabs.com
+Signed-off-by: Inochi Amaoto <inochiama@outlook.com>
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+---
+ arch/riscv/boot/dts/sophgo/cv1800b-milkv-duo.dts | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/riscv/boot/dts/sophgo/cv1800b-milkv-duo.dts b/arch/riscv/boot/dts/sophgo/cv1800b-milkv-duo.dts
+index cd013588adc0..375ff2661b6e 100644
+--- a/arch/riscv/boot/dts/sophgo/cv1800b-milkv-duo.dts
++++ b/arch/riscv/boot/dts/sophgo/cv1800b-milkv-duo.dts
+@@ -45,6 +45,7 @@ &sdhci0 {
+ 	no-1-8-v;
+ 	no-mmc;
+ 	no-sdio;
++	disable-wp;
+ };
+ 
+ &uart0 {
+-- 
+2.45.2
+

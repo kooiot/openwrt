@@ -1,0 +1,128 @@
+From 950966c6e4c470a7816bf11dd84ea75ef5e78c01 Mon Sep 17 00:00:00 2001
+From: Chen Wang <unicorn_wang@outlook.com>
+Date: Fri, 24 Nov 2023 14:26:02 +0800
+Subject: [PATCH 51/89] riscv: dts: add clock generator for Sophgo SG2042 SoC
+
+Add clock generator node to device tree for SG2042, and enable clock for
+uart.
+
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+Reviewed-by: Guo Ren <guoren@kernel.org>
+---
+ .../boot/dts/sophgo/sg2042-milkv-pioneer.dts  | 12 ++++
+ arch/riscv/boot/dts/sophgo/sg2042.dtsi        | 55 +++++++++++++++++++
+ 2 files changed, 67 insertions(+)
+
+diff --git a/arch/riscv/boot/dts/sophgo/sg2042-milkv-pioneer.dts b/arch/riscv/boot/dts/sophgo/sg2042-milkv-pioneer.dts
+index 49b4b9c2c101..80cb017974d8 100644
+--- a/arch/riscv/boot/dts/sophgo/sg2042-milkv-pioneer.dts
++++ b/arch/riscv/boot/dts/sophgo/sg2042-milkv-pioneer.dts
+@@ -14,6 +14,18 @@ chosen {
+ 	};
+ };
+ 
++&cgi_main {
++	clock-frequency = <25000000>;
++};
++
++&cgi_dpll0 {
++	clock-frequency = <25000000>;
++};
++
++&cgi_dpll1 {
++	clock-frequency = <25000000>;
++};
++
+ &uart0 {
+ 	status = "okay";
+ };
+diff --git a/arch/riscv/boot/dts/sophgo/sg2042.dtsi b/arch/riscv/boot/dts/sophgo/sg2042.dtsi
+index ead1cc35d88b..740322606445 100644
+--- a/arch/riscv/boot/dts/sophgo/sg2042.dtsi
++++ b/arch/riscv/boot/dts/sophgo/sg2042.dtsi
+@@ -4,7 +4,11 @@
+  */
+ 
+ /dts-v1/;
++#include <dt-bindings/clock/sophgo,sg2042-clkgen.h>
++#include <dt-bindings/clock/sophgo,sg2042-pll.h>
++#include <dt-bindings/clock/sophgo,sg2042-rpgate.h>
+ #include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/reset/sophgo,sg2042-reset.h>
+ 
+ #include "sg2042-cpus.dtsi"
+ 
+@@ -18,12 +22,60 @@ aliases {
+ 		serial0 = &uart0;
+ 	};
+ 
++	cgi_main: oscillator0 {
++		compatible = "fixed-clock";
++		clock-output-names = "cgi_main";
++		#clock-cells = <0>;
++	};
++
++	cgi_dpll0: oscillator1 {
++		compatible = "fixed-clock";
++		clock-output-names = "cgi_dpll0";
++		#clock-cells = <0>;
++	};
++
++	cgi_dpll1: oscillator2 {
++		compatible = "fixed-clock";
++		clock-output-names = "cgi_dpll1";
++		#clock-cells = <0>;
++	};
++
+ 	soc: soc {
+ 		compatible = "simple-bus";
+ 		#address-cells = <2>;
+ 		#size-cells = <2>;
+ 		ranges;
+ 
++		pllclk: clock-controller@70300100c0 {
++			compatible = "sophgo,sg2042-pll";
++			reg = <0x70 0x300100c0 0x0 0x40>;
++			clocks = <&cgi_main>, <&cgi_dpll0>, <&cgi_dpll1>;
++			clock-names = "cgi_main", "cgi_dpll0", "cgi_dpll1";
++			#clock-cells = <1>;
++		};
++
++		rpgate: clock-controller@7030010368 {
++			compatible = "sophgo,sg2042-rpgate";
++			reg = <0x70 0x30010368 0x0 0x98>;
++			clocks = <&clkgen GATE_CLK_RP_CPU_NORMAL>;
++			clock-names = "rpgate";
++			#clock-cells = <1>;
++		};
++
++		clkgen: clock-controller@7030012000 {
++			compatible = "sophgo,sg2042-clkgen";
++			reg = <0x70 0x30012000 0x0 0x1000>;
++			clocks = <&pllclk MPLL_CLK>,
++				 <&pllclk FPLL_CLK>,
++				 <&pllclk DPLL0_CLK>,
++				 <&pllclk DPLL1_CLK>;
++			clock-names = "mpll",
++				      "fpll",
++				      "dpll0",
++				      "dpll1";
++			#clock-cells = <1>;
++		};
++
+ 		clint_mswi: interrupt-controller@7094000000 {
+ 			compatible = "sophgo,sg2042-aclint-mswi", "thead,c900-aclint-mswi";
+ 			reg = <0x00000070 0x94000000 0x00000000 0x00004000>;
+@@ -333,6 +385,9 @@ uart0: serial@7040000000 {
+ 			interrupt-parent = <&intc>;
+ 			interrupts = <112 IRQ_TYPE_LEVEL_HIGH>;
+ 			clock-frequency = <500000000>;
++			clocks = <&clkgen GATE_CLK_UART_500M>,
++				 <&clkgen GATE_CLK_APB_UART>;
++			clock-names = "baudclk", "apb_pclk";
+ 			reg-shift = <2>;
+ 			reg-io-width = <4>;
+ 			status = "disabled";
+-- 
+2.45.2
+

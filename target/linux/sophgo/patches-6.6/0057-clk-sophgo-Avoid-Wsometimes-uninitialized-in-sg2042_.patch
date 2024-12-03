@@ -1,0 +1,100 @@
+From 50e709b141370dd56f8ab02515894d0303a4bc6c Mon Sep 17 00:00:00 2001
+From: Nathan Chancellor <nathan@kernel.org>
+Date: Wed, 10 Jul 2024 10:07:52 -0700
+Subject: [PATCH 57/89] clk: sophgo: Avoid -Wsometimes-uninitialized in
+ sg2042_clk_pll_set_rate()
+
+Clang warns (or errors with CONFIG_WERROR=y):
+
+  drivers/clk/sophgo/clk-sg2042-pll.c:396:6: error: variable 'ret' is used uninitialized whenever 'if' condition is true [-Werror,-Wsometimes-uninitialized]
+    396 |         if (sg2042_pll_enable(pll, 0)) {
+        |             ^~~~~~~~~~~~~~~~~~~~~~~~~
+  drivers/clk/sophgo/clk-sg2042-pll.c:418:9: note: uninitialized use occurs here
+    418 |         return ret;
+        |                ^~~
+  drivers/clk/sophgo/clk-sg2042-pll.c:396:2: note: remove the 'if' if its condition is always false
+    396 |         if (sg2042_pll_enable(pll, 0)) {
+        |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    397 |                 pr_warn("Can't disable pll(%s), status error\n", pll->hw.init->name);
+        |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    398 |                 goto out;
+        |                 ~~~~~~~~~
+    399 |         }
+        |         ~
+  drivers/clk/sophgo/clk-sg2042-pll.c:393:9: note: initialize the variable 'ret' to silence this warning
+    393 |         int ret;
+        |                ^
+        |                 = 0
+  1 error generated.
+
+sg2042_pll_enable() only ever returns zero, so this situation cannot
+happen, but clang does not perform interprocedural analysis, so it
+cannot know this to avoid the warning. Make it clearer to the compiler
+by making sg2042_pll_enable() void and eliminate the error handling in
+sg2042_clk_pll_set_rate(), which clears up the warning, as ret will
+always be initialized.
+
+Fixes: 48cf7e01386e ("clk: sophgo: Add SG2042 clock driver")
+Signed-off-by: Nathan Chancellor <nathan@kernel.org>
+Link: https://lore.kernel.org/r/20240710-clk-sg2042-fix-sometimes-uninitialized-pll_set_rate-v1-1-538fa82dd539@kernel.org
+Signed-off-by: Stephen Boyd <sboyd@kernel.org>
+---
+ drivers/clk/sophgo/clk-sg2042-pll.c | 17 +++++++----------
+ 1 file changed, 7 insertions(+), 10 deletions(-)
+
+diff --git a/drivers/clk/sophgo/clk-sg2042-pll.c b/drivers/clk/sophgo/clk-sg2042-pll.c
+index aa142897aa5e..9695e64fc23b 100644
+--- a/drivers/clk/sophgo/clk-sg2042-pll.c
++++ b/drivers/clk/sophgo/clk-sg2042-pll.c
+@@ -103,7 +103,7 @@ static inline void sg2042_pll_ctrl_decode(unsigned int reg_value,
+ 	ctrl->postdiv2 = FIELD_GET(PLLCTRL_POSTDIV2_MASK, reg_value);
+ }
+ 
+-static inline int sg2042_pll_enable(struct sg2042_pll_clock *pll, bool en)
++static inline void sg2042_pll_enable(struct sg2042_pll_clock *pll, bool en)
+ {
+ 	u32 value;
+ 
+@@ -132,8 +132,6 @@ static inline int sg2042_pll_enable(struct sg2042_pll_clock *pll, bool en)
+ 		value = readl(pll->base + R_PLL_CLKEN_CONTROL);
+ 		writel(value & (~(1 << pll->shift_enable)), pll->base + R_PLL_CLKEN_CONTROL);
+ 	}
+-
+-	return 0;
+ }
+ 
+ /**
+@@ -393,14 +391,13 @@ static int sg2042_clk_pll_set_rate(struct clk_hw *hw,
+ 	int ret;
+ 
+ 	spin_lock_irqsave(pll->lock, flags);
+-	if (sg2042_pll_enable(pll, 0)) {
+-		pr_warn("Can't disable pll(%s), status error\n", pll->hw.init->name);
+-		goto out;
+-	}
++
++	sg2042_pll_enable(pll, 0);
++
+ 	ret = sg2042_get_pll_ctl_setting(&pctrl_table, rate, parent_rate);
+ 	if (ret) {
+ 		pr_warn("%s: Can't find a proper pll setting\n", pll->hw.init->name);
+-		goto out2;
++		goto out;
+ 	}
+ 
+ 	value = sg2042_pll_ctrl_encode(&pctrl_table);
+@@ -408,9 +405,9 @@ static int sg2042_clk_pll_set_rate(struct clk_hw *hw,
+ 	/* write the value to top register */
+ 	writel(value, pll->base + pll->offset_ctrl);
+ 
+-out2:
+-	sg2042_pll_enable(pll, 1);
+ out:
++	sg2042_pll_enable(pll, 1);
++
+ 	spin_unlock_irqrestore(pll->lock, flags);
+ 
+ 	pr_debug("--> %s: pll_set_rate: val = 0x%x\n",
+-- 
+2.45.2
+

@@ -1,0 +1,39 @@
+From ab64809415272b747e3c26c17da5fe55a2d5c661 Mon Sep 17 00:00:00 2001
+From: Inochi Amaoto <inochiama@outlook.com>
+Date: Tue, 23 Jul 2024 10:18:49 +0800
+Subject: [PATCH 60/89] riscv: dts: sophgo: Add sdhci0 configuration for
+ Huashan Pi
+
+Add configuration for sdhci0 for Huashan Pi to support sd card.
+
+Reviewed-by: Chen Wang <unicorn_wang@outlook.com>
+Link: https://lore.kernel.org/r/IA1PR20MB49538AC83C5DB314D10F7186BBA92@IA1PR20MB4953.namprd20.prod.outlook.com
+Signed-off-by: Inochi Amaoto <inochiama@outlook.com>
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+---
+ arch/riscv/boot/dts/sophgo/cv1812h-huashan-pi.dts | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/arch/riscv/boot/dts/sophgo/cv1812h-huashan-pi.dts b/arch/riscv/boot/dts/sophgo/cv1812h-huashan-pi.dts
+index aa361f3a86bb..7b5f57853690 100644
+--- a/arch/riscv/boot/dts/sophgo/cv1812h-huashan-pi.dts
++++ b/arch/riscv/boot/dts/sophgo/cv1812h-huashan-pi.dts
+@@ -43,6 +43,15 @@ &osc {
+ 	clock-frequency = <25000000>;
+ };
+ 
++&sdhci0 {
++	status = "okay";
++	bus-width = <4>;
++	no-1-8-v;
++	no-mmc;
++	no-sdio;
++	disable-wp;
++};
++
+ &uart0 {
+ 	status = "okay";
+ };
+-- 
+2.45.2
+

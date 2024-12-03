@@ -1,0 +1,36 @@
+From c85f53cdd6e3abcc2144a2671acddefae7aca05c Mon Sep 17 00:00:00 2001
+From: Jisheng Zhang <jszhang@kernel.org>
+Date: Fri, 6 Oct 2023 20:14:47 +0800
+Subject: [PATCH 13/89] dt-bindings: riscv: Add Milk-V Duo board compatibles
+
+Document the compatible strings for the Milk-V Duo board[1] which uses
+the SOPHGO CV1800B SoC[2].
+
+Link: https://milkv.io/duo [1]
+Link: https://en.sophgo.com/product/introduce/cv180xB.html [2]
+Signed-off-by: Jisheng Zhang <jszhang@kernel.org>
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
+Acked-by: Chen Wang <unicorn_wang@outlook.com>
+Signed-off-by: Conor Dooley <conor.dooley@microchip.com>
+---
+ Documentation/devicetree/bindings/riscv/sophgo.yaml | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/riscv/sophgo.yaml b/Documentation/devicetree/bindings/riscv/sophgo.yaml
+index 8adb5f39ca53..86748c5390be 100644
+--- a/Documentation/devicetree/bindings/riscv/sophgo.yaml
++++ b/Documentation/devicetree/bindings/riscv/sophgo.yaml
+@@ -18,6 +18,10 @@ properties:
+     const: '/'
+   compatible:
+     oneOf:
++      - items:
++          - enum:
++              - milkv,duo
++          - const: sophgo,cv1800b
+       - items:
+           - enum:
+               - milkv,pioneer
+-- 
+2.45.2
+

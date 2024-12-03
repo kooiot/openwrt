@@ -1,0 +1,30 @@
+From 05a7e7855f63f86c8af94aa16b0c40d29639b3cb Mon Sep 17 00:00:00 2001
+From: Inochi Amaoto <inochiama@outlook.com>
+Date: Thu, 11 Apr 2024 20:12:40 +0800
+Subject: [PATCH 45/89] riscv: defconfig: Enable CONFIG_CLK_SOPHGO_CV1800
+
+CONFIG_CLK_SOPHGO_CV1800 is required when booting the minimum
+system for CV1800 series board.
+
+Signed-off-by: Inochi Amaoto <inochiama@outlook.com>
+Link: https://lore.kernel.org/r/IA1PR20MB49537E8B2D1FAAA7D5B8BDA2BB052@IA1PR20MB4953.namprd20.prod.outlook.com
+Signed-off-by: Palmer Dabbelt <palmer@rivosinc.com>
+---
+ arch/riscv/configs/defconfig | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/riscv/configs/defconfig b/arch/riscv/configs/defconfig
+index 1edf3cd886c5..281ea50daea9 100644
+--- a/arch/riscv/configs/defconfig
++++ b/arch/riscv/configs/defconfig
+@@ -179,6 +179,7 @@ CONFIG_VIRTIO_PCI=y
+ CONFIG_VIRTIO_BALLOON=y
+ CONFIG_VIRTIO_INPUT=y
+ CONFIG_VIRTIO_MMIO=y
++CONFIG_CLK_SOPHGO_CV1800=y
+ CONFIG_SUN8I_DE2_CCU=m
+ CONFIG_SUN50I_IOMMU=y
+ CONFIG_RPMSG_CHAR=y
+-- 
+2.45.2
+

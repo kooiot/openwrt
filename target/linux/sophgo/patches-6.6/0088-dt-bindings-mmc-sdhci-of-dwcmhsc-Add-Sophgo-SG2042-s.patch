@@ -1,0 +1,130 @@
+From c78af234bf38aa4b62b9e28deace5a7b8f2280ec Mon Sep 17 00:00:00 2001
+From: Chen Wang <unicorn_wang@outlook.com>
+Date: Mon, 5 Aug 2024 17:19:04 +0800
+Subject: [PATCH 88/89] dt-bindings: mmc: sdhci-of-dwcmhsc: Add Sophgo SG2042
+ support
+
+SG2042 use Synopsys dwcnshc IP for SD/eMMC controllers.
+
+SG2042 defines 3 clocks for SD/eMMC controllers.
+- EMMC_100M/SD_100M for cclk(Card clocks in DWC_mshc), so reuse
+  existing "core".
+- AXI_EMMC/AXI_SD for aclk/hclk(Bus interface clocks in DWC_mshc)
+  and blck(Core Base Clock in DWC_mshc), these 3 clocks share one
+  source, so reuse existing "bus".
+- 100K_EMMC/100K_SD for cqetmclk(Timer clocks in DWC_mshc), so reuse
+  existing "timer" which was added for rockchip specified.
+
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+Reviewed-by: Conor Dooley <conor.dooley@microchip.com>
+Link: https://lore.kernel.org/r/9ca450097e5389a38bcd7d8ddf863766df4cea10.1722847198.git.unicorn_wang@outlook.com
+Signed-off-by: Ulf Hansson <ulf.hansson@linaro.org>
+---
+ .../bindings/mmc/snps,dwcmshc-sdhci.yaml      | 60 +++++++++++++------
+ 1 file changed, 43 insertions(+), 17 deletions(-)
+
+diff --git a/Documentation/devicetree/bindings/mmc/snps,dwcmshc-sdhci.yaml b/Documentation/devicetree/bindings/mmc/snps,dwcmshc-sdhci.yaml
+index 4d3031d9965f..80d50178d2e3 100644
+--- a/Documentation/devicetree/bindings/mmc/snps,dwcmshc-sdhci.yaml
++++ b/Documentation/devicetree/bindings/mmc/snps,dwcmshc-sdhci.yaml
+@@ -10,9 +10,6 @@ maintainers:
+   - Ulf Hansson <ulf.hansson@linaro.org>
+   - Jisheng Zhang <Jisheng.Zhang@synaptics.com>
+ 
+-allOf:
+-  - $ref: mmc-controller.yaml#
+-
+ properties:
+   compatible:
+     enum:
+@@ -21,6 +18,7 @@ properties:
+       - snps,dwcmshc-sdhci
+       - sophgo,cv1800b-dwcmshc
+       - sophgo,sg2002-dwcmshc
++      - sophgo,sg2042-dwcmshc
+       - thead,th1520-dwcmshc
+ 
+   reg:
+@@ -31,22 +29,11 @@ properties:
+ 
+   clocks:
+     minItems: 1
+-    items:
+-      - description: core clock
+-      - description: bus clock for optional
+-      - description: axi clock for rockchip specified
+-      - description: block clock for rockchip specified
+-      - description: timer clock for rockchip specified
+-
++    maxItems: 5
+ 
+   clock-names:
+     minItems: 1
+-    items:
+-      - const: core
+-      - const: bus
+-      - const: axi
+-      - const: block
+-      - const: timer
++    maxItems: 5
+ 
+   resets:
+     maxItems: 5
+@@ -63,7 +50,6 @@ properties:
+     description: Specify the number of delay for tx sampling.
+     $ref: /schemas/types.yaml#/definitions/uint8
+ 
+-
+ required:
+   - compatible
+   - reg
+@@ -71,6 +57,46 @@ required:
+   - clocks
+   - clock-names
+ 
++allOf:
++  - $ref: mmc-controller.yaml#
++
++  - if:
++      properties:
++        compatible:
++          contains:
++            const: sophgo,sg2042-dwcmshc
++
++    then:
++      properties:
++        clocks:
++          items:
++            - description: core clock
++            - description: bus clock
++            - description: timer clock
++        clock-names:
++          items:
++            - const: core
++            - const: bus
++            - const: timer
++    else:
++      properties:
++        clocks:
++          minItems: 1
++          items:
++            - description: core clock
++            - description: bus clock for optional
++            - description: axi clock for rockchip specified
++            - description: block clock for rockchip specified
++            - description: timer clock for rockchip specified
++        clock-names:
++          minItems: 1
++          items:
++            - const: core
++            - const: bus
++            - const: axi
++            - const: block
++            - const: timer
++
+ unevaluatedProperties: false
+ 
+ examples:
+-- 
+2.45.2
+

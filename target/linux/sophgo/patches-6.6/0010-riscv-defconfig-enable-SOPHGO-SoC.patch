@@ -1,0 +1,38 @@
+From c13fd9e63948388668865e7364e475a33ec14078 Mon Sep 17 00:00:00 2001
+From: Chen Wang <unicorn_wang@outlook.com>
+Date: Wed, 4 Oct 2023 23:44:46 +0800
+Subject: [PATCH 10/89] riscv: defconfig: enable SOPHGO SoC
+
+Enable SOPHGO SoC config in defconfig to allow the default
+upstream kernel to boot on Milk-V Pioneer board.
+
+Acked-by: Chao Wei <chao.wei@sophgo.com>
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
+Reviewed-by: Guo Ren <guoren@kernel.org>
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+[conor: fix the ordering]
+Signed-off-by: Conor Dooley <conor.dooley@microchip.com>
+---
+ arch/riscv/configs/defconfig | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/arch/riscv/configs/defconfig b/arch/riscv/configs/defconfig
+index ab86ec3b9eab..1edf3cd886c5 100644
+--- a/arch/riscv/configs/defconfig
++++ b/arch/riscv/configs/defconfig
+@@ -27,10 +27,11 @@ CONFIG_EXPERT=y
+ CONFIG_PROFILING=y
+ CONFIG_SOC_MICROCHIP_POLARFIRE=y
+ CONFIG_ARCH_RENESAS=y
+-CONFIG_ARCH_THEAD=y
+ CONFIG_SOC_SIFIVE=y
++CONFIG_ARCH_SOPHGO=y
+ CONFIG_SOC_STARFIVE=y
+ CONFIG_ARCH_SUNXI=y
++CONFIG_ARCH_THEAD=y
+ CONFIG_SOC_VIRT=y
+ CONFIG_SMP=y
+ CONFIG_HOTPLUG_CPU=y
+-- 
+2.45.2
+

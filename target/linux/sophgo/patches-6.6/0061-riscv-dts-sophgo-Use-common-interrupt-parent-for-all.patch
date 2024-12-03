@@ -1,0 +1,42 @@
+From 25e1d54ff9f5dc08d8d09bbaf4becb2eff16f495 Mon Sep 17 00:00:00 2001
+From: Inochi Amaoto <inochiama@outlook.com>
+Date: Mon, 29 Jul 2024 10:13:33 +0800
+Subject: [PATCH 61/89] riscv: dts: sophgo: Use common "interrupt-parent" for
+ all peripherals for sg2042
+
+As all peripherals of sg2042 share the same "interrupt-parent",
+there is no need to use peripherals specific "interrupt-parent".
+Define "interrupt-parent" in the SoC level.
+
+Reviewed-by: Chen Wang <unicorn_wang@outlook.com>
+Tested-by: Chen Wang <unicorn_wang@outlook.com>
+Link: https://lore.kernel.org/r/IA1PR20MB49531F6DFD2F116207C1397DBBB72@IA1PR20MB4953.namprd20.prod.outlook.com
+Signed-off-by: Inochi Amaoto <inochiama@outlook.com>
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+---
+ arch/riscv/boot/dts/sophgo/sg2042.dtsi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/riscv/boot/dts/sophgo/sg2042.dtsi b/arch/riscv/boot/dts/sophgo/sg2042.dtsi
+index 740322606445..91dc48916ec4 100644
+--- a/arch/riscv/boot/dts/sophgo/sg2042.dtsi
++++ b/arch/riscv/boot/dts/sophgo/sg2042.dtsi
+@@ -44,6 +44,7 @@ soc: soc {
+ 		compatible = "simple-bus";
+ 		#address-cells = <2>;
+ 		#size-cells = <2>;
++		interrupt-parent = <&intc>;
+ 		ranges;
+ 
+ 		pllclk: clock-controller@70300100c0 {
+@@ -382,7 +383,6 @@ intc: interrupt-controller@7090000000 {
+ 		uart0: serial@7040000000 {
+ 			compatible = "snps,dw-apb-uart";
+ 			reg = <0x00000070 0x40000000 0x00000000 0x00001000>;
+-			interrupt-parent = <&intc>;
+ 			interrupts = <112 IRQ_TYPE_LEVEL_HIGH>;
+ 			clock-frequency = <500000000>;
+ 			clocks = <&clkgen GATE_CLK_UART_500M>,
+-- 
+2.45.2
+

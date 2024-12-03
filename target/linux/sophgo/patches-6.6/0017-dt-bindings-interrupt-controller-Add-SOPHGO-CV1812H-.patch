@@ -1,0 +1,31 @@
+From 5ed73061df4243f2d06095155db299d0f992841e Mon Sep 17 00:00:00 2001
+From: Inochi Amaoto <inochiama@outlook.com>
+Date: Thu, 19 Oct 2023 07:18:48 +0800
+Subject: [PATCH 17/89] dt-bindings: interrupt-controller: Add SOPHGO CV1812H
+ plic
+
+Add compatible string for SOPHGO CV1812H plic.
+
+Signed-off-by: Inochi Amaoto <inochiama@outlook.com>
+Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+Reviewed-by: Jisheng Zhang <jszhang@kernel.org>
+Signed-off-by: Conor Dooley <conor.dooley@microchip.com>
+---
+ .../bindings/interrupt-controller/sifive,plic-1.0.0.yaml         | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/Documentation/devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml b/Documentation/devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml
+index 0c07e8dda445..709b2211276b 100644
+--- a/Documentation/devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml
++++ b/Documentation/devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml
+@@ -66,6 +66,7 @@ properties:
+           - enum:
+               - allwinner,sun20i-d1-plic
+               - sophgo,cv1800b-plic
++              - sophgo,cv1812h-plic
+               - sophgo,sg2042-plic
+               - thead,th1520-plic
+           - const: thead,c900-plic
+-- 
+2.45.2
+

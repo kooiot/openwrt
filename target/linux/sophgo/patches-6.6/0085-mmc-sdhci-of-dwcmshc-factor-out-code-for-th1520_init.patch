@@ -1,0 +1,94 @@
+From f161cec832eed50416501fd8f6404dcc6cb9d5fd Mon Sep 17 00:00:00 2001
+From: Chen Wang <unicorn_wang@outlook.com>
+Date: Mon, 5 Aug 2024 17:17:59 +0800
+Subject: [PATCH 85/89] mmc: sdhci-of-dwcmshc: factor out code for
+ th1520_init()
+
+Different socs have initialization operations in
+the probe process, which are summarized as functions.
+
+This patch first factor out init function for th1520.
+
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+Reviewed-by: Drew Fustini <drew@pdp7.com>
+Tested-by: Drew Fustini <drew@pdp7.com> # TH1520
+Tested-by: Inochi Amaoto <inochiama@outlook.com> # Duo and Huashan Pi
+Acked-by: Adrian Hunter <adrian.hunter@intel.com>
+Link: https://lore.kernel.org/r/23c6a81052a6dd3660d60348731229d60a209b32.1722847198.git.unicorn_wang@outlook.com
+Signed-off-by: Ulf Hansson <ulf.hansson@linaro.org>
+---
+ drivers/mmc/host/sdhci-of-dwcmshc.c | 51 +++++++++++++++++------------
+ 1 file changed, 30 insertions(+), 21 deletions(-)
+
+diff --git a/drivers/mmc/host/sdhci-of-dwcmshc.c b/drivers/mmc/host/sdhci-of-dwcmshc.c
+index a002636d51fd..b272ec2ab232 100644
+--- a/drivers/mmc/host/sdhci-of-dwcmshc.c
++++ b/drivers/mmc/host/sdhci-of-dwcmshc.c
+@@ -830,6 +830,35 @@ static void th1520_sdhci_reset(struct sdhci_host *host, u8 mask)
+ 	}
+ }
+ 
++static int th1520_init(struct device *dev,
++		       struct sdhci_host *host,
++		       struct dwcmshc_priv *dwc_priv)
++{
++	dwc_priv->delay_line = PHY_SDCLKDL_DC_DEFAULT;
++
++	if (device_property_read_bool(dev, "mmc-ddr-1_8v") ||
++	    device_property_read_bool(dev, "mmc-hs200-1_8v") ||
++	    device_property_read_bool(dev, "mmc-hs400-1_8v"))
++		dwc_priv->flags |= FLAG_IO_FIXED_1V8;
++	else
++		dwc_priv->flags &= ~FLAG_IO_FIXED_1V8;
++
++	/*
++	 * start_signal_voltage_switch() will try 3.3V first
++	 * then 1.8V. Use SDHCI_SIGNALING_180 rather than
++	 * SDHCI_SIGNALING_330 to avoid setting voltage to 3.3V
++	 * in sdhci_start_signal_voltage_switch().
++	 */
++	if (dwc_priv->flags & FLAG_IO_FIXED_1V8) {
++		host->flags &= ~SDHCI_SIGNALING_330;
++		host->flags |=  SDHCI_SIGNALING_180;
++	}
++
++	sdhci_enable_v4_mode(host);
++
++	return 0;
++}
++
+ static void cv18xx_sdhci_reset(struct sdhci_host *host, u8 mask)
+ {
+ 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+@@ -1231,27 +1260,7 @@ static int dwcmshc_probe(struct platform_device *pdev)
+ 	}
+ 
+ 	if (pltfm_data == &sdhci_dwcmshc_th1520_pdata) {
+-		priv->delay_line = PHY_SDCLKDL_DC_DEFAULT;
+-
+-		if (device_property_read_bool(dev, "mmc-ddr-1_8v") ||
+-		    device_property_read_bool(dev, "mmc-hs200-1_8v") ||
+-		    device_property_read_bool(dev, "mmc-hs400-1_8v"))
+-			priv->flags |= FLAG_IO_FIXED_1V8;
+-		else
+-			priv->flags &= ~FLAG_IO_FIXED_1V8;
+-
+-		/*
+-		 * start_signal_voltage_switch() will try 3.3V first
+-		 * then 1.8V. Use SDHCI_SIGNALING_180 rather than
+-		 * SDHCI_SIGNALING_330 to avoid setting voltage to 3.3V
+-		 * in sdhci_start_signal_voltage_switch().
+-		 */
+-		if (priv->flags & FLAG_IO_FIXED_1V8) {
+-			host->flags &= ~SDHCI_SIGNALING_330;
+-			host->flags |=  SDHCI_SIGNALING_180;
+-		}
+-
+-		sdhci_enable_v4_mode(host);
++		th1520_init(dev, host, priv);
+ 	}
+ 
+ #ifdef CONFIG_ACPI
+-- 
+2.45.2
+

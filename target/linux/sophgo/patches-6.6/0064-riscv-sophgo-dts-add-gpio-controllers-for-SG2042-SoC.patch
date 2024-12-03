@@ -1,0 +1,97 @@
+From 4ddccca14433334201d45ba20ae60aba8afb912a Mon Sep 17 00:00:00 2001
+From: Chen Wang <unicorn_wang@outlook.com>
+Date: Mon, 19 Aug 2024 16:08:51 +0800
+Subject: [PATCH 64/89] riscv: sophgo: dts: add gpio controllers for SG2042 SoC
+
+Add support for the GPIO controller of Sophgo SG2042.
+
+SG2042 uses IP from Synopsys DesignWare APB GPIO and has
+three GPIO controllers.
+
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+Link: https://lore.kernel.org/r/20240819080851.1954691-1-unicornxw@gmail.com
+Signed-off-by: Inochi Amaoto <inochiama@outlook.com>
+---
+ arch/riscv/boot/dts/sophgo/sg2042.dtsi | 66 ++++++++++++++++++++++++++
+ 1 file changed, 66 insertions(+)
+
+diff --git a/arch/riscv/boot/dts/sophgo/sg2042.dtsi b/arch/riscv/boot/dts/sophgo/sg2042.dtsi
+index 23e8adfda5d7..194c7ed51581 100644
+--- a/arch/riscv/boot/dts/sophgo/sg2042.dtsi
++++ b/arch/riscv/boot/dts/sophgo/sg2042.dtsi
+@@ -99,6 +99,72 @@ i2c3: i2c@7030008000 {
+ 			status = "disabled";
+ 		};
+ 
++		gpio0: gpio@7030009000 {
++			compatible = "snps,dw-apb-gpio";
++			reg = <0x70 0x30009000 0x0 0x400>;
++			#address-cells = <1>;
++			#size-cells = <0>;
++			clocks = <&clkgen GATE_CLK_APB_GPIO>,
++				 <&clkgen GATE_CLK_GPIO_DB>;
++			clock-names = "bus", "db";
++
++			port0a: gpio-controller@0 {
++				compatible = "snps,dw-apb-gpio-port";
++				gpio-controller;
++				#gpio-cells = <2>;
++				snps,nr-gpios = <32>;
++				reg = <0>;
++				interrupt-controller;
++				#interrupt-cells = <2>;
++				interrupt-parent = <&intc>;
++				interrupts = <96 IRQ_TYPE_LEVEL_HIGH>;
++			};
++		};
++
++		gpio1: gpio@703000a000 {
++			compatible = "snps,dw-apb-gpio";
++			reg = <0x70 0x3000a000 0x0 0x400>;
++			#address-cells = <1>;
++			#size-cells = <0>;
++			clocks = <&clkgen GATE_CLK_APB_GPIO>,
++				 <&clkgen GATE_CLK_GPIO_DB>;
++			clock-names = "bus", "db";
++
++			port1a: gpio-controller@0 {
++				compatible = "snps,dw-apb-gpio-port";
++				gpio-controller;
++				#gpio-cells = <2>;
++				snps,nr-gpios = <32>;
++				reg = <0>;
++				interrupt-controller;
++				#interrupt-cells = <2>;
++				interrupt-parent = <&intc>;
++				interrupts = <97 IRQ_TYPE_LEVEL_HIGH>;
++			};
++		};
++
++		gpio2: gpio@703000b000 {
++			compatible = "snps,dw-apb-gpio";
++			reg = <0x70 0x3000b000 0x0 0x400>;
++			#address-cells = <1>;
++			#size-cells = <0>;
++			clocks = <&clkgen GATE_CLK_APB_GPIO>,
++				 <&clkgen GATE_CLK_GPIO_DB>;
++			clock-names = "bus", "db";
++
++			port2a: gpio-controller@0 {
++				compatible = "snps,dw-apb-gpio-port";
++				gpio-controller;
++				#gpio-cells = <2>;
++				snps,nr-gpios = <32>;
++				reg = <0>;
++				interrupt-controller;
++				#interrupt-cells = <2>;
++				interrupt-parent = <&intc>;
++				interrupts = <98 IRQ_TYPE_LEVEL_HIGH>;
++			};
++		};
++
+ 		pllclk: clock-controller@70300100c0 {
+ 			compatible = "sophgo,sg2042-pll";
+ 			reg = <0x70 0x300100c0 0x0 0x40>;
+-- 
+2.45.2
+

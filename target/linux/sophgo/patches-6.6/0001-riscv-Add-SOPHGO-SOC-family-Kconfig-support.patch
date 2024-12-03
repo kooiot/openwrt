@@ -1,0 +1,36 @@
+From e0d5f178bc28d4f2e435043ca56b6adb3c8ead31 Mon Sep 17 00:00:00 2001
+From: Chen Wang <unicorn_wang@outlook.com>
+Date: Wed, 4 Oct 2023 23:38:39 +0800
+Subject: [PATCH 01/89] riscv: Add SOPHGO SOC family Kconfig support
+
+The first SoC in the SOPHGO series is SG2042, which contains 64 RISC-V
+cores.
+
+Reviewed-by: Guo Ren <guoren@kernel.org>
+Reviewed-by: Conor Dooley <conor.dooley@microchip.com>
+Acked-by: Chao Wei <chao.wei@sophgo.com>
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+Signed-off-by: Conor Dooley <conor.dooley@microchip.com>
+---
+ arch/riscv/Kconfig.socs | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/arch/riscv/Kconfig.socs b/arch/riscv/Kconfig.socs
+index 30fd6a512828..e08e91c49abe 100644
+--- a/arch/riscv/Kconfig.socs
++++ b/arch/riscv/Kconfig.socs
+@@ -22,6 +22,11 @@ config SOC_SIFIVE
+ 	help
+ 	  This enables support for SiFive SoC platform hardware.
+ 
++config ARCH_SOPHGO
++	bool "Sophgo SoCs"
++	help
++	  This enables support for Sophgo SoC platform hardware.
++
+ config ARCH_STARFIVE
+ 	def_bool SOC_STARFIVE
+ 
+-- 
+2.45.2
+

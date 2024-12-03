@@ -1,0 +1,47 @@
+From f6d07fdc2009f008863964e5424c8bca4a11a5cd Mon Sep 17 00:00:00 2001
+From: Chen Wang <unicorn_wang@outlook.com>
+Date: Wed, 4 Oct 2023 23:40:32 +0800
+Subject: [PATCH 02/89] dt-bindings: vendor-prefixes: add milkv/sophgo
+
+Add new vendor strings to dt bindings.
+These new vendor strings are used by
+- SOPHGO's SG2042 SoC [1]
+- Milk-V Pioneer board [2], which uses SG2042 chip.
+
+Link: https://en.sophgo.com/product/introduce/sg2042.html [1]
+Link: https://milkv.io/pioneer [2]
+
+Reviewed-by: Guo Ren <guoren@kernel.org>
+Reviewed-by: Conor Dooley <conor.dooley@microchip.com>
+Acked-by: Chao Wei <chao.wei@sophgo.com>
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+Signed-off-by: Conor Dooley <conor.dooley@microchip.com>
+---
+ Documentation/devicetree/bindings/vendor-prefixes.yaml | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+index 573578db9509..fcca9e070a9a 100644
+--- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
++++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+@@ -863,6 +863,8 @@ patternProperties:
+     description: MikroElektronika d.o.o.
+   "^mikrotik,.*":
+     description: MikroTik
++  "^milkv,.*":
++    description: MilkV Technology Co., Ltd
+   "^miniand,.*":
+     description: Miniand Tech
+   "^minix,.*":
+@@ -1273,6 +1275,8 @@ patternProperties:
+     description: Solomon Systech Limited
+   "^sony,.*":
+     description: Sony Corporation
++  "^sophgo,.*":
++    description: Sophgo Technology Inc.
+   "^sourceparts,.*":
+     description: Source Parts Inc.
+   "^spansion,.*":
+-- 
+2.45.2
+

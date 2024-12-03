@@ -1,0 +1,84 @@
+From e84d3aad21f94dfb21619f8590b1e17c9f35aacd Mon Sep 17 00:00:00 2001
+From: Chen Wang <unicorn_wang@outlook.com>
+Date: Mon, 5 Aug 2024 17:19:43 +0800
+Subject: [PATCH 63/89] riscv: sophgo: dts: add mmc controllers for SG2042 SoC
+
+SG2042 has two MMC controller, one for emmc, another for sd-card.
+
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+Link: https://lore.kernel.org/r/03ac9ec9c23bbe4c3b30271e76537bdbe5638665.1722847198.git.unicorn_wang@outlook.com
+Signed-off-by: Inochi Amaoto <inochiama@outlook.com>
+---
+ .../boot/dts/sophgo/sg2042-milkv-pioneer.dts  | 17 +++++++++++
+ arch/riscv/boot/dts/sophgo/sg2042.dtsi        | 28 +++++++++++++++++++
+ 2 files changed, 45 insertions(+)
+
+diff --git a/arch/riscv/boot/dts/sophgo/sg2042-milkv-pioneer.dts b/arch/riscv/boot/dts/sophgo/sg2042-milkv-pioneer.dts
+index 80cb017974d8..da6596e9192e 100644
+--- a/arch/riscv/boot/dts/sophgo/sg2042-milkv-pioneer.dts
++++ b/arch/riscv/boot/dts/sophgo/sg2042-milkv-pioneer.dts
+@@ -26,6 +26,23 @@ &cgi_dpll1 {
+ 	clock-frequency = <25000000>;
+ };
+ 
++&emmc {
++	bus-width = <4>;
++	no-sdio;
++	no-sd;
++	non-removable;
++	wp-inverted;
++	status = "okay";
++};
++
++&sd {
++	bus-width = <4>;
++	no-sdio;
++	no-mmc;
++	wp-inverted;
++	status = "okay";
++};
++
+ &uart0 {
+ 	status = "okay";
+ };
+diff --git a/arch/riscv/boot/dts/sophgo/sg2042.dtsi b/arch/riscv/boot/dts/sophgo/sg2042.dtsi
+index 7f46ae1b9441..23e8adfda5d7 100644
+--- a/arch/riscv/boot/dts/sophgo/sg2042.dtsi
++++ b/arch/riscv/boot/dts/sophgo/sg2042.dtsi
+@@ -444,5 +444,33 @@ uart0: serial@7040000000 {
+ 			reg-io-width = <4>;
+ 			status = "disabled";
+ 		};
++
++		emmc: mmc@704002a000 {
++			compatible = "sophgo,sg2042-dwcmshc";
++			reg = <0x70 0x4002a000 0x0 0x1000>;
++			interrupt-parent = <&intc>;
++			interrupts = <134 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&clkgen GATE_CLK_EMMC_100M>,
++				 <&clkgen GATE_CLK_AXI_EMMC>,
++				 <&clkgen GATE_CLK_100K_EMMC>;
++			clock-names = "core",
++				      "bus",
++				      "timer";
++			status = "disabled";
++		};
++
++		sd: mmc@704002b000 {
++			compatible = "sophgo,sg2042-dwcmshc";
++			reg = <0x70 0x4002b000 0x0 0x1000>;
++			interrupt-parent = <&intc>;
++			interrupts = <136 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&clkgen GATE_CLK_SD_100M>,
++				 <&clkgen GATE_CLK_AXI_SD>,
++				 <&clkgen GATE_CLK_100K_SD>;
++			clock-names = "core",
++				      "bus",
++				      "timer";
++			status = "disabled";
++		};
+ 	};
+ };
+-- 
+2.45.2
+

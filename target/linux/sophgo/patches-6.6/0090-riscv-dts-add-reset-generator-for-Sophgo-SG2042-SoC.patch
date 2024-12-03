@@ -1,0 +1,35 @@
+From 5efbe270ba73909185cf28b45a26872d2ce9a0af Mon Sep 17 00:00:00 2001
+From: Chen Wang <unicorn_wang@outlook.com>
+Date: Tue, 30 Jan 2024 09:50:32 +0800
+Subject: [PATCH] riscv: dts: add reset generator for Sophgo SG2042 SoC
+
+Add reset generator node to device tree for SG2042.
+
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+Reviewed-by: Inochi Amaoto <inochiama@outlook.com>
+Link: https://lore.kernel.org/r/b2f5d7cd2d3fccfc00cf4563d2dd7363b0fa2fca.1706577450.git.unicorn_wang@outlook.com
+Signed-off-by: Inochi Amaoto <inochiama@outlook.com>
+---
+ arch/riscv/boot/dts/sophgo/sg2042.dtsi | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/arch/riscv/boot/dts/sophgo/sg2042.dtsi b/arch/riscv/boot/dts/sophgo/sg2042.dtsi
+index 194c7ed51581..4fe46ad28d3a 100644
+--- a/arch/riscv/boot/dts/sophgo/sg2042.dtsi
++++ b/arch/riscv/boot/dts/sophgo/sg2042.dtsi
+@@ -498,6 +498,12 @@ intc: interrupt-controller@7090000000 {
+ 			riscv,ndev = <224>;
+ 		};
+ 
++		rstgen: reset-controller@7030013000 {
++			compatible = "sophgo,sg2042-reset";
++			reg = <0x00000070 0x30013000 0x00000000 0x0000000c>;
++			#reset-cells = <1>;
++		};
++
+ 		uart0: serial@7040000000 {
+ 			compatible = "snps,dw-apb-uart";
+ 			reg = <0x00000070 0x40000000 0x00000000 0x00001000>;
+-- 
+2.45.2
+

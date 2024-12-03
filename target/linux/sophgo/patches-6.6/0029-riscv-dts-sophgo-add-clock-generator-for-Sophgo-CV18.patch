@@ -1,0 +1,68 @@
+From 31b514a14e396c79b4d3e835eb13d307afae01a1 Mon Sep 17 00:00:00 2001
+From: Inochi Amaoto <inochiama@outlook.com>
+Date: Sat, 9 Mar 2024 17:02:55 +0800
+Subject: [PATCH 29/89] riscv: dts: sophgo: add clock generator for Sophgo
+ CV1800 series SoC
+
+Add clock generator node for CV1800B and CV1812H.
+
+Until now, It uses DT override to minimize duplication. This may
+change in the future. See the last link for the discussion on
+maintaining DT of CV1800 series.
+
+Link: https://github.com/milkv-duo/duo-files/blob/6f4e9b8ecb459e017cca1a8df248a19ca70837a3/duo/datasheet/CV1800B-CV1801B-Preliminary-Datasheet-full-en.pdf
+Link: https://lore.kernel.org/all/IA1PR20MB495373158F3B690EF3BF2901BB8BA@IA1PR20MB4953.namprd20.prod.outlook.com/
+Reviewed-by: Chen Wang <unicorn_wang@outlook.com>
+Link: https://lore.kernel.org/r/IA1PR20MB4953ED6A4B57773865F49D6DBB262@IA1PR20MB4953.namprd20.prod.outlook.com
+Signed-off-by: Inochi Amaoto <inochiama@outlook.com>
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+---
+ arch/riscv/boot/dts/sophgo/cv1800b.dtsi | 4 ++++
+ arch/riscv/boot/dts/sophgo/cv1812h.dtsi | 4 ++++
+ arch/riscv/boot/dts/sophgo/cv18xx.dtsi  | 6 ++++++
+ 3 files changed, 14 insertions(+)
+
+diff --git a/arch/riscv/boot/dts/sophgo/cv1800b.dtsi b/arch/riscv/boot/dts/sophgo/cv1800b.dtsi
+index 165e9e320a8c..baf641829e72 100644
+--- a/arch/riscv/boot/dts/sophgo/cv1800b.dtsi
++++ b/arch/riscv/boot/dts/sophgo/cv1800b.dtsi
+@@ -16,3 +16,7 @@ &plic {
+ &clint {
+ 	compatible = "sophgo,cv1800b-clint", "thead,c900-clint";
+ };
++
++&clk {
++	compatible = "sophgo,cv1800-clk";
++};
+diff --git a/arch/riscv/boot/dts/sophgo/cv1812h.dtsi b/arch/riscv/boot/dts/sophgo/cv1812h.dtsi
+index 3e7a942f5c1a..7fa4c1e2d1da 100644
+--- a/arch/riscv/boot/dts/sophgo/cv1812h.dtsi
++++ b/arch/riscv/boot/dts/sophgo/cv1812h.dtsi
+@@ -22,3 +22,7 @@ &plic {
+ &clint {
+ 	compatible = "sophgo,cv1812h-clint", "thead,c900-clint";
+ };
++
++&clk {
++	compatible = "sophgo,cv1810-clk";
++};
+diff --git a/arch/riscv/boot/dts/sophgo/cv18xx.dtsi b/arch/riscv/boot/dts/sophgo/cv18xx.dtsi
+index c7940b02754e..d96aff939e74 100644
+--- a/arch/riscv/boot/dts/sophgo/cv18xx.dtsi
++++ b/arch/riscv/boot/dts/sophgo/cv18xx.dtsi
+@@ -62,6 +62,12 @@ soc {
+ 		dma-noncoherent;
+ 		ranges;
+ 
++		clk: clock-controller@3002000 {
++			reg = <0x03002000 0x1000>;
++			clocks = <&osc>;
++			#clock-cells = <1>;
++		};
++
+ 		gpio0: gpio@3020000 {
+ 			compatible = "snps,dw-apb-gpio";
+ 			reg = <0x3020000 0x1000>;
+-- 
+2.45.2
+

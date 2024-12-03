@@ -1,0 +1,42 @@
+From 3eb6eb7b5eaf7c915b6e624363a368129146379d Mon Sep 17 00:00:00 2001
+From: Arnd Bergmann <arnd@arndb.de>
+Date: Mon, 15 Apr 2024 15:45:20 +0200
+Subject: [PATCH 40/89] clk: sophgo: avoid open-coded 64-bit division
+
+On 32-bit architectures, the 64-bit division leads to a link failure:
+
+arm-linux-gnueabi-ld: drivers/clk/sophgo/clk-cv18xx-pll.o: in function `fpll_calc_rate':
+clk-cv18xx-pll.c:(.text.fpll_calc_rate+0x26): undefined reference to `__aeabi_uldivmod'
+
+This one is not called in a fast path, and there is already another div_u64()
+variant used in the same function, so convert it to div64_u64_rem().
+
+Fixes: 80fd61ec4612 ("clk: sophgo: Add clock support for CV1800 SoC")
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+Link: https://lore.kernel.org/r/20240415134532.3467817-1-arnd@kernel.org
+Reported-by: kernel test robot <lkp@intel.com>
+Closes: https://lore.kernel.org/oe-kbuild-all/202404122344.d5pb2N1I-lkp@intel.com/
+Closes: https://lore.kernel.org/oe-kbuild-all/202404140310.QEjZKtTN-lkp@intel.com/
+Reviewed-by: Inochi Amaoto <inochiama@outlook.com>
+Signed-off-by: Stephen Boyd <sboyd@kernel.org>
+---
+ drivers/clk/sophgo/clk-cv18xx-pll.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/drivers/clk/sophgo/clk-cv18xx-pll.c b/drivers/clk/sophgo/clk-cv18xx-pll.c
+index c546dad1791c..29e24098bf5f 100644
+--- a/drivers/clk/sophgo/clk-cv18xx-pll.c
++++ b/drivers/clk/sophgo/clk-cv18xx-pll.c
+@@ -205,8 +205,7 @@ static unsigned long fpll_calc_rate(unsigned long parent_rate,
+ 	unsigned long rate;
+ 
+ 	dividend <<= PLL_SYN_FACTOR_DOT_POS - 1;
+-	rate = dividend / factor;
+-	dividend %= factor;
++	rate = div64_u64_rem(dividend, factor, &dividend);
+ 
+ 	if (is_full_parent) {
+ 		dividend <<= 1;
+-- 
+2.45.2
+

@@ -1,0 +1,30 @@
+From 7a17f8bebe379798f2950b73c2d260aeeddca7cc Mon Sep 17 00:00:00 2001
+From: Jeff Johnson <quic_jjohnson@quicinc.com>
+Date: Sat, 1 Jun 2024 21:44:22 -0700
+Subject: [PATCH 52/89] clk: sophgo: add missing MODULE_DESCRIPTION() macro
+
+make allmodconfig && make W=1 C=1 reports:
+WARNING: modpost: missing MODULE_DESCRIPTION() in drivers/clk/sophgo/clk-sophgo-cv1800.o
+
+Add the missing invocation of the MODULE_DESCRIPTION() macro.
+
+Signed-off-by: Jeff Johnson <quic_jjohnson@quicinc.com>
+Link: https://lore.kernel.org/r/20240601-md-drivers-clk-sophgo-clk-sophgo-cv1800-v1-1-8e00d8c3a87b@quicinc.com
+Signed-off-by: Stephen Boyd <sboyd@kernel.org>
+---
+ drivers/clk/sophgo/clk-cv1800.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/clk/sophgo/clk-cv1800.c b/drivers/clk/sophgo/clk-cv1800.c
+index 2da4c24621cf..e0c4dc347579 100644
+--- a/drivers/clk/sophgo/clk-cv1800.c
++++ b/drivers/clk/sophgo/clk-cv1800.c
+@@ -1534,4 +1534,5 @@ static struct platform_driver cv1800_clk_driver = {
+ 	},
+ };
+ module_platform_driver(cv1800_clk_driver);
++MODULE_DESCRIPTION("Sophgo CV1800 series SoCs clock controller");
+ MODULE_LICENSE("GPL");
+-- 
+2.45.2
+

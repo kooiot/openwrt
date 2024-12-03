@@ -1,0 +1,30 @@
+From 8b885031cb265653e9809ba644b70e545a722780 Mon Sep 17 00:00:00 2001
+From: Inochi Amaoto <inochiama@outlook.com>
+Date: Thu, 19 Oct 2023 07:18:49 +0800
+Subject: [PATCH 18/89] dt-bindings: timer: Add SOPHGO CV1812H clint
+
+Add compatible string for the SOPHGO CV1812H clint.
+
+Signed-off-by: Inochi Amaoto <inochiama@outlook.com>
+Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+Reviewed-by: Jisheng Zhang <jszhang@kernel.org>
+Signed-off-by: Conor Dooley <conor.dooley@microchip.com>
+---
+ Documentation/devicetree/bindings/timer/sifive,clint.yaml | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/Documentation/devicetree/bindings/timer/sifive,clint.yaml b/Documentation/devicetree/bindings/timer/sifive,clint.yaml
+index e8be6c470364..4b6c20fc8194 100644
+--- a/Documentation/devicetree/bindings/timer/sifive,clint.yaml
++++ b/Documentation/devicetree/bindings/timer/sifive,clint.yaml
+@@ -38,6 +38,7 @@ properties:
+           - enum:
+               - allwinner,sun20i-d1-clint
+               - sophgo,cv1800b-clint
++              - sophgo,cv1812h-clint
+               - thead,th1520-clint
+           - const: thead,c900-clint
+       - items:
+-- 
+2.45.2
+

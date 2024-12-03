@@ -1,0 +1,66 @@
+From b9442a5eb6f9f806e90d946f2ff8a51eb4925345 Mon Sep 17 00:00:00 2001
+From: Nathan Chancellor <nathan@kernel.org>
+Date: Thu, 16 Nov 2023 18:46:00 -0700
+Subject: [PATCH 75/89] mmc: sdhci-of-dwcmshc: Use logical OR instead of
+ bitwise OR in dwcmshc_probe()
+
+Clang warns (or errors with CONFIG_WERROR=y):
+
+  drivers/mmc/host/sdhci-of-dwcmshc.c:873:7: error: use of bitwise '|' with boolean operands [-Werror,-Wbitwise-instead-of-logical]
+    873 |                 if ((device_property_read_bool(dev, "mmc-ddr-1_8v")) |
+        |                     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    874 |                     (device_property_read_bool(dev, "mmc-hs200-1_8v")) |
+        |                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        |                                                                        ||
+    875 |                     (device_property_read_bool(dev, "mmc-hs400-1_8v")))
+        |                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  drivers/mmc/host/sdhci-of-dwcmshc.c:873:7: note: cast one or both operands to int to silence this warning
+  drivers/mmc/host/sdhci-of-dwcmshc.c:873:7: error: use of bitwise '|' with boolean operands [-Werror,-Wbitwise-instead-of-logical]
+    873 |                 if ((device_property_read_bool(dev, "mmc-ddr-1_8v")) |
+        |                     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        |                                                                      ||
+    874 |                     (device_property_read_bool(dev, "mmc-hs200-1_8v")) |
+        |                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  drivers/mmc/host/sdhci-of-dwcmshc.c:873:7: note: cast one or both operands to int to silence this warning
+  2 errors generated.
+
+There is little reason for this if statement to use bitwise ORs, as the
+short circuiting of logical OR does not need to be avoided in this
+context; it would be wasteful to call device_property_read_bool() three
+times if the first two calls returned true. Switch to logical OR to fix
+the warning.
+
+While in the area, the parentheses around the calls to
+device_property_read_bool() are not necessary and make the if statement
+harder to read, so remove them.
+
+Closes: https://github.com/ClangBuiltLinux/linux/issues/1960
+Signed-off-by: Nathan Chancellor <nathan@kernel.org>
+Acked-by: Adrian Hunter <adrian.hunter@intel.com>
+Tested-by: Drew Fustini <dfustini@baylibre.com>
+Link: https://lore.kernel.org/r/20231116-sdhci-of-dwcmshc-fix-wbitwise-instead-of-logical-v1-1-7e1a7f4ccaab@kernel.org
+Signed-off-by: Ulf Hansson <ulf.hansson@linaro.org>
+---
+ drivers/mmc/host/sdhci-of-dwcmshc.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/mmc/host/sdhci-of-dwcmshc.c b/drivers/mmc/host/sdhci-of-dwcmshc.c
+index 1a737a239d30..fa29460fd290 100644
+--- a/drivers/mmc/host/sdhci-of-dwcmshc.c
++++ b/drivers/mmc/host/sdhci-of-dwcmshc.c
+@@ -870,9 +870,9 @@ static int dwcmshc_probe(struct platform_device *pdev)
+ 	if (pltfm_data == &sdhci_dwcmshc_th1520_pdata) {
+ 		priv->delay_line = PHY_SDCLKDL_DC_DEFAULT;
+ 
+-		if ((device_property_read_bool(dev, "mmc-ddr-1_8v")) |
+-		    (device_property_read_bool(dev, "mmc-hs200-1_8v")) |
+-		    (device_property_read_bool(dev, "mmc-hs400-1_8v")))
++		if (device_property_read_bool(dev, "mmc-ddr-1_8v") ||
++		    device_property_read_bool(dev, "mmc-hs200-1_8v") ||
++		    device_property_read_bool(dev, "mmc-hs400-1_8v"))
+ 			priv->flags |= FLAG_IO_FIXED_1V8;
+ 		else
+ 			priv->flags &= ~FLAG_IO_FIXED_1V8;
+-- 
+2.45.2
+

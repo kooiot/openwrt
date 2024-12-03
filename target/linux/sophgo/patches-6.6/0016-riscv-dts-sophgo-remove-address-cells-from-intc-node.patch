@@ -1,0 +1,34 @@
+From 96d6987ee72d6689aa85379c21b40f5cbc216df2 Mon Sep 17 00:00:00 2001
+From: Conor Dooley <conor.dooley@microchip.com>
+Date: Tue, 24 Oct 2023 09:20:35 +0100
+Subject: [PATCH 16/89] riscv: dts: sophgo: remove address-cells from intc node
+
+A recent submission [1] from Rob has added additionalProperties: false
+to the interrupt-controller child node of RISC-V cpus, highlighting that
+the new cv1800b DT has been incorrectly using #address-cells.
+It has no child nodes, so #address-cells is not needed. Remove it.
+
+Link: https://patchwork.kernel.org/project/linux-riscv/patch/20230915201946.4184468-1-robh@kernel.org/ [1]
+Fixes: c3dffa879cca ("riscv: dts: sophgo: add initial CV1800B SoC device tree")
+Reviewed-by: Jisheng Zhang <jszhang@kernel.org>
+Acked-by: Chen Wang <unicorn_wang@outlook.com>
+Signed-off-by: Conor Dooley <conor.dooley@microchip.com>
+---
+ arch/riscv/boot/dts/sophgo/cv1800b.dtsi | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/arch/riscv/boot/dts/sophgo/cv1800b.dtsi b/arch/riscv/boot/dts/sophgo/cv1800b.dtsi
+index df40e87ee063..aec6401a467b 100644
+--- a/arch/riscv/boot/dts/sophgo/cv1800b.dtsi
++++ b/arch/riscv/boot/dts/sophgo/cv1800b.dtsi
+@@ -34,7 +34,6 @@ cpu0: cpu@0 {
+ 			cpu0_intc: interrupt-controller {
+ 				compatible = "riscv,cpu-intc";
+ 				interrupt-controller;
+-				#address-cells = <0>;
+ 				#interrupt-cells = <1>;
+ 			};
+ 		};
+-- 
+2.45.2
+

@@ -1,0 +1,32 @@
+From 223d90d90a03a8b467c6bc2450129e51c53a6f18 Mon Sep 17 00:00:00 2001
+From: Chen Wang <unicorn_wang@outlook.com>
+Date: Wed, 4 Oct 2023 23:42:41 +0800
+Subject: [PATCH 05/89] dt-bindings: interrupt-controller: Add Sophgo SG2042
+ PLIC
+
+Add compatible string for SOPHGO SG2042 plic.
+
+Acked-by: Chao Wei <chao.wei@sophgo.com>
+Reviewed-by: Guo Ren <guoren@kernel.org>
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+Signed-off-by: Conor Dooley <conor.dooley@microchip.com>
+---
+ .../bindings/interrupt-controller/sifive,plic-1.0.0.yaml         | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/Documentation/devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml b/Documentation/devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml
+index dc1f28e55266..16f9c4760c0f 100644
+--- a/Documentation/devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml
++++ b/Documentation/devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml
+@@ -65,6 +65,7 @@ properties:
+       - items:
+           - enum:
+               - allwinner,sun20i-d1-plic
++              - sophgo,sg2042-plic
+               - thead,th1520-plic
+           - const: thead,c900-plic
+       - items:
+-- 
+2.45.2
+

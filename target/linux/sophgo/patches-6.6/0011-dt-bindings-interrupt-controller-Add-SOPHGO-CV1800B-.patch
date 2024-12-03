@@ -1,0 +1,30 @@
+From 4fc0dd3dafc6824901d4258e17e3e1fce2bb5f66 Mon Sep 17 00:00:00 2001
+From: Jisheng Zhang <jszhang@kernel.org>
+Date: Fri, 6 Oct 2023 20:14:45 +0800
+Subject: [PATCH 11/89] dt-bindings: interrupt-controller: Add SOPHGO CV1800B
+ plic
+
+Add compatible string for SOPHGO CV1800B plic.
+
+Signed-off-by: Jisheng Zhang <jszhang@kernel.org>
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
+Signed-off-by: Conor Dooley <conor.dooley@microchip.com>
+---
+ .../bindings/interrupt-controller/sifive,plic-1.0.0.yaml         | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/Documentation/devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml b/Documentation/devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml
+index 16f9c4760c0f..0c07e8dda445 100644
+--- a/Documentation/devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml
++++ b/Documentation/devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml
+@@ -65,6 +65,7 @@ properties:
+       - items:
+           - enum:
+               - allwinner,sun20i-d1-plic
++              - sophgo,cv1800b-plic
+               - sophgo,sg2042-plic
+               - thead,th1520-plic
+           - const: thead,c900-plic
+-- 
+2.45.2
+

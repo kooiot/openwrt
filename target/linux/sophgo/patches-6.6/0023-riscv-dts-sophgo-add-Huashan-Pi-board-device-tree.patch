@@ -1,0 +1,90 @@
+From c468f32fa3c0f208fccd02a1d95cc5791e59daa2 Mon Sep 17 00:00:00 2001
+From: Inochi Amaoto <inochiama@outlook.com>
+Date: Thu, 19 Oct 2023 07:18:54 +0800
+Subject: [PATCH 23/89] riscv: dts: sophgo: add Huashan Pi board device tree
+
+Add initial device tree files for the Huashan Pi board.
+
+Note: The boot of CV1812H chip needs a rtos firmware for coprocessor to
+function properly. To make the soc happy, reserved the last 2M memory
+for the rtos firmware.
+
+Signed-off-by: Inochi Amaoto <inochiama@outlook.com>
+Link: https://en.sophgo.com/product/introduce/huashan.html
+Link: https://en.sophgo.com/product/introduce/cv181xH.html
+Link: https://github.com/milkv-duo/duo-buildroot-sdk/blob/develop/build/boards/cv181x/cv1812h_wevb_0007a_emmc_huashan/memmap.py#L15
+Reviewed-by: Jisheng Zhang <jszhang@kernel.org>
+Acked-by: Chen Wang <unicorn_wang@outlook.com>
+Signed-off-by: Conor Dooley <conor.dooley@microchip.com>
+---
+ arch/riscv/boot/dts/sophgo/Makefile           |  1 +
+ .../boot/dts/sophgo/cv1812h-huashan-pi.dts    | 48 +++++++++++++++++++
+ 2 files changed, 49 insertions(+)
+ create mode 100644 arch/riscv/boot/dts/sophgo/cv1812h-huashan-pi.dts
+
+diff --git a/arch/riscv/boot/dts/sophgo/Makefile b/arch/riscv/boot/dts/sophgo/Makefile
+index 3fb65512c631..57ad82a61ea6 100644
+--- a/arch/riscv/boot/dts/sophgo/Makefile
++++ b/arch/riscv/boot/dts/sophgo/Makefile
+@@ -1,3 +1,4 @@
+ # SPDX-License-Identifier: GPL-2.0
+ dtb-$(CONFIG_ARCH_SOPHGO) += cv1800b-milkv-duo.dtb
++dtb-$(CONFIG_ARCH_SOPHGO) += cv1812h-huashan-pi.dtb
+ dtb-$(CONFIG_ARCH_SOPHGO) += sg2042-milkv-pioneer.dtb
+diff --git a/arch/riscv/boot/dts/sophgo/cv1812h-huashan-pi.dts b/arch/riscv/boot/dts/sophgo/cv1812h-huashan-pi.dts
+new file mode 100644
+index 000000000000..aa361f3a86bb
+--- /dev/null
++++ b/arch/riscv/boot/dts/sophgo/cv1812h-huashan-pi.dts
+@@ -0,0 +1,48 @@
++// SPDX-License-Identifier: (GPL-2.0 OR MIT)
++/*
++ * Copyright (C) 2023 Inochi Amaoto <inochiama@outlook.com>
++ */
++
++/dts-v1/;
++
++#include "cv1812h.dtsi"
++
++/ {
++	model = "Huashan Pi";
++	compatible = "sophgo,huashan-pi", "sophgo,cv1812h";
++
++	aliases {
++		gpio0 = &gpio0;
++		gpio1 = &gpio1;
++		gpio2 = &gpio2;
++		gpio3 = &gpio3;
++		serial0 = &uart0;
++		serial1 = &uart1;
++		serial2 = &uart2;
++		serial3 = &uart3;
++		serial4 = &uart4;
++	};
++
++	chosen {
++		stdout-path = "serial0:115200n8";
++	};
++
++	reserved-memory {
++		#address-cells = <1>;
++		#size-cells = <1>;
++		ranges;
++
++		coprocessor_rtos: region@8fe00000 {
++			reg = <0x8fe00000 0x200000>;
++			no-map;
++		};
++	};
++};
++
++&osc {
++	clock-frequency = <25000000>;
++};
++
++&uart0 {
++	status = "okay";
++};
+-- 
+2.45.2
+

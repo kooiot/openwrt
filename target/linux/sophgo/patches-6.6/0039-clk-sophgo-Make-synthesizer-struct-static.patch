@@ -1,0 +1,78 @@
+From 9beff339458dd4408e6d5cbc56843cc83a6cec34 Mon Sep 17 00:00:00 2001
+From: Inochi Amaoto <inochiama@outlook.com>
+Date: Fri, 12 Apr 2024 07:24:38 +0800
+Subject: [PATCH 39/89] clk: sophgo: Make synthesizer struct static
+
+Let all synthesizer structs are static to make the compiler happy.
+
+Fixes: 80fd61ec4612 ("clk: sophgo: Add clock support for CV1800 SoC")
+Signed-off-by: Inochi Amaoto <inochiama@outlook.com>
+Link: https://lore.kernel.org/r/IA1PR20MB49531E437735A71A163694AEBB052@IA1PR20MB4953.namprd20.prod.outlook.com
+Reported-by: kernel test robot <lkp@intel.com>
+Closes: https://lore.kernel.org/oe-kbuild-all/202404120548.y9dZIi0e-lkp@intel.com/
+Signed-off-by: Stephen Boyd <sboyd@kernel.org>
+---
+ drivers/clk/sophgo/clk-cv1800.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/clk/sophgo/clk-cv1800.c b/drivers/clk/sophgo/clk-cv1800.c
+index 956de5b21a80..2da4c24621cf 100644
+--- a/drivers/clk/sophgo/clk-cv1800.c
++++ b/drivers/clk/sophgo/clk-cv1800.c
+@@ -79,7 +79,7 @@ static const struct clk_parent_data clk_bypass_fpll_parents[] = {
+ 	{ .hw = &clk_fpll.common.hw },
+ };
+ 
+-struct cv1800_clk_pll_synthesizer clk_mpll_synthesizer = {
++static struct cv1800_clk_pll_synthesizer clk_mpll_synthesizer = {
+ 	.en		= CV1800_CLK_BIT(REG_PLL_G6_SSC_SYN_CTRL, 2),
+ 	.clk_half	= CV1800_CLK_BIT(REG_PLL_G6_SSC_SYN_CTRL, 0),
+ 	.ctrl		= REG_MPLL_SSC_SYN_CTRL,
+@@ -93,7 +93,7 @@ static CV1800_FACTIONAL_PLL(clk_mpll, clk_bypass_mipimpll_parents,
+ 			    &clk_mpll_synthesizer,
+ 			    CLK_IS_CRITICAL);
+ 
+-struct cv1800_clk_pll_synthesizer clk_tpll_synthesizer = {
++static struct cv1800_clk_pll_synthesizer clk_tpll_synthesizer = {
+ 	.en		= CV1800_CLK_BIT(REG_PLL_G6_SSC_SYN_CTRL, 3),
+ 	.clk_half	= CV1800_CLK_BIT(REG_PLL_G6_SSC_SYN_CTRL, 0),
+ 	.ctrl		= REG_TPLL_SSC_SYN_CTRL,
+@@ -107,7 +107,7 @@ static CV1800_FACTIONAL_PLL(clk_tpll, clk_bypass_mipimpll_parents,
+ 			    &clk_tpll_synthesizer,
+ 			    CLK_IS_CRITICAL);
+ 
+-struct cv1800_clk_pll_synthesizer clk_a0pll_synthesizer = {
++static struct cv1800_clk_pll_synthesizer clk_a0pll_synthesizer = {
+ 	.en		= CV1800_CLK_BIT(REG_PLL_G2_SSC_SYN_CTRL, 2),
+ 	.clk_half	= CV1800_CLK_BIT(REG_PLL_G2_SSC_SYN_CTRL, 0),
+ 	.ctrl		= REG_A0PLL_SSC_SYN_CTRL,
+@@ -121,7 +121,7 @@ static CV1800_FACTIONAL_PLL(clk_a0pll, clk_bypass_mipimpll_parents,
+ 			    &clk_a0pll_synthesizer,
+ 			    CLK_IS_CRITICAL);
+ 
+-struct cv1800_clk_pll_synthesizer clk_disppll_synthesizer = {
++static struct cv1800_clk_pll_synthesizer clk_disppll_synthesizer = {
+ 	.en		= CV1800_CLK_BIT(REG_PLL_G2_SSC_SYN_CTRL, 3),
+ 	.clk_half	= CV1800_CLK_BIT(REG_PLL_G2_SSC_SYN_CTRL, 0),
+ 	.ctrl		= REG_DISPPLL_SSC_SYN_CTRL,
+@@ -135,7 +135,7 @@ static CV1800_FACTIONAL_PLL(clk_disppll, clk_bypass_mipimpll_parents,
+ 			    &clk_disppll_synthesizer,
+ 			    CLK_IS_CRITICAL);
+ 
+-struct cv1800_clk_pll_synthesizer clk_cam0pll_synthesizer = {
++static struct cv1800_clk_pll_synthesizer clk_cam0pll_synthesizer = {
+ 	.en		= CV1800_CLK_BIT(REG_PLL_G2_SSC_SYN_CTRL, 4),
+ 	.clk_half	= CV1800_CLK_BIT(REG_PLL_G2_SSC_SYN_CTRL, 0),
+ 	.ctrl		= REG_CAM0PLL_SSC_SYN_CTRL,
+@@ -149,7 +149,7 @@ static CV1800_FACTIONAL_PLL(clk_cam0pll, clk_bypass_mipimpll_parents,
+ 			    &clk_cam0pll_synthesizer,
+ 			    CLK_IGNORE_UNUSED);
+ 
+-struct cv1800_clk_pll_synthesizer clk_cam1pll_synthesizer = {
++static struct cv1800_clk_pll_synthesizer clk_cam1pll_synthesizer = {
+ 	.en		= CV1800_CLK_BIT(REG_PLL_G2_SSC_SYN_CTRL, 5),
+ 	.clk_half	= CV1800_CLK_BIT(REG_PLL_G2_SSC_SYN_CTRL, 0),
+ 	.ctrl		= REG_CAM1PLL_SSC_SYN_CTRL,
+-- 
+2.45.2
+

@@ -1,0 +1,35 @@
+From bb77511e54593bc0172ff34d6328ceb3b79ba092 Mon Sep 17 00:00:00 2001
+From: Thomas Bonnefille <thomas.bonnefille@bootlin.com>
+Date: Thu, 11 Jul 2024 12:01:28 +0200
+Subject: [PATCH 66/89] dt-bindings: interrupt-controller: Add SOPHGO SG2002
+ plic
+
+Add compatible string for SOPHGO SG2002 Platform-Level Interruter
+Controller.
+
+Signed-off-by: Thomas Bonnefille <thomas.bonnefille@bootlin.com>
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
+Link: https://wiki.sipeed.com/hardware/en/lichee/RV_Nano/1_intro.html [1]
+Reviewed-by: Inochi Amaoto <inochiama@outlook.com>
+Link: https://lore.kernel.org/r/20240711-sg2002-v4-1-d97ec2367095@bootlin.com
+Signed-off-by: Inochi Amaoto <inochiama@outlook.com>
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+---
+ .../bindings/interrupt-controller/sifive,plic-1.0.0.yaml         | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/Documentation/devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml b/Documentation/devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml
+index 709b2211276b..7e1451f9786a 100644
+--- a/Documentation/devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml
++++ b/Documentation/devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml
+@@ -67,6 +67,7 @@ properties:
+               - allwinner,sun20i-d1-plic
+               - sophgo,cv1800b-plic
+               - sophgo,cv1812h-plic
++              - sophgo,sg2002-plic
+               - sophgo,sg2042-plic
+               - thead,th1520-plic
+           - const: thead,c900-plic
+-- 
+2.45.2
+

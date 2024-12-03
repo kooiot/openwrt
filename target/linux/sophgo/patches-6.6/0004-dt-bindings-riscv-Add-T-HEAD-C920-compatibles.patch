@@ -1,0 +1,32 @@
+From c942e459e6f79b95afe6d5cefbe3c6ea244c0d48 Mon Sep 17 00:00:00 2001
+From: Chen Wang <unicorn_wang@outlook.com>
+Date: Wed, 4 Oct 2023 23:42:23 +0800
+Subject: [PATCH 04/89] dt-bindings: riscv: Add T-HEAD C920 compatibles
+
+The C920 is RISC-V CPU cores from T-HEAD Semiconductor.
+Notably, the C920 core is used in the SOPHGO's SG2042 SoC.
+
+Acked-by: Chao Wei <chao.wei@sophgo.com>
+Reviewed-by: Guo Ren <guoren@kernel.org>
+Reviewed-by: Conor Dooley <conor.dooley@microchip.com>
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+Signed-off-by: Conor Dooley <conor.dooley@microchip.com>
+---
+ Documentation/devicetree/bindings/riscv/cpus.yaml | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/Documentation/devicetree/bindings/riscv/cpus.yaml b/Documentation/devicetree/bindings/riscv/cpus.yaml
+index 97e8441eda1c..f392e367d673 100644
+--- a/Documentation/devicetree/bindings/riscv/cpus.yaml
++++ b/Documentation/devicetree/bindings/riscv/cpus.yaml
+@@ -47,6 +47,7 @@ properties:
+               - sifive,u74-mc
+               - thead,c906
+               - thead,c910
++              - thead,c920
+           - const: riscv
+       - items:
+           - enum:
+-- 
+2.45.2
+

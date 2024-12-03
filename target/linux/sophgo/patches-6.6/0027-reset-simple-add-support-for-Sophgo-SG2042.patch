@@ -1,0 +1,53 @@
+From 645fcd6ba5423b00ecd88f35cad333299e9b3728 Mon Sep 17 00:00:00 2001
+From: Chen Wang <unicorn_wang@outlook.com>
+Date: Tue, 30 Jan 2024 09:50:08 +0800
+Subject: [PATCH 27/89] reset: simple: add support for Sophgo SG2042
+
+Reuse reset-simple driver for the Sophgo SG2042 reset generator.
+
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+Reviewed-by: Philipp Zabel <p.zabel@pengutronix.de>
+Link: https://lore.kernel.org/r/1cfd7b3ba447942784c4f7aa595e962399e9f617.1706577450.git.unicorn_wang@outlook.com
+Signed-off-by: Philipp Zabel <p.zabel@pengutronix.de>
+---
+ drivers/reset/Kconfig        | 3 ++-
+ drivers/reset/reset-simple.c | 2 ++
+ 2 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/reset/Kconfig b/drivers/reset/Kconfig
+index ccd59ddd7610..2034f69d5953 100644
+--- a/drivers/reset/Kconfig
++++ b/drivers/reset/Kconfig
+@@ -213,7 +213,7 @@ config RESET_SCMI
+ 
+ config RESET_SIMPLE
+ 	bool "Simple Reset Controller Driver" if COMPILE_TEST || EXPERT
+-	default ARCH_ASPEED || ARCH_BCMBCA || ARCH_BITMAIN || ARCH_REALTEK || ARCH_STM32 || (ARCH_INTEL_SOCFPGA && ARM64) || ARCH_SUNXI || ARC
++	default ARCH_ASPEED || ARCH_BCMBCA || ARCH_BITMAIN || ARCH_REALTEK || ARCH_SOPHGO || ARCH_STM32 || (ARCH_INTEL_SOCFPGA && ARM64) || ARCH_SUNXI || ARC
+ 	depends on HAS_IOMEM
+ 	help
+ 	  This enables a simple reset controller driver for reset lines that
+@@ -228,6 +228,7 @@ config RESET_SIMPLE
+ 	   - RCC reset controller in STM32 MCUs
+ 	   - Allwinner SoCs
+ 	   - SiFive FU740 SoCs
++	   - Sophgo SoCs
+ 
+ config RESET_SOCFPGA
+ 	bool "SoCFPGA Reset Driver" if COMPILE_TEST && (!ARM || !ARCH_INTEL_SOCFPGA)
+diff --git a/drivers/reset/reset-simple.c b/drivers/reset/reset-simple.c
+index 7ea5adbf2097..69b631eb8127 100644
+--- a/drivers/reset/reset-simple.c
++++ b/drivers/reset/reset-simple.c
+@@ -151,6 +151,8 @@ static const struct of_device_id reset_simple_dt_ids[] = {
+ 	{ .compatible = "snps,dw-high-reset" },
+ 	{ .compatible = "snps,dw-low-reset",
+ 		.data = &reset_simple_active_low },
++	{ .compatible = "sophgo,sg2042-reset",
++		.data = &reset_simple_active_low },
+ 	{ /* sentinel */ },
+ };
+ 
+-- 
+2.45.2
+

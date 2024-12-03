@@ -1,0 +1,34 @@
+From 9ad4b812206c5d50597982d726f53f3c19c27123 Mon Sep 17 00:00:00 2001
+From: Dan Carpenter <dan.carpenter@linaro.org>
+Date: Wed, 17 Jul 2024 21:25:53 -0500
+Subject: [PATCH 58/89] clk: sophgo: clk-sg2042-pll: Fix uninitialized variable
+ in debug output
+
+If sg2042_get_pll_ctl_setting() fails then "value" isn't initialized and
+it is printed in the debug output.  Initialize it to zero.
+
+Fixes: 48cf7e01386e ("clk: sophgo: Add SG2042 clock driver")
+Signed-off-by: Dan Carpenter <dan.carpenter@linaro.org>
+Link: https://lore.kernel.org/r/baf0a490-d5ba-4528-90ba-80399684692d@stanley.mountain
+Reviewed-by: Chen Wang <unicorn_wang@outlook.com>
+Signed-off-by: Stephen Boyd <sboyd@kernel.org>
+---
+ drivers/clk/sophgo/clk-sg2042-pll.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/clk/sophgo/clk-sg2042-pll.c b/drivers/clk/sophgo/clk-sg2042-pll.c
+index 9695e64fc23b..ff9deeef509b 100644
+--- a/drivers/clk/sophgo/clk-sg2042-pll.c
++++ b/drivers/clk/sophgo/clk-sg2042-pll.c
+@@ -387,7 +387,7 @@ static int sg2042_clk_pll_set_rate(struct clk_hw *hw,
+ 	struct sg2042_pll_clock *pll = to_sg2042_pll_clk(hw);
+ 	struct sg2042_pll_ctrl pctrl_table;
+ 	unsigned long flags;
+-	u32 value;
++	u32 value = 0;
+ 	int ret;
+ 
+ 	spin_lock_irqsave(pll->lock, flags);
+-- 
+2.45.2
+

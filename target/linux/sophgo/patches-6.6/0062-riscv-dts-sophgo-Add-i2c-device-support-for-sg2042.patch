@@ -1,0 +1,85 @@
+From 8e2d0f563850e47293604e3d395c2f6e0d19f0f1 Mon Sep 17 00:00:00 2001
+From: Inochi Amaoto <inochiama@outlook.com>
+Date: Mon, 29 Jul 2024 10:13:34 +0800
+Subject: [PATCH 62/89] riscv: dts: sophgo: Add i2c device support for sg2042
+
+The i2c ip of sg2042 is a standard Synopsys i2c ip, which is already
+supported by the mainline kernel.
+
+Add i2c device node for sg2042.
+
+Reviewed-by: Chen Wang <unicorn_wang@outlook.com>
+Tested-by: Chen Wang <unicorn_wang@outlook.com>
+Link: https://lore.kernel.org/r/IA1PR20MB49530E59974AF0FCA4FAB6DBBBB72@IA1PR20MB4953.namprd20.prod.outlook.com
+Signed-off-by: Inochi Amaoto <inochiama@outlook.com>
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+---
+ arch/riscv/boot/dts/sophgo/sg2042.dtsi | 52 ++++++++++++++++++++++++++
+ 1 file changed, 52 insertions(+)
+
+diff --git a/arch/riscv/boot/dts/sophgo/sg2042.dtsi b/arch/riscv/boot/dts/sophgo/sg2042.dtsi
+index 91dc48916ec4..7f46ae1b9441 100644
+--- a/arch/riscv/boot/dts/sophgo/sg2042.dtsi
++++ b/arch/riscv/boot/dts/sophgo/sg2042.dtsi
+@@ -47,6 +47,58 @@ soc: soc {
+ 		interrupt-parent = <&intc>;
+ 		ranges;
+ 
++		i2c0: i2c@7030005000 {
++			compatible = "snps,designware-i2c";
++			reg = <0x70 0x30005000 0x0 0x1000>;
++			#address-cells = <1>;
++			#size-cells = <0>;
++			clocks = <&clkgen GATE_CLK_APB_I2C>;
++			clock-names = "ref";
++			clock-frequency = <100000>;
++			interrupts = <101 IRQ_TYPE_LEVEL_HIGH>;
++			resets = <&rstgen RST_I2C0>;
++			status = "disabled";
++		};
++
++		i2c1: i2c@7030006000 {
++			compatible = "snps,designware-i2c";
++			reg = <0x70 0x30006000 0x0 0x1000>;
++			#address-cells = <1>;
++			#size-cells = <0>;
++			clocks = <&clkgen GATE_CLK_APB_I2C>;
++			clock-names = "ref";
++			clock-frequency = <100000>;
++			interrupts = <102 IRQ_TYPE_LEVEL_HIGH>;
++			resets = <&rstgen RST_I2C1>;
++			status = "disabled";
++		};
++
++		i2c2: i2c@7030007000 {
++			compatible = "snps,designware-i2c";
++			reg = <0x70 0x30007000 0x0 0x1000>;
++			#address-cells = <1>;
++			#size-cells = <0>;
++			clocks = <&clkgen GATE_CLK_APB_I2C>;
++			clock-names = "ref";
++			clock-frequency = <100000>;
++			interrupts = <103 IRQ_TYPE_LEVEL_HIGH>;
++			resets = <&rstgen RST_I2C2>;
++			status = "disabled";
++		};
++
++		i2c3: i2c@7030008000 {
++			compatible = "snps,designware-i2c";
++			reg = <0x70 0x30008000 0x0 0x1000>;
++			#address-cells = <1>;
++			#size-cells = <0>;
++			clocks = <&clkgen GATE_CLK_APB_I2C>;
++			clock-names = "ref";
++			clock-frequency = <100000>;
++			interrupts = <104 IRQ_TYPE_LEVEL_HIGH>;
++			resets = <&rstgen RST_I2C3>;
++			status = "disabled";
++		};
++
+ 		pllclk: clock-controller@70300100c0 {
+ 			compatible = "sophgo,sg2042-pll";
+ 			reg = <0x70 0x300100c0 0x0 0x40>;
+-- 
+2.45.2
+

@@ -1,0 +1,38 @@
+From add7bbd5acb4e25884c3806f06a0976047ffaf05 Mon Sep 17 00:00:00 2001
+From: Thomas Bonnefille <thomas.bonnefille@bootlin.com>
+Date: Thu, 11 Jul 2024 12:01:29 +0200
+Subject: [PATCH 67/89] dt-bindings: riscv: Add Sipeed LicheeRV Nano board
+ compatibles
+
+Document the compatible strings for the Sipeed LicheeRV Nano B board which
+uses the SOPHGO SG2002 SoC.
+
+Signed-off-by: Thomas Bonnefille <thomas.bonnefille@bootlin.com>
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
+Reviewed-by: Inochi Amaoto <inochiama@outlook.com>
+Link: https://lore.kernel.org/r/20240711-sg2002-v4-2-d97ec2367095@bootlin.com
+Signed-off-by: Inochi Amaoto <inochiama@outlook.com>
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+---
+ Documentation/devicetree/bindings/riscv/sophgo.yaml | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/riscv/sophgo.yaml b/Documentation/devicetree/bindings/riscv/sophgo.yaml
+index 9bc813dad098..a14cb10ff3f0 100644
+--- a/Documentation/devicetree/bindings/riscv/sophgo.yaml
++++ b/Documentation/devicetree/bindings/riscv/sophgo.yaml
+@@ -26,6 +26,11 @@ properties:
+           - enum:
+               - sophgo,huashan-pi
+           - const: sophgo,cv1812h
++      - items:
++          - enum:
++              - sipeed,licheerv-nano-b
++          - const: sipeed,licheerv-nano
++          - const: sophgo,sg2002
+       - items:
+           - enum:
+               - milkv,pioneer
+-- 
+2.45.2
+

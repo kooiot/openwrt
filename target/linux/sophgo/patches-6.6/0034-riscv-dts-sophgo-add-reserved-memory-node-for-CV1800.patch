@@ -1,0 +1,60 @@
+From 6b8cd227143eab16ccc787b84d0b4a98102ea34d Mon Sep 17 00:00:00 2001
+From: Inochi Amaoto <inochiama@outlook.com>
+Date: Thu, 11 Apr 2024 08:45:00 +0800
+Subject: [PATCH 34/89] riscv: dts: sophgo: add reserved memory node for
+ CV1800B
+
+The original dts of CV1800B has a weird memory length as it
+contains reserved memory for coprocessor. Make this area a
+separate node so it can get the real memory length.
+
+Link: https://lore.kernel.org/r/IA1PR20MB49531F274753B04A5547DB59BB052@IA1PR20MB4953.namprd20.prod.outlook.com
+Signed-off-by: Inochi Amaoto <inochiama@outlook.com>
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+---
+ arch/riscv/boot/dts/sophgo/cv1800b-milkv-duo.dts | 12 +++++++++---
+ arch/riscv/boot/dts/sophgo/cv1800b.dtsi          |  5 +++++
+ 2 files changed, 14 insertions(+), 3 deletions(-)
+
+diff --git a/arch/riscv/boot/dts/sophgo/cv1800b-milkv-duo.dts b/arch/riscv/boot/dts/sophgo/cv1800b-milkv-duo.dts
+index 94e64ddce8fa..cd013588adc0 100644
+--- a/arch/riscv/boot/dts/sophgo/cv1800b-milkv-duo.dts
++++ b/arch/riscv/boot/dts/sophgo/cv1800b-milkv-duo.dts
+@@ -23,9 +23,15 @@ chosen {
+ 		stdout-path = "serial0:115200n8";
+ 	};
+ 
+-	memory@80000000 {
+-		device_type = "memory";
+-		reg = <0x80000000 0x3f40000>;
++	reserved-memory {
++		#address-cells = <1>;
++		#size-cells = <1>;
++		ranges;
++
++		coprocessor_rtos: region@83f40000 {
++			reg = <0x83f40000 0xc0000>;
++			no-map;
++		};
+ 	};
+ };
+ 
+diff --git a/arch/riscv/boot/dts/sophgo/cv1800b.dtsi b/arch/riscv/boot/dts/sophgo/cv1800b.dtsi
+index baf641829e72..ec9530972ae2 100644
+--- a/arch/riscv/boot/dts/sophgo/cv1800b.dtsi
++++ b/arch/riscv/boot/dts/sophgo/cv1800b.dtsi
+@@ -7,6 +7,11 @@
+ 
+ / {
+ 	compatible = "sophgo,cv1800b";
++
++	memory@80000000 {
++		device_type = "memory";
++		reg = <0x80000000 0x4000000>;
++	};
+ };
+ 
+ &plic {
+-- 
+2.45.2
+

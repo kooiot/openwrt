@@ -1,0 +1,32 @@
+From 88cae4b8ad6f7d018aedb965f8c6bea006e761bb Mon Sep 17 00:00:00 2001
+From: Jisheng Zhang <jszhang@kernel.org>
+Date: Mon, 15 Apr 2024 00:43:57 +0800
+Subject: [PATCH 80/89] mmc: sdhci-of-dwcmshc: Remove useless "&" of
+ th1520_execute_tuning
+
+The preceding "&" before th1520_execute_tuning is useless, remove it.
+
+Signed-off-by: Jisheng Zhang <jszhang@kernel.org>
+Acked-by: Adrian Hunter <adrian.hunter@intel.com>
+Link: https://lore.kernel.org/r/20240414164357.2841-1-jszhang@kernel.org
+Signed-off-by: Ulf Hansson <ulf.hansson@linaro.org>
+---
+ drivers/mmc/host/sdhci-of-dwcmshc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/mmc/host/sdhci-of-dwcmshc.c b/drivers/mmc/host/sdhci-of-dwcmshc.c
+index c6a20be12712..6682e0ce35b9 100644
+--- a/drivers/mmc/host/sdhci-of-dwcmshc.c
++++ b/drivers/mmc/host/sdhci-of-dwcmshc.c
+@@ -807,7 +807,7 @@ static const struct sdhci_ops sdhci_dwcmshc_th1520_ops = {
+ 	.reset			= th1520_sdhci_reset,
+ 	.adma_write_desc	= dwcmshc_adma_write_desc,
+ 	.voltage_switch		= dwcmshc_phy_1_8v_init,
+-	.platform_execute_tuning = &th1520_execute_tuning,
++	.platform_execute_tuning = th1520_execute_tuning,
+ };
+ 
+ static const struct sdhci_ops sdhci_dwcmshc_cv18xx_ops = {
+-- 
+2.45.2
+

@@ -1,0 +1,45 @@
+From 5340a278202fe830e1f53f108d75e32504a94108 Mon Sep 17 00:00:00 2001
+From: Inochi Amaoto <inochiama@outlook.com>
+Date: Sat, 9 Mar 2024 17:02:51 +0800
+Subject: [PATCH 35/89] dt-bindings: clock: sophgo: Add clock controller of
+ SG2000 series SoC
+
+SG2000 series SoC has the same clock as CV1810 series, but the clock
+related to A53 is functional in SG2000 series. So a new compatible
+string is needed for the new SoC.
+
+Add definition for the clock controller of the SG2000 series SoC.
+
+Link: https://github.com/sophgo/sophgo-doc/releases/tag/sg2000-datasheet-v1.0-alpha
+Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+Signed-off-by: Inochi Amaoto <inochiama@outlook.com>
+Link: https://lore.kernel.org/r/IA1PR20MB495368F185E018767CC6714ABB262@IA1PR20MB4953.namprd20.prod.outlook.com
+Signed-off-by: Stephen Boyd <sboyd@kernel.org>
+---
+ Documentation/devicetree/bindings/clock/sophgo,cv1800-clk.yaml | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/Documentation/devicetree/bindings/clock/sophgo,cv1800-clk.yaml b/Documentation/devicetree/bindings/clock/sophgo,cv1800-clk.yaml
+index c1dc24673c0d..59ef41adb539 100644
+--- a/Documentation/devicetree/bindings/clock/sophgo,cv1800-clk.yaml
++++ b/Documentation/devicetree/bindings/clock/sophgo,cv1800-clk.yaml
+@@ -4,7 +4,7 @@
+ $id: http://devicetree.org/schemas/clock/sophgo,cv1800-clk.yaml#
+ $schema: http://devicetree.org/meta-schemas/core.yaml#
+ 
+-title: Sophgo CV1800 Series Clock Controller
++title: Sophgo CV1800/SG2000 Series Clock Controller
+ 
+ maintainers:
+   - Inochi Amaoto <inochiama@outlook.com>
+@@ -14,6 +14,7 @@ properties:
+     enum:
+       - sophgo,cv1800-clk
+       - sophgo,cv1810-clk
++      - sophgo,sg2000-clk
+ 
+   reg:
+     maxItems: 1
+-- 
+2.45.2
+

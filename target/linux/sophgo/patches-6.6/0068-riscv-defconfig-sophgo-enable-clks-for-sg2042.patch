@@ -1,0 +1,31 @@
+From cb1b5a67c74291e90c7ab043c888d47e57ebeff8 Mon Sep 17 00:00:00 2001
+From: Chen Wang <unicorn_wang@outlook.com>
+Date: Mon, 5 Aug 2024 10:33:20 +0800
+Subject: [PATCH 68/89] riscv: defconfig: sophgo: enable clks for sg2042
+
+Enable clk generators for sg2042 due to many peripherals rely on
+these clocks.
+
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+Signed-off-by: Conor Dooley <conor.dooley@microchip.com>
+---
+ arch/riscv/configs/defconfig | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/arch/riscv/configs/defconfig b/arch/riscv/configs/defconfig
+index 281ea50daea9..9cb57ec30353 100644
+--- a/arch/riscv/configs/defconfig
++++ b/arch/riscv/configs/defconfig
+@@ -180,6 +180,9 @@ CONFIG_VIRTIO_BALLOON=y
+ CONFIG_VIRTIO_INPUT=y
+ CONFIG_VIRTIO_MMIO=y
+ CONFIG_CLK_SOPHGO_CV1800=y
++CONFIG_CLK_SOPHGO_SG2042_PLL=y
++CONFIG_CLK_SOPHGO_SG2042_CLKGEN=y
++CONFIG_CLK_SOPHGO_SG2042_RPGATE=y
+ CONFIG_SUN8I_DE2_CCU=m
+ CONFIG_SUN50I_IOMMU=y
+ CONFIG_RPMSG_CHAR=y
+-- 
+2.45.2
+
