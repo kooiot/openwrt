@@ -1,7 +1,7 @@
 From 50e709b141370dd56f8ab02515894d0303a4bc6c Mon Sep 17 00:00:00 2001
 From: Nathan Chancellor <nathan@kernel.org>
 Date: Wed, 10 Jul 2024 10:07:52 -0700
-Subject: [PATCH 57/89] clk: sophgo: Avoid -Wsometimes-uninitialized in
+Subject: [PATCH 057/120] clk: sophgo: Avoid -Wsometimes-uninitialized in
  sg2042_clk_pll_set_rate()
 
 Clang warns (or errors with CONFIG_WERROR=y):

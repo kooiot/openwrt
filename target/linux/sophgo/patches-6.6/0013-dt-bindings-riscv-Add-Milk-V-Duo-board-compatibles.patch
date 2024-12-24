@@ -1,7 +1,7 @@
 From c85f53cdd6e3abcc2144a2671acddefae7aca05c Mon Sep 17 00:00:00 2001
 From: Jisheng Zhang <jszhang@kernel.org>
 Date: Fri, 6 Oct 2023 20:14:47 +0800
-Subject: [PATCH 13/89] dt-bindings: riscv: Add Milk-V Duo board compatibles
+Subject: [PATCH 013/120] dt-bindings: riscv: Add Milk-V Duo board compatibles
 
 Document the compatible strings for the Milk-V Duo board[1] which uses
 the SOPHGO CV1800B SoC[2].

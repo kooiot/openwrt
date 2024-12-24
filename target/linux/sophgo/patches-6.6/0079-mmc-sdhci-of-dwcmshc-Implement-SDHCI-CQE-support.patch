@@ -1,7 +1,7 @@
 From 38109f17a176947e3698d41df9e1403e58def8ff Mon Sep 17 00:00:00 2001
 From: Sergey Khimich <serghox@gmail.com>
 Date: Tue, 19 Mar 2024 14:59:32 +0300
-Subject: [PATCH 79/89] mmc: sdhci-of-dwcmshc: Implement SDHCI CQE support
+Subject: [PATCH 079/120] mmc: sdhci-of-dwcmshc: Implement SDHCI CQE support
 
 For enabling CQE support just set 'supports-cqe' in your DevTree file
 for appropriate mmc node.

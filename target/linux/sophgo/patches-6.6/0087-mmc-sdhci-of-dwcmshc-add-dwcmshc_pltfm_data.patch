@@ -1,7 +1,7 @@
 From 2195af96db4ab66d218f3bd2c2a68f25c7f7d7f9 Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Mon, 5 Aug 2024 17:18:43 +0800
-Subject: [PATCH 87/89] mmc: sdhci-of-dwcmshc: add dwcmshc_pltfm_data
+Subject: [PATCH 087/120] mmc: sdhci-of-dwcmshc: add dwcmshc_pltfm_data
 
 Abstract dwcmshc_pltfm_data to hold the sdhci_pltfm_data
 plus some comoon operations of soc such as init/postinit.

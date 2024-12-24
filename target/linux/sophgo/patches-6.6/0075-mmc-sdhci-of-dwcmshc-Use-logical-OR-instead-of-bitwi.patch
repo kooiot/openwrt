@@ -1,7 +1,7 @@
 From b9442a5eb6f9f806e90d946f2ff8a51eb4925345 Mon Sep 17 00:00:00 2001
 From: Nathan Chancellor <nathan@kernel.org>
 Date: Thu, 16 Nov 2023 18:46:00 -0700
-Subject: [PATCH 75/89] mmc: sdhci-of-dwcmshc: Use logical OR instead of
+Subject: [PATCH 075/120] mmc: sdhci-of-dwcmshc: Use logical OR instead of
  bitwise OR in dwcmshc_probe()
 
 Clang warns (or errors with CONFIG_WERROR=y):

@@ -1,0 +1,51 @@
+From 592f184982c9dc192e93af2b5a1f644ca37d4277 Mon Sep 17 00:00:00 2001
+From: Damian Peckett <damian@pecke.tt>
+Date: Thu, 17 Oct 2024 11:04:14 +0200
+Subject: [PATCH] phy: sophgo: USB 2.0 PHY should respect the dr_mode property
+
+Give vbus detection is broken on many CV18xx boards.
+
+Upstream-Status: Pending
+Signed-off-by: Damian Peckett <damian@pecke.tt>
+---
+ drivers/phy/sophgo/phy-cv1800-usb.c | 14 ++++++++------
+ 1 file changed, 8 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/phy/sophgo/phy-cv1800-usb.c b/drivers/phy/sophgo/phy-cv1800-usb.c
+index bf1b86f7a..f7a2b5574 100644
+--- a/drivers/phy/sophgo/phy-cv1800-usb.c
++++ b/drivers/phy/sophgo/phy-cv1800-usb.c
+@@ -17,6 +17,8 @@
+ #include <linux/phy/phy.h>
+ #include <linux/regmap.h>
+ #include <linux/spinlock.h>
++#include <linux/usb/of.h>
++#include <linux/usb/otg.h>
+ #include <soc/sophgo/cv1800-sysctl.h>
+ 
+ #define PHY_IDPAD_C_OW			BIT(6)
+@@ -243,15 +245,15 @@ static irqreturn_t cv1800_usb_phy_vbus_det_irq(int irq, void *dev_id)
+ static void cv1800_usb_phy_init_mode(struct device *dev,
+ 				     struct cv1800_usb_phy *phy)
+ {
+-	phy->enable_otg = false;
+-
+-	if (phy->vbus_det_irq > 0)
+-		phy->enable_otg = true;
++	enum usb_dr_mode dr_mode;
+ 
++	phy->enable_otg = (phy->vbus_det_irq > 0);
+ 	if (phy->enable_otg)
+ 		queue_delayed_work(system_wq, &phy->vbus_work, 0);
+-	else
+-		cv1800_usb_phy_set_mode_internal(phy, true);
++	else {
++		dr_mode = of_usb_get_dr_mode_by_phy(dev->of_node, 0);
++		cv1800_usb_phy_set_mode_internal(phy, !(dr_mode == USB_DR_MODE_PERIPHERAL));
++	}
+ }
+ 
+ static int cv1800_usb_phy_probe(struct platform_device *pdev)
+-- 
+2.39.5
+

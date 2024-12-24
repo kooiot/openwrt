@@ -8,9 +8,10 @@ include $(TOPDIR)/rules.mk
 ARCH:=riscv64
 BOARD:=sophgo
 BOARDNAME:=Sophgo RISC-V SoCs
-FEATURES:=ext4 squashfs
+FEATURES:=usb rootfs-part rtc squashfs ext4 nand boot-part
 KERNELNAME:=Image dtbs
 SUBTARGETS:=generic
+#SUBTARGETS:=cv180x cv181x cv1813h
 
 KERNEL_PATCHVER:=6.6
 

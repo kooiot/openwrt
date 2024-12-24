@@ -1,0 +1,36 @@
+From b5fce549bed868d8c937e6fdb55ab37ec044e353 Mon Sep 17 00:00:00 2001
+From: Harshit Mogalapalli <harshit.m.mogalapalli@oracle.com>
+Date: Thu, 10 Oct 2024 04:18:18 -0700
+Subject: [PATCH 099/120] pinctrl: sophgo: fix double free in
+ cv1800_pctrl_dt_node_to_map()
+
+'map' is allocated using devm_* which takes care of freeing the allocated
+data, but in error paths there is a call to pinctrl_utils_free_map()
+which also does kfree(map) which leads to a double free.
+
+Use kcalloc() instead of devm_kcalloc() as freeing is manually handled.
+
+Fixes: a29d8e93e710 ("pinctrl: sophgo: add support for CV1800B SoC")
+Signed-off-by: Harshit Mogalapalli <harshit.m.mogalapalli@oracle.com>
+Link: https://lore.kernel.org/20241010111830.3474719-1-harshit.m.mogalapalli@oracle.com
+Signed-off-by: Linus Walleij <linus.walleij@linaro.org>
+---
+ drivers/pinctrl/sophgo/pinctrl-cv18xx.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/pinctrl/sophgo/pinctrl-cv18xx.c b/drivers/pinctrl/sophgo/pinctrl-cv18xx.c
+index d18fc5aa84f7..57f2674e75d6 100644
+--- a/drivers/pinctrl/sophgo/pinctrl-cv18xx.c
++++ b/drivers/pinctrl/sophgo/pinctrl-cv18xx.c
+@@ -221,7 +221,7 @@ static int cv1800_pctrl_dt_node_to_map(struct pinctrl_dev *pctldev,
+ 	if (!grpnames)
+ 		return -ENOMEM;
+ 
+-	map = devm_kcalloc(dev, ngroups * 2, sizeof(*map), GFP_KERNEL);
++	map = kcalloc(ngroups * 2, sizeof(*map), GFP_KERNEL);
+ 	if (!map)
+ 		return -ENOMEM;
+ 
+-- 
+2.45.2
+

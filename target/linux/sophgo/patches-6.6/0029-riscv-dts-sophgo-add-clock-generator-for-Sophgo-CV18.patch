@@ -1,7 +1,7 @@
 From 31b514a14e396c79b4d3e835eb13d307afae01a1 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Sat, 9 Mar 2024 17:02:55 +0800
-Subject: [PATCH 29/89] riscv: dts: sophgo: add clock generator for Sophgo
+Subject: [PATCH 029/120] riscv: dts: sophgo: add clock generator for Sophgo
  CV1800 series SoC
 
 Add clock generator node for CV1800B and CV1812H.

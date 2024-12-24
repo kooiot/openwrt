@@ -1,0 +1,95 @@
+From f950066b38e43f9a6873d27787e0ee79b95a18da Mon Sep 17 00:00:00 2001
+From: Inochi Amaoto <inochiama@outlook.com>
+Date: Fri, 25 Oct 2024 19:29:00 +0800
+Subject: [PATCH 109/120] riscv: dts: sophgo: Add emmc support for Huashan Pi
+
+Add emmc node configuration for Huashan Pi.
+
+Link: https://lore.kernel.org/r/20241025112902.1200716-3-inochiama@gmail.com
+Signed-off-by: Inochi Amaoto <inochiama@gmail.com>
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+---
+ .../boot/dts/sophgo/cv1812h-huashan-pi.dts    | 12 +++++++++++
+ arch/riscv/boot/dts/sophgo/cv1812h.dtsi       |  1 +
+ arch/riscv/boot/dts/sophgo/cv181x.dtsi        | 21 +++++++++++++++++++
+ arch/riscv/boot/dts/sophgo/sg2002.dtsi        |  1 +
+ 4 files changed, 35 insertions(+)
+ create mode 100644 arch/riscv/boot/dts/sophgo/cv181x.dtsi
+
+diff --git a/arch/riscv/boot/dts/sophgo/cv1812h-huashan-pi.dts b/arch/riscv/boot/dts/sophgo/cv1812h-huashan-pi.dts
+index 4ea27cd357dc..26b57e15adc1 100644
+--- a/arch/riscv/boot/dts/sophgo/cv1812h-huashan-pi.dts
++++ b/arch/riscv/boot/dts/sophgo/cv1812h-huashan-pi.dts
+@@ -43,6 +43,18 @@ &osc {
+ 	clock-frequency = <25000000>;
+ };
+ 
++&emmc {
++	status = "okay";
++	bus-width = <4>;
++	max-frequency = <200000000>;
++	mmc-ddr-1_8v;
++	mmc-ddr-3_3v;
++	mmc-hs200-1_8v;
++	no-sd;
++	no-sdio;
++	non-removable;
++};
++
+ &sdhci0 {
+ 	status = "okay";
+ 	bus-width = <4>;
+diff --git a/arch/riscv/boot/dts/sophgo/cv1812h.dtsi b/arch/riscv/boot/dts/sophgo/cv1812h.dtsi
+index 815114db54ed..8a1b95c5116b 100644
+--- a/arch/riscv/boot/dts/sophgo/cv1812h.dtsi
++++ b/arch/riscv/boot/dts/sophgo/cv1812h.dtsi
+@@ -6,6 +6,7 @@
+ #include <dt-bindings/interrupt-controller/irq.h>
+ #include <dt-bindings/pinctrl/pinctrl-cv1812h.h>
+ #include "cv18xx.dtsi"
++#include "cv181x.dtsi"
+ 
+ / {
+ 	compatible = "sophgo,cv1812h";
+diff --git a/arch/riscv/boot/dts/sophgo/cv181x.dtsi b/arch/riscv/boot/dts/sophgo/cv181x.dtsi
+new file mode 100644
+index 000000000000..5fd14dd1b14f
+--- /dev/null
++++ b/arch/riscv/boot/dts/sophgo/cv181x.dtsi
+@@ -0,0 +1,21 @@
++// SPDX-License-Identifier: (GPL-2.0 OR MIT)
++/*
++ * Copyright (C) 2024 Inochi Amaoto <inochiama@outlook.com>
++ */
++
++#include <dt-bindings/clock/sophgo,cv1800.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++
++/ {
++	soc {
++		emmc: mmc@4300000 {
++			compatible = "sophgo,cv1800b-dwcmshc";
++			reg = <0x4300000 0x1000>;
++			interrupts = <34 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&clk CLK_AXI4_EMMC>,
++				 <&clk CLK_EMMC>;
++			clock-names = "core", "bus";
++			status = "disabled";
++		};
++	};
++};
+diff --git a/arch/riscv/boot/dts/sophgo/sg2002.dtsi b/arch/riscv/boot/dts/sophgo/sg2002.dtsi
+index 6616f578d190..7f79de33163c 100644
+--- a/arch/riscv/boot/dts/sophgo/sg2002.dtsi
++++ b/arch/riscv/boot/dts/sophgo/sg2002.dtsi
+@@ -6,6 +6,7 @@
+ #include <dt-bindings/interrupt-controller/irq.h>
+ #include <dt-bindings/pinctrl/pinctrl-sg2002.h>
+ #include "cv18xx.dtsi"
++#include "cv181x.dtsi"
+ 
+ / {
+ 	compatible = "sophgo,sg2002";
+-- 
+2.45.2
+

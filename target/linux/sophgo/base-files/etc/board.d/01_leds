@@ -1,0 +1,17 @@
+
+. /lib/functions/uci-defaults.sh
+
+board=$(board_name)
+boardname="${board##*,}"
+
+board_config_update
+
+case $board in
+milkv,duo)
+	ucidef_set_led_default "power" "power" "kooiot:blue:power" "1"
+	;;
+esac
+
+board_config_flush
+
+exit 0

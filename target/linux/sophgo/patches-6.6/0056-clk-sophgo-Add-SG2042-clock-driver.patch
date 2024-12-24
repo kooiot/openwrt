@@ -1,7 +1,7 @@
 From b1ed63305463e413a8044e0d7cdd2a6d52051b1b Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Fri, 24 Nov 2023 14:15:16 +0800
-Subject: [PATCH 56/89] clk: sophgo: Add SG2042 clock driver
+Subject: [PATCH 056/120] clk: sophgo: Add SG2042 clock driver
 
 Add a driver for the SOPHGO SG2042 clocks.
 

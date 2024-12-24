@@ -1,7 +1,7 @@
 From 6b8cd227143eab16ccc787b84d0b4a98102ea34d Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Thu, 11 Apr 2024 08:45:00 +0800
-Subject: [PATCH 34/89] riscv: dts: sophgo: add reserved memory node for
+Subject: [PATCH 034/120] riscv: dts: sophgo: add reserved memory node for
  CV1800B
 
 The original dts of CV1800B has a weird memory length as it

@@ -1,7 +1,8 @@
 From 4ddccca14433334201d45ba20ae60aba8afb912a Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Mon, 19 Aug 2024 16:08:51 +0800
-Subject: [PATCH 64/89] riscv: sophgo: dts: add gpio controllers for SG2042 SoC
+Subject: [PATCH 064/120] riscv: sophgo: dts: add gpio controllers for SG2042
+ SoC
 
 Add support for the GPIO controller of Sophgo SG2042.
 

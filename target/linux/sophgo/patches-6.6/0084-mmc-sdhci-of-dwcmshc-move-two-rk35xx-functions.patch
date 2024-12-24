@@ -1,7 +1,7 @@
 From adce3d520902e66d31436065ba9cbf20aaec56d3 Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Mon, 5 Aug 2024 17:17:40 +0800
-Subject: [PATCH 84/89] mmc: sdhci-of-dwcmshc: move two rk35xx functions
+Subject: [PATCH 084/120] mmc: sdhci-of-dwcmshc: move two rk35xx functions
 
 This patch just move dwcmshc_rk35xx_init() and
 dwcmshc_rk35xx_postinit() to put the functions

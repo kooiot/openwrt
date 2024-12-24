@@ -1,7 +1,7 @@
 From 067740fce295e7b941b3aaeb5e161316eae0e6f5 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Thu, 19 Oct 2023 07:18:50 +0800
-Subject: [PATCH 19/89] dt-bindings: riscv: Add SOPHGO Huashan Pi board
+Subject: [PATCH 019/120] dt-bindings: riscv: Add SOPHGO Huashan Pi board
  compatibles
 
 Document the compatible strings for the SOPHGO Huashan Pi board which

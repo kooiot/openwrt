@@ -1,0 +1,26 @@
+From d9bdb46284262611bc4d910badc602b14b24df01 Mon Sep 17 00:00:00 2001
+From: Dirk Chang <dirk@kooiot.com>
+Date: Thu, 12 Dec 2024 19:43:09 +0800
+Subject: [PATCH 115/120] mmc: sdhci-of-dwcmshc: fixed tunning function name
+ error
+
+---
+ drivers/mmc/host/sdhci-of-dwcmshc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/mmc/host/sdhci-of-dwcmshc.c b/drivers/mmc/host/sdhci-of-dwcmshc.c
+index ba8960d8b2d4..74285ef79895 100644
+--- a/drivers/mmc/host/sdhci-of-dwcmshc.c
++++ b/drivers/mmc/host/sdhci-of-dwcmshc.c
+@@ -827,7 +827,7 @@ static int th1520_execute_tuning(struct sdhci_host *host, u32 opcode)
+ 	/* perform tuning */
+ 	sdhci_start_tuning(host);
+ 	host->tuning_loop_count = 128;
+-	host->tuning_err = __sdhci_execute_tuning(host, opcode);
++	host->tuning_err = sdhci_execute_tuning(host->mmc, opcode);
+ 	if (host->tuning_err) {
+ 		/* disable auto-tuning upon tuning error */
+ 		val &= ~AT_CTRL_AT_EN;
+-- 
+2.45.2
+

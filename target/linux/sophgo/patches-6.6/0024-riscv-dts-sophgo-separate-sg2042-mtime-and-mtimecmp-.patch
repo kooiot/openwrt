@@ -1,8 +1,8 @@
 From 96116081a90ccc1de44ed9cbb53f8189ae767d33 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Fri, 26 Jan 2024 17:20:00 +0800
-Subject: [PATCH 24/89] riscv: dts: sophgo: separate sg2042 mtime and mtimecmp
- to fit aclint format
+Subject: [PATCH 024/120] riscv: dts: sophgo: separate sg2042 mtime and
+ mtimecmp to fit aclint format
 
 [ Upstream commit 1f4a994be2c3d13852fd5c1054f292bd303352cc ]
 

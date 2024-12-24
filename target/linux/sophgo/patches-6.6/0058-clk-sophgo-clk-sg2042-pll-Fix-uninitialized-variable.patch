@@ -1,8 +1,8 @@
 From 9ad4b812206c5d50597982d726f53f3c19c27123 Mon Sep 17 00:00:00 2001
 From: Dan Carpenter <dan.carpenter@linaro.org>
 Date: Wed, 17 Jul 2024 21:25:53 -0500
-Subject: [PATCH 58/89] clk: sophgo: clk-sg2042-pll: Fix uninitialized variable
- in debug output
+Subject: [PATCH 058/120] clk: sophgo: clk-sg2042-pll: Fix uninitialized
+ variable in debug output
 
 If sg2042_get_pll_ctl_setting() fails then "value" isn't initialized and
 it is printed in the debug output.  Initialize it to zero.

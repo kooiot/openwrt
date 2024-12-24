@@ -1,7 +1,7 @@
 From cb1b5a67c74291e90c7ab043c888d47e57ebeff8 Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Mon, 5 Aug 2024 10:33:20 +0800
-Subject: [PATCH 68/89] riscv: defconfig: sophgo: enable clks for sg2042
+Subject: [PATCH 068/120] riscv: defconfig: sophgo: enable clks for sg2042
 
 Enable clk generators for sg2042 due to many peripherals rely on
 these clocks.

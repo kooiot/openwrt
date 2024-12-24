@@ -1,7 +1,7 @@
 From 903b5b8fd477d8c6a091e15f9a434f7e8add8533 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Sat, 9 Mar 2024 17:02:52 +0800
-Subject: [PATCH 36/89] clk: sophgo: Add clock support for CV1800 SoC
+Subject: [PATCH 036/120] clk: sophgo: Add clock support for CV1800 SoC
 
 Add clock definition and driver code for CV1800 SoC.
 

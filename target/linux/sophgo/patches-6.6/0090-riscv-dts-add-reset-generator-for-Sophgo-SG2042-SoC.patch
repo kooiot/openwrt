@@ -1,7 +1,7 @@
 From 5efbe270ba73909185cf28b45a26872d2ce9a0af Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Tue, 30 Jan 2024 09:50:32 +0800
-Subject: [PATCH] riscv: dts: add reset generator for Sophgo SG2042 SoC
+Subject: [PATCH 090/120] riscv: dts: add reset generator for Sophgo SG2042 SoC
 
 Add reset generator node to device tree for SG2042.
 
@@ -17,7 +17,16 @@ diff --git a/arch/riscv/boot/dts/sophgo/sg2042.dtsi b/arch/riscv/boot/dts/sophgo
 index 194c7ed51581..4fe46ad28d3a 100644
 --- a/arch/riscv/boot/dts/sophgo/sg2042.dtsi
 +++ b/arch/riscv/boot/dts/sophgo/sg2042.dtsi
-@@ -498,6 +498,12 @@ intc: interrupt-controller@7090000000 {
+@@ -10,6 +10,8 @@
+ #include <dt-bindings/interrupt-controller/irq.h>
+ #include <dt-bindings/reset/sophgo,sg2042-reset.h>
+ 
++#include <dt-bindings/reset/sophgo,sg2042-reset.h>
++
+ #include "sg2042-cpus.dtsi"
+ 
+ / {
+@@ -498,6 +500,12 @@ intc: interrupt-controller@7090000000 {
  			riscv,ndev = <224>;
  		};
  

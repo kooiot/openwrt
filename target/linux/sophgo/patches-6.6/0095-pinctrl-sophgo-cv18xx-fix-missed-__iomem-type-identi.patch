@@ -1,0 +1,36 @@
+From e72886727d96aae40bfbc260f9e899507e435ae4 Mon Sep 17 00:00:00 2001
+From: Inochi Amaoto <inochiama@outlook.com>
+Date: Fri, 30 Aug 2024 16:55:33 +0800
+Subject: [PATCH 095/120] pinctrl: sophgo: cv18xx: fix missed __iomem type
+ identifier
+
+As the variable reg in "cv1800_pctrl_dbg_show" misses a "__iomem"
+type identifier, a warning will be issued by the compiler. Add
+this identifier to avoid this warning.
+
+Fixes: a29d8e93e710 ("pinctrl: sophgo: add support for CV1800B SoC")
+Reported-by: kernel test robot <lkp@intel.com>
+Closes: https://lore.kernel.org/oe-kbuild-all/202408271555.kpOmi9I8-lkp@intel.com/
+Signed-off-by: Inochi Amaoto <inochiama@outlook.com>
+Link: https://lore.kernel.org/IA1PR20MB495329EBE498DFFDAA1EC457BB972@IA1PR20MB4953.namprd20.prod.outlook.com
+Signed-off-by: Linus Walleij <linus.walleij@linaro.org>
+---
+ drivers/pinctrl/sophgo/pinctrl-cv18xx.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/pinctrl/sophgo/pinctrl-cv18xx.c b/drivers/pinctrl/sophgo/pinctrl-cv18xx.c
+index e63cfcc37377..d18fc5aa84f7 100644
+--- a/drivers/pinctrl/sophgo/pinctrl-cv18xx.c
++++ b/drivers/pinctrl/sophgo/pinctrl-cv18xx.c
+@@ -125,7 +125,7 @@ static void cv1800_pctrl_dbg_show(struct pinctrl_dev *pctldev,
+ 	struct cv1800_pin *pin = cv1800_get_pin(pctrl, pin_id);
+ 	enum cv1800_pin_io_type type = cv1800_pin_io_type(pin);
+ 	u32 value;
+-	void *reg;
++	void __iomem *reg;
+ 
+ 	if (pin->pin >> PIN_BGA_ID_OFFSET)
+ 		seq_printf(seq, "pos: %c%u ",
+-- 
+2.45.2
+

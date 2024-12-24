@@ -1,7 +1,7 @@
 From cddc1086d66f7e2b6c679a48a0cc436d10faada5 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Thu, 19 Oct 2023 07:18:51 +0800
-Subject: [PATCH 20/89] riscv: dts: sophgo: Separate compatible specific for
+Subject: [PATCH 020/120] riscv: dts: sophgo: Separate compatible specific for
  CV1800B soc
 
 As CV180x and CV181x have the identical layouts, it is OK to use the

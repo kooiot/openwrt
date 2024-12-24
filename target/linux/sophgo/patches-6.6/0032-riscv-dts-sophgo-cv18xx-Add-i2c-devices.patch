@@ -1,7 +1,7 @@
 From d62a5f65267879a43e98f52e9d481a442df01209 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Thu, 8 Feb 2024 08:22:12 +0800
-Subject: [PATCH 32/89] riscv: dts: sophgo: cv18xx: Add i2c devices
+Subject: [PATCH 032/120] riscv: dts: sophgo: cv18xx: Add i2c devices
 
 Add i2c devices for the CV180x, CV181x and SG200x soc.
 

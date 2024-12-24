@@ -1,0 +1,37 @@
+From d27bfcbf20e531df9a7c708c33b2574435713dcb Mon Sep 17 00:00:00 2001
+From: Inochi Amaoto <inochiama@outlook.com>
+Date: Thu, 18 Jul 2024 10:23:53 +0800
+Subject: [PATCH 117/120] dt-bindings: pincfg-node: Add
+ "input-schmitt-microvolt" property
+
+On Sophgo CV18XX platform, threshold strength of schmitt trigger can
+be configured. As this standard property is already supported by the
+common pinconf code. Add "input-schmitt-microvolt" property in
+pincfg-node.yaml so that other platforms requiring such feature can
+make use of this property.
+
+Signed-off-by: Inochi Amaoto <inochiama@outlook.com>
+Reviewed-by: Krzysztof Kozlowski <krzk@kernel.org>
+Link: https://lore.kernel.org/IA1PR20MB4953C71C87FD150D2E64FF41BBAC2@IA1PR20MB4953.namprd20.prod.outlook.com
+Signed-off-by: Linus Walleij <linus.walleij@linaro.org>
+---
+ Documentation/devicetree/bindings/pinctrl/pincfg-node.yaml | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/pinctrl/pincfg-node.yaml b/Documentation/devicetree/bindings/pinctrl/pincfg-node.yaml
+index be81ed22a036..336ade77342a 100644
+--- a/Documentation/devicetree/bindings/pinctrl/pincfg-node.yaml
++++ b/Documentation/devicetree/bindings/pinctrl/pincfg-node.yaml
+@@ -96,6 +96,9 @@ properties:
+     type: boolean
+     description: disable schmitt-trigger mode
+ 
++  input-schmitt-microvolt:
++    description: threshold strength for schmitt-trigger
++
+   input-debounce:
+     $ref: /schemas/types.yaml#/definitions/uint32
+     description: Takes the debounce time in usec as argument or 0 to disable
+-- 
+2.45.2
+

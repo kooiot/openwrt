@@ -1,0 +1,62 @@
+From 114d809f3d9878cf0d37b7c05d3f8d9b7d27ef34 Mon Sep 17 00:00:00 2001
+From: Inochi Amaoto <inochiama@gmail.com>
+Date: Fri, 25 Oct 2024 19:28:59 +0800
+Subject: [PATCH 108/120] riscv: dts: sophgo: Add sdio configuration for
+ Huashan Pi
+
+Add configuration for sdio for Huashan Pi to support sdio wifi.
+
+Link: https://lore.kernel.org/r/20241025112902.1200716-2-inochiama@gmail.com
+Signed-off-by: Inochi Amaoto <inochiama@gmail.com>
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+---
+ arch/riscv/boot/dts/sophgo/cv1812h-huashan-pi.dts | 11 +++++++++++
+ arch/riscv/boot/dts/sophgo/cv18xx.dtsi            | 10 ++++++++++
+ 2 files changed, 21 insertions(+)
+
+diff --git a/arch/riscv/boot/dts/sophgo/cv1812h-huashan-pi.dts b/arch/riscv/boot/dts/sophgo/cv1812h-huashan-pi.dts
+index 7b5f57853690..4ea27cd357dc 100644
+--- a/arch/riscv/boot/dts/sophgo/cv1812h-huashan-pi.dts
++++ b/arch/riscv/boot/dts/sophgo/cv1812h-huashan-pi.dts
+@@ -52,6 +52,17 @@ &sdhci0 {
+ 	disable-wp;
+ };
+ 
++&sdhci1 {
++	status = "okay";
++	bus-width = <4>;
++	cap-sdio-irq;
++	max-frequency = <50000000>;
++	no-mmc;
++	no-sd;
++	disable-wp;
++	non-removable;
++};
++
+ &uart0 {
+ 	status = "okay";
+ };
+diff --git a/arch/riscv/boot/dts/sophgo/cv18xx.dtsi b/arch/riscv/boot/dts/sophgo/cv18xx.dtsi
+index 1cd98fdf74d2..ff4e9404e72d 100644
+--- a/arch/riscv/boot/dts/sophgo/cv18xx.dtsi
++++ b/arch/riscv/boot/dts/sophgo/cv18xx.dtsi
+@@ -320,6 +320,16 @@ sdhci0: mmc@4310000 {
+ 			status = "disabled";
+ 		};
+ 
++		sdhci1: mmc@4320000 {
++			compatible = "sophgo,cv1800b-dwcmshc";
++			reg = <0x4320000 0x1000>;
++			interrupts = <38 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&clk CLK_AXI4_SD1>,
++				 <&clk CLK_SD1>;
++			clock-names = "core", "bus";
++			status = "disabled";
++		};
++
+ 		dmac: dma-controller@4330000 {
+ 			compatible = "snps,axi-dma-1.01a";
+ 			reg = <0x04330000 0x1000>;
+-- 
+2.45.2
+

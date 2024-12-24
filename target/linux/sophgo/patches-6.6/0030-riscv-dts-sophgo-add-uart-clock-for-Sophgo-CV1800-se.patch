@@ -1,7 +1,7 @@
 From c9ba9edba6261ae8ffe044b769ef79c5e70c9ed7 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Sat, 9 Mar 2024 17:02:56 +0800
-Subject: [PATCH 30/89] riscv: dts: sophgo: add uart clock for Sophgo CV1800
+Subject: [PATCH 030/120] riscv: dts: sophgo: add uart clock for Sophgo CV1800
  series SoC
 
 Add missing clocks of uart node for CV1800B and CV1812H.

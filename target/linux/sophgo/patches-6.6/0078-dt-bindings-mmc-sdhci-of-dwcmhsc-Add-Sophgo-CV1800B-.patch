@@ -1,8 +1,8 @@
 From bd203c1577273930e084c0fa8cd7060bf51b9611 Mon Sep 17 00:00:00 2001
 From: Jisheng Zhang <jszhang@kernel.org>
 Date: Sat, 17 Feb 2024 22:42:01 +0800
-Subject: [PATCH 78/89] dt-bindings: mmc: sdhci-of-dwcmhsc: Add Sophgo CV1800B
- and SG2002 support
+Subject: [PATCH 078/120] dt-bindings: mmc: sdhci-of-dwcmhsc: Add Sophgo
+ CV1800B and SG2002 support
 
 Add compatible value for the dwcmshc controller in Sophgo's CV1800B and
 SG2002.

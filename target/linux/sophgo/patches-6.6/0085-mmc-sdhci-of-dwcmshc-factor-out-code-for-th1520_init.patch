@@ -1,7 +1,7 @@
 From f161cec832eed50416501fd8f6404dcc6cb9d5fd Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Mon, 5 Aug 2024 17:17:59 +0800
-Subject: [PATCH 85/89] mmc: sdhci-of-dwcmshc: factor out code for
+Subject: [PATCH 085/120] mmc: sdhci-of-dwcmshc: factor out code for
  th1520_init()
 
 Different socs have initialization operations in

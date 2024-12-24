@@ -1,0 +1,119 @@
+From e9d5100647e0912ff3f658025a2f5e483d61ab85 Mon Sep 17 00:00:00 2001
+From: Damian Peckett <damian@pecke.tt>
+Date: Wed, 16 Oct 2024 12:14:55 +0200
+Subject: [PATCH] riscv: dts: sophgo: enable milkv duo io ports
+
+So that end users can use the I2C and SPI ports out of the box
+without having to use a custom device tree.
+
+Upstream-Status: Inappropriate [board specific]
+Signed-off-by: Damian Peckett <damian@pecke.tt>
+---
+ .../boot/dts/sophgo/cv1800b-milkv-duo.dts     | 73 ++++++++++++++++++-
+ 1 file changed, 72 insertions(+), 1 deletion(-)
+
+diff --git a/arch/riscv/boot/dts/sophgo/cv1800b-milkv-duo.dts b/arch/riscv/boot/dts/sophgo/cv1800b-milkv-duo.dts
+index d4bf340d4..b8094870b 100644
+--- a/arch/riscv/boot/dts/sophgo/cv1800b-milkv-duo.dts
++++ b/arch/riscv/boot/dts/sophgo/cv1800b-milkv-duo.dts
+@@ -82,6 +82,58 @@ sdhci0-cd-pins {
+ 			power-source = <3300>;
+ 		};
+ 	};
++
++	i2c1_cfg: i2c1-cfg {
++		i2c1-sda-pins {
++			/* GP10 */
++			pinmux = <PINMUX(PIN_MIPIRX1P, 4)>;
++			bias-pull-up;
++			drive-strength-microamp = <3000>;
++			power-source = <3300>;
++		};
++
++		i2c1-scl-pins {
++			/* GP11 */
++			pinmux = <PINMUX(PIN_MIPIRX0N, 4)>;
++			bias-pull-up;
++			drive-strength-microamp = <3000>;
++			power-source = <3300>;
++		};
++	};
++
++	spi2_cfg: spi2-cfg {
++		/* GP6 */
++		spi2-sck-pins {
++			pinmux = <PINMUX(PIN_SD1_CLK, 1)>;
++			bias-pull-up;
++			drive-strength-microamp = <10800>;
++			power-source = <3300>;
++		};
++
++		spi2-mosi-pins {
++			/* GP7 */
++			pinmux = <PINMUX(PIN_SD1_CMD, 1)>;
++			bias-pull-up;
++			drive-strength-microamp = <10800>;
++			power-source = <3300>;
++		};
++
++		spi2-miso-pins {
++			/* GP8 */
++			pinmux = <PINMUX(PIN_SD1_D0, 1)>;
++			bias-pull-up;
++			drive-strength-microamp = <10800>;
++			power-source = <3300>;
++		};
++
++		spi2-cs0-pins {
++			/* GP9 */
++			pinmux = <PINMUX(PIN_SD1_D3, 1)>;
++			bias-pull-up;
++			drive-strength-microamp = <10800>;
++			power-source = <3300>;
++		};
++	};
+ };
+ 
+ &sdhci0 {
+@@ -95,12 +147,31 @@ &sdhci0 {
+ 	disable-wp;
+ };
+ 
++&i2c1 {
++	pinctrl-0 = <&i2c1_cfg>;
++	pinctrl-names = "default";
++	status = "okay";
++	clock-frequency = <100000>;
++};
++
+ &uart0 {
+ 	pinctrl-0 = <&uart0_cfg>;
+ 	pinctrl-names = "default";
+ 	status = "okay";
+ };
+ 
++&spi2 {
++	pinctrl-0 = <&spi2_cfg>;
++	pinctrl-names = "default";
++	status = "okay";
++
++	spidev@0 {
++		compatible = "linux,spidev";
++		reg = <0>;
++		status = "okay";
++	};
++};
++
+ &usb_phy {
+ 	status = "okay";
+ };
+@@ -111,4 +182,4 @@ &usb_otg {
+ 
+ &emac0 {
+ 	status = "okay";
+-};
++};
+\ No newline at end of file
+-- 
+2.39.5
+

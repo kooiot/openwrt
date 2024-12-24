@@ -1,0 +1,45 @@
+From 57b1eef844293bc53b2a7c34acb8a70719e4d237 Mon Sep 17 00:00:00 2001
+From: Inochi Amaoto <inochiama@outlook.com>
+Date: Tue, 10 Sep 2024 06:35:11 +0800
+Subject: [PATCH 102/120] riscv: dts: sophgo: cv1812h: add pinctrl support
+
+Add pinctrl node for CV1812H SoC.
+
+Link: https://lore.kernel.org/r/IA1PR20MB49533DB3D0C1861938185015BB992@IA1PR20MB4953.namprd20.prod.outlook.com
+Signed-off-by: Inochi Amaoto <inochiama@outlook.com>
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+---
+ arch/riscv/boot/dts/sophgo/cv1812h.dtsi | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/arch/riscv/boot/dts/sophgo/cv1812h.dtsi b/arch/riscv/boot/dts/sophgo/cv1812h.dtsi
+index 7fa4c1e2d1da..815114db54ed 100644
+--- a/arch/riscv/boot/dts/sophgo/cv1812h.dtsi
++++ b/arch/riscv/boot/dts/sophgo/cv1812h.dtsi
+@@ -4,6 +4,7 @@
+  */
+ 
+ #include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/pinctrl/pinctrl-cv1812h.h>
+ #include "cv18xx.dtsi"
+ 
+ / {
+@@ -13,6 +14,15 @@ memory@80000000 {
+ 		device_type = "memory";
+ 		reg = <0x80000000 0x10000000>;
+ 	};
++
++	soc {
++		pinctrl: pinctrl@3001000 {
++			compatible = "sophgo,cv1812h-pinctrl";
++			reg = <0x03001000 0x1000>,
++			      <0x05027000 0x1000>;
++			reg-names = "sys", "rtc";
++		};
++	};
+ };
+ 
+ &plic {
+-- 
+2.45.2
+

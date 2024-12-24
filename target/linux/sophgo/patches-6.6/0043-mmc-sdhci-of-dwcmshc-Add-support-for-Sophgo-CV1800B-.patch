@@ -1,7 +1,7 @@
 From fd7e10319bd0eb0a46687c3bb75f4ffae449b192 Mon Sep 17 00:00:00 2001
 From: Jisheng Zhang <jszhang@kernel.org>
 Date: Sat, 17 Feb 2024 22:42:02 +0800
-Subject: [PATCH 43/89] mmc: sdhci-of-dwcmshc: Add support for Sophgo CV1800B
+Subject: [PATCH 043/120] mmc: sdhci-of-dwcmshc: Add support for Sophgo CV1800B
  and SG2002
 
 Add support for the mmc controller in the Sophgo CV1800B and SG2002

@@ -1,8 +1,8 @@
 From bc1c1301d02e72085dd1e97112cd219f1321199b Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Mon, 5 Aug 2024 17:17:21 +0800
-Subject: [PATCH 83/89] mmc: sdhci-of-dwcmshc: add common bulk optional clocks
- support
+Subject: [PATCH 083/120] mmc: sdhci-of-dwcmshc: add common bulk optional
+ clocks support
 
 In addition to the required core clock and optional
 bus clock, the soc will expand its own clocks, so

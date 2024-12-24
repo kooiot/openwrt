@@ -1,7 +1,7 @@
 From 25e1d54ff9f5dc08d8d09bbaf4becb2eff16f495 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Mon, 29 Jul 2024 10:13:33 +0800
-Subject: [PATCH 61/89] riscv: dts: sophgo: Use common "interrupt-parent" for
+Subject: [PATCH 061/120] riscv: dts: sophgo: Use common "interrupt-parent" for
  all peripherals for sg2042
 
 As all peripherals of sg2042 share the same "interrupt-parent",

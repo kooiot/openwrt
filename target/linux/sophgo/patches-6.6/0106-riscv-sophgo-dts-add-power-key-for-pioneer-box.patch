@@ -1,0 +1,52 @@
+From cea1497da4dc3e22f78d03e7f89d18d19a3fdf10 Mon Sep 17 00:00:00 2001
+From: Chen Wang <unicorn_wang@outlook.com>
+Date: Tue, 8 Oct 2024 09:43:52 +0800
+Subject: [PATCH 106/120] riscv: sophgo: dts: add power key for pioneer box
+
+There is a power button on the front panel of the pioneer box.
+Short pressing the button will trigger the onboard MCU to
+notify SG2042 through GPIO22 to enter the power-off process.
+
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+Link: https://lore.kernel.org/r/12e65a99f1b52c52b7372e900a203063b30c74b5.1728350655.git.unicorn_wang@outlook.com
+Signed-off-by: Inochi Amaoto <inochiama@gmail.com>
+---
+ .../boot/dts/sophgo/sg2042-milkv-pioneer.dts      | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+diff --git a/arch/riscv/boot/dts/sophgo/sg2042-milkv-pioneer.dts b/arch/riscv/boot/dts/sophgo/sg2042-milkv-pioneer.dts
+index a3f9d6f22566..be596d01ff8d 100644
+--- a/arch/riscv/boot/dts/sophgo/sg2042-milkv-pioneer.dts
++++ b/arch/riscv/boot/dts/sophgo/sg2042-milkv-pioneer.dts
+@@ -5,6 +5,9 @@
+ 
+ #include "sg2042.dtsi"
+ 
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/input/input.h>
++
+ / {
+ 	model = "Milk-V Pioneer";
+ 	compatible = "milkv,pioneer", "sophgo,sg2042";
+@@ -12,6 +15,18 @@ / {
+ 	chosen {
+ 		stdout-path = "serial0";
+ 	};
++
++	gpio-power {
++		compatible = "gpio-keys";
++
++		key-power {
++			label = "Power Key";
++			linux,code = <KEY_POWER>;
++			gpios = <&port0a 22 GPIO_ACTIVE_HIGH>;
++			linux,input-type = <EV_KEY>;
++			debounce-interval = <100>;
++		};
++	};
+ };
+ 
+ &cgi_main {
+-- 
+2.45.2
+

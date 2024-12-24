@@ -1,7 +1,7 @@
 From e0d5f178bc28d4f2e435043ca56b6adb3c8ead31 Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Wed, 4 Oct 2023 23:38:39 +0800
-Subject: [PATCH 01/89] riscv: Add SOPHGO SOC family Kconfig support
+Subject: [PATCH 001/120] riscv: Add SOPHGO SOC family Kconfig support
 
 The first SoC in the SOPHGO series is SG2042, which contains 64 RISC-V
 cores.

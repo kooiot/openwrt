@@ -1,0 +1,62 @@
+From 6818428f2ce52da966c4a9180988c286e0bdbd21 Mon Sep 17 00:00:00 2001
+From: Inochi Amaoto <inochiama@outlook.com>
+Date: Thu, 18 Jul 2024 10:23:54 +0800
+Subject: [PATCH 118/120] pinctrl: pinconf-generic: Add support for
+ "input-schmitt-microvolt" property
+
+Add "input-schmitt-microvolt" property to generic options used for DT
+parsing files. This enables drivers, which use generic pin configurations,
+to get the value passed to this property.
+
+Signed-off-by: Inochi Amaoto <inochiama@outlook.com>
+Link: https://lore.kernel.org/IA1PR20MB4953806785BA04E075DC4F03BBAC2@IA1PR20MB4953.namprd20.prod.outlook.com
+Signed-off-by: Linus Walleij <linus.walleij@linaro.org>
+---
+ drivers/pinctrl/pinconf-generic.c       | 2 ++
+ include/linux/pinctrl/pinconf-generic.h | 3 +++
+ 2 files changed, 5 insertions(+)
+
+diff --git a/drivers/pinctrl/pinconf-generic.c b/drivers/pinctrl/pinconf-generic.c
+index 365c4b0ca465..1ae1b9b6cd33 100644
+--- a/drivers/pinctrl/pinconf-generic.c
++++ b/drivers/pinctrl/pinconf-generic.c
+@@ -42,6 +42,7 @@ static const struct pin_config_item conf_items[] = {
+ 	PCONFDUMP(PIN_CONFIG_INPUT_DEBOUNCE, "input debounce", "usec", true),
+ 	PCONFDUMP(PIN_CONFIG_INPUT_ENABLE, "input enabled", NULL, false),
+ 	PCONFDUMP(PIN_CONFIG_INPUT_SCHMITT, "input schmitt trigger", NULL, false),
++	PCONFDUMP(PIN_CONFIG_INPUT_SCHMITT_UV, "input schmitt threshold", "uV", true),
+ 	PCONFDUMP(PIN_CONFIG_INPUT_SCHMITT_ENABLE, "input schmitt enabled", NULL, false),
+ 	PCONFDUMP(PIN_CONFIG_MODE_LOW_POWER, "pin low power", "mode", true),
+ 	PCONFDUMP(PIN_CONFIG_OUTPUT_ENABLE, "output enabled", NULL, false),
+@@ -175,6 +176,7 @@ static const struct pinconf_generic_params dt_params[] = {
+ 	{ "input-schmitt", PIN_CONFIG_INPUT_SCHMITT, 0 },
+ 	{ "input-schmitt-disable", PIN_CONFIG_INPUT_SCHMITT_ENABLE, 0 },
+ 	{ "input-schmitt-enable", PIN_CONFIG_INPUT_SCHMITT_ENABLE, 1 },
++	{ "input-schmitt-microvolts", PIN_CONFIG_INPUT_SCHMITT_UV, 0 },
+ 	{ "low-power-disable", PIN_CONFIG_MODE_LOW_POWER, 0 },
+ 	{ "low-power-enable", PIN_CONFIG_MODE_LOW_POWER, 1 },
+ 	{ "output-disable", PIN_CONFIG_OUTPUT_ENABLE, 0 },
+diff --git a/include/linux/pinctrl/pinconf-generic.h b/include/linux/pinctrl/pinconf-generic.h
+index d74b7a4ea154..560a60d44ec8 100644
+--- a/include/linux/pinctrl/pinconf-generic.h
++++ b/include/linux/pinctrl/pinconf-generic.h
+@@ -81,6 +81,8 @@ struct pinctrl_map;
+  * @PIN_CONFIG_INPUT_SCHMITT_ENABLE: control schmitt-trigger mode on the pin.
+  *      If the argument != 0, schmitt-trigger mode is enabled. If it's 0,
+  *      schmitt-trigger mode is disabled.
++ * @PIN_CONFIG_INPUT_SCHMITT_UV: this will configure an input pin to run in
++ *	schmitt-trigger mode. The argument is in uV.
+  * @PIN_CONFIG_MODE_LOW_POWER: this will configure the pin for low power
+  *	operation, if several modes of operation are supported these can be
+  *	passed in the argument on a custom form, else just use argument 1
+@@ -132,6 +134,7 @@ enum pin_config_param {
+ 	PIN_CONFIG_INPUT_ENABLE,
+ 	PIN_CONFIG_INPUT_SCHMITT,
+ 	PIN_CONFIG_INPUT_SCHMITT_ENABLE,
++	PIN_CONFIG_INPUT_SCHMITT_UV,
+ 	PIN_CONFIG_MODE_LOW_POWER,
+ 	PIN_CONFIG_MODE_PWM,
+ 	PIN_CONFIG_OUTPUT,
+-- 
+2.45.2
+

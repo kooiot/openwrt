@@ -1,7 +1,8 @@
 From 96d6987ee72d6689aa85379c21b40f5cbc216df2 Mon Sep 17 00:00:00 2001
 From: Conor Dooley <conor.dooley@microchip.com>
 Date: Tue, 24 Oct 2023 09:20:35 +0100
-Subject: [PATCH 16/89] riscv: dts: sophgo: remove address-cells from intc node
+Subject: [PATCH 016/120] riscv: dts: sophgo: remove address-cells from intc
+ node
 
 A recent submission [1] from Rob has added additionalProperties: false
 to the interrupt-controller child node of RISC-V cpus, highlighting that

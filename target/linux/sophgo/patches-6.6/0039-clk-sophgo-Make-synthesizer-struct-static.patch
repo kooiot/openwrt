@@ -1,7 +1,7 @@
 From 9beff339458dd4408e6d5cbc56843cc83a6cec34 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Fri, 12 Apr 2024 07:24:38 +0800
-Subject: [PATCH 39/89] clk: sophgo: Make synthesizer struct static
+Subject: [PATCH 039/120] clk: sophgo: Make synthesizer struct static
 
 Let all synthesizer structs are static to make the compiler happy.
 

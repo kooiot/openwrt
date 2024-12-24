@@ -1,0 +1,35 @@
+From 80587e9c090991adbfae62c913549447e58acba4 Mon Sep 17 00:00:00 2001
+From: Inochi Amaoto <inochiama@gmail.com>
+Date: Thu, 24 Oct 2024 14:21:02 +0800
+Subject: [PATCH 112/120] dt-bindings: serial: snps-dw-apb-uart: Add Sophgo
+ SG2044 uarts
+
+The UART of SG2044 is modified version of the standard Synopsys
+DesignWare UART. The UART on SG2044 relys on the internal divisor
+and can not set right clock rate for the common bitrates.
+
+Add compatibles string for the Sophgo SG2044 uarts.
+
+Signed-off-by: Inochi Amaoto <inochiama@gmail.com>
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+Link: https://lore.kernel.org/r/20241024062105.782330-3-inochiama@gmail.com
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ Documentation/devicetree/bindings/serial/snps-dw-apb-uart.yaml | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/Documentation/devicetree/bindings/serial/snps-dw-apb-uart.yaml b/Documentation/devicetree/bindings/serial/snps-dw-apb-uart.yaml
+index e5162a44a3fd..1fb8621ce317 100644
+--- a/Documentation/devicetree/bindings/serial/snps-dw-apb-uart.yaml
++++ b/Documentation/devicetree/bindings/serial/snps-dw-apb-uart.yaml
+@@ -39,6 +39,7 @@ properties:
+               - rockchip,rk3588-uart
+               - rockchip,rv1108-uart
+               - rockchip,rv1126-uart
++              - sophgo,sg2044-uart
+               - starfive,jh7100-hsuart
+               - starfive,jh7100-uart
+           - const: snps,dw-apb-uart
+-- 
+2.45.2
+

@@ -1,7 +1,7 @@
 From c78af234bf38aa4b62b9e28deace5a7b8f2280ec Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Mon, 5 Aug 2024 17:19:04 +0800
-Subject: [PATCH 88/89] dt-bindings: mmc: sdhci-of-dwcmhsc: Add Sophgo SG2042
+Subject: [PATCH 088/120] dt-bindings: mmc: sdhci-of-dwcmhsc: Add Sophgo SG2042
  support
 
 SG2042 use Synopsys dwcnshc IP for SD/eMMC controllers.

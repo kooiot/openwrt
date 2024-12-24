@@ -1,7 +1,7 @@
 From 47030e7867438a05fefe4740d20778df9fb0eabf Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Wed, 4 Oct 2023 23:44:25 +0800
-Subject: [PATCH 09/89] riscv: dts: sophgo: add Milk-V Pioneer board device
+Subject: [PATCH 009/120] riscv: dts: sophgo: add Milk-V Pioneer board device
  tree
 
 Milk-V Pioneer [1] is a developer motherboard based on SG2042

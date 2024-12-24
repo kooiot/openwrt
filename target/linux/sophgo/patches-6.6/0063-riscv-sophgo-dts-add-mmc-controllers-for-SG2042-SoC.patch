@@ -1,7 +1,8 @@
 From e84d3aad21f94dfb21619f8590b1e17c9f35aacd Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Mon, 5 Aug 2024 17:19:43 +0800
-Subject: [PATCH 63/89] riscv: sophgo: dts: add mmc controllers for SG2042 SoC
+Subject: [PATCH 063/120] riscv: sophgo: dts: add mmc controllers for SG2042
+ SoC
 
 SG2042 has two MMC controller, one for emmc, another for sd-card.
 

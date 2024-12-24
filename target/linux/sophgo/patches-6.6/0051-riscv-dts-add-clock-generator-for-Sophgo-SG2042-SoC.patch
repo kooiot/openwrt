@@ -1,7 +1,7 @@
 From 950966c6e4c470a7816bf11dd84ea75ef5e78c01 Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Fri, 24 Nov 2023 14:26:02 +0800
-Subject: [PATCH 51/89] riscv: dts: add clock generator for Sophgo SG2042 SoC
+Subject: [PATCH 051/120] riscv: dts: add clock generator for Sophgo SG2042 SoC
 
 Add clock generator node to device tree for SG2042, and enable clock for
 uart.

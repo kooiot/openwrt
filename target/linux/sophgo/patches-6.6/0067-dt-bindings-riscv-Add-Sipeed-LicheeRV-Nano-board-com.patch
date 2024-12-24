@@ -1,7 +1,7 @@
 From add7bbd5acb4e25884c3806f06a0976047ffaf05 Mon Sep 17 00:00:00 2001
 From: Thomas Bonnefille <thomas.bonnefille@bootlin.com>
 Date: Thu, 11 Jul 2024 12:01:29 +0200
-Subject: [PATCH 67/89] dt-bindings: riscv: Add Sipeed LicheeRV Nano board
+Subject: [PATCH 067/120] dt-bindings: riscv: Add Sipeed LicheeRV Nano board
  compatibles
 
 Document the compatible strings for the Sipeed LicheeRV Nano B board which

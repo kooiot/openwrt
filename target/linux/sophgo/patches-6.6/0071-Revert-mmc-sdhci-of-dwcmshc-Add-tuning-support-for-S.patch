@@ -1,7 +1,7 @@
 From f593884c27b2d964edb1de45340eb97007f445cb Mon Sep 17 00:00:00 2001
 From: Dirk Chang <dirk@kooiot.com>
 Date: Thu, 28 Nov 2024 18:31:09 +0800
-Subject: [PATCH 71/89] Revert "mmc: sdhci-of-dwcmshc: Add tuning support for
+Subject: [PATCH 071/120] Revert "mmc: sdhci-of-dwcmshc: Add tuning support for
  Sophgo CV1800B and SG200X"
 
 This reverts commit 6e078f251f8a778b662e4cac11f13f63cefcc50f.

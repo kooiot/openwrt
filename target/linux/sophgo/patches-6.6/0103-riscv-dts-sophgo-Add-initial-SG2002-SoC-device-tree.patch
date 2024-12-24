@@ -1,0 +1,69 @@
+From 517a8bd0b48f54df1ba61366b970a264258ca7e8 Mon Sep 17 00:00:00 2001
+From: Thomas Bonnefille <thomas.bonnefille@bootlin.com>
+Date: Thu, 10 Oct 2024 17:07:06 +0200
+Subject: [PATCH 103/120] riscv: dts: sophgo: Add initial SG2002 SoC device
+ tree
+
+Add initial device tree for the SG2002 RISC-V SoC by SOPHGO.
+
+Signed-off-by: Thomas Bonnefille <thomas.bonnefille@bootlin.com>
+Reviewed-by: Inochi Amaoto <inochiama@gmail.com>
+Link: https://lore.kernel.org/r/20241010-sg2002-v5-1-a0f2e582b932@bootlin.com
+Signed-off-by: Inochi Amaoto <inochiama@gmail.com>
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+---
+ arch/riscv/boot/dts/sophgo/sg2002.dtsi | 42 ++++++++++++++++++++++++++
+ 1 file changed, 42 insertions(+)
+ create mode 100644 arch/riscv/boot/dts/sophgo/sg2002.dtsi
+
+diff --git a/arch/riscv/boot/dts/sophgo/sg2002.dtsi b/arch/riscv/boot/dts/sophgo/sg2002.dtsi
+new file mode 100644
+index 000000000000..242fde84443f
+--- /dev/null
++++ b/arch/riscv/boot/dts/sophgo/sg2002.dtsi
+@@ -0,0 +1,42 @@
++// SPDX-License-Identifier: (GPL-2.0 OR MIT)
++/*
++ * Copyright (C) 2024 Thomas Bonnefille <thomas.bonnefille@bootlin.com>
++ */
++
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/pinctrl/pinctrl-sg2002.h>
++#include "cv18xx.dtsi"
++
++/ {
++	compatible = "sophgo,sg2002";
++
++	memory@80000000 {
++		device_type = "memory";
++		reg = <0x80000000 0x10000000>;
++	};
++
++	soc {
++		pinctrl: pinctrl@3008000 {
++			compatible = "sophgo,sg2002-pinctrl";
++			reg = <0x03001000 0x1000>,
++			      <0x05027000 0x1000>;
++			reg-names = "sys", "rtc";
++		};
++	};
++};
++
++&plic {
++	compatible = "sophgo,sg2002-plic", "thead,c900-plic";
++};
++
++&clint {
++	compatible = "sophgo,sg2002-clint", "thead,c900-clint";
++};
++
++&clk {
++	compatible = "sophgo,sg2000-clk";
++};
++
++&sdhci0 {
++	compatible = "sophgo,sg2002-dwcmshc";
++};
+-- 
+2.45.2
+

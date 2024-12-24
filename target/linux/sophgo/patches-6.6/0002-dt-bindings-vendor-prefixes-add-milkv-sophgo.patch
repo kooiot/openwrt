@@ -1,7 +1,7 @@
 From f6d07fdc2009f008863964e5424c8bca4a11a5cd Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Wed, 4 Oct 2023 23:40:32 +0800
-Subject: [PATCH 02/89] dt-bindings: vendor-prefixes: add milkv/sophgo
+Subject: [PATCH 002/120] dt-bindings: vendor-prefixes: add milkv/sophgo
 
 Add new vendor strings to dt bindings.
 These new vendor strings are used by

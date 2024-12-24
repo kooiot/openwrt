@@ -1,7 +1,7 @@
 From 64f55144e8821d98af34efbfc844ad26b4143b10 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Fri, 12 Apr 2024 16:33:32 +0800
-Subject: [PATCH 59/89] riscv: dts: sophgo: cv18xx: add DMA controller
+Subject: [PATCH 059/120] riscv: dts: sophgo: cv18xx: add DMA controller
 
 Add DMA controller dt node for CV18XX/SG200x.
 

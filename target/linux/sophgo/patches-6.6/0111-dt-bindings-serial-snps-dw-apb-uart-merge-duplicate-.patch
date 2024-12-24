@@ -1,0 +1,52 @@
+From a19228609022fce80f8af0d21f1edc8cd5f14ecd Mon Sep 17 00:00:00 2001
+From: Inochi Amaoto <inochiama@gmail.com>
+Date: Thu, 24 Oct 2024 14:21:01 +0800
+Subject: [PATCH 111/120] dt-bindings: serial: snps,dw-apb-uart: merge
+ duplicate compatible entry.
+
+Each vendor have an items entry of its own compatible, It is needless
+and can be merged as it share the same base "snps,dw-apb-uart"
+compatible.
+
+Merge the duplicate compatible entry into one item entry.
+
+Signed-off-by: Inochi Amaoto <inochiama@gmail.com>
+Suggested-by: Conor Dooley <conor@kernel.org>
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+Link: https://lore.kernel.org/r/20241024062105.782330-2-inochiama@gmail.com
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ .../devicetree/bindings/serial/snps-dw-apb-uart.yaml   | 10 ++--------
+ 1 file changed, 2 insertions(+), 8 deletions(-)
+
+diff --git a/Documentation/devicetree/bindings/serial/snps-dw-apb-uart.yaml b/Documentation/devicetree/bindings/serial/snps-dw-apb-uart.yaml
+index 17c553123f96..e5162a44a3fd 100644
+--- a/Documentation/devicetree/bindings/serial/snps-dw-apb-uart.yaml
++++ b/Documentation/devicetree/bindings/serial/snps-dw-apb-uart.yaml
+@@ -22,6 +22,8 @@ properties:
+           - const: renesas,rzn1-uart
+       - items:
+           - enum:
++              - brcm,bcm11351-dw-apb-uart
++              - brcm,bcm21664-dw-apb-uart
+               - rockchip,px30-uart
+               - rockchip,rk1808-uart
+               - rockchip,rk3036-uart
+@@ -37,14 +39,6 @@ properties:
+               - rockchip,rk3588-uart
+               - rockchip,rv1108-uart
+               - rockchip,rv1126-uart
+-          - const: snps,dw-apb-uart
+-      - items:
+-          - enum:
+-              - brcm,bcm11351-dw-apb-uart
+-              - brcm,bcm21664-dw-apb-uart
+-          - const: snps,dw-apb-uart
+-      - items:
+-          - enum:
+               - starfive,jh7100-hsuart
+               - starfive,jh7100-uart
+           - const: snps,dw-apb-uart
+-- 
+2.45.2
+

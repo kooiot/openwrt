@@ -1,7 +1,7 @@
 From fff3b901386f602d19c62acbd3b96b0ce11130d7 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Sat, 17 Aug 2024 10:22:57 +0800
-Subject: [PATCH 70/89] hwmon: Add sophgo SG2042 external hardware monitor
+Subject: [PATCH 070/120] hwmon: Add sophgo SG2042 external hardware monitor
  support
 
 SG2042 use an external MCU to provide basic hardware information

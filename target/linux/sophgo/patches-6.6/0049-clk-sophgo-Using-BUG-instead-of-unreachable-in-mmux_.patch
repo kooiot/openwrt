@@ -1,7 +1,7 @@
 From 27d6d01f992ba03535434f2ff0b6716f2b65cca5 Mon Sep 17 00:00:00 2001
 From: Li Qiang <liqiang01@kylinos.cn>
 Date: Tue, 9 Jul 2024 14:36:38 +0800
-Subject: [PATCH 49/89] clk/sophgo: Using BUG() instead of unreachable() in
+Subject: [PATCH 049/120] clk/sophgo: Using BUG() instead of unreachable() in
  mmux_get_parent_id()
 
 [ Upstream commit 1f7a04a0e673c19cc10bf4039047e11367ac5735 ]

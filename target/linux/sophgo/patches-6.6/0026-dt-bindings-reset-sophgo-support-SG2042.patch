@@ -1,7 +1,7 @@
 From ee92a58217a790277cf2b6cf3bbf26c71e004bb0 Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Tue, 30 Jan 2024 09:49:45 +0800
-Subject: [PATCH 26/89] dt-bindings: reset: sophgo: support SG2042
+Subject: [PATCH 026/120] dt-bindings: reset: sophgo: support SG2042
 
 Add bindings for the reset generator on the SOPHGO SG2042 RISC-V SoC.
 

@@ -1,8 +1,8 @@
 From d6d4eaf32248b864297b27bf169815938dae0e2c Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Tue, 26 Mar 2024 10:37:29 +0800
-Subject: [PATCH 47/89] usb: dwc2: add support for Sophgo CV18XX/SG200X series
- SoC
+Subject: [PATCH 047/120] usb: dwc2: add support for Sophgo CV18XX/SG200X
+ series SoC
 
 Add params for DWC2 IP in Sophgo CV18XX/SG200X series SoC.
 

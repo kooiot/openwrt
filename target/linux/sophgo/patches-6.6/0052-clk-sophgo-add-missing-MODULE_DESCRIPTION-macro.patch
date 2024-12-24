@@ -1,7 +1,7 @@
 From 7a17f8bebe379798f2950b73c2d260aeeddca7cc Mon Sep 17 00:00:00 2001
 From: Jeff Johnson <quic_jjohnson@quicinc.com>
 Date: Sat, 1 Jun 2024 21:44:22 -0700
-Subject: [PATCH 52/89] clk: sophgo: add missing MODULE_DESCRIPTION() macro
+Subject: [PATCH 052/120] clk: sophgo: add missing MODULE_DESCRIPTION() macro
 
 make allmodconfig && make W=1 C=1 reports:
 WARNING: modpost: missing MODULE_DESCRIPTION() in drivers/clk/sophgo/clk-sophgo-cv1800.o

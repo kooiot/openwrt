@@ -1,7 +1,7 @@
 From c942e459e6f79b95afe6d5cefbe3c6ea244c0d48 Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Wed, 4 Oct 2023 23:42:23 +0800
-Subject: [PATCH 04/89] dt-bindings: riscv: Add T-HEAD C920 compatibles
+Subject: [PATCH 004/120] dt-bindings: riscv: Add T-HEAD C920 compatibles
 
 The C920 is RISC-V CPU cores from T-HEAD Semiconductor.
 Notably, the C920 core is used in the SOPHGO's SG2042 SoC.

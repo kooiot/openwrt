@@ -1,7 +1,8 @@
 From 68d05717901d57012c7c9284ad19476569d1878e Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Thu, 19 Oct 2023 07:18:53 +0800
-Subject: [PATCH 22/89] riscv: dts: sophgo: add initial CV1812H SoC device tree
+Subject: [PATCH 022/120] riscv: dts: sophgo: add initial CV1812H SoC device
+ tree
 
 Add initial device tree for the CV1812H RISC-V SoC by SOPHGO.
 

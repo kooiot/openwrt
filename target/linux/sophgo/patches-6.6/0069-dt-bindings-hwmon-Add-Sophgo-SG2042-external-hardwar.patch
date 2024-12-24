@@ -1,8 +1,8 @@
 From 215e533ed179e833a1eca2983361f6b4fdf7193a Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Sat, 17 Aug 2024 10:22:56 +0800
-Subject: [PATCH 69/89] dt-bindings: hwmon: Add Sophgo SG2042 external hardware
- monitor support
+Subject: [PATCH 069/120] dt-bindings: hwmon: Add Sophgo SG2042 external
+ hardware monitor support
 
 Due to the design, Sophgo SG2042 use an external MCU to provide
 hardware information, thermal information and reset control.

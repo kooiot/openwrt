@@ -1,0 +1,113 @@
+From 0865d53240f19cc3bf9abaa7b3937ee23b250b25 Mon Sep 17 00:00:00 2001
+From: Inochi Amaoto <inochiama@outlook.com>
+Date: Tue, 10 Sep 2024 06:35:10 +0800
+Subject: [PATCH 101/120] riscv: dts: sophgo: cv1800b: add pinctrl support
+
+Add pinctrl node and related pin configuration for CV1800B SoC.
+
+Link: https://lore.kernel.org/r/IA1PR20MB49535E7F28242174CA318317BB992@IA1PR20MB4953.namprd20.prod.outlook.com
+Signed-off-by: Inochi Amaoto <inochiama@outlook.com>
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+---
+ .../boot/dts/sophgo/cv1800b-milkv-duo.dts     | 49 +++++++++++++++++++
+ arch/riscv/boot/dts/sophgo/cv1800b.dtsi       | 10 ++++
+ 2 files changed, 59 insertions(+)
+
+diff --git a/arch/riscv/boot/dts/sophgo/cv1800b-milkv-duo.dts b/arch/riscv/boot/dts/sophgo/cv1800b-milkv-duo.dts
+index 375ff2661b6e..9feb520eaec4 100644
+--- a/arch/riscv/boot/dts/sophgo/cv1800b-milkv-duo.dts
++++ b/arch/riscv/boot/dts/sophgo/cv1800b-milkv-duo.dts
+@@ -39,7 +39,54 @@ &osc {
+ 	clock-frequency = <25000000>;
+ };
+ 
++&pinctrl {
++	uart0_cfg: uart0-cfg {
++		uart0-pins {
++			pinmux = <PINMUX(PIN_UART0_TX, 0)>,
++				 <PINMUX(PIN_UART0_RX, 0)>;
++			bias-pull-up;
++			drive-strength-microamp = <10800>;
++			power-source = <3300>;
++		};
++	};
++
++	sdhci0_cfg: sdhci0-cfg {
++		sdhci0-clk-pins {
++			pinmux = <PINMUX(PIN_SD0_CLK, 0)>;
++			bias-pull-up;
++			drive-strength-microamp = <16100>;
++			power-source = <3300>;
++		};
++
++		sdhci0-cmd-pins {
++			pinmux = <PINMUX(PIN_SD0_CMD, 0)>;
++			bias-pull-up;
++			drive-strength-microamp = <10800>;
++			power-source = <3300>;
++		};
++
++		sdhci0-data-pins {
++			pinmux = <PINMUX(PIN_SD0_D0, 0)>,
++				 <PINMUX(PIN_SD0_D1, 0)>,
++				 <PINMUX(PIN_SD0_D2, 0)>,
++				 <PINMUX(PIN_SD0_D3, 0)>;
++			bias-pull-up;
++			drive-strength-microamp = <10800>;
++			power-source = <3300>;
++		};
++
++		sdhci0-cd-pins {
++			pinmux = <PINMUX(PIN_SD0_CD, 0)>;
++			bias-pull-up;
++			drive-strength-microamp = <10800>;
++			power-source = <3300>;
++		};
++	};
++};
++
+ &sdhci0 {
++	pinctrl-0 = <&sdhci0_cfg>;
++	pinctrl-names = "default";
+ 	status = "okay";
+ 	bus-width = <4>;
+ 	no-1-8-v;
+@@ -49,5 +96,7 @@ &sdhci0 {
+ };
+ 
+ &uart0 {
++	pinctrl-0 = <&uart0_cfg>;
++	pinctrl-names = "default";
+ 	status = "okay";
+ };
+diff --git a/arch/riscv/boot/dts/sophgo/cv1800b.dtsi b/arch/riscv/boot/dts/sophgo/cv1800b.dtsi
+index ec9530972ae2..aa1f5df100f0 100644
+--- a/arch/riscv/boot/dts/sophgo/cv1800b.dtsi
++++ b/arch/riscv/boot/dts/sophgo/cv1800b.dtsi
+@@ -3,6 +3,7 @@
+  * Copyright (C) 2023 Jisheng Zhang <jszhang@kernel.org>
+  */
+ 
++#include <dt-bindings/pinctrl/pinctrl-cv1800b.h>
+ #include "cv18xx.dtsi"
+ 
+ / {
+@@ -12,6 +13,15 @@ memory@80000000 {
+ 		device_type = "memory";
+ 		reg = <0x80000000 0x4000000>;
+ 	};
++
++	soc {
++		pinctrl: pinctrl@3001000 {
++			compatible = "sophgo,cv1800b-pinctrl";
++			reg = <0x03001000 0x1000>,
++			      <0x05027000 0x1000>;
++			reg-names = "sys", "rtc";
++		};
++	};
+ };
+ 
+ &plic {
+-- 
+2.45.2
+

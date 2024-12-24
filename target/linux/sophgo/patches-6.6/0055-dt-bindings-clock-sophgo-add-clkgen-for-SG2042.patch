@@ -1,7 +1,7 @@
 From a39753b7cf9ccc8502f5a74f2c3532cb404b66d4 Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Fri, 24 Nov 2023 14:02:43 +0800
-Subject: [PATCH 55/89] dt-bindings: clock: sophgo: add clkgen for SG2042
+Subject: [PATCH 055/120] dt-bindings: clock: sophgo: add clkgen for SG2042
 
 Add bindings for the clock generator of divider/mux and gates working
 for other subsystem than RP subsystem for Sophgo SG2042.

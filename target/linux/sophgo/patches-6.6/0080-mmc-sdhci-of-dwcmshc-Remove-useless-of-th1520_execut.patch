@@ -1,7 +1,7 @@
 From 88cae4b8ad6f7d018aedb965f8c6bea006e761bb Mon Sep 17 00:00:00 2001
 From: Jisheng Zhang <jszhang@kernel.org>
 Date: Mon, 15 Apr 2024 00:43:57 +0800
-Subject: [PATCH 80/89] mmc: sdhci-of-dwcmshc: Remove useless "&" of
+Subject: [PATCH 080/120] mmc: sdhci-of-dwcmshc: Remove useless "&" of
  th1520_execute_tuning
 
 The preceding "&" before th1520_execute_tuning is useless, remove it.

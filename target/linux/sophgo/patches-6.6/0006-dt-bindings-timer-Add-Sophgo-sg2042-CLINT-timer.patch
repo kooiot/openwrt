@@ -1,7 +1,7 @@
 From fce3ca6ff02d09df0d6e85fafe8af81f226a9c2a Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Wed, 4 Oct 2023 23:43:28 +0800
-Subject: [PATCH 06/89] dt-bindings: timer: Add Sophgo sg2042 CLINT timer
+Subject: [PATCH 006/120] dt-bindings: timer: Add Sophgo sg2042 CLINT timer
 
 The clint of Sophgo's sg2042 is based off IP designed by T-HEAD, but
 Sophgo changes this IP layout to fit its cpu design and is incompatible

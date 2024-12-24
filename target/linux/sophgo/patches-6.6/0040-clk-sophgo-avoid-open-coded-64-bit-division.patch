@@ -1,7 +1,7 @@
 From 3eb6eb7b5eaf7c915b6e624363a368129146379d Mon Sep 17 00:00:00 2001
 From: Arnd Bergmann <arnd@arndb.de>
 Date: Mon, 15 Apr 2024 15:45:20 +0200
-Subject: [PATCH 40/89] clk: sophgo: avoid open-coded 64-bit division
+Subject: [PATCH 040/120] clk: sophgo: avoid open-coded 64-bit division
 
 On 32-bit architectures, the 64-bit division leads to a link failure:
 

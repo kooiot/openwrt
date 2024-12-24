@@ -1,7 +1,7 @@
 From ecbebfca19782cca057c0e1ab8cf6a5b7e26b9e7 Mon Sep 17 00:00:00 2001
 From: Dirk Chang <dirk@kooiot.com>
 Date: Thu, 28 Nov 2024 18:31:24 +0800
-Subject: [PATCH 72/89] Revert "mmc: sdhci-of-dwcmshc: Add support for Sophgo
+Subject: [PATCH 072/120] Revert "mmc: sdhci-of-dwcmshc: Add support for Sophgo
  CV1800B and SG2002"
 
 This reverts commit fd7e10319bd0eb0a46687c3bb75f4ffae449b192.

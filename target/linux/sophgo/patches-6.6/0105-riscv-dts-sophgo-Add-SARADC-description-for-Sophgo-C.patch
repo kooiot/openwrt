@@ -1,0 +1,55 @@
+From b9ca14ba08cfac63c5b0d73983f222074f837608 Mon Sep 17 00:00:00 2001
+From: Thomas Bonnefille <thomas.bonnefille@bootlin.com>
+Date: Thu, 29 Aug 2024 14:31:52 +0200
+Subject: [PATCH 105/120] riscv: dts: sophgo: Add SARADC description for Sophgo
+ CV1800B
+
+Add SARADC node for the Successive Approximation Analog to
+Digital Converter used in Sophgo CV1800B SoC.
+This patch only adds the active domain controller.
+
+Signed-off-by: Thomas Bonnefille <thomas.bonnefille@bootlin.com>
+Reviewed-by: Inochi Amaoto <inochiama@gmail.com>
+Link: https://lore.kernel.org/r/20240829-sg2002-adc-v5-3-aacb381e869b@bootlin.com
+Signed-off-by: Inochi Amaoto <inochiama@gmail.com>
+Signed-off-by: Chen Wang <unicorn_wang@outlook.com>
+---
+ arch/riscv/boot/dts/sophgo/cv18xx.dtsi | 22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
+
+diff --git a/arch/riscv/boot/dts/sophgo/cv18xx.dtsi b/arch/riscv/boot/dts/sophgo/cv18xx.dtsi
+index fe9935c2ced8..1cd98fdf74d2 100644
+--- a/arch/riscv/boot/dts/sophgo/cv18xx.dtsi
++++ b/arch/riscv/boot/dts/sophgo/cv18xx.dtsi
+@@ -134,6 +134,28 @@ portd: gpio-controller@0 {
+ 			};
+ 		};
+ 
++		saradc: adc@30f0000 {
++			compatible = "sophgo,cv1800b-saradc";
++			reg = <0x030f0000 0x1000>;
++			clocks = <&clk CLK_SARADC>;
++			interrupts = <100 IRQ_TYPE_LEVEL_HIGH>;
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "disabled";
++
++			channel@0 {
++				reg = <0>;
++			};
++
++			channel@1 {
++				reg = <1>;
++			};
++
++			channel@2 {
++				reg = <2>;
++			};
++		};
++
+ 		i2c0: i2c@4000000 {
+ 			compatible = "snps,designware-i2c";
+ 			reg = <0x04000000 0x10000>;
+-- 
+2.45.2
+

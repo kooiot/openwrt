@@ -1,7 +1,7 @@
 From 12ffe363e74059dc4eaf1e0eb25b3549ac83ec93 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Thu, 19 Oct 2023 07:18:52 +0800
-Subject: [PATCH 21/89] riscv: dts: sophgo: cv18xx: Add gpio devices
+Subject: [PATCH 021/120] riscv: dts: sophgo: cv18xx: Add gpio devices
 
 Add common GPIO devices for the CV180x and CV181x soc.
 

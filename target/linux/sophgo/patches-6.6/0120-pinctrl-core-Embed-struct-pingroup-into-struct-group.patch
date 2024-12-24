@@ -1,0 +1,86 @@
+From 5c561a375c121e0e41937f2ef074368b2bd2dbd3 Mon Sep 17 00:00:00 2001
+From: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Date: Mon, 11 Dec 2023 20:57:57 +0200
+Subject: [PATCH 120/120] pinctrl: core: Embed struct pingroup into struct
+ group_desc
+
+struct group_desc is a particular version of the struct pingroup
+with associated opaque data. Start switching pin control core and
+drivers to use it explicitly.
+
+Reviewed-by: Geert Uytterhoeven <geert+renesas@glider.be>
+Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Link: https://lore.kernel.org/r/20231211190321.307330-5-andriy.shevchenko@linux.intel.com
+Signed-off-by: Linus Walleij <linus.walleij@linaro.org>
+---
+ drivers/pinctrl/core.c | 15 ++++++++++++---
+ drivers/pinctrl/core.h |  5 +++++
+ 2 files changed, 17 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/pinctrl/core.c b/drivers/pinctrl/core.c
+index bbc754df1f55..8c2d9105768c 100644
+--- a/drivers/pinctrl/core.c
++++ b/drivers/pinctrl/core.c
+@@ -555,7 +555,10 @@ const char *pinctrl_generic_get_group_name(struct pinctrl_dev *pctldev,
+ 	if (!group)
+ 		return NULL;
+ 
+-	return group->name;
++	if (group->name)
++		return group->name;
++
++	return group->grp.name;
+ }
+ EXPORT_SYMBOL_GPL(pinctrl_generic_get_group_name);
+ 
+@@ -581,8 +584,14 @@ int pinctrl_generic_get_group_pins(struct pinctrl_dev *pctldev,
+ 		return -EINVAL;
+ 	}
+ 
+-	*pins = group->pins;
+-	*num_pins = group->num_pins;
++	if (group->pins) {
++		*pins = group->pins;
++		*num_pins = group->num_pins;
++		return 0;
++	}
++
++	*pins = group->grp.pins;
++	*num_pins = group->grp.npins;
+ 
+ 	return 0;
+ }
+diff --git a/drivers/pinctrl/core.h b/drivers/pinctrl/core.h
+index 179948e44016..7a21af2b437e 100644
+--- a/drivers/pinctrl/core.h
++++ b/drivers/pinctrl/core.h
+@@ -194,14 +194,18 @@ struct pinctrl_maps {
+ 
+ #ifdef CONFIG_GENERIC_PINCTRL_GROUPS
+ 
++#include <linux/pinctrl/pinctrl.h>
++
+ /**
+  * struct group_desc - generic pin group descriptor
++ * @grp: generic data of the pin group (name and pins)
+  * @name: name of the pin group
+  * @pins: array of pins that belong to the group
+  * @num_pins: number of pins in the group
+  * @data: pin controller driver specific data
+  */
+ struct group_desc {
++	struct pingroup grp;
+ 	const char *name;
+ 	int *pins;
+ 	int num_pins;
+@@ -211,6 +215,7 @@ struct group_desc {
+ /* Convenience macro to define a generic pin group descriptor */
+ #define PINCTRL_GROUP_DESC(_name, _pins, _num_pins, _data)	\
+ (struct group_desc) {						\
++	.grp = PINCTRL_PINGROUP(_name, _pins, _num_pins),	\
+ 	.name = _name,						\
+ 	.pins = _pins,						\
+ 	.num_pins = _num_pins,					\
+-- 
+2.45.2
+

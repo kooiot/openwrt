@@ -1,7 +1,7 @@
 From 68364f02cb134c3f4ac9a1937302095e8b2d69df Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Thu, 8 Feb 2024 08:22:11 +0800
-Subject: [PATCH 31/89] riscv: dts: sophgo: cv18xx: Add spi devices
+Subject: [PATCH 031/120] riscv: dts: sophgo: cv18xx: Add spi devices
 
 Add spi devices for the CV180x, CV181x and SG200x soc.
 

@@ -1,7 +1,7 @@
 From c4e700d50653365829d07bebd08d427bf1a69867 Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Mon, 15 Jan 2024 17:58:46 +0800
-Subject: [PATCH 53/89] dt-bindings: clock: sophgo: add pll clocks for SG2042
+Subject: [PATCH 053/120] dt-bindings: clock: sophgo: add pll clocks for SG2042
 
 Add bindings for the pll clocks for Sophgo SG2042.
 

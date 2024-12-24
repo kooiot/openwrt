@@ -1,7 +1,7 @@
 From 4b07413c9466ed22ef55d196f18c0bdc9d7fa9e6 Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Mon, 5 Aug 2024 17:19:24 +0800
-Subject: [PATCH 89/89] mmc: sdhci-of-dwcmshc: Add support for Sophgo SG2042
+Subject: [PATCH 089/120] mmc: sdhci-of-dwcmshc: Add support for Sophgo SG2042
 
 Add support for the mmc controller of Sophgo SG2042.
 

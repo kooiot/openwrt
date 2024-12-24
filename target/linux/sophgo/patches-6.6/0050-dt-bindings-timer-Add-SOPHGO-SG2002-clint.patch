@@ -1,7 +1,7 @@
 From 991b391cb51f3a91c96fbb90af0210928fe6f1ac Mon Sep 17 00:00:00 2001
 From: Thomas Bonnefille <thomas.bonnefille@bootlin.com>
 Date: Tue, 9 Jul 2024 12:07:17 +0200
-Subject: [PATCH 50/89] dt-bindings: timer: Add SOPHGO SG2002 clint
+Subject: [PATCH 050/120] dt-bindings: timer: Add SOPHGO SG2002 clint
 
 Add compatible string for SOPHGO SG2002 Core-Local Interrupt Controller.
 

@@ -1,7 +1,7 @@
 From e701a10b0c7391b33950a35887fd3318adfcfd19 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Mon, 18 Dec 2023 12:04:03 +0800
-Subject: [PATCH 25/89] dt-bindings: clock: sophgo: Add clock controller of
+Subject: [PATCH 025/120] dt-bindings: clock: sophgo: Add clock controller of
  CV1800 series SoC
 
 Add definition for the clock controller of the CV1800 series SoC.
