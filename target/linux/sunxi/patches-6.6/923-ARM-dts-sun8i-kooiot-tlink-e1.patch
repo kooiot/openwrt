@@ -586,13 +586,13 @@
 +		pcie_reset {
 +			gpio-export,name = "pcie_reset";
 +			gpio-export,output=<0>;
-+			gpios = <&pio 3 3 GPIO_ACTIVE_HIGH>; /* PD3 */
++			gpios = <&pio 3 0 GPIO_ACTIVE_HIGH>; /* PD0 */
 +		};
 +
 +		pcie_power {
 +			gpio-export,name = "pcie_power";
-+			gpio-export,output=<1>;
-+			gpios = <&pio 3 20 GPIO_ACTIVE_HIGH>; /* PD20 */
++			gpio-export,output=<0>;
++			gpios = <&pio 3 20 GPIO_ACTIVE_LOW>; /* PD20 */
 +		};
 +	};
 +
