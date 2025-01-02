@@ -15,10 +15,16 @@ sunxi_setup_interfaces()
 	kooiot,tlink-x3|\
 	kooiot,tlink-k2x|\
 	kooiot,tlink-e1-v0|\
-	kooiot,tlink-e1|\
 	kooiot,tlink-dly-e204|\
 	kooiot,tlink-r1)
 		ucidef_set_interfaces_lan_wan "eth0" "eth1"
+		;;
+	kooiot,tlink-e1)
+		if [ ip link show eth1 > /dev/null 2>&1 ]; then
+			ucidef_set_interfaces_lan_wan "eth0" "eth1"
+		else
+			ucidef_set_interface_lan "eth0"
+		fi
 		;;
 	kooiot,tlink-k1)
 		ucidef_set_interface_lan "eth0 eth1"
