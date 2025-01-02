@@ -21,16 +21,16 @@ define U-Boot/Default
   DTS_DIR:=arch/riscv/dts
 endef
 
-define U-Boot/milkv_duo
+define U-Boot/milkv_duo_1
   NAME:=Milkv Duo SD
   OPENSBI:=generic
   DEPENDS:=+opensbi_generic
   UBOOT_DTS:=cv1800b-milkv-duo.dtb
-  BUILD_DEVICES:=milkv_duo
+  BUILD_DEVICES:=milkv_duo_1
 endef
 
 UBOOT_TARGETS := \
-	milkv_duo \
+	milkv_duo_1 \
 
 UBOOT_MAKE_FLAGS += \
 	OPENSBI=$(STAGING_DIR_IMAGE)/fw_dynamic-${OPENSBI}.bin
