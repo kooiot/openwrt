@@ -316,6 +316,7 @@ case "$(board_name)" in
 "kooiot,tlink-k4a"|\
 "kooiot,tlink-k4g"|\
 "kooiot,tlink-s1"|\
+"kooiot,tlink-e1-v0"|\
 "kooiot,tlink-e1"|\
 "kooiot,tlink-ok-a40i"|\
 "kooiot,tlink-dj-a40i-e"|\
