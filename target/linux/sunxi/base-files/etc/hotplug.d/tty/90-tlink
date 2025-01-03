@@ -200,7 +200,7 @@ kooiot,tlink-k2x)
 	tlink_k2_ch432_spi
 	;;
 kooiot,tlink-k4a|\
-kooiot,tlink-k4b)
+kooiot,tlink-k4g)
 	tlink_k4x_ch_spi
 	;;
 esac
