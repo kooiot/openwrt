@@ -107,7 +107,8 @@ define Device/cznic_turris-omnia
     mkf2fs e2fsprogs kmod-fs-vfat kmod-nls-cp437 kmod-nls-iso8859-1 \
     wpad-basic-mbedtls kmod-ath9k kmod-ath10k-ct ath10k-firmware-qca988x-ct \
     kmod-mt7915-firmware partx-utils kmod-i2c-mux-pca954x kmod-leds-turris-omnia \
-    kmod-turris-omnia-mcu kmod-gpio-button-hotplug omnia-mcu-firmware omnia-mcutool
+    kmod-turris-omnia-mcu kmod-gpio-button-hotplug omnia-eeprom omnia-mcu-firmware \
+    omnia-mcutool
   IMAGES := sysupgrade.img.gz
   IMAGE/sysupgrade.img.gz := boot-scr | boot-img | sdcard-img | gzip | append-metadata
   SUPPORTED_DEVICES += armada-385-turris-omnia
@@ -447,3 +448,20 @@ define Device/synology_ds213j
     -ppp -kmod-nft-offload -dnsmasq -odhcpd-ipv6only
 endef
 TARGET_DEVICES += synology_ds213j
+
+define Device/wd_cloud-mirror-gen2
+  $(Device/NAND-128K)
+  DEVICE_VENDOR := Western Digital
+  DEVICE_MODEL := MyCloud Mirror Gen 2 (BWVZ/Grand Teton)
+  DEVICE_PACKAGES += -uboot-envtools mkf2fs e2fsprogs \
+	partx-utils kmod-hwmon-drivetemp -ppp -kmod-nft-offload -dnsmasq \
+	-odhcpd-ipv6only 
+  DEVICE_DTS := armada-385-wd_cloud-mirror-gen2
+  KERNEL_SIZE := 5120k
+  KERNEL := kernel-bin | append-dtb | uImage none
+  KERNEL_INITRAMFS := kernel-bin | append-dtb | uImage none
+  IMAGES += image-cfs-factory.bin uImage-factory.bin
+  IMAGE/image-cfs-factory.bin := append-ubi
+  IMAGE/uImage-factory.bin := append-kernel
+endef
+TARGET_DEVICES += wd_cloud-mirror-gen2

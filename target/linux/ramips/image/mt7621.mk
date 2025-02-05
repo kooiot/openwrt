@@ -94,18 +94,9 @@ endef
 define Build/dna-bootfs
 	mkdir -p $@.ubifs-dir/boot
 
-	# populate the boot fs with the dtb and with either initramfs kernel or
-	# the normal kernel
+	# populate the boot fs with the dtb and the kernel image
 	$(CP) $(KDIR)/image-$(firstword $(DEVICE_DTS)).dtb $@.ubifs-dir/boot/dtb
-
-	$(if $(findstring with-initrd,$(word 1,$(1))),\
-		( \
-			$(CP) $@ $@.ubifs-dir/boot/uImage \
-		) , \
-		( \
-			$(CP) $(IMAGE_KERNEL) $@.ubifs-dir/boot/uImage \
-		) \
-	)
+	$(CP) $@ $@.ubifs-dir/boot/uImage
 
 	# create ubifs
 	$(STAGING_DIR_HOST)/bin/mkfs.ubifs ${MKUBIFS_OPTS} -r $@.ubifs-dir/ -o $@.new
@@ -229,30 +220,6 @@ define Build/belkin-header
 	mv $@.new $@
 endef
 
-define Build/ubnt-erx-factory-image
-	if [ -e $(KDIR)/tmp/$(KERNEL_INITRAMFS_IMAGE) -a "$$(stat -c%s $@)" -lt "$(KERNEL_SIZE)" ]; then \
-		echo '21001:7' > $(1).compat; \
-		$(TAR) -cf $(1) --transform='s/^.*/compat/' $(1).compat; \
-		\
-		$(TAR) -rf $(1) --transform='s/^.*/vmlinux.tmp/' $(KDIR)/tmp/$(KERNEL_INITRAMFS_IMAGE); \
-		$(MKHASH) md5 $(KDIR)/tmp/$(KERNEL_INITRAMFS_IMAGE) > $(1).md5; \
-		$(TAR) -rf $(1) --transform='s/^.*/vmlinux.tmp.md5/' $(1).md5; \
-		\
-		echo "dummy" > $(1).rootfs; \
-		$(TAR) -rf $(1) --transform='s/^.*/squashfs.tmp/' $(1).rootfs; \
-		\
-		$(MKHASH) md5 $(1).rootfs > $(1).md5; \
-		$(TAR) -rf $(1) --transform='s/^.*/squashfs.tmp.md5/' $(1).md5; \
-		\
-		echo '$(BOARD) $(VERSION_CODE) $(VERSION_NUMBER)' > $(1).version; \
-		$(TAR) -rf $(1) --transform='s/^.*/version.tmp/' $(1).version; \
-		\
-		$(CP) $(1) $(BIN_DIR)/; \
-	else \
-		echo "WARNING: initramfs kernel image too big, cannot generate factory image (actual $$(stat -c%s $@); max $(KERNEL_SIZE))" >&2; \
-	fi
-endef
-
 define Build/zytrx-header
 	$(eval board=$(word 1,$(1)))
 	$(eval version=$(word 2,$(1)))
@@ -327,11 +294,11 @@ TARGET_DEVICES += alfa-network_quad-e4g
 
 define Device/ampedwireless_ally_common
   $(Device/nand)
+  $(Device/uimage-lzma-loader)
   DEVICE_VENDOR := Amped Wireless
   DEVICE_PACKAGES := kmod-mt7615-firmware
   IMAGE_SIZE := 32768k
-  KERNEL_INITRAMFS := $(KERNEL_DTB) | uImage lzma -n 'flashable-initramfs' |\
-	edimax-header -s CSYS -m RN68 -f 0x001c0000 -S 0x01100000
+  KERNEL_INITRAMFS := $$(KERNEL) | edimax-header -s CSYS -m RN68 -f 0x001c0000 -S 0x01100000
 endef
 
 define Device/ampedwireless_ally-r1900k
@@ -705,6 +672,18 @@ define Device/comfast_cf-ew72-v2
     IMAGE/factory.bin := append-kernel | append-rootfs | pad-rootfs | check-size
 endef
 TARGET_DEVICES += comfast_cf-ew72-v2
+
+define Device/confiabits_mt7621-v1
+  $(Device/dsa-migration)
+  $(Device/uimage-lzma-loader)
+  IMAGE_SIZE := 16064k
+  DEVICE_VENDOR := Confiabits
+  DEVICE_MODEL := MT7621
+  DEVICE_VARIANT := v1
+  DEVICE_PACKAGES := kmod-mt7603 kmod-mt7615e kmod-mt7663-firmware-ap \
+	-uboot-envtools
+endef
+TARGET_DEVICES += confiabits_mt7621-v1
 
 define Device/cudy_m1800
   $(Device/dsa-migration)
@@ -1084,17 +1063,16 @@ define Device/dna_valokuitu-plus-ex400
   IMAGE_SIZE := 117m
   PAGESIZE := 2048
   MKUBIFS_OPTS := --min-io-size=$$(PAGESIZE) --leb-size=124KiB --max-leb-cnt=96 \
-  		  --log-lebs=2 --space-fixup --squash-uids
+	--log-lebs=2 --space-fixup --squash-uids
   DEVICE_VENDOR := DNA
   DEVICE_MODEL := Valokuitu Plus EX400
   KERNEL := kernel-bin | lzma | uImage lzma
   KERNEL_INITRAMFS := kernel-bin | append-dtb | lzma | uImage lzma
   IMAGES += factory.bin
   IMAGE/factory.bin := append-image-stage initramfs-kernel.bin | \
-                       dna-bootfs with-initrd | dna-header | \
-                       append-md5sum-ascii-salted
-  IMAGE/sysupgrade.bin := dna-bootfs | sysupgrade-tar kernel=$$$$@ | check-size | \
-  			  append-metadata
+	dna-bootfs | dna-header | append-md5sum-ascii-salted
+  IMAGE/sysupgrade.bin := append-kernel | dna-bootfs | \
+  	sysupgrade-tar kernel=$$$$@ | check-size | append-metadata
   DEVICE_IMG_NAME = $$(DEVICE_IMG_PREFIX)-$$(2)
   DEVICE_PACKAGES := kmod-mt7603 kmod-mt7615-firmware kmod-usb3
 endef
@@ -2858,14 +2836,15 @@ define Device/ubnt_edgerouter_common
   $(Device/dsa-migration)
   $(Device/uimage-lzma-loader)
   DEVICE_VENDOR := Ubiquiti
-  IMAGE_SIZE := 256768k
+  IMAGE_SIZE := 259840k
   FILESYSTEMS := squashfs
-  KERNEL_SIZE := 3145728
-  KERNEL_INITRAMFS := $$(KERNEL) | \
-	ubnt-erx-factory-image $(KDIR)/tmp/$$(KERNEL_INITRAMFS_PREFIX)-factory.tar
+  KERNEL_SIZE := 6144k
   IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
   DEVICE_PACKAGES += -wpad-basic-mbedtls -uboot-envtools
-  DEFAULT := n
+  DEVICE_COMPAT_VERSION := 2.0
+  DEVICE_COMPAT_MESSAGE :=  Partition table has been changed due to kernel size restrictions. \
+    Refer to the wiki page for instructions to migrate to the new layout: \
+    https://openwrt.org/toh/ubiquiti/edgerouter_x_er-x_ka
 endef
 
 define Device/ubnt_edgerouter-x
