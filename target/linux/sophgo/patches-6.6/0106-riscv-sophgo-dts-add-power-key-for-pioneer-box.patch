@@ -1,7 +1,7 @@
-From cea1497da4dc3e22f78d03e7f89d18d19a3fdf10 Mon Sep 17 00:00:00 2001
+From 2e7d084283184bb6836ba740be7ed4de1c709265 Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Tue, 8 Oct 2024 09:43:52 +0800
-Subject: [PATCH 106/120] riscv: sophgo: dts: add power key for pioneer box
+Subject: [PATCH 106/121] riscv: sophgo: dts: add power key for pioneer box
 
 There is a power button on the front panel of the pioneer box.
 Short pressing the button will trigger the onboard MCU to
@@ -48,5 +48,5 @@ index a3f9d6f22566..be596d01ff8d 100644
  
  &cgi_main {
 -- 
-2.45.2
+2.47.2
 

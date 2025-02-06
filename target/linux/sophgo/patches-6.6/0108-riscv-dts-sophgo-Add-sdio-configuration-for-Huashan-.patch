@@ -1,7 +1,7 @@
-From 114d809f3d9878cf0d37b7c05d3f8d9b7d27ef34 Mon Sep 17 00:00:00 2001
+From d0d37f8f55c6bdac44b84c65389254046fb12b3f Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@gmail.com>
 Date: Fri, 25 Oct 2024 19:28:59 +0800
-Subject: [PATCH 108/120] riscv: dts: sophgo: Add sdio configuration for
+Subject: [PATCH 108/121] riscv: dts: sophgo: Add sdio configuration for
  Huashan Pi
 
 Add configuration for sdio for Huashan Pi to support sdio wifi.
@@ -58,5 +58,5 @@ index 1cd98fdf74d2..ff4e9404e72d 100644
  			compatible = "snps,axi-dma-1.01a";
  			reg = <0x04330000 0x1000>;
 -- 
-2.45.2
+2.47.2
 

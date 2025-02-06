@@ -1,7 +1,7 @@
-From c468f32fa3c0f208fccd02a1d95cc5791e59daa2 Mon Sep 17 00:00:00 2001
+From 6458cd86c319398822ca2092bbd0405e84861618 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Thu, 19 Oct 2023 07:18:54 +0800
-Subject: [PATCH 023/120] riscv: dts: sophgo: add Huashan Pi board device tree
+Subject: [PATCH 023/121] riscv: dts: sophgo: add Huashan Pi board device tree
 
 Add initial device tree files for the Huashan Pi board.
 
@@ -86,5 +86,5 @@ index 000000000000..aa361f3a86bb
 +	status = "okay";
 +};
 -- 
-2.45.2
+2.47.2
 

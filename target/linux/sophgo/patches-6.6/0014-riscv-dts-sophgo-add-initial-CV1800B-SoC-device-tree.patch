@@ -1,7 +1,7 @@
-From 646336fa94dbd7d9b406812b60f712cdafc65b9a Mon Sep 17 00:00:00 2001
+From f1ee4d378df65bf7f1419e555fa4c01ab26762cd Mon Sep 17 00:00:00 2001
 From: Jisheng Zhang <jszhang@kernel.org>
 Date: Fri, 6 Oct 2023 20:14:48 +0800
-Subject: [PATCH 014/120] riscv: dts: sophgo: add initial CV1800B SoC device
+Subject: [PATCH 014/121] riscv: dts: sophgo: add initial CV1800B SoC device
  tree
 
 Add initial device tree for the CV1800B RISC-V SoC by SOPHGO.
@@ -144,5 +144,5 @@ index 000000000000..df40e87ee063
 +	};
 +};
 -- 
-2.45.2
+2.47.2
 

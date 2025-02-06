@@ -1,7 +1,7 @@
-From f5141c7be597deff963a7e99ad0635dcd3dfca1c Mon Sep 17 00:00:00 2001
+From 625f445a27e3bd995feb09e8a34fdb121f8e8042 Mon Sep 17 00:00:00 2001
 From: Jisheng Zhang <jszhang@kernel.org>
 Date: Sat, 17 Feb 2024 22:42:02 +0800
-Subject: [PATCH 077/120] mmc: sdhci-of-dwcmshc: Add support for Sophgo CV1800B
+Subject: [PATCH 077/121] mmc: sdhci-of-dwcmshc: Add support for Sophgo CV1800B
  and SG2002
 
 Add support for the mmc controller in the Sophgo CV1800B and SG2002
@@ -120,5 +120,5 @@ index 60b42126a4ed..f2e4a93ed1d6 100644
  		.compatible = "thead,th1520-dwcmshc",
  		.data = &sdhci_dwcmshc_th1520_pdata,
 -- 
-2.45.2
+2.47.2
 

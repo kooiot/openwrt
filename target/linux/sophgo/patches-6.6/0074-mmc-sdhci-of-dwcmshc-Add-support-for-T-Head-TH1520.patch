@@ -1,7 +1,7 @@
-From 4f47d7a720006575f0e218b9dd51287c494444a7 Mon Sep 17 00:00:00 2001
+From deb68665ab3367f6d44dc255427d9ad7efba8482 Mon Sep 17 00:00:00 2001
 From: Drew Fustini <dfustini@baylibre.com>
 Date: Thu, 9 Nov 2023 21:41:13 -0800
-Subject: [PATCH 074/120] mmc: sdhci-of-dwcmshc: Add support for T-Head TH1520
+Subject: [PATCH 074/121] mmc: sdhci-of-dwcmshc: Add support for T-Head TH1520
 
 Add support for the mmc controller in the T-Head TH1520 with the new
 compatible "thead,th1520-dwcmshc". Implement custom sdhci_ops for
@@ -449,5 +449,5 @@ index a0524127ca07..1a737a239d30 100644
  	if (pltfm_data == &sdhci_dwcmshc_bf3_pdata)
  		sdhci_enable_v4_mode(host);
 -- 
-2.45.2
+2.47.2
 

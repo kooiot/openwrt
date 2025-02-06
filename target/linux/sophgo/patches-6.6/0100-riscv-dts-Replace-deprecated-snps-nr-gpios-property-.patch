@@ -1,7 +1,7 @@
-From afea6e7a1a740361f9bd2e73df45032548e0aeda Mon Sep 17 00:00:00 2001
+From c59acec73913eacef0e03363012ee3d8b97ef918 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Uwe=20Kleine-K=C3=B6nig?= <u.kleine-koenig@baylibre.com>
 Date: Tue, 22 Oct 2024 11:14:30 +0200
-Subject: [PATCH 100/120] riscv: dts: Replace deprecated snps,nr-gpios property
+Subject: [PATCH 100/121] riscv: dts: Replace deprecated snps,nr-gpios property
  for snps,dw-apb-gpio-port devices
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -61,5 +61,5 @@ index 4fe46ad28d3a..6372bb6ba9ee 100644
  				interrupt-controller;
  				#interrupt-cells = <2>;
 -- 
-2.45.2
+2.47.2
 

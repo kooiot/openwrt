@@ -1,7 +1,7 @@
-From d9bdb46284262611bc4d910badc602b14b24df01 Mon Sep 17 00:00:00 2001
+From 3328f4e509378b2957951995e070485096cb2658 Mon Sep 17 00:00:00 2001
 From: Dirk Chang <dirk@kooiot.com>
 Date: Thu, 12 Dec 2024 19:43:09 +0800
-Subject: [PATCH 115/120] mmc: sdhci-of-dwcmshc: fixed tunning function name
+Subject: [PATCH 114/121] mmc: sdhci-of-dwcmshc: fixed tunning function name
  error
 
 ---
@@ -22,5 +22,5 @@ index ba8960d8b2d4..74285ef79895 100644
  		/* disable auto-tuning upon tuning error */
  		val &= ~AT_CTRL_AT_EN;
 -- 
-2.45.2
+2.47.2
 

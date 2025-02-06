@@ -1,7 +1,7 @@
-From b60889871ce3891c156b3cf13a45e8a539afdb27 Mon Sep 17 00:00:00 2001
+From 0fa9bb14d68f2b1ccd639b9bd01f581445a8c920 Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Mon, 5 Aug 2024 17:18:19 +0800
-Subject: [PATCH 086/120] mmc: sdhci-of-dwcmshc: factor out code into
+Subject: [PATCH 086/121] mmc: sdhci-of-dwcmshc: factor out code into
  dwcmshc_rk35xx_init
 
 Continue factor out code fron probe into dwcmshc_rk35xx_init.
@@ -94,5 +94,5 @@ index b272ec2ab232..55fba5ef37ba 100644
  
  	err = __sdhci_add_host(host);
 -- 
-2.45.2
+2.47.2
 

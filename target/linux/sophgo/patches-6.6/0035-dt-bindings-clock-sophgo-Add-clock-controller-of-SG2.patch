@@ -1,7 +1,7 @@
-From 5340a278202fe830e1f53f108d75e32504a94108 Mon Sep 17 00:00:00 2001
+From 02342eff9bd37681cda91da9dbe922737f1377b9 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Sat, 9 Mar 2024 17:02:51 +0800
-Subject: [PATCH 035/120] dt-bindings: clock: sophgo: Add clock controller of
+Subject: [PATCH 035/121] dt-bindings: clock: sophgo: Add clock controller of
  SG2000 series SoC
 
 SG2000 series SoC has the same clock as CV1810 series, but the clock
@@ -41,5 +41,5 @@ index c1dc24673c0d..59ef41adb539 100644
    reg:
      maxItems: 1
 -- 
-2.45.2
+2.47.2
 

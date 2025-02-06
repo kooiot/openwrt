@@ -1,7 +1,7 @@
-From 357d976d718b290ea17c07cf4504cdf073dd7099 Mon Sep 17 00:00:00 2001
+From fab6cfd56f81d6f43d2b9b37be95799fe3512b76 Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Sat, 7 Oct 2023 15:57:10 +0800
-Subject: [PATCH 008/120] riscv: dts: add initial Sophgo SG2042 SoC device tree
+Subject: [PATCH 008/121] riscv: dts: add initial Sophgo SG2042 SoC device tree
 
 Milk-V Pioneer motherboard is powered by SG2042.
 
@@ -2382,5 +2382,5 @@ index 000000000000..93256540d078
 +	};
 +};
 -- 
-2.45.2
+2.47.2
 

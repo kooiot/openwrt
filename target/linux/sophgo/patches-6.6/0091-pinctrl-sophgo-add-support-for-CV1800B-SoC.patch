@@ -1,7 +1,7 @@
-From ec21279e87e206c11f2d89eb66e40565b1d22cc9 Mon Sep 17 00:00:00 2001
+From e030881429037b2733c2fab83ceed5e20f31142c Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Fri, 2 Aug 2024 08:35:17 +0800
-Subject: [PATCH 091/120] pinctrl: sophgo: add support for CV1800B SoC
+Subject: [PATCH 091/121] pinctrl: sophgo: add support for CV1800B SoC
 
 Sophgo CV1800 series SoCs share common control logic but have
 different register mapping. For maintenance, split the driver
@@ -1490,5 +1490,5 @@ index 000000000000..1a9998abb3b7
 +
 +#endif
 -- 
-2.45.2
+2.47.2
 

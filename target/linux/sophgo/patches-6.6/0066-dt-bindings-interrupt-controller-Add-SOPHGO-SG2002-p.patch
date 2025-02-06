@@ -1,7 +1,7 @@
-From bb77511e54593bc0172ff34d6328ceb3b79ba092 Mon Sep 17 00:00:00 2001
+From b7cabe311f455a33aa5a48a61caa2f1f3faa7ae3 Mon Sep 17 00:00:00 2001
 From: Thomas Bonnefille <thomas.bonnefille@bootlin.com>
 Date: Thu, 11 Jul 2024 12:01:28 +0200
-Subject: [PATCH 066/120] dt-bindings: interrupt-controller: Add SOPHGO SG2002
+Subject: [PATCH 066/121] dt-bindings: interrupt-controller: Add SOPHGO SG2002
  plic
 
 Add compatible string for SOPHGO SG2002 Platform-Level Interruter
@@ -31,5 +31,5 @@ index 709b2211276b..7e1451f9786a 100644
                - thead,th1520-plic
            - const: thead,c900-plic
 -- 
-2.45.2
+2.47.2
 

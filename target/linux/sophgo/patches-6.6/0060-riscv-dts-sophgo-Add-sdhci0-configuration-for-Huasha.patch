@@ -1,7 +1,7 @@
-From ab64809415272b747e3c26c17da5fe55a2d5c661 Mon Sep 17 00:00:00 2001
+From fc65ac28c4fc9854d9ec8d317b8534e86811094b Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Tue, 23 Jul 2024 10:18:49 +0800
-Subject: [PATCH 060/120] riscv: dts: sophgo: Add sdhci0 configuration for
+Subject: [PATCH 060/121] riscv: dts: sophgo: Add sdhci0 configuration for
  Huashan Pi
 
 Add configuration for sdhci0 for Huashan Pi to support sd card.
@@ -35,5 +35,5 @@ index aa361f3a86bb..7b5f57853690 100644
  	status = "okay";
  };
 -- 
-2.45.2
+2.47.2
 

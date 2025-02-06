@@ -1,7 +1,7 @@
-From 1e9277f52523c4bef9633fd0ed246130a5f5ba3a Mon Sep 17 00:00:00 2001
+From 68365a5612b6670373bce160b855e586efabe728 Mon Sep 17 00:00:00 2001
 From: Heiko Stuebner <heiko.stuebner@cherry.de>
 Date: Thu, 30 May 2024 23:55:47 +0200
-Subject: [PATCH 082/120] mmc: sdhci-of-dwcmshc: set CQE irq-handler for
+Subject: [PATCH 082/121] mmc: sdhci-of-dwcmshc: set CQE irq-handler for
  rockchip variants
 
 The dwcmshc used on Rockchip rk3568 and rk3588 can use cqe, so set
@@ -41,5 +41,5 @@ index 39edf04fedcf..e79aa4b3b6c3 100644
  
  static const struct sdhci_ops sdhci_dwcmshc_th1520_ops = {
 -- 
-2.45.2
+2.47.2
 

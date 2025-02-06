@@ -1,7 +1,7 @@
-From 7a17f8bebe379798f2950b73c2d260aeeddca7cc Mon Sep 17 00:00:00 2001
+From 6959deceecca5f69832a6d356a33f697f3eac3e6 Mon Sep 17 00:00:00 2001
 From: Jeff Johnson <quic_jjohnson@quicinc.com>
 Date: Sat, 1 Jun 2024 21:44:22 -0700
-Subject: [PATCH 052/120] clk: sophgo: add missing MODULE_DESCRIPTION() macro
+Subject: [PATCH 052/121] clk: sophgo: add missing MODULE_DESCRIPTION() macro
 
 make allmodconfig && make W=1 C=1 reports:
 WARNING: modpost: missing MODULE_DESCRIPTION() in drivers/clk/sophgo/clk-sophgo-cv1800.o
@@ -26,5 +26,5 @@ index 2da4c24621cf..e0c4dc347579 100644
 +MODULE_DESCRIPTION("Sophgo CV1800 series SoCs clock controller");
  MODULE_LICENSE("GPL");
 -- 
-2.45.2
+2.47.2
 

@@ -1,7 +1,7 @@
-From f950066b38e43f9a6873d27787e0ee79b95a18da Mon Sep 17 00:00:00 2001
+From 61d01a05c6bdaf98d0cf1fd608a570d80b40fac7 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Fri, 25 Oct 2024 19:29:00 +0800
-Subject: [PATCH 109/120] riscv: dts: sophgo: Add emmc support for Huashan Pi
+Subject: [PATCH 109/121] riscv: dts: sophgo: Add emmc support for Huashan Pi
 
 Add emmc node configuration for Huashan Pi.
 
@@ -91,5 +91,5 @@ index 6616f578d190..7f79de33163c 100644
  / {
  	compatible = "sophgo,sg2002";
 -- 
-2.45.2
+2.47.2
 

@@ -1,7 +1,7 @@
-From d62a5f65267879a43e98f52e9d481a442df01209 Mon Sep 17 00:00:00 2001
+From 8cdfb312079de772429bf0e936be8aae2298417b Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Thu, 8 Feb 2024 08:22:12 +0800
-Subject: [PATCH 032/120] riscv: dts: sophgo: cv18xx: Add i2c devices
+Subject: [PATCH 032/121] riscv: dts: sophgo: cv18xx: Add i2c devices
 
 Add i2c devices for the CV180x, CV181x and SG200x soc.
 
@@ -79,5 +79,5 @@ index 4277c62f2f2c..9234f0dd7e51 100644
  			compatible = "snps,dw-apb-uart";
  			reg = <0x04140000 0x100>;
 -- 
-2.45.2
+2.47.2
 

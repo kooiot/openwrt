@@ -1,7 +1,7 @@
-From 223d90d90a03a8b467c6bc2450129e51c53a6f18 Mon Sep 17 00:00:00 2001
+From 5d590b0f14532a6a2ec6fcd8da049a9d9a05e3cd Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Wed, 4 Oct 2023 23:42:41 +0800
-Subject: [PATCH 005/120] dt-bindings: interrupt-controller: Add Sophgo SG2042
+Subject: [PATCH 005/121] dt-bindings: interrupt-controller: Add Sophgo SG2042
  PLIC
 
 Add compatible string for SOPHGO SG2042 plic.
@@ -28,5 +28,5 @@ index dc1f28e55266..16f9c4760c0f 100644
            - const: thead,c900-plic
        - items:
 -- 
-2.45.2
+2.47.2
 

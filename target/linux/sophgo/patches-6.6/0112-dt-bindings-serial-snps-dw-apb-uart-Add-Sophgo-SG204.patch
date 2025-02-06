@@ -1,7 +1,7 @@
-From 80587e9c090991adbfae62c913549447e58acba4 Mon Sep 17 00:00:00 2001
+From 2ab30a7ecce7e22bedafc49da97d0d64c47ec489 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@gmail.com>
 Date: Thu, 24 Oct 2024 14:21:02 +0800
-Subject: [PATCH 112/120] dt-bindings: serial: snps-dw-apb-uart: Add Sophgo
+Subject: [PATCH 112/121] dt-bindings: serial: snps-dw-apb-uart: Add Sophgo
  SG2044 uarts
 
 The UART of SG2044 is modified version of the standard Synopsys
@@ -31,5 +31,5 @@ index e5162a44a3fd..1fb8621ce317 100644
                - starfive,jh7100-uart
            - const: snps,dw-apb-uart
 -- 
-2.45.2
+2.47.2
 

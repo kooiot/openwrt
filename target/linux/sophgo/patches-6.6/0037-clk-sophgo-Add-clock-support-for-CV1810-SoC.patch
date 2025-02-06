@@ -1,7 +1,7 @@
-From 91f32f7afb9ad8debf0950b83da9e220f03cb30e Mon Sep 17 00:00:00 2001
+From b2b32a2e5e924e21a7754f00519658905eaddae9 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Sat, 9 Mar 2024 17:02:53 +0800
-Subject: [PATCH 037/120] clk: sophgo: Add clock support for CV1810 SoC
+Subject: [PATCH 037/121] clk: sophgo: Add clock support for CV1810 SoC
 
 Add clock definition and init code for CV1810 SoC.
 
@@ -254,5 +254,5 @@ index 1b9c04b5ac3a..1e7107b5d05e 100644
  #define REG_PLL_G2_CTRL			0x800
  #define REG_PLL_G2_STATUS		0x804
 -- 
-2.45.2
+2.47.2
 

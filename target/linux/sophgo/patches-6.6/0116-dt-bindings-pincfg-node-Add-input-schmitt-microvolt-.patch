@@ -1,7 +1,7 @@
-From d27bfcbf20e531df9a7c708c33b2574435713dcb Mon Sep 17 00:00:00 2001
+From f7050b1c373f9dcb69c961172bfcd3725eaac326 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Thu, 18 Jul 2024 10:23:53 +0800
-Subject: [PATCH 117/120] dt-bindings: pincfg-node: Add
+Subject: [PATCH 116/121] dt-bindings: pincfg-node: Add
  "input-schmitt-microvolt" property
 
 On Sophgo CV18XX platform, threshold strength of schmitt trigger can
@@ -33,5 +33,5 @@ index be81ed22a036..336ade77342a 100644
      $ref: /schemas/types.yaml#/definitions/uint32
      description: Takes the debounce time in usec as argument or 0 to disable
 -- 
-2.45.2
+2.47.2
 

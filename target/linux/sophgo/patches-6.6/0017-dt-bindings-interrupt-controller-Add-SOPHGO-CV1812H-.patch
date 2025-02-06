@@ -1,7 +1,7 @@
-From 5ed73061df4243f2d06095155db299d0f992841e Mon Sep 17 00:00:00 2001
+From 86b5c27ffce153f4b5db88e4fab39c5edfb5d9f3 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Thu, 19 Oct 2023 07:18:48 +0800
-Subject: [PATCH 017/120] dt-bindings: interrupt-controller: Add SOPHGO CV1812H
+Subject: [PATCH 017/121] dt-bindings: interrupt-controller: Add SOPHGO CV1812H
  plic
 
 Add compatible string for SOPHGO CV1812H plic.
@@ -27,5 +27,5 @@ index 0c07e8dda445..709b2211276b 100644
                - thead,th1520-plic
            - const: thead,c900-plic
 -- 
-2.45.2
+2.47.2
 

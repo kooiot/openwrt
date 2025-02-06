@@ -1,7 +1,7 @@
-From 4ddccca14433334201d45ba20ae60aba8afb912a Mon Sep 17 00:00:00 2001
+From 9c378715ad8afecdb45eac129ebe9ae4a77214aa Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Mon, 19 Aug 2024 16:08:51 +0800
-Subject: [PATCH 064/120] riscv: sophgo: dts: add gpio controllers for SG2042
+Subject: [PATCH 064/121] riscv: sophgo: dts: add gpio controllers for SG2042
  SoC
 
 Add support for the GPIO controller of Sophgo SG2042.
@@ -94,5 +94,5 @@ index 23e8adfda5d7..194c7ed51581 100644
  			compatible = "sophgo,sg2042-pll";
  			reg = <0x70 0x300100c0 0x0 0x40>;
 -- 
-2.45.2
+2.47.2
 

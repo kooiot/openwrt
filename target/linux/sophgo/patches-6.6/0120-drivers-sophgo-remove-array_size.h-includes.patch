@@ -1,0 +1,67 @@
+From 4723379fb02f2aca80fa9e030923f8d41d4cad93 Mon Sep 17 00:00:00 2001
+From: Dirk Chang <dirk@kooiot.com>
+Date: Thu, 6 Feb 2025 14:35:37 +0800
+Subject: [PATCH 1/1] drivers: sophgo remove array_size.h includes
+
+---
+ drivers/clk/sophgo/clk-sg2042-clkgen.c | 2 +-
+ drivers/clk/sophgo/clk-sg2042-pll.c    | 2 +-
+ drivers/clk/sophgo/clk-sg2042-rpgate.c | 2 +-
+ drivers/iio/adc/sophgo-cv1800b-adc.c   | 2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/clk/sophgo/clk-sg2042-clkgen.c b/drivers/clk/sophgo/clk-sg2042-clkgen.c
+index a334963e83ce..76ce1b942dee 100644
+--- a/drivers/clk/sophgo/clk-sg2042-clkgen.c
++++ b/drivers/clk/sophgo/clk-sg2042-clkgen.c
+@@ -6,7 +6,7 @@
+  * Copyright (C) 2024 Chen Wang <unicorn_wang@outlook.com>
+  */
+ 
+-#include <linux/array_size.h>
++// #include <linux/array_size.h>
+ #include <linux/bits.h>
+ #include <linux/clk.h>
+ #include <linux/clk-provider.h>
+diff --git a/drivers/clk/sophgo/clk-sg2042-pll.c b/drivers/clk/sophgo/clk-sg2042-pll.c
+index 1537f4f05860..46303d7f4536 100644
+--- a/drivers/clk/sophgo/clk-sg2042-pll.c
++++ b/drivers/clk/sophgo/clk-sg2042-pll.c
+@@ -6,7 +6,7 @@
+  * Copyright (C) 2024 Chen Wang <unicorn_wang@outlook.com>
+  */
+ 
+-#include <linux/array_size.h>
++// #include <linux/array_size.h>
+ #include <linux/bitfield.h>
+ #include <linux/bits.h>
+ #include <linux/clk-provider.h>
+diff --git a/drivers/clk/sophgo/clk-sg2042-rpgate.c b/drivers/clk/sophgo/clk-sg2042-rpgate.c
+index 5b38d4f15525..c173093d6ffa 100644
+--- a/drivers/clk/sophgo/clk-sg2042-rpgate.c
++++ b/drivers/clk/sophgo/clk-sg2042-rpgate.c
+@@ -6,7 +6,7 @@
+  * Copyright (C) 2024 Chen Wang <unicorn_wang@outlook.com>
+  */
+ 
+-#include <linux/array_size.h>
++// #include <linux/array_size.h>
+ #include <linux/clk-provider.h>
+ #include <linux/platform_device.h>
+ 
+diff --git a/drivers/iio/adc/sophgo-cv1800b-adc.c b/drivers/iio/adc/sophgo-cv1800b-adc.c
+index 0951deb7b111..1b60c1627d65 100644
+--- a/drivers/iio/adc/sophgo-cv1800b-adc.c
++++ b/drivers/iio/adc/sophgo-cv1800b-adc.c
+@@ -6,7 +6,7 @@
+  *  Author: Thomas Bonnefille <thomas.bonnefille@bootlin.com>
+  */
+ 
+-#include <linux/array_size.h>
++//#include <linux/array_size.h>
+ #include <linux/bitfield.h>
+ #include <linux/bits.h>
+ #include <linux/cleanup.h>
+-- 
+2.47.2
+

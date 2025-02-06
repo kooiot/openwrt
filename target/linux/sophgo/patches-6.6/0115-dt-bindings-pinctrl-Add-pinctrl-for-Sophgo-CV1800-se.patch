@@ -1,7 +1,7 @@
-From 444f56b77cb733096165d5faab77a3ec6842c64b Mon Sep 17 00:00:00 2001
+From b20408a0509edabcdbd968500fd67354a27c9af1 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Fri, 2 Aug 2024 08:35:16 +0800
-Subject: [PATCH 116/120] dt-bindings: pinctrl: Add pinctrl for Sophgo CV1800
+Subject: [PATCH 115/121] dt-bindings: pinctrl: Add pinctrl for Sophgo CV1800
  series SoC.
 
 Add pinctrl support for Sophgo CV1800 series SoC.
@@ -599,5 +599,5 @@ index 000000000000..3c36cfa0a550
 +
 +#endif /* _DT_BINDINGS_PINCTRL_SG2002_H */
 -- 
-2.45.2
+2.47.2
 

@@ -1,7 +1,7 @@
-From 6818428f2ce52da966c4a9180988c286e0bdbd21 Mon Sep 17 00:00:00 2001
+From 29bf7e13a405d2ca8927a6bae566a57351daa357 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Thu, 18 Jul 2024 10:23:54 +0800
-Subject: [PATCH 118/120] pinctrl: pinconf-generic: Add support for
+Subject: [PATCH 117/121] pinctrl: pinconf-generic: Add support for
  "input-schmitt-microvolt" property
 
 Add "input-schmitt-microvolt" property to generic options used for DT
@@ -58,5 +58,5 @@ index d74b7a4ea154..560a60d44ec8 100644
  	PIN_CONFIG_MODE_PWM,
  	PIN_CONFIG_OUTPUT,
 -- 
-2.45.2
+2.47.2
 

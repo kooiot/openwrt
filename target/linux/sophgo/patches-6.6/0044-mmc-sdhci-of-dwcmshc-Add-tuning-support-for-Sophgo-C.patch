@@ -1,7 +1,7 @@
-From 6e078f251f8a778b662e4cac11f13f63cefcc50f Mon Sep 17 00:00:00 2001
+From 9e2891b22168599acdfd4ed681f14ef73f273bde Mon Sep 17 00:00:00 2001
 From: Jisheng Zhang <jszhang@kernel.org>
 Date: Sat, 20 Apr 2024 10:14:29 +0800
-Subject: [PATCH 044/120] mmc: sdhci-of-dwcmshc: Add tuning support for Sophgo
+Subject: [PATCH 044/121] mmc: sdhci-of-dwcmshc: Add tuning support for Sophgo
  CV1800B and SG200X
 
 Implement the .platform_execute_tuning for Sophgo CV1800B and SG200X.
@@ -154,5 +154,5 @@ index 310797ad25c1..bb0f0e2aad96 100644
  
  static const struct sdhci_pltfm_data sdhci_dwcmshc_pdata = {
 -- 
-2.45.2
+2.47.2
 

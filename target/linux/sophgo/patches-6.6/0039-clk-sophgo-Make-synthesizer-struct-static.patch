@@ -1,7 +1,7 @@
-From 9beff339458dd4408e6d5cbc56843cc83a6cec34 Mon Sep 17 00:00:00 2001
+From 1e569b8f0ed961557480a96cd8748a9577bf0c24 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Fri, 12 Apr 2024 07:24:38 +0800
-Subject: [PATCH 039/120] clk: sophgo: Make synthesizer struct static
+Subject: [PATCH 039/121] clk: sophgo: Make synthesizer struct static
 
 Let all synthesizer structs are static to make the compiler happy.
 
@@ -74,5 +74,5 @@ index 956de5b21a80..2da4c24621cf 100644
  	.clk_half	= CV1800_CLK_BIT(REG_PLL_G2_SSC_SYN_CTRL, 0),
  	.ctrl		= REG_CAM1PLL_SSC_SYN_CTRL,
 -- 
-2.45.2
+2.47.2
 

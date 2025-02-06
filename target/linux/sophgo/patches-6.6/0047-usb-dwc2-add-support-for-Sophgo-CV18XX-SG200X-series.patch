@@ -1,7 +1,7 @@
-From d6d4eaf32248b864297b27bf169815938dae0e2c Mon Sep 17 00:00:00 2001
+From d4acecf099e80dba1df99783c62e5b1d364cb463 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Tue, 26 Mar 2024 10:37:29 +0800
-Subject: [PATCH 047/120] usb: dwc2: add support for Sophgo CV18XX/SG200X
+Subject: [PATCH 047/121] usb: dwc2: add support for Sophgo CV18XX/SG200X
  series SoC
 
 Add params for DWC2 IP in Sophgo CV18XX/SG200X series SoC.
@@ -54,5 +54,5 @@ index 93f52e371cdd..7849906b127c 100644
  	  .data = dwc2_set_stm32f4x9_fsotg_params },
  	{ .compatible = "st,stm32f4x9-hsotg" },
 -- 
-2.45.2
+2.47.2
 

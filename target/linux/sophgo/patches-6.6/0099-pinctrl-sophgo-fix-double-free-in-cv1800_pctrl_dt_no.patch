@@ -1,7 +1,7 @@
-From b5fce549bed868d8c937e6fdb55ab37ec044e353 Mon Sep 17 00:00:00 2001
+From d4b1b9fc0873043818a30087a419f5cc8845b674 Mon Sep 17 00:00:00 2001
 From: Harshit Mogalapalli <harshit.m.mogalapalli@oracle.com>
 Date: Thu, 10 Oct 2024 04:18:18 -0700
-Subject: [PATCH 099/120] pinctrl: sophgo: fix double free in
+Subject: [PATCH 099/121] pinctrl: sophgo: fix double free in
  cv1800_pctrl_dt_node_to_map()
 
 'map' is allocated using devm_* which takes care of freeing the allocated
@@ -32,5 +32,5 @@ index d18fc5aa84f7..57f2674e75d6 100644
  		return -ENOMEM;
  
 -- 
-2.45.2
+2.47.2
 

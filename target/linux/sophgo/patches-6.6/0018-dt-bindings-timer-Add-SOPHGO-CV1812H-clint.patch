@@ -1,7 +1,7 @@
-From 8b885031cb265653e9809ba644b70e545a722780 Mon Sep 17 00:00:00 2001
+From 498a166ea9059d5bbe3e424f243bf82202c92a44 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Thu, 19 Oct 2023 07:18:49 +0800
-Subject: [PATCH 018/120] dt-bindings: timer: Add SOPHGO CV1812H clint
+Subject: [PATCH 018/121] dt-bindings: timer: Add SOPHGO CV1812H clint
 
 Add compatible string for the SOPHGO CV1812H clint.
 
@@ -26,5 +26,5 @@ index e8be6c470364..4b6c20fc8194 100644
            - const: thead,c900-clint
        - items:
 -- 
-2.45.2
+2.47.2
 

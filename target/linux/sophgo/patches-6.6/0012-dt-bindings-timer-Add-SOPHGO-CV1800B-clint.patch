@@ -1,7 +1,7 @@
-From c60a841c8b66de298729dbeaace09599bca7b3e3 Mon Sep 17 00:00:00 2001
+From 24dd003852ea112a4f3bd1e2d4f4b650c113457d Mon Sep 17 00:00:00 2001
 From: Jisheng Zhang <jszhang@kernel.org>
 Date: Fri, 6 Oct 2023 20:14:46 +0800
-Subject: [PATCH 012/120] dt-bindings: timer: Add SOPHGO CV1800B clint
+Subject: [PATCH 012/121] dt-bindings: timer: Add SOPHGO CV1800B clint
 
 Add compatible string for the SOPHGO CV1800B clint.
 
@@ -25,5 +25,5 @@ index a0185e15a42f..e8be6c470364 100644
            - const: thead,c900-clint
        - items:
 -- 
-2.45.2
+2.47.2
 

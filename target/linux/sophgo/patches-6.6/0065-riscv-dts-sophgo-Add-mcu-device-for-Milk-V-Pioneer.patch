@@ -1,7 +1,7 @@
-From 66d2d93eab257126e2be6db39787543ef6aa1872 Mon Sep 17 00:00:00 2001
+From 22b7c076d5de3dbb6eece48f56b7d12c936f0515 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Sat, 17 Aug 2024 10:22:58 +0800
-Subject: [PATCH 065/120] riscv: dts: sophgo: Add mcu device for Milk-V Pioneer
+Subject: [PATCH 065/121] riscv: dts: sophgo: Add mcu device for Milk-V Pioneer
 
 Add mcu device and thermal zones node for Milk-V Pioneer.
 
@@ -90,5 +90,5 @@ index da6596e9192e..a3f9d6f22566 100644
 +	};
 +};
 -- 
-2.45.2
+2.47.2
 

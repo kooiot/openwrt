@@ -1,7 +1,7 @@
-From 96d6987ee72d6689aa85379c21b40f5cbc216df2 Mon Sep 17 00:00:00 2001
+From 67aae09fded294c6585284d2b5dddf352b6383ea Mon Sep 17 00:00:00 2001
 From: Conor Dooley <conor.dooley@microchip.com>
 Date: Tue, 24 Oct 2023 09:20:35 +0100
-Subject: [PATCH 016/120] riscv: dts: sophgo: remove address-cells from intc
+Subject: [PATCH 016/121] riscv: dts: sophgo: remove address-cells from intc
  node
 
 A recent submission [1] from Rob has added additionalProperties: false
@@ -31,5 +31,5 @@ index df40e87ee063..aec6401a467b 100644
  			};
  		};
 -- 
-2.45.2
+2.47.2
 

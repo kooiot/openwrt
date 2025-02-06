@@ -1,7 +1,7 @@
-From ea734c3fb2a8e04303805b340914fcaa185a9d6f Mon Sep 17 00:00:00 2001
+From 8600057a8c5f5cdef677e5948e928e316f8885c4 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Tue, 26 Mar 2024 10:37:28 +0800
-Subject: [PATCH 046/120] dt-bindings: usb: dwc2: Add support for Sophgo
+Subject: [PATCH 046/121] dt-bindings: usb: dwc2: Add support for Sophgo
  CV18XX/SG200X series SoC
 
 Add compatible string for the DWC2 IP which is used by
@@ -28,5 +28,5 @@ index 0a5c98ea711d..9a2106e7b4b6 100644
        - const: st,stm32f4x9-hsotg
        - const: st,stm32f7-hsotg
 -- 
-2.45.2
+2.47.2
 

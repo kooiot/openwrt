@@ -1,7 +1,7 @@
-From 6b8cd227143eab16ccc787b84d0b4a98102ea34d Mon Sep 17 00:00:00 2001
+From 893fdc037a528038cd13ab544f14910b59cc9d2d Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Thu, 11 Apr 2024 08:45:00 +0800
-Subject: [PATCH 034/120] riscv: dts: sophgo: add reserved memory node for
+Subject: [PATCH 034/121] riscv: dts: sophgo: add reserved memory node for
  CV1800B
 
 The original dts of CV1800B has a weird memory length as it
@@ -56,5 +56,5 @@ index baf641829e72..ec9530972ae2 100644
  
  &plic {
 -- 
-2.45.2
+2.47.2
 

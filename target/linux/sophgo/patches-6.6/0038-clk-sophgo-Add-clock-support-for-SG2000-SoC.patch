@@ -1,7 +1,7 @@
-From c16344437fbbe1b2930deab8ff6676b8a3a2a56e Mon Sep 17 00:00:00 2001
+From 87419fea0f196c52e952f6b8d5b95a82b933d2e3 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Sat, 9 Mar 2024 17:02:54 +0800
-Subject: [PATCH 038/120] clk: sophgo: Add clock support for SG2000 SoC
+Subject: [PATCH 038/121] clk: sophgo: Add clock support for SG2000 SoC
 
 Add init code for SG2000 SoC.
 
@@ -47,5 +47,5 @@ index c7d4aa6c8343..956de5b21a80 100644
  };
  MODULE_DEVICE_TABLE(of, cv1800_clk_ids);
 -- 
-2.45.2
+2.47.2
 

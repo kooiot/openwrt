@@ -1,7 +1,7 @@
-From 0865d53240f19cc3bf9abaa7b3937ee23b250b25 Mon Sep 17 00:00:00 2001
+From 5b65b8572e717cb108c8ca14eda09cf71efd6ae9 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Tue, 10 Sep 2024 06:35:10 +0800
-Subject: [PATCH 101/120] riscv: dts: sophgo: cv1800b: add pinctrl support
+Subject: [PATCH 101/121] riscv: dts: sophgo: cv1800b: add pinctrl support
 
 Add pinctrl node and related pin configuration for CV1800B SoC.
 
@@ -109,5 +109,5 @@ index ec9530972ae2..aa1f5df100f0 100644
  
  &plic {
 -- 
-2.45.2
+2.47.2
 

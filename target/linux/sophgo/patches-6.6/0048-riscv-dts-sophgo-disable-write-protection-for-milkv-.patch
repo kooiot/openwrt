@@ -1,7 +1,7 @@
-From 086543662932f33b950cc560135b69ba2e16bea3 Mon Sep 17 00:00:00 2001
+From 88cf883f5d510e94c1a50bb783f1d01764a40d53 Mon Sep 17 00:00:00 2001
 From: Haylen Chu <heylenay@outlook.com>
 Date: Tue, 18 Jun 2024 09:16:14 +0000
-Subject: [PATCH 048/120] riscv: dts: sophgo: disable write-protection for
+Subject: [PATCH 048/121] riscv: dts: sophgo: disable write-protection for
  milkv duo
 
 Milkv Duo does not have a write-protect pin, so disable write protect
@@ -29,5 +29,5 @@ index cd013588adc0..375ff2661b6e 100644
  
  &uart0 {
 -- 
-2.45.2
+2.47.2
 

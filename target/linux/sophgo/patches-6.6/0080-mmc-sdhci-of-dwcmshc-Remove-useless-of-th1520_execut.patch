@@ -1,7 +1,7 @@
-From 88cae4b8ad6f7d018aedb965f8c6bea006e761bb Mon Sep 17 00:00:00 2001
+From b153620ed126549d35ccdd6740d47dc73c3b2cbf Mon Sep 17 00:00:00 2001
 From: Jisheng Zhang <jszhang@kernel.org>
 Date: Mon, 15 Apr 2024 00:43:57 +0800
-Subject: [PATCH 080/120] mmc: sdhci-of-dwcmshc: Remove useless "&" of
+Subject: [PATCH 080/121] mmc: sdhci-of-dwcmshc: Remove useless "&" of
  th1520_execute_tuning
 
 The preceding "&" before th1520_execute_tuning is useless, remove it.
@@ -28,5 +28,5 @@ index c6a20be12712..6682e0ce35b9 100644
  
  static const struct sdhci_ops sdhci_dwcmshc_cv18xx_ops = {
 -- 
-2.45.2
+2.47.2
 

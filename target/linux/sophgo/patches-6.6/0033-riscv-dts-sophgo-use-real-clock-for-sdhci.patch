@@ -1,7 +1,7 @@
-From 513be7b0a6b94c59f7489442c9a5b2256edae71f Mon Sep 17 00:00:00 2001
+From fdc50885b8f908986e3d4f33fc2de11ed61609bc Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Thu, 11 Apr 2024 20:21:35 +0800
-Subject: [PATCH 033/120] riscv: dts: sophgo: use real clock for sdhci
+Subject: [PATCH 033/121] riscv: dts: sophgo: use real clock for sdhci
 
 As the clk patch is merged, Use real clocks for sdhci0.
 
@@ -44,5 +44,5 @@ index 9234f0dd7e51..fccdf9d16092 100644
  		};
  
 -- 
-2.45.2
+2.47.2
 

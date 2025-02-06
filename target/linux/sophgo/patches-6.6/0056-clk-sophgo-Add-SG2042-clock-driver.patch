@@ -1,7 +1,7 @@
-From b1ed63305463e413a8044e0d7cdd2a6d52051b1b Mon Sep 17 00:00:00 2001
+From 1fa162e1b1ef87675de94c0a0a0db5f509d93879 Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Fri, 24 Nov 2023 14:15:16 +0800
-Subject: [PATCH 056/120] clk: sophgo: Add SG2042 clock driver
+Subject: [PATCH 056/121] clk: sophgo: Add SG2042 clock driver
 
 Add a driver for the SOPHGO SG2042 clocks.
 
@@ -81,7 +81,7 @@ index 000000000000..a334963e83ce
 + * Copyright (C) 2024 Chen Wang <unicorn_wang@outlook.com>
 + */
 +
-+// #include <linux/array_size.h>
++#include <linux/array_size.h>
 +#include <linux/bits.h>
 +#include <linux/clk.h>
 +#include <linux/clk-provider.h>
@@ -1239,7 +1239,7 @@ index 000000000000..aa142897aa5e
 + * Copyright (C) 2024 Chen Wang <unicorn_wang@outlook.com>
 + */
 +
-+// #include <linux/array_size.h>
++#include <linux/array_size.h>
 +#include <linux/bitfield.h>
 +#include <linux/bits.h>
 +#include <linux/clk-provider.h>
@@ -1815,7 +1815,7 @@ index 000000000000..5b38d4f15525
 + * Copyright (C) 2024 Chen Wang <unicorn_wang@outlook.com>
 + */
 +
-+// #include <linux/array_size.h>
++#include <linux/array_size.h>
 +#include <linux/clk-provider.h>
 +#include <linux/platform_device.h>
 +
@@ -2123,5 +2123,5 @@ index 000000000000..f13fed399c6e
 +
 +#endif /* _CLK_SOPHGO_SG2042_H_ */
 -- 
-2.45.2
+2.47.2
 

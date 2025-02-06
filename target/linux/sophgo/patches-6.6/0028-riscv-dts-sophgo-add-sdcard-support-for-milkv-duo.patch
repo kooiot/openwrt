@@ -1,7 +1,7 @@
-From 8c6afea159f45cca1a2777eaad867696ba26ff82 Mon Sep 17 00:00:00 2001
+From dbe45a8d08ef8a7edfb653a517aa511628d035c5 Mon Sep 17 00:00:00 2001
 From: Jisheng Zhang <jszhang@kernel.org>
 Date: Sat, 17 Feb 2024 22:48:26 +0800
-Subject: [PATCH 028/120] riscv: dts: sophgo: add sdcard support for milkv duo
+Subject: [PATCH 028/121] riscv: dts: sophgo: add sdcard support for milkv duo
 
 Add sdhci dt node in SoC dtsi and enable it in milkv duo dts.
 
@@ -77,5 +77,5 @@ index d415cc758def..c7940b02754e 100644
  			reg = <0x70000000 0x4000000>;
  			interrupts-extended = <&cpu0_intc 11>, <&cpu0_intc 9>;
 -- 
-2.45.2
+2.47.2
 

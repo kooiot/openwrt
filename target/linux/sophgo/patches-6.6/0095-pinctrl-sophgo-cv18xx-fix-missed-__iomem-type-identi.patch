@@ -1,7 +1,7 @@
-From e72886727d96aae40bfbc260f9e899507e435ae4 Mon Sep 17 00:00:00 2001
+From 5665eba41a33fb61917f22644f80d4d1aa89e177 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Fri, 30 Aug 2024 16:55:33 +0800
-Subject: [PATCH 095/120] pinctrl: sophgo: cv18xx: fix missed __iomem type
+Subject: [PATCH 095/121] pinctrl: sophgo: cv18xx: fix missed __iomem type
  identifier
 
 As the variable reg in "cv1800_pctrl_dbg_show" misses a "__iomem"
@@ -32,5 +32,5 @@ index e63cfcc37377..d18fc5aa84f7 100644
  	if (pin->pin >> PIN_BGA_ID_OFFSET)
  		seq_printf(seq, "pos: %c%u ",
 -- 
-2.45.2
+2.47.2
 

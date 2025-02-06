@@ -1,7 +1,7 @@
-From 4f15317394784f6362f703f4516dfd2464e7e41a Mon Sep 17 00:00:00 2001
+From 7567c29f29e69c39002860f6b2da1379c22a56c1 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Mon, 4 Dec 2023 17:51:08 +0800
-Subject: [PATCH 041/120] dt-bindings: timer: thead,c900-aclint-mtimer:
+Subject: [PATCH 041/121] dt-bindings: timer: thead,c900-aclint-mtimer:
  separate mtime and mtimecmp regs
 
 The timer registers of aclint don't follow the clint layout and can
@@ -70,5 +70,5 @@ index fbd235650e52..2e92bcdeb423 100644
      };
  ...
 -- 
-2.45.2
+2.47.2
 

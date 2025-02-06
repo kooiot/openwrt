@@ -1,7 +1,7 @@
-From b7105447d938e154d0e175cf30e351d5ca88ee71 Mon Sep 17 00:00:00 2001
+From 81f836844a8ae57240b0bcc239e4058ea39d4ef3 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Wed, 4 Oct 2023 23:43:47 +0800
-Subject: [PATCH 007/120] dt-bindings: interrupt-controller: Add Sophgo sg2042
+Subject: [PATCH 007/121] dt-bindings: interrupt-controller: Add Sophgo sg2042
  CLINT mswi
 
 The clint of Sophgo's sg2042 is based off IP designed by T-HEAD, and
@@ -72,5 +72,5 @@ index 000000000000..065f2544b63b
 +    };
 +...
 -- 
-2.45.2
+2.47.2
 

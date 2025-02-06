@@ -1,7 +1,7 @@
-From 645fcd6ba5423b00ecd88f35cad333299e9b3728 Mon Sep 17 00:00:00 2001
+From 52b5ec6c8a162ff67dfcc38674c3a26a3b9f03b2 Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Tue, 30 Jan 2024 09:50:08 +0800
-Subject: [PATCH 027/120] reset: simple: add support for Sophgo SG2042
+Subject: [PATCH 027/121] reset: simple: add support for Sophgo SG2042
 
 Reuse reset-simple driver for the Sophgo SG2042 reset generator.
 
@@ -49,5 +49,5 @@ index 7ea5adbf2097..69b631eb8127 100644
  };
  
 -- 
-2.45.2
+2.47.2
 

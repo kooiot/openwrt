@@ -1,7 +1,7 @@
-From a19228609022fce80f8af0d21f1edc8cd5f14ecd Mon Sep 17 00:00:00 2001
+From 8a95165c9ff8e85f87584ec3afe2d21f8c7ee515 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@gmail.com>
 Date: Thu, 24 Oct 2024 14:21:01 +0800
-Subject: [PATCH 111/120] dt-bindings: serial: snps,dw-apb-uart: merge
+Subject: [PATCH 111/121] dt-bindings: serial: snps,dw-apb-uart: merge
  duplicate compatible entry.
 
 Each vendor have an items entry of its own compatible, It is needless
@@ -48,5 +48,5 @@ index 17c553123f96..e5162a44a3fd 100644
                - starfive,jh7100-uart
            - const: snps,dw-apb-uart
 -- 
-2.45.2
+2.47.2
 

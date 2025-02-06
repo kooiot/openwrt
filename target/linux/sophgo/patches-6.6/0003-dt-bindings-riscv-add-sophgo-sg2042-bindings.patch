@@ -1,7 +1,7 @@
-From c734cdbb3a2f203f2aa73e0b4ace67555b919c30 Mon Sep 17 00:00:00 2001
+From ddaeac8fbd818ae5af194ce881e8ff097a6b6c01 Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Wed, 4 Oct 2023 23:42:03 +0800
-Subject: [PATCH 003/120] dt-bindings: riscv: add sophgo sg2042 bindings
+Subject: [PATCH 003/121] dt-bindings: riscv: add sophgo sg2042 bindings
 
 Add DT binding documentation for the SOPHGO's SG2042 Soc [1] and the
 Milk-V Pioneer board [2].
@@ -72,5 +72,5 @@ index ae4c0cec5073..92babda4b9ee 100644
  M:	Jaroslav Kysela <perex@perex.cz>
  M:	Takashi Iwai <tiwai@suse.com>
 -- 
-2.45.2
+2.47.2
 

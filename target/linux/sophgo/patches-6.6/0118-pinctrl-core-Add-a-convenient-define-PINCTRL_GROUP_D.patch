@@ -1,7 +1,7 @@
-From 8e799e84847d4c33cd1999915dd558e14475a690 Mon Sep 17 00:00:00 2001
+From 473d22e4a09f4413ff6ade81de56318d99ee9bcb Mon Sep 17 00:00:00 2001
 From: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
 Date: Mon, 11 Dec 2023 20:57:54 +0200
-Subject: [PATCH 119/120] pinctrl: core: Add a convenient define
+Subject: [PATCH 118/121] pinctrl: core: Add a convenient define
  PINCTRL_GROUP_DESC()
 
 Add PINCTRL_GROUP_DESC() macro for inline use.
@@ -16,10 +16,10 @@ Signed-off-by: Linus Walleij <linus.walleij@linaro.org>
  2 files changed, 10 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/pinctrl/core.c b/drivers/pinctrl/core.c
-index 88ee086e1376..bbc754df1f55 100644
+index 7342148c6572..241face4ad07 100644
 --- a/drivers/pinctrl/core.c
 +++ b/drivers/pinctrl/core.c
-@@ -656,10 +656,7 @@ int pinctrl_generic_add_group(struct pinctrl_dev *pctldev, const char *name,
+@@ -659,10 +659,7 @@ int pinctrl_generic_add_group(struct pinctrl_dev *pctldev, const char *name,
  	if (!group)
  		return -ENOMEM;
  
@@ -32,10 +32,10 @@ index 88ee086e1376..bbc754df1f55 100644
  	error = radix_tree_insert(&pctldev->pin_group_tree, selector, group);
  	if (error)
 diff --git a/drivers/pinctrl/core.h b/drivers/pinctrl/core.h
-index 530370443c19..179948e44016 100644
+index ece4b9c71c97..717ba75bb4cb 100644
 --- a/drivers/pinctrl/core.h
 +++ b/drivers/pinctrl/core.h
-@@ -208,6 +208,15 @@ struct group_desc {
+@@ -209,6 +209,15 @@ struct group_desc {
  	void *data;
  };
  
@@ -52,5 +52,5 @@ index 530370443c19..179948e44016 100644
  
  const char *pinctrl_generic_get_group_name(struct pinctrl_dev *pctldev,
 -- 
-2.45.2
+2.47.2
 

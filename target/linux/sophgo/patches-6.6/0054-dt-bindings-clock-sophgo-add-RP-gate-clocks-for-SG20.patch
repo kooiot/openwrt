@@ -1,7 +1,7 @@
-From 65450cf8c8720f0593ca705fddcacc0869cbb875 Mon Sep 17 00:00:00 2001
+From 986dd4771ecdfae7ae63cca95437810cfd38b15f Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Wed, 31 Jan 2024 09:57:01 +0800
-Subject: [PATCH 054/120] dt-bindings: clock: sophgo: add RP gate clocks for
+Subject: [PATCH 054/121] dt-bindings: clock: sophgo: add RP gate clocks for
  SG2042
 
 Add bindings for the gate clocks of RP subsystem for Sophgo SG2042.
@@ -135,5 +135,5 @@ index 000000000000..8b4522d5f559
 +
 +#endif /* __DT_BINDINGS_SOPHGO_SG2042_RPGATE_H__ */
 -- 
-2.45.2
+2.47.2
 

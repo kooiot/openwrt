@@ -1,7 +1,7 @@
-From b544305e5e1f0f1209e18e8a688946eaf1d9bde8 Mon Sep 17 00:00:00 2001
+From 3ea4506866fabf3722125f1b96e30f8f3c5fa19d Mon Sep 17 00:00:00 2001
 From: Thomas Bonnefille <thomas.bonnefille@bootlin.com>
 Date: Thu, 29 Aug 2024 14:31:51 +0200
-Subject: [PATCH 097/120] iio: adc: sophgo-saradc: Add driver for Sophgo
+Subject: [PATCH 097/121] iio: adc: sophgo-saradc: Add driver for Sophgo
  CV1800B SARADC
 
 This adds a driver for the Sophgo CV1800B SARADC.
@@ -17,7 +17,7 @@ Signed-off-by: Jonathan Cameron <Jonathan.Cameron@huawei.com>
  create mode 100644 drivers/iio/adc/sophgo-cv1800b-adc.c
 
 diff --git a/drivers/iio/adc/Kconfig b/drivers/iio/adc/Kconfig
-index dfb925cfe38e..a20c13714d92 100644
+index 6dee3b686eff..b11813c01508 100644
 --- a/drivers/iio/adc/Kconfig
 +++ b/drivers/iio/adc/Kconfig
 @@ -1032,6 +1032,16 @@ config SC27XX_ADC
@@ -63,7 +63,7 @@ index 000000000000..0951deb7b111
 + *  Author: Thomas Bonnefille <thomas.bonnefille@bootlin.com>
 + */
 +
-+// #include <linux/array_size.h>
++#include <linux/array_size.h>
 +#include <linux/bitfield.h>
 +#include <linux/bits.h>
 +#include <linux/cleanup.h>
@@ -283,5 +283,5 @@ index 000000000000..0951deb7b111
 +MODULE_DESCRIPTION("Sophgo CV1800B SARADC driver");
 +MODULE_LICENSE("GPL");
 -- 
-2.45.2
+2.47.2
 

@@ -1,7 +1,7 @@
-From bc1c1301d02e72085dd1e97112cd219f1321199b Mon Sep 17 00:00:00 2001
+From 892edca61cd7851a9d6db18c3de13fbee27a840a Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Mon, 5 Aug 2024 17:17:21 +0800
-Subject: [PATCH 083/120] mmc: sdhci-of-dwcmshc: add common bulk optional
+Subject: [PATCH 083/121] mmc: sdhci-of-dwcmshc: add common bulk optional
  clocks support
 
 In addition to the required core clock and optional
@@ -221,5 +221,5 @@ index e79aa4b3b6c3..35401616fb2e 100644
  	if (!IS_ERR(priv->bus_clk))
  		clk_disable_unprepare(priv->bus_clk);
 -- 
-2.45.2
+2.47.2
 

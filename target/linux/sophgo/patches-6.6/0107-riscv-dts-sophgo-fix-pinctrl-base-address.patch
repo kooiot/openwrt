@@ -1,7 +1,7 @@
-From 19479b1de692229ee7120b694a2176c8365092ab Mon Sep 17 00:00:00 2001
+From e6b41ffa8a945440344a7c95cf45a335bb0ec4af Mon Sep 17 00:00:00 2001
 From: Thomas Bonnefille <thomas.bonnefille@bootlin.com>
 Date: Mon, 28 Oct 2024 11:43:24 +0100
-Subject: [PATCH 107/120] riscv: dts: sophgo: fix pinctrl base-address
+Subject: [PATCH 107/121] riscv: dts: sophgo: fix pinctrl base-address
 
 Fix the base-address of the pinctrl controller to match its register
 address.
@@ -30,5 +30,5 @@ index 242fde84443f..6616f578d190 100644
  			reg = <0x03001000 0x1000>,
  			      <0x05027000 0x1000>;
 -- 
-2.45.2
+2.47.2
 

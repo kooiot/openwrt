@@ -1,7 +1,7 @@
-From 2195af96db4ab66d218f3bd2c2a68f25c7f7d7f9 Mon Sep 17 00:00:00 2001
+From e0f97cfbe94d751cf3e30c1e0cb4175035ebe926 Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Mon, 5 Aug 2024 17:18:43 +0800
-Subject: [PATCH 087/120] mmc: sdhci-of-dwcmshc: add dwcmshc_pltfm_data
+Subject: [PATCH 087/121] mmc: sdhci-of-dwcmshc: add dwcmshc_pltfm_data
 
 Abstract dwcmshc_pltfm_data to hold the sdhci_pltfm_data
 plus some comoon operations of soc such as init/postinit.
@@ -158,5 +158,5 @@ index 55fba5ef37ba..16f420994519 100644
  	err = __sdhci_add_host(host);
  	if (err)
 -- 
-2.45.2
+2.47.2
 

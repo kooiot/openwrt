@@ -1,7 +1,7 @@
-From 5efbe270ba73909185cf28b45a26872d2ce9a0af Mon Sep 17 00:00:00 2001
+From 472521df194fe87de8241809f766f92755c3f51f Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Tue, 30 Jan 2024 09:50:32 +0800
-Subject: [PATCH 090/120] riscv: dts: add reset generator for Sophgo SG2042 SoC
+Subject: [PATCH 090/121] riscv: dts: add reset generator for Sophgo SG2042 SoC
 
 Add reset generator node to device tree for SG2042.
 
@@ -40,5 +40,5 @@ index 194c7ed51581..4fe46ad28d3a 100644
  			compatible = "snps,dw-apb-uart";
  			reg = <0x00000070 0x40000000 0x00000000 0x00001000>;
 -- 
-2.45.2
+2.47.2
 

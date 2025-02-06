@@ -1,7 +1,7 @@
-From 12f56fb91bf15078fb6c9c1b1f164c61c624f4f6 Mon Sep 17 00:00:00 2001
+From c4c9474e7fdfda46d4d13621bae4632dfef0bf35 Mon Sep 17 00:00:00 2001
 From: Jisheng Zhang <jszhang@kernel.org>
 Date: Fri, 6 Oct 2023 20:14:49 +0800
-Subject: [PATCH 015/120] riscv: dts: sophgo: add Milk-V Duo board device tree
+Subject: [PATCH 015/121] riscv: dts: sophgo: add Milk-V Duo board device tree
 
 Milk-V Duo[1] board is an embedded development platform based on the
 CV1800B chip. Add minimal device tree files for the development board.
@@ -71,5 +71,5 @@ index 000000000000..3af9e34b3bc7
 +	status = "okay";
 +};
 -- 
-2.45.2
+2.47.2
 

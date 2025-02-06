@@ -1,7 +1,7 @@
-From f6d07fdc2009f008863964e5424c8bca4a11a5cd Mon Sep 17 00:00:00 2001
+From d6526c434db700e4dd42de5fdef4672a3621db41 Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Wed, 4 Oct 2023 23:40:32 +0800
-Subject: [PATCH 002/120] dt-bindings: vendor-prefixes: add milkv/sophgo
+Subject: [PATCH 002/121] dt-bindings: vendor-prefixes: add milkv/sophgo
 
 Add new vendor strings to dt bindings.
 These new vendor strings are used by
@@ -21,7 +21,7 @@ Signed-off-by: Conor Dooley <conor.dooley@microchip.com>
  1 file changed, 4 insertions(+)
 
 diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-index 573578db9509..fcca9e070a9a 100644
+index 12a16031d7b6..133c72f89985 100644
 --- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
 +++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
 @@ -863,6 +863,8 @@ patternProperties:
@@ -33,7 +33,7 @@ index 573578db9509..fcca9e070a9a 100644
    "^miniand,.*":
      description: Miniand Tech
    "^minix,.*":
-@@ -1273,6 +1275,8 @@ patternProperties:
+@@ -1275,6 +1277,8 @@ patternProperties:
      description: Solomon Systech Limited
    "^sony,.*":
      description: Sony Corporation
@@ -43,5 +43,5 @@ index 573578db9509..fcca9e070a9a 100644
      description: Source Parts Inc.
    "^spansion,.*":
 -- 
-2.45.2
+2.47.2
 

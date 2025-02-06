@@ -1,7 +1,7 @@
-From fff3b901386f602d19c62acbd3b96b0ce11130d7 Mon Sep 17 00:00:00 2001
+From a7fe360a4d77ee3c2fb14ca1426c21e35f72949e Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Sat, 17 Aug 2024 10:22:57 +0800
-Subject: [PATCH 070/120] hwmon: Add sophgo SG2042 external hardware monitor
+Subject: [PATCH 070/121] hwmon: Add sophgo SG2042 external hardware monitor
  support
 
 SG2042 use an external MCU to provide basic hardware information
@@ -119,10 +119,10 @@ index 000000000000..077e79841d2e
 +mcu_type          %d      type of the MCU: 0 is STM32, 1 is GD32
 +================= ======= =============================================
 diff --git a/drivers/hwmon/Kconfig b/drivers/hwmon/Kconfig
-index ec38c8892158..ff864772fb75 100644
+index a4c361b6619c..7ab4dbcafc0c 100644
 --- a/drivers/hwmon/Kconfig
 +++ b/drivers/hwmon/Kconfig
-@@ -1961,6 +1961,17 @@ config SENSORS_SFCTEMP
+@@ -1964,6 +1964,17 @@ config SENSORS_SFCTEMP
  	  This driver can also be built as a module.  If so, the module
  	  will be called sfctemp.
  
@@ -547,5 +547,5 @@ index 000000000000..141045769354
 +MODULE_DESCRIPTION("MCU I2C driver for SG2042 soc platform");
 +MODULE_LICENSE("GPL");
 -- 
-2.45.2
+2.47.2
 

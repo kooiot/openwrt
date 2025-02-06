@@ -1,7 +1,7 @@
-From f25d934576c9b6a30219f3a3755d2b90253c5615 Mon Sep 17 00:00:00 2001
+From 1cf271c59a93a3ce6e2ae278362f1b6c1ed8e398 Mon Sep 17 00:00:00 2001
 From: Thomas Bonnefille <thomas.bonnefille@bootlin.com>
 Date: Thu, 10 Oct 2024 17:07:07 +0200
-Subject: [PATCH 104/120] riscv: dts: sophgo: Add LicheeRV Nano board device
+Subject: [PATCH 104/121] riscv: dts: sophgo: Add LicheeRV Nano board device
  tree
 
 LicheeRV Nano B [1] is an embedded development platform based on the SOPHGO
@@ -134,5 +134,5 @@ index 000000000000..86a712b953a5
 +	status = "okay";
 +};
 -- 
-2.45.2
+2.47.2
 

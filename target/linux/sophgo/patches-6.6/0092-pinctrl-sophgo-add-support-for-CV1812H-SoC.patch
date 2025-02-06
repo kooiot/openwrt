@@ -1,7 +1,7 @@
-From 06e0c70221398111601057080bbef893f2393713 Mon Sep 17 00:00:00 2001
+From 553c428228984977a0f4e6f862da65722231b3b9 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Fri, 2 Aug 2024 08:35:18 +0800
-Subject: [PATCH 092/120] pinctrl: sophgo: add support for CV1812H SoC
+Subject: [PATCH 092/121] pinctrl: sophgo: add support for CV1812H SoC
 
 Add pin definition driver of CV1812H.
 
@@ -821,5 +821,5 @@ index 000000000000..5632290b46fa
 +MODULE_DESCRIPTION("Pinctrl driver for the CV1812H series SoC");
 +MODULE_LICENSE("GPL");
 -- 
-2.45.2
+2.47.2
 

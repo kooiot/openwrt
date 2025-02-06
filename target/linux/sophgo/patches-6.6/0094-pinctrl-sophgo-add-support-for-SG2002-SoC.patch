@@ -1,7 +1,7 @@
-From 6cb5e73a70943a186a18e0393ef2a39c0080f136 Mon Sep 17 00:00:00 2001
+From 45c62a5e6073d00e135df33809d1c73f6c323964 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Fri, 2 Aug 2024 08:35:20 +0800
-Subject: [PATCH 094/120] pinctrl: sophgo: add support for SG2002 SoC
+Subject: [PATCH 094/121] pinctrl: sophgo: add support for SG2002 SoC
 
 Add pin definition driver of SG2002.
 
@@ -592,5 +592,5 @@ index 000000000000..5c49208dcb59
 +MODULE_DESCRIPTION("Pinctrl driver for the SG2002 series SoC");
 +MODULE_LICENSE("GPL");
 -- 
-2.45.2
+2.47.2
 

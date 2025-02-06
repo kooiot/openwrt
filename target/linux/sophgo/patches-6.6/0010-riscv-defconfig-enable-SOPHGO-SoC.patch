@@ -1,7 +1,7 @@
-From c13fd9e63948388668865e7364e475a33ec14078 Mon Sep 17 00:00:00 2001
+From 15ff6e3af04b2b0242e1c51ffa24b2106a5abc32 Mon Sep 17 00:00:00 2001
 From: Chen Wang <unicorn_wang@outlook.com>
 Date: Wed, 4 Oct 2023 23:44:46 +0800
-Subject: [PATCH 010/120] riscv: defconfig: enable SOPHGO SoC
+Subject: [PATCH 010/121] riscv: defconfig: enable SOPHGO SoC
 
 Enable SOPHGO SoC config in defconfig to allow the default
 upstream kernel to boot on Milk-V Pioneer board.
@@ -34,5 +34,5 @@ index ab86ec3b9eab..1edf3cd886c5 100644
  CONFIG_SMP=y
  CONFIG_HOTPLUG_CPU=y
 -- 
-2.45.2
+2.47.2
 

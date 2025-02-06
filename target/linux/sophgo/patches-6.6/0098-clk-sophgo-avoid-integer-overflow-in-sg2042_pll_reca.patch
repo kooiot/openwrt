@@ -1,7 +1,7 @@
-From 04f7781e301c654a50e6dcc629606cff8702f5b7 Mon Sep 17 00:00:00 2001
+From 3b66793a01406b71aff402dcdaa44f75fc3bb4b7 Mon Sep 17 00:00:00 2001
 From: Zichen Xie <zichenxie0106@gmail.com>
 Date: Wed, 23 Oct 2024 09:51:47 -0500
-Subject: [PATCH 098/120] clk: sophgo: avoid integer overflow in
+Subject: [PATCH 098/121] clk: sophgo: avoid integer overflow in
  sg2042_pll_recalc_rate()
 
 [ Upstream commit 00f8f70a0e8c6601861628be26270a0b6f4bbb34 ]
@@ -39,5 +39,5 @@ index ff9deeef509b..1537f4f05860 100644
  	do_div(numerator, denominator);
  	return numerator;
 -- 
-2.45.2
+2.47.2
 

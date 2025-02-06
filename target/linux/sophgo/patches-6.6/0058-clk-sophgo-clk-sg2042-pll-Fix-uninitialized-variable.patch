@@ -1,7 +1,7 @@
-From 9ad4b812206c5d50597982d726f53f3c19c27123 Mon Sep 17 00:00:00 2001
+From df19867184f278cbd47e947c6573f5fe4c2d930f Mon Sep 17 00:00:00 2001
 From: Dan Carpenter <dan.carpenter@linaro.org>
 Date: Wed, 17 Jul 2024 21:25:53 -0500
-Subject: [PATCH 058/120] clk: sophgo: clk-sg2042-pll: Fix uninitialized
+Subject: [PATCH 058/121] clk: sophgo: clk-sg2042-pll: Fix uninitialized
  variable in debug output
 
 If sg2042_get_pll_ctl_setting() fails then "value" isn't initialized and
@@ -30,5 +30,5 @@ index 9695e64fc23b..ff9deeef509b 100644
  
  	spin_lock_irqsave(pll->lock, flags);
 -- 
-2.45.2
+2.47.2
 

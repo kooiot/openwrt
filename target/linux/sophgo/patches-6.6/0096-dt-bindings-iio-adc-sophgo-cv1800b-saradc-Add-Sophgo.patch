@@ -1,7 +1,7 @@
-From 8cc845cb1056d4f60c2e8d5c3a0728102ce6a467 Mon Sep 17 00:00:00 2001
+From e48f13c1c60739f9df7e1feb62b1616fd0f4bf2a Mon Sep 17 00:00:00 2001
 From: Thomas Bonnefille <thomas.bonnefille@bootlin.com>
 Date: Thu, 29 Aug 2024 14:31:50 +0200
-Subject: [PATCH 096/120] dt-bindings: iio: adc: sophgo,cv1800b-saradc: Add
+Subject: [PATCH 096/121] dt-bindings: iio: adc: sophgo,cv1800b-saradc: Add
  Sophgo CV1800B SARADC
 
 The Sophgo CV1800B SARADC is a Successive Approximation ADC that can be
@@ -106,5 +106,5 @@ index 000000000000..f652b98615f7
 +        };
 +    };
 -- 
-2.45.2
+2.47.2
 

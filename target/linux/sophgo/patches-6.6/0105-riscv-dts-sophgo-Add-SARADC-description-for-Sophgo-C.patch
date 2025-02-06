@@ -1,7 +1,7 @@
-From b9ca14ba08cfac63c5b0d73983f222074f837608 Mon Sep 17 00:00:00 2001
+From dad7eb4d79e2214e2719eeead5d358c8ea53a5db Mon Sep 17 00:00:00 2001
 From: Thomas Bonnefille <thomas.bonnefille@bootlin.com>
 Date: Thu, 29 Aug 2024 14:31:52 +0200
-Subject: [PATCH 105/120] riscv: dts: sophgo: Add SARADC description for Sophgo
+Subject: [PATCH 105/121] riscv: dts: sophgo: Add SARADC description for Sophgo
  CV1800B
 
 Add SARADC node for the Successive Approximation Analog to
@@ -51,5 +51,5 @@ index fe9935c2ced8..1cd98fdf74d2 100644
  			compatible = "snps,designware-i2c";
  			reg = <0x04000000 0x10000>;
 -- 
-2.45.2
+2.47.2
 

@@ -1,7 +1,7 @@
-From 8e2d0f563850e47293604e3d395c2f6e0d19f0f1 Mon Sep 17 00:00:00 2001
+From 0e6eca9c7b915af559d8ebc30ca484bf3a6cdbf9 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Mon, 29 Jul 2024 10:13:34 +0800
-Subject: [PATCH 062/120] riscv: dts: sophgo: Add i2c device support for sg2042
+Subject: [PATCH 062/121] riscv: dts: sophgo: Add i2c device support for sg2042
 
 The i2c ip of sg2042 is a standard Synopsys i2c ip, which is already
 supported by the mainline kernel.
@@ -81,5 +81,5 @@ index 91dc48916ec4..7f46ae1b9441 100644
  			compatible = "sophgo,sg2042-pll";
  			reg = <0x70 0x300100c0 0x0 0x40>;
 -- 
-2.45.2
+2.47.2
 

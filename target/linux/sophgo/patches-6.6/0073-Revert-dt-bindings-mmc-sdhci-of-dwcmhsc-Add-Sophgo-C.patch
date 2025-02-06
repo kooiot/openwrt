@@ -1,7 +1,7 @@
-From 58fcb8dc7d3ce12a3a87c0b9bb4f8be1cfb4c9bd Mon Sep 17 00:00:00 2001
+From 174580ba655128b73c34f9f5f88cb2ec0f42938c Mon Sep 17 00:00:00 2001
 From: Dirk Chang <dirk@kooiot.com>
 Date: Thu, 28 Nov 2024 18:31:50 +0800
-Subject: [PATCH 073/120] Revert "dt-bindings: mmc: sdhci-of-dwcmhsc: Add
+Subject: [PATCH 073/121] Revert "dt-bindings: mmc: sdhci-of-dwcmhsc: Add
  Sophgo CV1800B and SG2002 support"
 
 This reverts commit 063fd8bf645fa8baf27c57105c1b53cb1277ee9f.
@@ -24,5 +24,5 @@ index 4d3031d9965f..a43eb837f8da 100644
    reg:
      maxItems: 1
 -- 
-2.45.2
+2.47.2
 

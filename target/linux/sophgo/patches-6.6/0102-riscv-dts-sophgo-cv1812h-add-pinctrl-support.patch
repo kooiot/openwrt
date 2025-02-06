@@ -1,7 +1,7 @@
-From 57b1eef844293bc53b2a7c34acb8a70719e4d237 Mon Sep 17 00:00:00 2001
+From acfc1c474edee01f8cc9cbe4e06b7a86c2a87756 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Tue, 10 Sep 2024 06:35:11 +0800
-Subject: [PATCH 102/120] riscv: dts: sophgo: cv1812h: add pinctrl support
+Subject: [PATCH 102/121] riscv: dts: sophgo: cv1812h: add pinctrl support
 
 Add pinctrl node for CV1812H SoC.
 
@@ -41,5 +41,5 @@ index 7fa4c1e2d1da..815114db54ed 100644
  
  &plic {
 -- 
-2.45.2
+2.47.2
 

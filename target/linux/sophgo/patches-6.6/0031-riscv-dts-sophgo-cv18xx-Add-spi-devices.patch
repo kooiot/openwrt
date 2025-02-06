@@ -1,7 +1,7 @@
-From 68364f02cb134c3f4ac9a1937302095e8b2d69df Mon Sep 17 00:00:00 2001
+From d31de045818804e265df4fbbbe03e1064945de01 Mon Sep 17 00:00:00 2001
 From: Inochi Amaoto <inochiama@outlook.com>
 Date: Thu, 8 Feb 2024 08:22:11 +0800
-Subject: [PATCH 031/120] riscv: dts: sophgo: cv18xx: Add spi devices
+Subject: [PATCH 031/121] riscv: dts: sophgo: cv18xx: Add spi devices
 
 Add spi devices for the CV180x, CV181x and SG200x soc.
 
@@ -68,5 +68,5 @@ index bf23c78c1e09..4277c62f2f2c 100644
  			compatible = "snps,dw-apb-uart";
  			reg = <0x041c0000 0x100>;
 -- 
-2.45.2
+2.47.2
 

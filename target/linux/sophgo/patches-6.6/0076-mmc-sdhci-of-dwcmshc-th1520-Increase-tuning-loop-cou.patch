@@ -1,7 +1,7 @@
-From 15a75618b5639d9375d3311b07d0485f599d558f Mon Sep 17 00:00:00 2001
+From 18554304b32a917899e9a948d32a08cfff840d57 Mon Sep 17 00:00:00 2001
 From: Maksim Kiselev <bigunclemax@gmail.com>
 Date: Tue, 2 Apr 2024 12:35:39 +0300
-Subject: [PATCH 076/120] mmc: sdhci-of-dwcmshc: th1520: Increase tuning loop
+Subject: [PATCH 076/121] mmc: sdhci-of-dwcmshc: th1520: Increase tuning loop
  count to 128
 
 commit ace323f80b9bc6734289a4e8a77938a3ce964c7d upstream.
@@ -39,5 +39,5 @@ index fa29460fd290..60b42126a4ed 100644
  	if (host->tuning_err) {
  		/* disable auto-tuning upon tuning error */
 -- 
-2.45.2
+2.47.2
 
