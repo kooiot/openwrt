@@ -1,0 +1,42 @@
+diff --git a/drivers/net/wireless/realtek/rtw88/fw.c b/drivers/net/wireless/realtek/rtw88/fw.c
+index 3f037ddcecf1..22d2665b9f58 100644
+--- a/drivers/net/wireless/realtek/rtw88/fw.c
++++ b/drivers/net/wireless/realtek/rtw88/fw.c
+@@ -1452,7 +1452,7 @@ void rtw_add_rsvd_page_sta(struct rtw_de
+ int rtw_fw_write_data_rsvd_page(struct rtw_dev *rtwdev, u16 pg_addr,
+ 				u8 *buf, u32 size)
+ {
+-	u8 bckp[2];
++	u8 bckp[3];
+ 	u8 val;
+ 	u16 rsvd_pg_head;
+ 	u32 bcn_valid_addr;
+@@ -1478,8 +1478,14 @@ int rtw_fw_write_data_rsvd_page(struct r
+ 	rtw_write8(rtwdev, REG_CR + 1, val);
+ 
+ 	if (rtw_hci_type(rtwdev) == RTW_HCI_TYPE_PCIE) {
+-		val = rtw_read8(rtwdev, REG_FWHW_TXQ_CTRL + 2);
++		val = rtw_read8(rtwdev, REG_BCN_CTRL);
+ 		bckp[1] = val;
++		val &= ~BIT_EN_BCN_FUNCTION;
++		val |= BIT_DIS_TSF_UDT;
++		rtw_write8(rtwdev, REG_BCN_CTRL, val);
++
++		val = rtw_read8(rtwdev, REG_FWHW_TXQ_CTRL + 2);
++		bckp[2] = val;
+ 		val &= ~(BIT_EN_BCNQ_DL >> 16);
+ 		rtw_write8(rtwdev, REG_FWHW_TXQ_CTRL + 2, val);
+ 	}
+@@ -1507,8 +1513,10 @@ restore:
+ 	rsvd_pg_head = rtwdev->fifo.rsvd_boundary;
+ 	rtw_write16(rtwdev, REG_FIFOPAGE_CTRL_2,
+ 		    rsvd_pg_head | BIT_BCN_VALID_V1);
+-	if (rtw_hci_type(rtwdev) == RTW_HCI_TYPE_PCIE)
+-		rtw_write8(rtwdev, REG_FWHW_TXQ_CTRL + 2, bckp[1]);
++	if (rtw_hci_type(rtwdev) == RTW_HCI_TYPE_PCIE) {
++		rtw_write8(rtwdev, REG_FWHW_TXQ_CTRL + 2, bckp[2]);
++		rtw_write8(rtwdev, REG_BCN_CTRL, bckp[1]);
++	}
+ 	rtw_write8(rtwdev, REG_CR + 1, bckp[0]);
+ 
+ 	return ret;

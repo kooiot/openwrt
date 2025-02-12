@@ -1,0 +1,218 @@
+--- a/drivers/net/wireless/realtek/rtw88/rtw8821c.h
++++ b/drivers/net/wireless/realtek/rtw88/rtw8821c.h
+@@ -27,7 +27,7 @@ struct rtw8821cu_efuse {
+ 	u8 res11[0xcf];
+ 	u8 package_type;		/* 0x1fb */
+ 	u8 res12[0x4];
+-};
++} __packed;
+ 
+ struct rtw8821ce_efuse {
+ 	u8 mac_addr[ETH_ALEN];		/* 0xd0 */
+@@ -47,7 +47,8 @@ struct rtw8821ce_efuse {
+ 	u8 ltr_en:1;
+ 	u8 res1:2;
+ 	u8 obff:2;
+-	u8 res2:3;
++	u8 res2_1:1;
++	u8 res2_2:2;
+ 	u8 obff_cap:2;
+ 	u8 res3:4;
+ 	u8 res4[3];
+@@ -63,7 +64,7 @@ struct rtw8821ce_efuse {
+ 	u8 res6:1;
+ 	u8 port_t_power_on_value:5;
+ 	u8 res7;
+-};
++} __packed;
+ 
+ struct rtw8821cs_efuse {
+ 	u8 res4[0x4a];			/* 0xd0 */
+@@ -101,7 +102,7 @@ struct rtw8821c_efuse {
+ 		struct rtw8821cu_efuse u;
+ 		struct rtw8821cs_efuse s;
+ 	};
+-};
++} __packed;
+ 
+ static inline void
+ _rtw_write32s_mask(struct rtw_dev *rtwdev, u32 addr, u32 mask, u32 data)
+--- a/drivers/net/wireless/realtek/rtw88/rtw8821c.c
++++ b/drivers/net/wireless/realtek/rtw88/rtw8821c.c
+@@ -716,6 +716,11 @@ static void rtw8821c_set_tx_power_index(
+ 		}
+ 	}
+ }
++ 
++static void rtw8821c_set_ampdu_factor(struct rtw_dev *rtwdev, u8 factor)
++{
++	rtw_write32(rtwdev, REG_AMPDU_MAX_LENGTH, (8192 << factor) - 1);
++}
+ 
+ static void rtw8821c_false_alarm_statistics(struct rtw_dev *rtwdev)
+ {
+@@ -1648,6 +1653,7 @@ static const struct rtw_chip_ops rtw8821
+ 	.set_antenna		= NULL,
+ 	.set_tx_power_index	= rtw8821c_set_tx_power_index,
+ 	.cfg_ldo25		= rtw8821c_cfg_ldo25,
++	.set_ampdu_factor	= rtw8821c_set_ampdu_factor,
+ 	.false_alarm_statistics	= rtw8821c_false_alarm_statistics,
+ 	.phy_calibration	= rtw8821c_phy_calibration,
+ 	.cck_pd_set		= rtw8821c_phy_cck_pd_set,
+@@ -1962,26 +1968,28 @@ const struct rtw_chip_info rtw8821c_hw_s
+ 	.txff_size = 65536,
+ 	.rxff_size = 16384,
+ 	.rsvd_drv_pg_num = 8,
+-	.txgi_factor = 1,
+-	.is_pwr_by_rate_dec = true,
+-	.max_power_index = 0x3f,
+-	.csi_buf_pg_num = 0,
+ 	.band = RTW_BAND_2G | RTW_BAND_5G,
+ 	.page_size = TX_PAGE_SIZE,
++	.csi_buf_pg_num = 0,
+ 	.dig_min = 0x1c,
++	.txgi_factor = 1,
++	.is_pwr_by_rate_dec = true,
++	.rx_ldpc = false,
++	.max_power_index = 0x3f,
++	.ampdu_density = IEEE80211_HT_MPDU_DENSITY_2,
+ 	.usb_tx_agg_desc_num = 3,
+ 	.hw_feature_report = true,
+ 	.c2h_ra_report_size = 7,
+ 	.old_datarate_fb_limit = false,
+ 	.ht_supported = true,
+ 	.vht_supported = true,
+ 	.lps_deep_mode_supported = BIT(LPS_DEEP_MODE_LCLK),
+ 	.sys_func_en = 0xD8,
+ 	.pwr_on_seq = card_enable_flow_8821c,
+ 	.pwr_off_seq = card_disable_flow_8821c,
+-	.page_table = page_table_8821c,
+ 	.rqpn_table = rqpn_table_8821c,
+ 	.prioq_addrs = &prioq_addrs_8821c,
++	.page_table = page_table_8821c,
+ 	.intf_table = &phy_para_table_8821c,
+ 	.dig = rtw8821c_dig,
+ 	.rf_base_addr = {0x2800, 0x2c00},
+@@ -1993,11 +2001,9 @@ const struct rtw_chip_info rtw8821c_hw_s
+ 	.rf_tbl = {&rtw8821c_rf_a_tbl},
+ 	.rfe_defs = rtw8821c_rfe_defs,
+ 	.rfe_defs_size = ARRAY_SIZE(rtw8821c_rfe_defs),
+-	.rx_ldpc = false,
+ 	.iqk_threshold = 8,
+ 	.bfer_su_max_num = 2,
+ 	.bfer_mu_max_num = 1,
+-	.ampdu_density = IEEE80211_HT_MPDU_DENSITY_2,
+ 	.max_scan_ie_len = IEEE80211_MAX_DATA_LEN,
+ 
+ 	.coex_para_ver = 0x19092746,
+--- a/drivers/net/wireless/realtek/rtw88/sdio.c
++++ b/drivers/net/wireless/realtek/rtw88/sdio.c
+@@ -677,12 +677,20 @@ static void rtw_sdio_enable_rx_aggregati
+ {
+ 	u8 size, timeout;
+ 
+-	if (rtw_chip_wcpu_11n(rtwdev)) {
++	switch (rtwdev->chip->id) {
++	case RTW_CHIP_TYPE_8703B:
+ 		size = 0x6;
+ 		timeout = 0x6;
+-	} else {
++		break;
++	case RTW_CHIP_TYPE_8723D:
++		size = 0xa;
++		timeout = 0x3;
++		rtw_write8_set(rtwdev, REG_RXDMA_AGG_PG_TH + 3, BIT(7));
++		break;
++	default:
+ 		size = 0xff;
+ 		timeout = 0x1;
++		break;
+ 	}
+ 
+ 	/* Make the firmware honor the size limit configured below */
+@@ -1192,6 +1200,8 @@ static void rtw_sdio_indicate_tx_status(
+ 	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
+ 	struct ieee80211_hw *hw = rtwdev->hw;
+ 
++	skb_pull(skb, rtwdev->chip->tx_pkt_desc_sz);
++
+ 	/* enqueue to wait for tx report */
+ 	if (info->flags & IEEE80211_TX_CTL_REQ_TX_STATUS) {
+ 		rtw_tx_report_enqueue(rtwdev, skb, tx_data->sn);
+--- a/drivers/net/wireless/realtek/rtw88/main.h
++++ b/drivers/net/wireless/realtek/rtw88/main.h
+@@ -866,6 +866,7 @@ struct rtw_chip_ops {
+ 			   u32 antenna_rx);
+ 	void (*cfg_ldo25)(struct rtw_dev *rtwdev, bool enable);
+ 	void (*efuse_grant)(struct rtw_dev *rtwdev, bool enable);
++	void (*set_ampdu_factor)(struct rtw_dev *rtwdev, u8 factor);
+ 	void (*false_alarm_statistics)(struct rtw_dev *rtwdev);
+ 	void (*phy_calibration)(struct rtw_dev *rtwdev);
+ 	void (*dpk_track)(struct rtw_dev *rtwdev);
+@@ -2243,4 +2244,6 @@ void rtw_update_channel(struct rtw_dev *
+ void rtw_core_port_switch(struct rtw_dev *rtwdev, struct ieee80211_vif *vif);
+ bool rtw_core_check_sta_active(struct rtw_dev *rtwdev);
+ void rtw_core_enable_beacon(struct rtw_dev *rtwdev, bool enable);
++void rtw_set_ampdu_factor(struct rtw_dev *rtwdev, struct ieee80211_vif *vif,
++			  struct ieee80211_bss_conf *bss_conf);
+ #endif
+--- a/drivers/net/wireless/realtek/rtw88/main.c
++++ b/drivers/net/wireless/realtek/rtw88/main.c
+@@ -2450,6 +2450,46 @@ void rtw_core_enable_beacon(struct rtw_d
+ 	}
+ }
+ 
++void rtw_set_ampdu_factor(struct rtw_dev *rtwdev, struct ieee80211_vif *vif,
++			  struct ieee80211_bss_conf *bss_conf)
++{
++	const struct rtw_chip_ops *ops = rtwdev->chip->ops;
++	struct ieee80211_sta *sta;
++	u8 factor = 0xff;
++
++	if (!ops->set_ampdu_factor)
++		return;
++
++	rcu_read_lock();
++
++	sta = ieee80211_find_sta(vif, bss_conf->bssid);
++	if (!sta) {
++		rcu_read_unlock();
++		rtw_warn(rtwdev, "%s: failed to find station %pM\n",
++			 __func__, bss_conf->bssid);
++		return;
++	}
++
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0)
++	if (sta->deflink.vht_cap.vht_supported)
++		factor = u32_get_bits(sta->deflink.vht_cap.cap,
++				      IEEE80211_VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_MASK);
++	else if (sta->deflink.ht_cap.ht_supported)
++		factor = sta->deflink.ht_cap.ampdu_factor;
++#else
++	if (sta->vht_cap.vht_supported)
++		factor = u32_get_bits(sta->vht_cap.cap,
++				      IEEE80211_VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_MASK);
++	else if (sta->ht_cap.ht_supported)
++		factor = sta->ht_cap.ampdu_factor;
++#endif
++
++	rcu_read_unlock();
++
++	if (factor != 0xff)
++		ops->set_ampdu_factor(rtwdev, factor);
++}
++
+ MODULE_AUTHOR("Realtek Corporation");
+ MODULE_DESCRIPTION("Realtek 802.11ac wireless core module");
+ MODULE_LICENSE("Dual BSD/GPL");
+--- a/drivers/net/wireless/realtek/rtw88/mac80211.c
++++ b/drivers/net/wireless/realtek/rtw88/mac80211.c
+@@ -396,6 +396,8 @@ static void rtw_ops_bss_info_changed(str
+ 			if (rtw_bf_support)
+ 				rtw_bf_assoc(rtwdev, vif, conf);
+ 
++			rtw_set_ampdu_factor(rtwdev, vif, conf);
++
+ 			rtw_fw_beacon_filter_config(rtwdev, true, vif);
+ 		} else {
+ 			rtw_leave_lps(rtwdev);
