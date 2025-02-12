@@ -436,7 +436,7 @@
 +};
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-t113-tlink-e1.dts
-@@ -0,0 +1,426 @@
+@@ -0,0 +1,443 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 +
@@ -595,13 +595,23 @@
 +			gpios = <&pio 3 20 GPIO_ACTIVE_LOW>; /* PD20 */
 +		};
 +	};
++	// rfkill_wlan needed by RTL official driver
++	rfkill_wlan {
++		compatible = "rfkill-gpio";
++		rfkill-name = "wlan";
++		rfkill-type = <1>;
++		reset-gpios = <&pio 6 13 GPIO_ACTIVE_HIGH>;//模组WiFi使能引脚，根据实际原理图配置
++		// shutdown-gpios = <&pio 6 13 GPIO_ACTIVE_LOW>;//电源控制引脚，根据实际原理图配置
++		//status = "okay";
++		status = "disabled";
++	};
 +
 +	wifi_pwrseq: wifi-pwrseq {
 +		compatible = "mmc-pwrseq-simple";
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&wifi_rst>;
++		// pinctrl-names = "default";
++		// pinctrl-0 = <&wifi_en_pin>;
 +		post-power-on-delay-ms = <50>;
-+		reset-gpios = <&pio 6 12 GPIO_ACTIVE_LOW>; /* PG13 */
++		reset-gpios = <&pio 6 13 GPIO_ACTIVE_LOW>; /* PG13 */
 +
 +		// clocks = <&ccu CLK_FANOUT1>;
 +		// clock-names = "ext_clock";
@@ -609,6 +619,8 @@
 +		// assigned-clock-rates = <32768>;
 +		// pinctrl-0 = <&clk_pg11_pin>;
 +		// pinctrl-names = "default";
++
++		// status = "disabled";
 +	};
 +};
 +
@@ -682,7 +694,7 @@
 +		function = "gpio_out";
 +	};
 +
-+	wifi_rst: wifi-rst-pin {
++	wifi_en_pin: wifi-en-pin {
 +		pins = "PG13";
 +		function = "gpio_out";
 +	};
@@ -750,20 +762,25 @@
 +	pinctrl-0 = <&mmc1_pins>;
 +	vmmc-supply = <&reg_vcc_3v3>;
 +	vqmmc-supply = <&reg_ldoa>;
-+	// mmc-pwrseq = <&wifi_pwrseq>;
++	mmc-pwrseq = <&wifi_pwrseq>;
 +	bus-width = <4>;
-+	max-frequency = <15000000>;
++	max-frequency = <150000000>;
 +	non-removable;
++	no-mmc;
 +	no-sd;
-+	cap-sdio-irq;
++	// cap-sdio-irq;
++	cap-sd-highspeed;
++	mmc-hs200-1_8v;
++	mmc-ddr-1_8v;
++	// sd-uhs-ddr50;
 +	keep-power-in-suspend;
 +	ignore-pm-notify;
-+	status = "disabled";
++	status = "okay";
 +
 +	aw869a: sdio_wifi@1 {
 +        reg = <1>;
 +        interrupt-parent = <&pio>;
-+        interrupts = <6 11 IRQ_TYPE_LEVEL_HIGH>; /* PG11 */
++        interrupts = <6 12 IRQ_TYPE_LEVEL_HIGH>; /* PG12 */
 +        interrupt-names = "host-wake";
 +	};
 +};
