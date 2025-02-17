@@ -591,8 +591,8 @@
 +
 +		pcie_power {
 +			gpio-export,name = "pcie_power";
-+			gpio-export,output=<0>;
-+			gpios = <&pio 3 20 GPIO_ACTIVE_LOW>; /* PD20 */
++			gpio-export,output=<1>;
++			gpios = <&pio 3 20 GPIO_ACTIVE_HIGH>; /* PD20 */
 +		};
 +	};
 +	// rfkill_wlan needed by RTL official driver
