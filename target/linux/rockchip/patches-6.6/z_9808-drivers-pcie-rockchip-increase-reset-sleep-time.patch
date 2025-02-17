@@ -1,0 +1,14 @@
+--- a/drivers/pci/controller/dwc/pcie-dw-rockchip.c
++++ b/drivers/pci/controller/dwc/pcie-dw-rockchip.c
+@@ -180,9 +180,10 @@ static int rockchip_pcie_start_link(stru
+ 	 * We need more extra time as before, rather than setting just
+ 	 * 100us as we don't know how long should the device need to reset.
+ 	 */
+-	msleep(100);
++	msleep(200);
+ 	gpiod_set_value_cansleep(rockchip->rst_gpio, 1);
+ 
++	usleep_range(1000, 1100);
+ 	return 0;
+ }
+ 
