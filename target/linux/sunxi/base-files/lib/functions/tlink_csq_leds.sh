@@ -110,6 +110,7 @@ tlink_csq_leds_single()
 }
 
 case $(board_name) in
+	kooiot,tlink-e1|\
 	kooiot,tlink-m408|\
 	kooiot,tlink-m416)
 		tlink_csq_leds_mixed
