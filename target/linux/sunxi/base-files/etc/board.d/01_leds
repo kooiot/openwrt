@@ -30,6 +30,7 @@ kooiot,tlink-k2x)
 	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "wwan0"
 	ucidef_set_led_netdev "wifi" "wifi" "kooiot:green:wifi" "wlan0"
 	;;
+kooiot,tlink-e1|\
 kooiot,tlink-s1)
 	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "wwan0"
 	;;
