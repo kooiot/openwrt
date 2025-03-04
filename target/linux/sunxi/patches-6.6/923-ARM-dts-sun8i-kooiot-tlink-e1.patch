@@ -535,7 +535,7 @@
 +	 	status_led {
 +	 		linux,default-trigger = "heartbeat";
 +	 		label = "blue:status";
-+	 		gpios = <&pio 4 11 GPIO_ACTIVE_HIGH>; /* PE11 */
++	 		gpios = <&pio 4 11 GPIO_ACTIVE_LOW>; /* PE11 */
 +	 	};
 +
 +		modem {
@@ -546,13 +546,13 @@
 +
 +		bs {
 +			label = "kooiot:green:bs";
-+			gpios = <&pio 3 21 GPIO_ACTIVE_HIGH>; /* PD21 */
++			gpios = <&pio 3 21 GPIO_ACTIVE_LOW>; /* PD21 */
 +			default-state = "off";
 +		};
 +
 +		gs {
 +			label = "kooiot:green:gs";
-+			gpios = <&pio 3 22 GPIO_ACTIVE_HIGH>; /* PD22 */
++			gpios = <&pio 3 22 GPIO_ACTIVE_LOW>; /* PD22 */
 +			default-state = "off";
 +		};
 +
