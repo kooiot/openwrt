@@ -56,7 +56,8 @@ CONFIG_TARGET_sunxi_cortexa7=y
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-k1 is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-k2 is not set
 CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-k2x=y
-# CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-k4x is not set
+# CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-k4a is not set
+# CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-k4g is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-m408 is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-m416 is not set
 # CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-r1 is not set
@@ -2575,7 +2576,7 @@ CONFIG_PACKAGE_kmod-usb-net-cdc-ncm=y
 # CONFIG_PACKAGE_kmod-usb-net-dm9601-ether is not set
 # CONFIG_PACKAGE_kmod-usb-net-hso is not set
 CONFIG_PACKAGE_kmod-usb-net-huawei-cdc-ncm=y
-# CONFIG_PACKAGE_kmod-usb-net-ipheth is not set
+CONFIG_PACKAGE_kmod-usb-net-ipheth=y
 # CONFIG_PACKAGE_kmod-usb-net-kalmia is not set
 # CONFIG_PACKAGE_kmod-usb-net-kaweth is not set
 # CONFIG_PACKAGE_kmod-usb-net-mcs7830 is not set
@@ -3861,11 +3862,11 @@ CONFIG_OPENSSL_ENGINE_BUILTIN=y
 #
 # libimobiledevice
 #
-# CONFIG_PACKAGE_libimobiledevice is not set
+CONFIG_PACKAGE_libimobiledevice=y
 # CONFIG_PACKAGE_libirecovery is not set
-# CONFIG_PACKAGE_libplist is not set
+CONFIG_PACKAGE_libplist=y
 # CONFIG_PACKAGE_libplistcxx is not set
-# CONFIG_PACKAGE_libusbmuxd is not set
+CONFIG_PACKAGE_libusbmuxd=y
 # end of libimobiledevice
 
 # CONFIG_PACKAGE_acsccid is not set
@@ -4271,7 +4272,7 @@ CONFIG_PACKAGE_libwebsockets-openssl=y
 # CONFIG_PACKAGE_libwrap is not set
 # CONFIG_PACKAGE_libxerces-c is not set
 # CONFIG_PACKAGE_libxerces-c-samples is not set
-# CONFIG_PACKAGE_libxml2 is not set
+CONFIG_PACKAGE_libxml2=y
 # CONFIG_PACKAGE_libxslt is not set
 # CONFIG_PACKAGE_libyaml-cpp is not set
 # CONFIG_PACKAGE_libyang is not set
@@ -6101,7 +6102,7 @@ CONFIG_PACKAGE_tio=y
 # CONFIG_PACKAGE_libimobiledevice-utils is not set
 # CONFIG_PACKAGE_libusbmuxd-utils is not set
 # CONFIG_PACKAGE_plistutil is not set
-# CONFIG_PACKAGE_usbmuxd is not set
+CONFIG_PACKAGE_usbmuxd=y
 # end of libimobiledevice
 
 #
