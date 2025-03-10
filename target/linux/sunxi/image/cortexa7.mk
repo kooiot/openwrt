@@ -559,7 +559,7 @@ define Device/kooiot_tlink-k2x
 	ser2net shellinabox iperf3 ethtool minicom \
     blockd kmod-usb-storage kmod-drm-sunxi \
     usb-otg-sunxi kmod-usb-gadget-serial \
-	kmod-eeprom-at24
+	kmod-eeprom-at24 phone-usb-tether
   SOC := sun8i-r40
 endef
 TARGET_DEVICES += kooiot_tlink-k2x
