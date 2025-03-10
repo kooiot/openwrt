@@ -10,7 +10,7 @@
  	option input		ACCEPT
  	option output		ACCEPT
  	option forward		ACCEPT
-@@ -17,7 +20,13 @@
+@@ -17,7 +20,15 @@
  	option name		wan
  	list   network		'wan'
  	list   network		'wan6'
@@ -21,6 +21,8 @@
 +	list   network		'5g_wan'
 +	list   network		'5g_wan_4'
 +	list   network		'5g_wan_6'
++	list   network		'iphone_usb'
++	list   network		'android_usb'
 +	option input		ACCEPT
  	option output		ACCEPT
  	option forward		REJECT
