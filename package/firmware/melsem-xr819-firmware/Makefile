@@ -8,7 +8,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=melsem-xr819-firmware
-PKG_VERSION:=2021-04-01
+PKG_VERSION:=2021.04.01
 PKG_RELEASE:=1
 
 PKG_SOURCE:=xr819.tar.bz2
