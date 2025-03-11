@@ -1,6 +1,6 @@
---- a/drivers/net/sun8i_emac.c	2019-01-15 06:02:36.000000000 +0800
-+++ b/drivers/net/sun8i_emac.c	2019-10-18 19:29:43.159788582 +0800
-@@ -132,6 +132,7 @@ struct emac_variant {
+--- a/drivers/net/sun8i_emac.c
++++ b/drivers/net/sun8i_emac.c
+@@ -131,6 +131,7 @@ struct emac_variant {
  	uint			syscon_offset;
  	bool			soc_has_internal_phy;
  	bool			support_rmii;
@@ -8,7 +8,7 @@
  };
  
  struct emac_dma_desc {
-@@ -722,6 +723,30 @@ static int sun8i_emac_eth_probe(struct u
+@@ -719,6 +720,30 @@ static int sun8i_emac_eth_probe(struct u
  	sun8i_mdio_init(dev->name, dev);
  	priv->bus = miiphy_get_dev_by_name(dev->name);
  
@@ -39,7 +39,7 @@
  	return sun8i_phy_init(priv, dev);
  }
  
-@@ -890,6 +915,7 @@ static const struct emac_variant emac_va
+@@ -884,6 +909,7 @@ static const struct emac_variant emac_va
  	.syscon_offset		= 0x30,
  	.soc_has_internal_phy	= true,
  	.support_rmii		= true,

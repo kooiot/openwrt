@@ -1,6 +1,6 @@
 --- a/board/sunxi/board.c
 +++ b/board/sunxi/board.c
-@@ -684,7 +684,7 @@
+@@ -626,7 +626,7 @@
  #endif
  	printf("DRAM:");
  	gd->ram_size = sunxi_dram_init();

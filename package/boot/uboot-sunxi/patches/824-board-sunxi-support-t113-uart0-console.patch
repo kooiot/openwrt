@@ -1,6 +1,6 @@
 --- a/arch/arm/mach-sunxi/Kconfig
 +++ b/arch/arm/mach-sunxi/Kconfig
-@@ -766,6 +766,12 @@
+@@ -786,6 +786,12 @@
  	UART3 may used pins PE8 and PE9 on the Allwinner T113 board.
  	Enable this if you are using these pins for UART3.
  
@@ -15,7 +15,7 @@
  	---help---
 --- a/arch/arm/mach-sunxi/board.c
 +++ b/arch/arm/mach-sunxi/board.c
-@@ -152,9 +152,15 @@
+@@ -147,9 +147,15 @@
  	sunxi_gpio_set_cfgpin(SUNXI_GPH(13), SUN9I_GPH_UART0);
  	sunxi_gpio_set_pull(SUNXI_GPH(13), SUNXI_GPIO_PULL_UP);
  #elif CONFIG_CONS_INDEX == 1 && defined(CONFIG_MACH_SUN8I_R528)

@@ -1,6 +1,6 @@
 --- a/board/sunxi/board.c
 +++ b/board/sunxi/board.c
-@@ -504,6 +504,13 @@
+@@ -414,6 +414,13 @@
  		sunxi_gpio_set_cfgpin(SUNXI_GPC(24), SUNXI_GPC_SDC2);
  		sunxi_gpio_set_pull(SUNXI_GPC(24), SUNXI_GPIO_PULL_UP);
  		sunxi_gpio_set_drv(SUNXI_GPC(24), 2);
@@ -16,11 +16,11 @@
  		for (pin = SUNXI_GPC(5); pin <= SUNXI_GPC(6); pin++) {
 --- a/include/sunxi_gpio.h
 +++ b/include/sunxi_gpio.h
-@@ -170,6 +170,7 @@
+@@ -125,6 +125,7 @@ enum sunxi_gpio_number {
  #define SUNXI_GPC_NAND		2
  #define SUNXI_GPC_SPI0		3
  #define SUNXI_GPC_SDC2		3
 +#define SUN8I_S3_GPC_SDC2	2
  #define SUN6I_GPC_SDC3		4
  #define SUN50I_GPC_SPI0		4
- 
+ #define SUNIV_GPC_SPI0		2

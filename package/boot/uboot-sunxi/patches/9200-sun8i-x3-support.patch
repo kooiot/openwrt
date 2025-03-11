@@ -1,7 +1,7 @@
 diff -uNra a/include/configs/sunxi-common.h b/include/configs/sunxi-common.h
 --- a/include/configs/sunxi-common.h	2021-12-06 18:39:35.038127434 +0800
 +++ b/include/configs/sunxi-common.h	2021-12-06 19:15:32.413875179 +0800
-@@ -68,6 +68,9 @@
+@@ -60,6 +60,9 @@
 
  #define PHYS_SDRAM_0			CONFIG_SYS_SDRAM_BASE
  #define PHYS_SDRAM_0_SIZE		0x80000000 /* 2 GiB */
@@ -63,7 +63,7 @@ diff -uNra a/arch/arm/mach-sunxi/board.c b/arch/arm/mach-sunxi/board.c
 diff -uNra a/arch/arm/mach-sunxi/clock_sun6i.c b/arch/arm/mach-sunxi/clock_sun6i.c
 --- a/arch/arm/mach-sunxi/clock_sun6i.c	2021-12-08 11:00:23.745074609 +0800
 +++ b/arch/arm/mach-sunxi/clock_sun6i.c	2021-12-08 11:03:15.559711933 +0800
-@@ -346,6 +346,7 @@
+@@ -318,6 +318,7 @@
  #endif
  
  #if defined(CONFIG_MACH_SUN8I_A33) || \
@@ -74,7 +74,7 @@ diff -uNra a/arch/arm/mach-sunxi/clock_sun6i.c b/arch/arm/mach-sunxi/clock_sun6i
 diff -uNra a/arch/arm/mach-sunxi/cpu_info.c b/arch/arm/mach-sunxi/cpu_info.c
 --- a/arch/arm/mach-sunxi/cpu_info.c	2021-12-08 11:00:23.745074609 +0800
 +++ b/arch/arm/mach-sunxi/cpu_info.c	2021-12-08 11:03:35.524747003 +0800
-@@ -85,6 +85,8 @@
+@@ -84,6 +84,8 @@
  	printf("CPU:   Allwinner A23 (SUN8I %04x)\n", sunxi_get_sram_id());
  #elif defined CONFIG_MACH_SUN8I_A33
  	printf("CPU:   Allwinner A33 (SUN8I %04x)\n", sunxi_get_sram_id());
@@ -98,19 +98,19 @@ diff -uNra a/arch/arm/cpu/armv7/sunxi/sram.c b/arch/arm/cpu/armv7/sunxi/sram.c
 diff -uNra a/arch/arm/mach-sunxi/Kconfig b/arch/arm/mach-sunxi/Kconfig
 --- a/arch/arm/mach-sunxi/Kconfig	2021-12-08 11:00:23.745074609 +0800
 +++ b/arch/arm/mach-sunxi/Kconfig	2021-12-08 11:05:40.938471848 +0800
-@@ -25,7 +25,7 @@
+@@ -25,7 +25,7 @@ config DRAM_SUN8I_A33
  	bool
  	help
  	  Select this dram controller driver for Sun8i platforms,
 -	  for A33 SOC.
 +	  for A33/X3 SOC.
- 
+
  config DRAM_SUN8I_A83T
  	bool
-@@ -275,6 +275,19 @@
+@@ -363,6 +363,19 @@ config MACH_SUN8I_A33
+ 	select SYS_I2C_SUN8I_RSB
  	select ARMV7_BOOT_SEC_DEFAULT if OLD_SUNXI_KERNEL_COMPAT
- 	imply CONS_INDEX_5 if !DM_SERIAL
- 
+
 +config MACH_SUN8I_X3
 +	bool "sun8i (Allwinner X3)"
 +	select CPU_V7A
@@ -127,10 +127,10 @@ diff -uNra a/arch/arm/mach-sunxi/Kconfig b/arch/arm/mach-sunxi/Kconfig
  config MACH_SUN8I_A83T
  	bool "sun8i (Allwinner A83T)"
  	select CPU_V7A
-@@ -372,13 +375,14 @@
- 
+@@ -468,13 +481,14 @@ config MACH_SUN50I_H616
+
  endchoice
- 
+
 -# The sun8i SoCs share a lot, this helps to avoid a lot of "if A23 || A33"
 +# The sun8i SoCs share a lot, this helps to avoid a lot of "if A23 || A33 || X3"
  config MACH_SUN8I
@@ -143,9 +143,9 @@ diff -uNra a/arch/arm/mach-sunxi/Kconfig b/arch/arm/mach-sunxi/Kconfig
  	default y if MACH_SUN8I_A83T
  	default y if MACH_SUNXI_H3_H5
  	default y if MACH_SUN8I_R40
-@@ -498,7 +412,8 @@
- config DRAM_ZQ
+@@ -621,7 +635,8 @@ config DRAM_ZQ
  	int "sunxi dram zq value"
+ 	depends on !MACH_SUN50I_H616
  	default 123 if MACH_SUN4I || MACH_SUN5I || MACH_SUN6I || \
 -		       MACH_SUN8I_A23 || MACH_SUN8I_A33 || MACH_SUN8I_A83T
 +		       MACH_SUN8I_A23 || MACH_SUN8I_A33 || MACH_SUN8I_X3 || \
@@ -156,7 +156,7 @@ diff -uNra a/arch/arm/mach-sunxi/Kconfig b/arch/arm/mach-sunxi/Kconfig
 diff -uNra a/board/sunxi/board.c b/board/sunxi/board.c
 --- a/board/sunxi/board.c	2021-12-08 11:00:23.917087022 +0800
 +++ b/board/sunxi/board.c	2021-12-08 11:12:39.046692643 +0800
-@@ -772,7 +772,8 @@
+@@ -741,7 +741,8 @@
  	 */
  #if !defined(CONFIG_MACH_SUN4I) && !defined(CONFIG_MACH_SUN5I) && \
      !defined(CONFIG_MACH_SUN6I) && !defined(CONFIG_MACH_SUN7I) && \
@@ -169,7 +169,7 @@ diff -uNra a/board/sunxi/board.c b/board/sunxi/board.c
 diff -uNra a/drivers/clk/sunxi/Kconfig b/drivers/clk/sunxi/Kconfig
 --- a/drivers/clk/sunxi/Kconfig	2021-12-08 11:00:24.017094236 +0800
 +++ b/drivers/clk/sunxi/Kconfig	2021-12-08 11:13:53.064121503 +0800
-@@ -32,10 +32,10 @@
+@@ -47,10 +47,10 @@
  
  config CLK_SUN8I_A23
  	bool "Clock driver for Allwinner A23/A33"
@@ -185,7 +185,7 @@ diff -uNra a/drivers/clk/sunxi/Kconfig b/drivers/clk/sunxi/Kconfig
 diff -uNra a/drivers/power/Kconfig b/drivers/power/Kconfig
 --- a/drivers/power/Kconfig	2021-12-08 11:00:24.061097405 +0800
 +++ b/drivers/power/Kconfig	2021-12-08 11:13:19.359490719 +0800
-@@ -14,7 +14,7 @@
+@@ -57,7 +57,7 @@
  	default AXP209_POWER if MACH_SUN4I || MACH_SUN5I || MACH_SUN7I
  	default AXP221_POWER if MACH_SUN6I || MACH_SUN8I_A23 || MACH_SUN8I_A33 || MACH_SUN8I_R40
  	default AXP818_POWER if MACH_SUN8I_A83T
@@ -197,7 +197,7 @@ diff -uNra a/drivers/power/Kconfig b/drivers/power/Kconfig
 diff -uNra a/drivers/video/sunxi/sunxi_display.c b/drivers/video/sunxi/sunxi_display.c
 --- a/drivers/video/sunxi/sunxi_display.c	2021-12-08 11:00:24.089099422 +0800
 +++ b/drivers/video/sunxi/sunxi_display.c	2021-12-08 11:14:24.872688360 +0800
-@@ -845,7 +845,7 @@
+@@ -846,7 +846,7 @@
  		(struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
  
  	/* On sun6i the drc must be clocked even when in pass-through mode */

@@ -1,7 +1,7 @@
 diff -Nurp a/arch/arm/mach-sunxi/board.c b/arch/arm/mach-sunxi/board.c
 --- a/arch/arm/mach-sunxi/board.c
 +++ b/arch/arm/mach-sunxi/board.c
-@@ -195,6 +195,10 @@ static int gpio_init(void)
+@@ -190,6 +190,10 @@ static int gpio_init(void)
  	sunxi_gpio_set_cfgpin(SUNXI_GPL(2), SUN8I_GPL_R_UART);
  	sunxi_gpio_set_cfgpin(SUNXI_GPL(3), SUN8I_GPL_R_UART);
  	sunxi_gpio_set_pull(SUNXI_GPL(3), SUNXI_GPIO_PULL_UP);

@@ -1,6 +1,6 @@
 --- a/board/sunxi/board.c
 +++ b/board/sunxi/board.c
-@@ -796,7 +796,7 @@
+@@ -767,7 +767,7 @@
  	if (!get_unique_sid(sid))
  		return;
 
@@ -9,7 +9,7 @@
  		sprintf(ethaddr, "ethernet%d", i);
  		if (!fdt_get_alias(fdt, ethaddr))
  			continue;
-@@ -810,12 +810,15 @@
+@@ -781,12 +781,15 @@
  			continue;
 
  		/* Non OUI / registered MAC address */

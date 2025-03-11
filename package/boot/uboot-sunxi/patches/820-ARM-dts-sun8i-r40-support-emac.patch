@@ -22,7 +22,7 @@
  			sram_c: sram@1d00000 {
  				compatible = "mmio-sram";
  				reg = <0x01d00000 0xd0000>;
-@@ -578,6 +593,26 @@
+@@ -580,6 +595,26 @@
  				function = "csi0";
  			};
  
@@ -49,7 +49,7 @@
  			gmac_rgmii_pins: gmac-rgmii-pins {
  				pins = "PA0", "PA1", "PA2", "PA3",
  				       "PA4", "PA5", "PA6", "PA7",
-@@ -1018,6 +1053,28 @@
+@@ -1020,6 +1055,28 @@
  			resets = <&ccu RST_BUS_GPU>;
  		};
  
