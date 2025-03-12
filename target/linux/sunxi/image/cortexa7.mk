@@ -307,7 +307,7 @@ define Device/kooiot_tlink-x1
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     kmod-eeprom-at24 fdisk blockd
   SOC := sun8i-h3
 endef
@@ -325,7 +325,7 @@ define Device/kooiot_tlink-x1s
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     kmod-eeprom-at24 fdisk
   SOC := sun8i-h3
 endef
@@ -374,7 +374,7 @@ define Device/kooiot_tlink-ok-a40i
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage kmod-drm-sunxi \
 	usb-otg-sunxi kmod-usb-gadget-serial
   SOC := sun8i-r40
@@ -401,7 +401,7 @@ define Device/kooiot_tlink-dj-a40i-e
 	usb-otg-sunxi kmod-usb-gadget-serial \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
 	luci-app-ddns luci-app-mosquitto luci-app-ser2net \
-    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    tinc-freeioe-tunnel shellinabox iperf3 ethtool \
     uqmi umbim usbutils freeioe wwanleds \
 	blockd siridb-server mosquitto-nossl \
 	wpad-basic-wolfssl uclibcxx curl fdisk
@@ -429,7 +429,7 @@ define Device/kooiot_tlink-dr4-a40i
 	usb-otg-sunxi kmod-usb-gadget-serial \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
 	luci-app-ddns luci-app-mosquitto luci-app-ser2net \
-    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    tinc-freeioe-tunnel shellinabox iperf3 ethtool \
     uqmi umbim usbutils freeioe wwanleds \
 	blockd siridb-server mosquitto-nossl \
 	wpad-basic-wolfssl uclibcxx curl fdisk
@@ -457,7 +457,7 @@ define Device/kooiot_tlink-nano-a40i
 	usb-otg-sunxi kmod-usb-gadget-serial \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
 	luci-app-ddns luci-app-mosquitto luci-app-ser2net \
-    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    tinc-freeioe-tunnel shellinabox iperf3 ethtool \
     uqmi umbim usbutils freeioe wwanleds \
 	blockd siridb-server mosquitto-nossl \
 	wpad-basic-wolfssl uclibcxx curl fdisk
@@ -485,7 +485,7 @@ define Device/kooiot_tlink-qh-x40
 	usb-otg-sunxi kmod-usb-gadget-serial \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
 	luci-app-ddns luci-app-mosquitto luci-app-ser2net \
-    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    tinc-freeioe-tunnel shellinabox iperf3 ethtool \
     uqmi umbim usbutils freeioe wwanleds \
 	blockd siridb-server mosquitto-nossl \
 	wpad-basic-wolfssl uclibcxx curl fdisk
@@ -508,7 +508,7 @@ define Device/kooiot_tlink-k1
 	kmod-motorcomm-phy \
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage kmod-drm-sunxi \
     usb-otg-sunxi kmod-usb-gadget-serial
   SOC := sun8i-r40
@@ -530,7 +530,7 @@ define Device/kooiot_tlink-k2
 	kmod-motorcomm-phy \
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage kmod-drm-sunxi \
     usb-otg-sunxi kmod-usb-gadget-serial \
 	kmod-eeprom-at24
@@ -556,7 +556,7 @@ define Device/kooiot_tlink-k2x
     uqmi fdisk usbutils freeioe wwanleds \
 	luci-proto-qmi luci-proto-3g luci-proto-ncm \
 	luci-app-freeioe tinc-freeioe-tunnel \
-	ser2net shellinabox iperf3 ethtool minicom \
+	luci-app-ser2net shellinabox iperf3 ethtool minicom \
     blockd kmod-usb-storage kmod-drm-sunxi \
     usb-otg-sunxi kmod-usb-gadget-serial \
 	kmod-eeprom-at24 phone-usb-tether
@@ -583,7 +583,7 @@ define Device/kooiot_tlink-k4a
     uqmi fdisk usbutils freeioe wwanleds \
     luci-proto-qmi luci-proto-3g luci-proto-ncm \
     luci-app-freeioe tinc-freeioe-tunnel\
-    ser2net shellinabox iperf3 ethtool minicom \
+    luci-app-ser2net shellinabox iperf3 ethtool minicom \
     blockd kmod-usb-storage kmod-drm-sunxi \
     usb-otg-sunxi kmod-usb-gadget-serial \
     kmod-eeprom-at24
@@ -610,7 +610,7 @@ define Device/kooiot_tlink-k4g
     uqmi fdisk usbutils freeioe wwanleds \
     luci-proto-qmi luci-proto-3g luci-proto-ncm \
     luci-app-freeioe tinc-freeioe-tunnel\
-    ser2net shellinabox iperf3 ethtool minicom \
+    luci-app-ser2net shellinabox iperf3 ethtool minicom \
     blockd kmod-usb-storage kmod-drm-sunxi \
     usb-otg-sunxi kmod-usb-gadget-serial \
     kmod-eeprom-at24
@@ -634,7 +634,7 @@ define Device/kooiot_tlink-m408
 	kmod-can-bcm kmod-can-raw ip-full\
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage kmod-drm-sunxi \
 	usb-otg-sunxi kmod-usb-gadget-serial
   SOC := sun8i-t3
@@ -656,7 +656,7 @@ define Device/kooiot_tlink-m416
 	kmod-can-bcm kmod-can-raw ip-full\
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage kmod-drm-sunxi \
 	usb-otg-sunxi kmod-usb-gadget-serial
   SOC := sun8i-t3
@@ -676,7 +676,7 @@ define Device/kooiot_tlink-rp-t113
 	kmod-can-bcm kmod-can-raw ip-full\
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage \
 	usb-otg-sunxi kmod-usb-gadget-serial
   SOC := sun8i-t113
@@ -696,7 +696,7 @@ define Device/kooiot_tlink-e1-v0
 	kmod-can-bcm kmod-can-raw ip-full\
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage \
 	usb-otg-sunxi kmod-usb-gadget-serial
   SOC := sun8i-t113
@@ -716,7 +716,7 @@ define Device/kooiot_tlink-e1
 	kmod-can-bcm kmod-can-raw ip-full\
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage \
 	usb-otg-sunxi kmod-usb-gadget-serial
   SOC := sun8i-t113
@@ -736,7 +736,7 @@ define Device/kooiot_tlink-dly-e102
 	kmod-can-bcm kmod-can-raw ip-full\
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage kmod-motorcomm-yt8521s \
 	usb-otg-sunxi kmod-usb-gadget-serial
   SOC := sun8i-t113
@@ -758,7 +758,7 @@ define Device/kooiot_tlink-dly-e102-spinand
 	kmod-can-bcm kmod-can-raw ip-full\
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage kmod-motorcomm-yt8521s \
 	usb-otg-sunxi kmod-usb-gadget-serial
   SOC := sun8i-t113
@@ -779,7 +779,7 @@ define Device/kooiot_tlink-dly-e204
 	kmod-can-bcm kmod-can-raw ip-full\
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
-    tinc-freeioe-tunnel ser2net shellinabox iperf3 ethtool \
+    tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage kmod-motorcomm-yt8521s \
 	usb-otg-sunxi kmod-usb-gadget-serial
   SOC := sun8i-t113
