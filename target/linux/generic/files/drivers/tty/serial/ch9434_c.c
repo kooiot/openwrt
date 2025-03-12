@@ -1540,7 +1540,7 @@ static ssize_t reg_dump_show(struct device *dev, struct device_attribute *attr, 
 {
 	struct uart_port *port;
 	int i;
-	struct ch943x_port *s = dev_get_drvdata(port->dev);
+	struct ch943x_port *s = dev_get_drvdata(dev);
 
 	dev_info(dev, "reg_dump_show");
 
