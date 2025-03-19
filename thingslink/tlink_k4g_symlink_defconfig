@@ -1,0 +1,27 @@
+CONFIG_TARGET_sunxi=y
+CONFIG_TARGET_sunxi_cortexa7=y
+CONFIG_TARGET_sunxi_cortexa7_DEVICE_kooiot_tlink-k4g=y
+CONFIG_PACKAGE_bacnet-stack-router=y
+CONFIG_PACKAGE_bacnet-stack-server=y
+CONFIG_PACKAGE_kmod-usb-net-ipheth=y
+CONFIG_PACKAGE_kmod-usb-net-rndis=y
+CONFIG_PACKAGE_libcap=y
+CONFIG_PACKAGE_libconfig=y
+CONFIG_PACKAGE_libimobiledevice=y
+CONFIG_PACKAGE_libimobiledevice-glue=y
+CONFIG_PACKAGE_libopenssl-v1=y
+CONFIG_PACKAGE_libplist=y
+CONFIG_PACKAGE_libusbmuxd=y
+CONFIG_PACKAGE_libuv=y
+CONFIG_PACKAGE_libwebsockets-full=y
+CONFIG_PACKAGE_libxml2=y
+CONFIG_PACKAGE_luci-app-bacrouter=y
+CONFIG_PACKAGE_luci-app-bacserver=y
+CONFIG_PACKAGE_phone-usb-tether=y
+CONFIG_PACKAGE_symlink-openssl-v1=y
+CONFIG_PACKAGE_symlink-psn=y
+CONFIG_PACKAGE_usbmuxd=y
+# CONFIG_SUN8I_V3S_SPINAND_OPTIONS is not set
+CONFIG_SUNXI_SD_BOOT_PARTSIZE=20
+CONFIG_TARGET_KERNEL_PARTSIZE=20
+CONFIG_TARGET_ROOTFS_PARTSIZE=256
