@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-h3-rervision.dtsi
-@@ -0,0 +1,113 @@
+@@ -0,0 +1,117 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (C) 2019-2020 Dirk Chang <dirk@kooiot.com>
@@ -24,7 +24,7 @@
 +		stdout-path = "serial0:115200n8";
 +	};
 +
-+	vdd_cpux: gpio-regulator {
++	reg_vdd_cpux: gpio-regulator {
 +		compatible = "regulator-gpio";
 +
 +		pinctrl-names = "default";
@@ -43,6 +43,10 @@
 +		states = <1100000 0x0
 +			  1300000 0x1>;
 +	};
++};
++
++&cpu0 {
++	cpu-supply = <&reg_vdd_cpux>;
 +};
 +
 +&r_pio {
