@@ -316,7 +316,7 @@ define Device/kooiot_tlink-x1
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
     tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
-    kmod-eeprom-at24 fdisk blockd
+    kmod-eeprom-at24 fdisk blockd phone-usb-tether
   SOC := sun8i-h3
 endef
 TARGET_DEVICES += kooiot_tlink-x1
@@ -334,7 +334,7 @@ define Device/kooiot_tlink-x1s
     uqmi fdisk usbutils freeioe wwanleds \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
     tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
-    kmod-eeprom-at24 fdisk
+    kmod-eeprom-at24 fdisk blockd phone-usb-tether
   SOC := sun8i-h3
 endef
 TARGET_DEVICES += kooiot_tlink-x1s
