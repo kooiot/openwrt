@@ -20,9 +20,13 @@ sunxi_setup_interfaces()
 		ucidef_set_interfaces_lan_wan "eth0" "eth1"
 		;;
 	kooiot,tlink-e1)
-		if [ ip link show eth1 > /dev/null 2>&1 ]; then
+		# detect ASIX usb-eth
+		lsusb -d "0b95:772b" > /dev/null
+		if [ $? -eq 0 ]; then
+			echo "ASIX USB-ETH found!" > /dev/kmsg
 			ucidef_set_interfaces_lan_wan "eth0" "eth1"
 		else
+			echo "ASIX USB-ETH not found found!" > /dev/kmsg
 			ucidef_set_interface_lan "eth0"
 		fi
 		;;
