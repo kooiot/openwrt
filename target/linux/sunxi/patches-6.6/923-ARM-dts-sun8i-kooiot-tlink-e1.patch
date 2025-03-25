@@ -540,19 +540,19 @@
 +
 +		modem {
 +			label = "kooiot:green:modem";
-+			gpios = <&pio 3 17 GPIO_ACTIVE_HIGH>; /* PD17 */
++			gpios = <&pio 3 17 GPIO_ACTIVE_LOW>; /* PD17 */
 +			default-state = "off";
 +		};
 +
 +		bs {
-+			label = "kooiot:green:bs";
-+			gpios = <&pio 3 21 GPIO_ACTIVE_LOW>; /* PD21 */
++			label = "kooiot:red:bs";
++			gpios = <&pio 3 22 GPIO_ACTIVE_LOW>; /* PD22 */
 +			default-state = "off";
 +		};
 +
 +		gs {
 +			label = "kooiot:green:gs";
-+			gpios = <&pio 3 22 GPIO_ACTIVE_LOW>; /* PD22 */
++			gpios = <&pio 3 21 GPIO_ACTIVE_LOW>; /* PD21 */
 +			default-state = "off";
 +		};
 +
@@ -591,8 +591,8 @@
 +
 +		pcie_power {
 +			gpio-export,name = "pcie_power";
-+			gpio-export,output=<1>;
-+			gpios = <&pio 3 20 GPIO_ACTIVE_HIGH>; /* PD20 */
++			gpio-export,output=<0>;
++			gpios = <&pio 3 20 GPIO_ACTIVE_LOW>; /* PD20 */
 +		};
 +	};
 +	// rfkill_wlan needed by RTL official driver
