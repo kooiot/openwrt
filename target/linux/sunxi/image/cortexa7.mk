@@ -306,7 +306,8 @@ TARGET_DEVICES += sinlinx_sinlinx-sin-v3s
 define Device/kooiot_tlink-x1
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink X1
-  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
+  DEVICE_PACKAGES:=kmod-rtc-sunxi \
+    kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
     kmod-usb-net kmod-usb-net-rtl8152 \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
     kmod-ledtrig-netdev kmod-ledtrig-gpio \
@@ -324,7 +325,8 @@ TARGET_DEVICES += kooiot_tlink-x1
 define Device/kooiot_tlink-x1s
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink X1s
-  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
+  DEVICE_PACKAGES:=kmod-rtc-sunxi \
+    kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
     kmod-usb-net kmod-usb-net-rtl8152 \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
     kmod-ledtrig-netdev kmod-ledtrig-gpio \
@@ -342,7 +344,8 @@ TARGET_DEVICES += kooiot_tlink-x1s
 define Device/kooiot_tlink-x3
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink X3
-  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
+  DEVICE_PACKAGES:=kmod-rtc-sunxi \
+    kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
     kmod-usb-net kmod-usb-net-asix \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
     kmod-ledtrig-netdev kmod-ledtrig-gpio \
