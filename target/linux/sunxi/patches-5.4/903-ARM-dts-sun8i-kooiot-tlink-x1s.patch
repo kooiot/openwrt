@@ -10,7 +10,7 @@
  	sun8i-r16-nintendo-nes-classic.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/sun8i-h3-tlink-x1s.dts
-@@ -0,0 +1,204 @@
+@@ -0,0 +1,209 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
@@ -24,6 +24,11 @@
 +	compatible = "kooiot,tlink-x1s", "allwinner,sun8i-h3";
 +
 +	aliases {
++		ethernet0 = &emac;
++		ethernet1 = &usb_eth1;
++		serial1 = &uart1;
++		serial2 = &uart2;
++		serial3 = &uart3;
 +		mmc0 = &mmc0;
 +		mmc1 = &mmc2;
 +	};
@@ -188,7 +193,7 @@
 +	status = "okay";
 +	#address-cells = <1>;
 +	#size-cells = <0>;
-+	asix@1 {
++	usb_eth1: asix@1 {
 +		reg = <1>;
 +		nvmem-cells = <&chipid>;
 +		nvmem-cell-names = "chipid";
