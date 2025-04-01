@@ -238,7 +238,7 @@
  }
 --- a/drivers/tty/serial/8250/8250_port.c	2022-12-22 00:36:38.000000000 +0800
 +++ b/drivers/tty/serial/8250/8250_port.c	2024-01-16 11:41:22.089959952 +0800
-@@ -1030,10 +1030,14 @@
+@@ -1017,10 +1017,14 @@ static void autoconfig_16550a(struct uar
  
  	up->port.type = PORT_16550A;
  	up->capabilities |= UART_CAP_FIFO;
@@ -254,7 +254,7 @@
  
  	/*
  	 * Check for presence of the EFR when DLAB is set.
-@@ -1554,8 +1558,13 @@
+@@ -1535,8 +1539,13 @@ static inline void __start_tx(struct uar
  {
  	struct uart_8250_port *up = up_to_u8250p(port);
  
@@ -268,7 +268,7 @@
  
  	if (serial8250_set_THRI(up)) {
  		if (up->bugs & UART_BUG_TXEN) {
-@@ -1884,6 +1893,12 @@
+@@ -1865,6 +1874,12 @@ EXPORT_SYMBOL_GPL(serial8250_modem_statu
  
  static bool handle_rx_dma(struct uart_8250_port *up, unsigned int iir)
  {
@@ -281,7 +281,7 @@
  	switch (iir & 0x3f) {
  	case UART_IIR_RDI:
  		if (!up->dma->rx_running)
-@@ -1895,6 +1910,7 @@
+@@ -1876,6 +1891,7 @@ static bool handle_rx_dma(struct uart_82
  		return true;
  	}
  	return up->dma->rx_dma(up);
@@ -289,10 +289,10 @@
  }
  
  /*
-@@ -1904,16 +1920,33 @@
- {
+@@ -1886,16 +1902,33 @@ int serial8250_handle_irq(struct uart_po
  	unsigned char status;
  	struct uart_8250_port *up = up_to_u8250p(port);
+ 	struct tty_port *tport = &port->state->port;
 +#ifndef CONFIG_ARCH_ROCKCHIP
  	bool skip_rx = false;
  	unsigned long flags;
@@ -308,14 +308,14 @@
 +#endif
  
  	status = serial_port_in(port, UART_LSR);
- 
++ 
 +#ifdef CONFIG_ARCH_ROCKCHIP
 +	if (status & (UART_LSR_DR | UART_LSR_BI)) {
 +		int dma_err = -1;
 +
 +		if (up->dma && up->dma->rxchan)
 +			dma_err = handle_rx_dma(up, iir);
-+
+ 
 +		if (!up->dma || dma_err)
 +			status = serial8250_rx_chars(up, status);
 +	}
@@ -323,7 +323,7 @@
  	/*
  	 * If port is stopped and there are no error conditions in the
  	 * FIFO, then don't drain the FIFO, as this may lead to TTY buffer
-@@ -1931,12 +1964,40 @@
+@@ -1918,12 +1951,40 @@ int serial8250_handle_irq(struct uart_po
  		if (!up->dma || handle_rx_dma(up, iir))
  			status = serial8250_rx_chars(up, status);
  	}
@@ -334,16 +334,16 @@
 +#ifdef CONFIG_ARCH_ROCKCHIP
 +	if ((!up->dma || (up->dma && (!up->dma->txchan || up->dma->tx_err))) &&
 +	    ((iir & 0xf) == UART_IIR_THRI))
- 		serial8250_tx_chars(up);
++		serial8250_tx_chars(up);
 +#else
 +	if ((!up->dma || (up->dma && up->dma->tx_err)) &&
 +	    (status & UART_LSR_THRE))
-+		serial8250_tx_chars(up);
+ 		serial8250_tx_chars(up);
 +#endif
- 
++
 +#ifdef CONFIG_ARCH_ROCKCHIP
 +	if (status & UART_LSR_BRK_ERROR_BITS) {
-+
+ 
 +		if (status & UART_LSR_OE)
 +			pr_err("%s: Overrun error!\n", port->name);
 +		if (status & UART_LSR_PE)
@@ -366,7 +366,7 @@
  
  	return 1;
  }
-@@ -2288,9 +2349,11 @@
+@@ -2281,9 +2342,11 @@ int serial8250_do_startup(struct uart_po
  	if (port->irq && (up->port.flags & UPF_SHARE_IRQ))
  		up->port.irqflags |= IRQF_SHARED;
  
@@ -378,7 +378,7 @@
  
  	if (port->irq && !(up->port.flags & UPF_NO_THRE_TEST)) {
  		unsigned char iir1;
-@@ -2334,6 +2397,12 @@
+@@ -2327,6 +2390,12 @@ int serial8250_do_startup(struct uart_po
  		}
  	}
  
@@ -391,7 +391,7 @@
  	up->ops->setup_timer(up);
  
  	/*
-@@ -2410,7 +2479,11 @@
+@@ -2403,7 +2472,11 @@ dont_test_tx_en:
  		if (uart_console(port))
  			msg = "forbid DMA for kernel console";
  		else if (serial8250_request_dma(up))
@@ -403,7 +403,7 @@
  		if (msg) {
  			dev_warn_ratelimited(port->dev, "%s\n", msg);
  			up->dma = NULL;
-@@ -2523,6 +2596,7 @@
+@@ -2516,6 +2589,7 @@ static unsigned int serial8250_do_get_di
  					      unsigned int baud,
  					      unsigned int *frac)
  {
@@ -411,7 +411,7 @@
  	upf_t magic_multiplier = port->flags & UPF_MAGIC_MULTIPLIER;
  	struct uart_8250_port *up = up_to_u8250p(port);
  	unsigned int quot;
-@@ -2567,8 +2641,27 @@
+@@ -2560,8 +2634,27 @@ static unsigned int serial8250_do_get_di
  		quot = npcm_get_divisor(up, baud);
  	else
  		quot = uart_get_divisor(port, baud);
@@ -439,7 +439,7 @@
  	 * Oxford Semi 952 rev B workaround
  	 */
  	if (up->bugs & UART_BUG_QUOT && (quot & 0xff) == 0)
-@@ -2630,6 +2723,10 @@
+@@ -2620,6 +2713,10 @@ void serial8250_do_set_divisor(struct ua
  {
  	struct uart_8250_port *up = up_to_u8250p(port);
  
@@ -450,7 +450,7 @@
  	/* Workaround to enable 115200 baud on OMAP1510 internal ports */
  	if (is_omap1510_8250(up)) {
  		if (baud == 115200) {
-@@ -2649,6 +2746,17 @@
+@@ -2639,6 +2736,17 @@ void serial8250_do_set_divisor(struct ua
  		serial_port_out(port, UART_LCR, up->lcr | UART_LCR_DLAB);
  
  	serial_dl_write(up, quot);
@@ -468,7 +468,7 @@
  }
  EXPORT_SYMBOL_GPL(serial8250_do_set_divisor);
  
-@@ -2828,6 +2936,7 @@
+@@ -2817,6 +2925,7 @@ serial8250_do_set_termios(struct uart_po
  	if ((termios->c_cflag & CREAD) == 0)
  		port->ignore_status_mask |= UART_LSR_DR;
  
@@ -476,7 +476,7 @@
  	/*
  	 * CTS flow control flag and modem status interrupts
  	 */
-@@ -2841,6 +2950,7 @@
+@@ -2830,6 +2939,7 @@ serial8250_do_set_termios(struct uart_po
  		up->ier |= UART_IER_RTOIE;
  
  	serial_port_out(port, UART_IER, up->ier);
@@ -484,7 +484,7 @@
  
  	if (up->capabilities & UART_CAP_EFR) {
  		unsigned char efr = 0;
-@@ -2859,16 +2969,25 @@
+@@ -2848,16 +2958,25 @@ serial8250_do_set_termios(struct uart_po
  			serial_port_out(port, UART_EFR, efr);
  	}
  
@@ -512,7 +512,7 @@
  	if (port->type != PORT_16750) {
  		/* emulated UARTs (Lucent Venus 167x) need two steps */
  		if (up->fcr & UART_FCR_ENABLE_FIFO)
-@@ -2876,6 +2995,23 @@
+@@ -2865,6 +2984,23 @@ serial8250_do_set_termios(struct uart_po
  		serial_port_out(port, UART_FCR, up->fcr);	/* set fcr */
  	}
  	serial8250_set_mctrl(port, port->mctrl);

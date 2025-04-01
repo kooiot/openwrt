@@ -1,10 +1,10 @@
 --- a/drivers/spi/spidev.c	2024-01-16 11:45:12.543015712 +0800
 +++ b/drivers/spi/spidev.c	2024-01-16 11:41:21.473958204 +0800
-@@ -697,6 +697,7 @@
- 	{ .compatible = "cisco,spi-petra" },
- 	{ .compatible = "micron,spi-authenta" },
- 	{ .compatible = "siliconlabs,si3210" },
-+	{ .compatible = "rockchip,spidev" },
+@@ -724,6 +724,7 @@ static const struct of_device_id spidev_
+ 	{ .compatible = "semtech,sx1301", .data = &spidev_of_check },
+ 	{ .compatible = "silabs,em3581", .data = &spidev_of_check },
+ 	{ .compatible = "silabs,si3210", .data = &spidev_of_check },
++	{ .compatible = "rockchip,spidev", .data = &spidev_of_check },
  	{},
  };
  MODULE_DEVICE_TABLE(of, spidev_dt_ids);
