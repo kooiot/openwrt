@@ -57,6 +57,11 @@ set fstab.$rule_name.enabled='1'
 set fstab.$rule_name.enabled_fsck='1'
 EOF
 	uci commit fstab
+	if [ -f /etc/config/dockerd ]
+	then
+		uci set dockerd.globals.data_root='/mnt/storage/docker/'
+		uci commit dockerd
+	fi
 }
 
 tlink_add_qmi_interface() {

@@ -49,9 +49,9 @@ rockchip_setup_interfaces()
 	kooiot,tlink-r4x|\
 	kooiot,tlink-r7)
 		ucidef_set_interface_lan "eth0"
-		ucidef_set_interface "lan1" device "eth1" protocol "static"
-		ucidef_set_interface "lan2" device "eth2" protocol "static"
-		ucidef_set_interface "lan3" device "eth3" protocol "static"
+		ucidef_set_interface "lan2" device "eth1" protocol "static"
+		ucidef_set_interface "lan3" device "eth2" protocol "static"
+		ucidef_set_interface "lan4" device "eth3" protocol "static"
 		;;
 	kooiot,tlink-r4x-1)
 		ucidef_set_interfaces_lan_wan "eth0" "eth1"
@@ -108,9 +108,9 @@ rockchip_setup_macs()
 		local mmc_cid_mac=$(macaddr_generate_from_mmc_cid mmcblk1)
 		lan_mac=$(tlink_mac_mask "$mmc_cid_mac")
 		echo "LAN MAC: "$lan_mac > /dev/kmsg
-		[ -n "$lan_mac" ] && ucidef_set_interface_macaddr "lan1" $(macaddr_add "$lan_mac" 1)
-		[ -n "$lan_mac" ] && ucidef_set_interface_macaddr "lan2" $(macaddr_add "$lan_mac" 2)
-		[ -n "$lan_mac" ] && ucidef_set_interface_macaddr "lan3" $(macaddr_add "$lan_mac" 3)
+		[ -n "$lan_mac" ] && ucidef_set_interface_macaddr "lan2" $(macaddr_add "$lan_mac" 1)
+		[ -n "$lan_mac" ] && ucidef_set_interface_macaddr "lan3" $(macaddr_add "$lan_mac" 2)
+		[ -n "$lan_mac" ] && ucidef_set_interface_macaddr "lan4" $(macaddr_add "$lan_mac" 3)
 		;;
 	esac
 
