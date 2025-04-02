@@ -252,8 +252,8 @@
 +
 +	/omit-if-no-ref/
 +	rgmii_pg_pins: rgmii-pg-pins {
-+		pins = "PG0", "PG1", "PG2", "PG3", "PG4", "PG5",
-+				"PG6", "PG7", "PG8", "PG9", "PG10",
++		pins = "PG0", "PG1", "PG2", "PG3", "PG4",
++				"PG5", "PG6", "PG7", "PG8", "PG10",
 +				"PG12", "PG13", "PG14", "PG15";
 +		function = "emac";
 +		drive-strength = <30>;
@@ -419,7 +419,7 @@
 +	phy-handle = <&ext_rgmii_phy>;
 +	phy-mode = "rgmii-id";
 +	phy-supply = <&reg_vcc_3v3>;
-+	snps,reset-gpio = <&pio 6 9 GPIO_ACTIVE_LOW>; /* PG13 */
++	snps,reset-gpio = <&pio 6 9 GPIO_ACTIVE_LOW>; /* PG9 */
 +	snps,reset-delays-us = <0 10000 1000000>;
 +	status = "okay";
 +};
