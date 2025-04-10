@@ -13,6 +13,10 @@
 . /lib/functions.sh
 . /lib/functions/tlink.sh
 
+tlink_disable_lan_dhcp() {
+	uci del dhcp.lan && uci commit dhcp
+}
+
 tlink_mount_data() {
 	data_blk_p="/dev/mmcblk1p3"
 	if [ ! -b $data_blk_p ]; then
@@ -235,6 +239,9 @@ tlink_init_5g() {
 
 tlink_default() {
 	# tlink_sd_default
+
+	# disable dhcp on lan
+	tlink_disable_lan_dhcp
 
 	# data partition mount
 	if ( grep -qs '/mnt/data' /etc/config/fstab || \
