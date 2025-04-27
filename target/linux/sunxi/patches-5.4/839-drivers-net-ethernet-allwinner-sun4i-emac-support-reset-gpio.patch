@@ -60,11 +60,11 @@
 +	if (gpio_is_valid(db->phyrst)) {
 +		dev_err(db->dev, "%s sun4i-emac reset gpio %d \n", __func__, db->phyrst);
 +		gpio_set_value(db->phyrst, 0);
-+		// msleep(300);
-+		udelay(200);
++		msleep(20);
++		// udelay(200);
 +		gpio_set_value(db->phyrst, 1);
-+		udelay(200);
-+		// msleep(40);
++		msleep(50);
++		// udelay(200);
 +	}
 +
  	/* Initialize EMAC board */
@@ -118,11 +118,11 @@
 +				__func__, db->phyrst, flags);;
 +		// msleep(20);
 +		gpio_set_value(db->phyrst, 0);
-+		udelay(200);
-+		// msleep(300);
++		// udelay(200);
++		msleep(20);
 +		gpio_set_value(db->phyrst, 1);
-+		udelay(200);
-+		// msleep(40);
++		// udelay(200);
++		msleep(50);
 +	}
 +
  	ret = sunxi_sram_claim(&pdev->dev);
