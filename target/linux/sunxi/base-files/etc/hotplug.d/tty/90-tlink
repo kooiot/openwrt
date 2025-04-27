@@ -49,19 +49,19 @@ tlink_m416_xr_usb() {
 			ln -s /dev/$DEVICENAME /dev/ttyS8
 			;;
 		ttyXRUSB4)
-			rm /dev/ttyS13
+			rm /dev/ttyS9
 			ln -s /dev/$DEVICENAME /dev/ttyS9
 			;;
 		ttyXRUSB5)
-			rm /dev/ttyS14
+			rm /dev/ttyS10
 			ln -s /dev/$DEVICENAME /dev/ttyS10
 			;;
 		ttyXRUSB6)
-			rm /dev/ttyS15
+			rm /dev/ttyS11
 			ln -s /dev/$DEVICENAME /dev/ttyS11
 			;;
 		ttyXRUSB7)
-			rm /dev/ttyS16
+			rm /dev/ttyS12
 			ln -s /dev/$DEVICENAME /dev/ttyS12
 			;;
 		ttyXRUSB8)
