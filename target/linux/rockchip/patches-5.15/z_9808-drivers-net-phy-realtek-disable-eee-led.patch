@@ -1,0 +1,21 @@
+--- a/drivers/net/phy/realtek.c
++++ b/drivers/net/phy/realtek.c
+@@ -359,6 +359,18 @@ static int rtl8211f_config_init(struct p
+ 	ret = phy_read_paged(phydev, 0xa43, RTL8211F_PHYCR1);
+ 	dev_info(dev, "RTL8211F_PHYCR1:%x\n", ret);
+ 
++	/*
++	ret = phy_read_paged(phydev, 0xd04, 0x10);
++	dev_info(dev, "RTL8211F_LCR:%x\n", ret);
++	ret = phy_read_paged(phydev, 0xd04, 0x11);
++	dev_info(dev, "RTL8211F_EEELCR:%x\n", ret);
++	*/
++	ret = phy_modify_paged_changed(phydev, 0xd04, 0x11, 0xe, 0);
++	/*
++	ret = phy_read_paged(phydev, 0xd04, 0x11);
++	dev_info(dev, "RTL8211F_EEELCR:%x\n", ret);
++	*/
++
+ 	switch (phydev->interface) {
+ 	case PHY_INTERFACE_MODE_RGMII:
+ 		val_txdly = 0;
