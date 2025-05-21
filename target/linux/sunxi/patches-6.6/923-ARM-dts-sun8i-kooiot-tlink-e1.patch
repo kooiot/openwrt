@@ -436,7 +436,7 @@
 +};
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-t113-tlink-e1.dts
-@@ -0,0 +1,443 @@
+@@ -0,0 +1,455 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 +
@@ -472,11 +472,11 @@
 +		stdout-path = "serial0:115200n8";
 +	};
 +
-+    memory@40000000 {
++	memory@40000000 {
 +		device_type = "memory";
-+		reg = <0x40000000 0x8000000>;   /* SIP 128MB */
-+    };
-+    
++		reg = <0x40000000 0x8000000>; /* SIP 128MB */
++	};
++
 +	reg_vcc: vcc {
 +		compatible = "regulator-fixed";
 +		regulator-name = "vcc";
@@ -503,10 +503,10 @@
 +
 +	reg_avcc_1v8: avcc_1v8 {
 +		compatible = "regulator-fixed";
-+	 	regulator-name = "avcc-1v8";
-+	 	regulator-min-microvolt = <1800000>;
-+	 	regulator-max-microvolt = <1800000>;
-+	 	vin-supply = <&reg_vcc_3v3>;
++		regulator-name = "avcc-1v8";
++		regulator-min-microvolt = <1800000>;
++		regulator-max-microvolt = <1800000>;
++		vin-supply = <&reg_vcc_3v3>;
 +	};
 +
 +	reg_vdd_cpu: vdd-cpu {
@@ -532,11 +532,11 @@
 +		pinctrl-0 = <&leds_pins>;
 +		*/
 +
-+	 	status_led {
-+	 		linux,default-trigger = "heartbeat";
-+	 		label = "blue:status";
-+	 		gpios = <&pio 4 11 GPIO_ACTIVE_LOW>; /* PE11 */
-+	 	};
++		status_led {
++			linux,default-trigger = "heartbeat";
++			label = "blue:status";
++			gpios = <&pio 4 11 GPIO_ACTIVE_LOW>; /* PE11 */
++		};
 +
 +		modem {
 +			label = "kooiot:green:modem";
@@ -576,6 +576,14 @@
 +	gpio_export {
 +		compatible = "gpio-export";
 +		#size-cells = <0>;
++
++		/*
++		pd2 {
++			gpio-export,name = "pd2";
++			gpio-export,output=<0>;
++			gpios = <&pio 3 2 (GPIO_ACTIVE_HIGH | GPIO_PULL_DISABLE)>; // PD2
++		};
++		*/
 +
 +		eth1_reset {
 +			gpio-export,name = "eth1_reset";
@@ -666,22 +674,26 @@
 +	uart1_pd21_pins: uart1-pd21-pins {
 +		pins = "PD21", "PD22";
 +		function = "uart1";
++		// drive-strength = <30>;
 +	};
 +
-+    uart2_pd1_pins: uart2-pd1-pins {
-+        pins = "PD1", "PD2";
-+        function = "uart2";
-+    };
++	uart2_pd1_pins: uart2-pd1-pins {
++		pins = "PD1", "PD2";
++		function = "uart2";
++		// drive-strength = <30>;
++	};
 +
 +	uart3_pb6_pins: uart3-pb6-pins {
-+        pins = "PB6", "PB7";
-+        function = "uart3";
-+    };
++		pins = "PB6", "PB7";
++		function = "uart3";
++		// drive-strength = <30>;
++	};
 +
-+    uart4_pd7_pins: uart4-pd7-pins {
-+        pins = "PD7", "PD8";
-+        function = "uart4";
-+    };
++	uart4_pd7_pins: uart4-pd7-pins {
++		pins = "PD7", "PD8";
++		function = "uart4";
++		// drive-strength = <30>;
++	};
 +
 +	/omit-if-no-ref/
 +	i2c3_pg_pins: i2c3-pg-pins {
@@ -700,15 +712,15 @@
 +	};
 +
 +	leds_pins: leds-pins {
-+		pins = "PE11", "PD17",  "PD18", "PD21", "PD22";
++		pins = "PE11", "PD17", "PD18", "PD21", "PD22";
 +		function = "gpio_out";
 +	};
 +};
 +
 +&uart2 {
-+    pinctrl-names = "default";
-+    pinctrl-0 = <&uart2_pd1_pins>; 
-+    status = "okay";
++	pinctrl-names = "default";
++	pinctrl-0 = <&uart2_pd1_pins>; 
++	status = "okay";
 +};
 +
 +&uart3 {
@@ -778,10 +790,10 @@
 +	status = "okay";
 +
 +	aw869a: sdio_wifi@1 {
-+        reg = <1>;
-+        interrupt-parent = <&pio>;
-+        interrupts = <6 12 IRQ_TYPE_LEVEL_HIGH>; /* PG12 */
-+        interrupt-names = "host-wake";
++		reg = <1>;
++		interrupt-parent = <&pio>;
++		interrupts = <6 12 IRQ_TYPE_LEVEL_HIGH>; /* PG12 */
++		interrupt-names = "host-wake";
 +	};
 +};
 +
