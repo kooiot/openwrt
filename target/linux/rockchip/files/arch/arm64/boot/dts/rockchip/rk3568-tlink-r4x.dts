@@ -565,6 +565,7 @@
 				regulator-name = "vdd_logic";
 				regulator-always-on;
 				regulator-boot-on;
+				regulator-init-microvolt = <900000>;
 				regulator-initial-mode = <0x2>;
 				regulator-min-microvolt = <500000>;
 				regulator-max-microvolt = <1350000>;
@@ -579,6 +580,7 @@
 				regulator-always-on;
 				regulator-boot-on;
 				regulator-name = "vdd_gpu";
+				regulator-init-microvolt = <900000>;
 				regulator-initial-mode = <0x2>;
 				regulator-min-microvolt = <500000>;
 				regulator-max-microvolt = <1350000>;
@@ -602,6 +604,7 @@
 
 			vdd_npu: DCDC_REG4 {
 				regulator-name = "vdd_npu";
+				regulator-init-microvolt = <900000>;
 				regulator-initial-mode = <0x2>;
 				regulator-min-microvolt = <500000>;
 				regulator-max-microvolt = <1350000>;
@@ -1109,13 +1112,13 @@
 
 &can0 {
 	assigned-clocks = <&cru CLK_CAN0>;
-	assigned-clock-rates = <100000000>;
+	assigned-clock-rates = <200000000>;
 	status = "disabled";
 };
 
 &can1 {
 	assigned-clocks = <&cru CLK_CAN1>;
-	assigned-clock-rates = <100000000>;
+	assigned-clock-rates = <200000000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&can1m1_pins>;
 	status = "okay";
@@ -1123,7 +1126,7 @@
 
 &can2 {
 	assigned-clocks = <&cru CLK_CAN2>;
-	assigned-clock-rates = <100000000>;
+	assigned-clock-rates = <200000000>;
 	status = "okay";
 };
 
