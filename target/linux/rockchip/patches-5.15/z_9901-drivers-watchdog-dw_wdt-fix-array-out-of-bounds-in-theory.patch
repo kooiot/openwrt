@@ -1,0 +1,23 @@
+--- a/drivers/watchdog/dw_wdt.c
++++ b/drivers/watchdog/dw_wdt.c
+@@ -155,6 +155,10 @@ static unsigned int dw_wdt_get_min_timeo
+ 			break;
+ 	}
+ 
++	/* For Coverity check */
++	if (idx == DW_WDT_NUM_TOPS)
++		idx = 0;
++
+ 	return dw_wdt->timeouts[idx].sec;
+ }
+ 
+@@ -178,6 +182,9 @@ static unsigned int dw_wdt_get_timeout(s
+ 			break;
+ 	}
+ 
++	if (idx == DW_WDT_NUM_TOPS)
++		idx = 0;
++
+ 	/*
+ 	 * In IRQ mode due to the two stages counter, the actual timeout is
+ 	 * twice greater than the TOP setting.

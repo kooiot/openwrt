@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/arch/arm64/boot/dts/rockchip/rk3568-tlink-r7.dts
-@@ -0,0 +1,1329 @@
+@@ -0,0 +1,1331 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (c) 2022 KooIoT.com
@@ -1205,8 +1205,10 @@
 +};
 +
 +&tsadc {
++	rockchip,hw-tshut-temp = <120000>;
 +	rockchip,hw-tshut-mode = <1>;
 +	rockchip,hw-tshut-polarity = <0>;
++	pinctrl-1 = <&tsadcm0_shut>;
 +	status = "okay";
 +};
 +
