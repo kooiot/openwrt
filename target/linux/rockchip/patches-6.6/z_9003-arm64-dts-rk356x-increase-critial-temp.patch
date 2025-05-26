@@ -1,0 +1,20 @@
+--- a/arch/arm64/boot/dts/rockchip/rk356x.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk356x.dtsi
+@@ -1544,7 +1544,7 @@
+ 					type = "passive";
+ 				};
+ 				cpu_crit: cpu_crit {
+-					temperature = <95000>;
++					temperature = <125000>;
+ 					hysteresis = <2000>;
+ 					type = "critical";
+ 				};
+@@ -1580,7 +1580,7 @@
+ 					type = "passive";
+ 				};
+ 				gpu_crit: gpu-crit {
+-					temperature = <95000>;
++					temperature = <125000>;
+ 					hysteresis = <2000>;
+ 					type = "critical";
+ 				};
