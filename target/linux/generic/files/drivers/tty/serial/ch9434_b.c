@@ -1336,19 +1336,22 @@ static const struct uart_ops ch943x_ops = {
 
 static int ch943x_spi_rstgpio_parse_dt(struct device *dev, int *reset_gpio)
 {
-	enum of_gpio_flags reset_flags; 
-	*reset_gpio = of_get_named_gpio_flags(dev->of_node, "reset_gpio", 0, &reset_flags);
+	int ret;
+	enum of_gpio_flags flags;
+	*reset_gpio = of_get_named_gpio_flags(dev->of_node, "reset_gpio", 0, &flags);
 	if (!gpio_is_valid(*reset_gpio)){
 		dev_err(dev, "Invalid reset_gpio: %d\n", *reset_gpio);
 		return -1;
 	}
 
-	if(	*reset_gpio){
-		if (gpio_request(*reset_gpio , "reset_gpio")){
-			dev_err(dev, "Request gpio failed!! reset_gpio: %d!\n", *reset_gpio);
-			gpio_free(*reset_gpio);
-			return  IRQ_NONE;
-		}
+	flags = (flags & OF_GPIO_ACTIVE_LOW ? GPIOF_OUT_INIT_LOW : GPIOF_OUT_INIT_HIGH);
+	ret = devm_gpio_request_one(dev, *reset_gpio, flags, dev_name(dev));
+	// ret = gpio_request(*reset_gpio , "reset_gpio");
+	// if (gpio_request(*reset_gpio , "reset_gpio")){
+	if (ret) {
+		dev_err(dev, "Request gpio failed!! reset_gpio: %d return:: %d!\n", *reset_gpio, ret);
+		gpio_free(*reset_gpio);
+		return  IRQ_NONE;
 	}
 
 	// output high at begining
