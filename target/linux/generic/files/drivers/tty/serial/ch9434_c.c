@@ -336,11 +336,6 @@ void ch943x_port_write(struct uart_port *port, u8 reg, u8 val)
 	struct spi_message m;
 	u8 txbuf[2] = { cmd, val };
 
-	struct spi_transfer x = {
-		.tx_buf = txbuf,
-		.len = 2,
-	};
-
 	struct spi_transfer t[2] = {
 		{
 			.tx_buf = &cmd,
@@ -364,12 +359,8 @@ void ch943x_port_write(struct uart_port *port, u8 reg, u8 val)
 
 	mutex_lock(&s->mutex_bus_access);
 	spi_message_init(&m);
-	if (s->spi_contmode) {
-		spi_message_add_tail(&x, &m);
-	} else {
-		spi_message_add_tail(&t[0], &m);
-		spi_message_add_tail(&t[1], &m);
-	}
+	spi_message_add_tail(&t[0], &m);
+	spi_message_add_tail(&t[1], &m);
 	status = spi_sync(s->spi_dev, &m);
 	mutex_unlock(&s->mutex_bus_access);
 	if (status < 0) {
@@ -832,6 +823,7 @@ do_iir_again:
 		break;
 	case CH943X_IIR_UE_E_SRC:
 		iir = CH943X_IIR_THRI_SRC;
+		dev_err(port->dev, "DIRK: Port %i: DO IIR AGAIN: %x", port->line, iir);
 		goto do_iir_again;
 		break;
 	default:
