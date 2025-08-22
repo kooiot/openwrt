@@ -1,6 +1,6 @@
 --- a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
 +++ b/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
-@@ -396,6 +396,17 @@
+@@ -396,6 +396,19 @@
  			ranges;
  			#address-cells = <1>;
  			#size-cells = <1>;
@@ -10,9 +10,11 @@
 +				reg = <0x3000150 0x4>;
 +
 +				reg_ldoa: ldoa {
++					regulator-name = "ldoa";
 +				};
 +
 +				reg_ldob: ldob {
++					regulator-name = "ldob";
 +				};
 +			};
  		};
@@ -50,11 +52,11 @@
 +			ths_calib: ths-calib@14 {
 +				reg = <0x14 0x8>;
 +			};
-+
++			/*
 +			bg_trim: bg-trim@28 {
 +				reg = <0x28 0x4>;
-+				bits = <16 8>;
-+			};
++				bits = <16 8>; // this bits is not acceptable in kernel!
++			}; */
 +		};
 +
 +		ths: thermal-sensor@2009400 {
