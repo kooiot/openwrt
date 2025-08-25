@@ -66,3 +66,17 @@
  	serial8250_set_mctrl(port, port->mctrl);
  	spin_unlock_irqrestore(&port->lock, flags);
  	serial8250_rpm_put(up);
+--- a/drivers/tty/serial/8250/8250_dw.c
++++ a/drivers/tty/serial/8250/8250_dw.c
+@@ -304,7 +304,11 @@ out:
+ 	if (termios->c_cflag & CRTSCTS)
+ 		p->status |= UPSTAT_AUTOCTS;
+ 
++	// pr_err("%s %s baud:%d status:%d\n", __func__, p->name, baud, p->status);
+ 	serial8250_do_set_termios(p, termios, old);
++#ifdef CONFIG_ARCH_SUNXI
++	serial8250_do_set_termios(p, termios, old);
++#endif
+ }
+ 
+ static void dw8250_set_ldisc(struct uart_port *p, struct ktermios *termios)
