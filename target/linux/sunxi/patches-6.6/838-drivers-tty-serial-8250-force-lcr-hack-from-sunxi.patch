@@ -67,3 +67,21 @@
  	serial8250_set_mctrl(port, port->mctrl);
  	spin_unlock_irqrestore(&port->lock, flags);
  	serial8250_rpm_put(up);
+--- a/drivers/tty/serial/8250/8250_dw.c
++++ a/drivers/tty/serial/8250/9250_dw.c
+@@ -397,7 +397,15 @@ static void dw8250_set_termios(struct ua
+ 	}
+ 	clk_prepare_enable(d->clk);
+ 
++	// pr_err("%s %s baud:%d status:%d\n", __func__, p->name, baud, p->status);
+ 	dw8250_do_set_termios(p, termios, old);
++#ifdef CONFIG_ARCH_SUNXI
++	/**
++	 * The first open with baud 9600 will only call this set_termios once
++	 * which cause reading uart failed, which is was fixed by LCR writing before
++	 */
++	dw8250_do_set_termios(p, termios, old);
++#endif
+ }
+ 
+ static void dw8250_set_ldisc(struct uart_port *p, struct ktermios *termios)
