@@ -311,6 +311,7 @@ define Device/xunlong_orangepi-2
 TARGET_DEVICES += xunlong_orangepi-2
 
 define Device/sipeed_lichee-zero-plus
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := SiPEED
   DEVICE_MODEL := SiPEED lichee zero plus
   DEVICE_PACKAGES:=kmod-rtc-sunxi
@@ -319,6 +320,7 @@ endef
 TARGET_DEVICES += sipeed_lichee-zero-plus
 
 define Device/kooiot_tlink-s1
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink S1
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
@@ -337,6 +339,7 @@ endef
 TARGET_DEVICES += kooiot_tlink-s1
 
 define Device/sinlinx_sinlinx-sin-v3s
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := SINLINX
   DEVICE_MODEL := SINLINX Sin V3s
   DEVICE_PACKAGES:=kmod-rtc-sunxi
@@ -345,6 +348,7 @@ endef
 TARGET_DEVICES += sinlinx_sinlinx-sin-v3s
 
 define Device/kooiot_tlink-x1
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink X1
   DEVICE_PACKAGES:=kmod-rtc-sunxi \
@@ -364,6 +368,7 @@ endef
 TARGET_DEVICES += kooiot_tlink-x1
 
 define Device/kooiot_tlink-x1s
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink X1s
   DEVICE_PACKAGES:=kmod-rtc-sunxi \
@@ -383,6 +388,7 @@ endef
 TARGET_DEVICES += kooiot_tlink-x1s
 
 define Device/kooiot_tlink-x3
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink X3
   DEVICE_PACKAGES:=kmod-rtc-sunxi \
@@ -401,6 +407,7 @@ endef
 TARGET_DEVICES += kooiot_tlink-x3
 
 define Device/kooiot_tlink-r1
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink R1
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
@@ -414,6 +421,7 @@ endef
 TARGET_DEVICES += kooiot_tlink-r1
 
 define Device/kooiot_tlink-ok-a40i
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink OK-A40i
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi kmod-brcmfmac \
@@ -434,6 +442,7 @@ endef
 TARGET_DEVICES += kooiot_tlink-ok-a40i
 
 define Device/kooiot_tlink-dj-a40i-e
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink DJ-A40i-E
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
@@ -462,6 +471,7 @@ endef
 TARGET_DEVICES += kooiot_tlink-dj-a40i-e
 
 define Device/kooiot_tlink-dr4-a40i
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink DR4-A40i
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
@@ -490,6 +500,7 @@ endef
 TARGET_DEVICES += kooiot_tlink-dr4-a40i
 
 define Device/kooiot_tlink-nano-a40i
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink Nano-A40i
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
@@ -518,6 +529,7 @@ endef
 TARGET_DEVICES += kooiot_tlink-nano-a40i
 
 define Device/kooiot_tlink-qh-x40
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink QH-X40
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
@@ -546,6 +558,7 @@ endef
 TARGET_DEVICES += kooiot_tlink-qh-x40
 
 define Device/kooiot_tlink-k1
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink K1
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
@@ -568,6 +581,7 @@ endef
 TARGET_DEVICES += kooiot_tlink-k1
 
 define Device/kooiot_tlink-k2
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink K2
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
@@ -591,6 +605,7 @@ endef
 TARGET_DEVICES += kooiot_tlink-k2
 
 define Device/kooiot_tlink-k2x
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink K2x
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
@@ -618,6 +633,7 @@ TARGET_DEVICES += kooiot_tlink-k2x
 
 
 define Device/kooiot_tlink-k4a
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink K4A
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
@@ -645,6 +661,7 @@ TARGET_DEVICES += kooiot_tlink-k4a
 
 
 define Device/kooiot_tlink-k4g
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink K4G
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
@@ -672,6 +689,7 @@ TARGET_DEVICES += kooiot_tlink-k4g
 
 
 define Device/kooiot_tlink-m408
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink M408
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
@@ -694,6 +712,7 @@ endef
 TARGET_DEVICES += kooiot_tlink-m408
 
 define Device/kooiot_tlink-m416
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink M416
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
@@ -716,6 +735,7 @@ endef
 TARGET_DEVICES += kooiot_tlink-m416
 
 define Device/kooiot_tlink-rp-t113
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink RP-T113
   DEVICE_PACKAGES:=kmod-rtc-sunxi \
@@ -736,6 +756,7 @@ endef
 TARGET_DEVICES += kooiot_tlink-rp-t113
 
 define Device/kooiot_tlink-e1-v0
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink E1 (V0)
   DEVICE_PACKAGES:=kmod-rtc-sunxi \
@@ -756,6 +777,7 @@ endef
 TARGET_DEVICES += kooiot_tlink-e1-v0
 
 define Device/kooiot_tlink-e1
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink E1
   DEVICE_PACKAGES:=kmod-rtc-sunxi \
@@ -776,6 +798,7 @@ endef
 TARGET_DEVICES += kooiot_tlink-e1
 
 define Device/kooiot_tlink-dly-e102
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink DLY-E102
   DEVICE_PACKAGES:=kmod-rtc-sunxi \
@@ -797,6 +820,7 @@ endef
 TARGET_DEVICES += kooiot_tlink-dly-e102
 
 define Device/kooiot_tlink-dly-e102-spinand
+  $(call Device/FitImageGzip)
   $(Device/NAND)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink DLY-E102 (SPI NAND)
