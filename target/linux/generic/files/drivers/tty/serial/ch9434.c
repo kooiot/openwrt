@@ -1,7 +1,7 @@
 /*
  * SPI serial driver for USB to Quad UARTs chip ch9434.
  *
- * Copyright (C) 2023 Nanjing Qinheng Microelectronics Co., Ltd.
+ * Copyright (C) 2024 Nanjing Qinheng Microelectronics Co., Ltd.
  * Web:      http://wch.cn
  * Author:   WCH <tech@wch.cn>
  *
@@ -126,6 +126,8 @@
 #define CH943X_IIR_UE_E_SRC	  0x0e	   /* Unknown Exception e */
 #define CH943X_IIR_UE_8_SRC	  0x08	   /* Unknown Exception 8 */
 #define CH943X_IIR_MSI_SRC    0x00     /* Modem status interrupt */
+/* Do Unknown Exception Interrupt handle */
+//#define CH943X_IIR_DO_UE_HANDLE 1
 
 /* LCR register bits */
 #define CH943X_LCR_LENGTH0_BIT (1 << 0) /* Word length bit 0 */
@@ -334,12 +336,6 @@ void ch943x_port_write(struct uart_port *port, u8 reg, u8 val)
 	u8 cmd = (0x80 | reg) + (port->line * 0x10);
 	ssize_t status;
 	struct spi_message m;
-	u8 txbuf[2] = { cmd, val };
-
-	struct spi_transfer x = {
-		.tx_buf = txbuf,
-		.len = 2,
-	};
 
 	struct spi_transfer t[2] = {
 		{
@@ -364,12 +360,8 @@ void ch943x_port_write(struct uart_port *port, u8 reg, u8 val)
 
 	mutex_lock(&s->mutex_bus_access);
 	spi_message_init(&m);
-	if (s->spi_contmode) {
-		spi_message_add_tail(&x, &m);
-	} else {
-		spi_message_add_tail(&t[0], &m);
-		spi_message_add_tail(&t[1], &m);
-	}
+	spi_message_add_tail(&t[0], &m);
+	spi_message_add_tail(&t[1], &m);
 	status = spi_sync(s->spi_dev, &m);
 	mutex_unlock(&s->mutex_bus_access);
 	if (status < 0) {
@@ -698,7 +690,7 @@ static void ch943x_handle_rx(struct uart_port *port, unsigned int rxlen, unsigne
 	port->icount.rx++;
 
 	if (unlikely(lsr & CH943X_LSR_BRK_ERROR_MASK)) {
-		dev_err(&s->spi_dev->dev, "%s - lsr error detect\n", __func__);
+		dev_err(&s->spi_dev->dev, "%s - lsr error detect (%08x)\n", __func__, lsr);
 		if (lsr & CH943X_LSR_BI_BIT) {
 			lsr &= ~(CH943X_LSR_FE_BIT | CH943X_LSR_PE_BIT);
 			port->icount.brk++;
@@ -806,12 +798,16 @@ static void ch943x_port_irq(struct ch943x_port *s, int portno)
 		return;
 	}
 	iir &= CH943X_IIR_ID_MASK;
+#ifdef CH943X_IIR_DO_UE_HANDLE
 do_iir_again:
+#endif
 	switch (iir) {
 	case CH943X_IIR_RDI_SRC:
 	case CH943X_IIR_RLSE_SRC:
 	case CH943X_IIR_RTOI_SRC:
+#ifdef CH943X_IIR_DO_UE_HANDLE
 	case CH943X_IIR_UE_8_SRC:
+#endif
 		ch943x_port_write_spefify(port, 0, CH943X_FIFO_REG, port->line | CH943X_FIFO_RD_BIT);
 		rxlen = ch943x_port_read_specify(port, 0, CH943X_FIFOCL_REG);
 		rxlen |= ch943x_port_read_specify(port, 0, CH943X_FIFOCH_REG) << 8;
@@ -830,10 +826,13 @@ do_iir_again:
 		ch943x_handle_tx(port);
 		mutex_unlock(&s->mutex);
 		break;
+#ifdef CH943X_IIR_DO_UE_HANDLE
 	case CH943X_IIR_UE_E_SRC:
 		iir = CH943X_IIR_THRI_SRC;
+		dev_err(port->dev, "DIRK: Port %i: DO IIR AGAIN: %x", port->line, iir);
 		goto do_iir_again;
 		break;
+#endif
 	default:
 		dev_err(port->dev, "Port %i: Unexpected interrupt: %x", port->line, iir);
 		break;
