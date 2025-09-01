@@ -92,6 +92,12 @@ define U-Boot/Bananapro
   BUILD_DEVICES:=lemaker_bananapro
 endef
 
+define U-Boot/beelink_x2
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=Beelink X2 (H3)
+  BUILD_DEVICES:=roofull_beelink-x2
+endef
+
 define U-Boot/Cubieboard
   BUILD_SUBTARGET:=cortexa8
   NAME:=Cubieboard
@@ -393,6 +399,16 @@ define U-Boot/tlink_rp_h6
   BUILD_DEVICES:=kooiot_tlink-rp-h6
   DEPENDS:=+PACKAGE_u-boot-tlink_rp_h6:arm-trusted-firmware-sunxi-h6
   UENV:=h6
+  ATF:=h6
+endef
+
+define U-Boot/orangepi_zero2w
+  BUILD_SUBTARGET:=cortexa53
+  NAME:=Xunlong Orange Pi Zero2W
+  BUILD_DEVICES:=xunlong_orangepi-zero2w
+  DEPENDS:=+PACKAGE_u-boot-orangepi_zero2w:trusted-firmware-a-sunxi-h616
+  UENV:=h616
+  ATF:=h616
 endef
 
 define U-Boot/orangepi_zero3
@@ -556,6 +572,7 @@ UBOOT_TARGETS := \
 	bananapi_p2_zero \
 	Bananapi_M2_Ultra \
 	Bananapro \
+	beelink_x2 \
 	Cubieboard \
 	Cubieboard2 \
 	Cubietruck \
@@ -611,6 +628,7 @@ UBOOT_TARGETS := \
 	orangepi_2 \
 	orangepi_pc2 \
 	orangepi_zero2 \
+	orangepi_zero2w \
 	orangepi_zero3 \
 	pangolin \
 	pine64_plus \

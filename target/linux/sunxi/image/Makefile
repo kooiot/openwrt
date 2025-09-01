@@ -18,7 +18,6 @@ define Build/sunxi-sdcard
 	rm -rf $@.bootfs
 	mkdir $@.bootfs
 	cp -i $(STAGING_DIR_IMAGE)/$(DEVICE_NAME)-boot.scr $@.bootfs/boot.scr
-	cp -i $(DTS_DIR)/$(SUNXI_DTS).dtb $@.bootfs/dtb
 	cp -i $(IMAGE_KERNEL) $@.bootfs/uImage
 
 	echo $$(stat -c%s $(IMAGE_ROOTFS)) > $@.rootfs.size
@@ -69,7 +68,7 @@ define Device/Default
   KERNEL := kernel-bin | uImage none
   IMAGES := sdcard.img.gz
   IMAGE/sdcard.img.gz := sunxi-sdcard | append-metadata | gzip
-  SUNXI_DTS_DIR :=allwinner/
+  SUNXI_DTS_DIR := allwinner/
   SUNXI_DTS = $$(SUNXI_DTS_DIR)$$(SOC)-$(lastword $(subst _, ,$(1)))
 endef
 
@@ -111,6 +110,14 @@ define Device/NAND
       append-ubi | check-size $$$$(IMAGE_SIZE)
   IMAGE/sysupgrade.bin := \
 	  sysupgrade-tar | append-metadata | check-size $$$$(IMAGE_SIZE)
+endef
+
+define Device/FitImageLzma
+  KERNEL = kernel-bin | lzma | fit lzma $$(DTS_DIR)/$$(SUNXI_DTS).dtb
+endef
+
+define Device/FitImageGzip
+  KERNEL = kernel-bin | gzip | fit gzip $$(DTS_DIR)/$$(SUNXI_DTS).dtb
 endef
 
 include $(SUBTARGET).mk

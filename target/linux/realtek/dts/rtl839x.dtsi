@@ -1,60 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later OR MIT
 
+#include "macros.dtsi"
 #include <dt-bindings/clock/rtl83xx-clk.h>
 
 /dts-v1/;
-
-#define STRINGIZE(s) #s
-#define LAN_LABEL(p, s) STRINGIZE(p ## s)
-#define SWITCH_PORT_LABEL(n) LAN_LABEL(lan, n)
-
-#define INTERNAL_PHY(n) \
-	phy##n: ethernet-phy@##n { \
-		reg = <##n>; \
-		compatible = "ethernet-phy-ieee802.3-c22"; \
-		phy-is-integrated; \
-	};
-
-#define EXTERNAL_PHY(n) \
-	phy##n: ethernet-phy@##n { \
-		reg = <##n>; \
-		compatible = "ethernet-phy-ieee802.3-c22"; \
-	};
-
-#define EXTERNAL_SFP_PHY(n) \
-	phy##n: ethernet-phy@##n { \
-		compatible = "ethernet-phy-ieee802.3-c22"; \
-		sfp; \
-		media = "fibre"; \
-		reg = <##n>; \
-	};
-
-#define EXTERNAL_SFP_PHY_FULL(n, s) \
-	phy##n: ethernet-phy@##n { \
-		compatible = "ethernet-phy-ieee802.3-c22"; \
-		sfp = <&sfp##s>; \
-		reg = <##n>; \
-	};
-
-#define SWITCH_PORT(n, s, m) \
-	port@##n { \
-		reg = <##n>; \
-		label = SWITCH_PORT_LABEL(s) ; \
-		phy-handle = <&phy##n>; \
-		phy-mode = #m ; \
-	};
-
-#define SWITCH_SFP_PORT(n, s, m) \
-	port@##n { \
-		reg = <##n>; \
-		label = SWITCH_PORT_LABEL(s) ; \
-		phy-handle = <&phy##n>; \
-		phy-mode = #m ; \
-		fixed-link { \
-			speed = <1000>; \
-			full-duplex; \
-		}; \
-	};
 
 / {
 	#address-cells = <1>;
@@ -260,7 +209,7 @@
 
 	switchcore@1b000000 {
 		compatible = "syscon", "simple-mfd";
-		reg = <0x1b000000 0x20000>;
+		reg = <0x1b000000 0x10000>;
 
 		mdio_aux: mdio-aux {
 			compatible = "realtek,rtl8390-aux-mdio";
@@ -271,6 +220,11 @@
 
 			pinctrl-names = "default";
 			pinctrl-0 = <&mdio_aux_mdx>;
+		};
+
+		soc_thermal: thermal {
+			compatible = "realtek,rtl8390-thermal";
+			#thermal-sensor-cells = <0>;
 		};
 	};
 
@@ -342,5 +296,21 @@
 
 		interrupt-parent = <&intc>;
 		interrupts = <20 2>;
+	};
+
+	thermal_zones: thermal-zones {
+		cpu-thermal {
+			polling-delay-passive = <1000>;
+			polling-delay = <1000>;
+			coefficients = <1000 0>;
+			thermal-sensors = <&soc_thermal>;
+			trips {
+				cpu-crit {
+					temperature = <105000>;
+					hysteresis = <2000>;
+					type = "critical";
+				};
+			};
+		};
 	};
 };
