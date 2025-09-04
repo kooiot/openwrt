@@ -1,0 +1,69 @@
+--- a/drivers/net/phy/motorcomm.c
++++ b/drivers/net/phy/motorcomm.c
+@@ -214,6 +214,10 @@
+ #define YT8521_RC1R_RGMII_2_100_NS		14
+ #define YT8521_RC1R_RGMII_2_250_NS		15
+ 
++#define YT8521_LED0_CFG_REG				0xA00C
++#define YT8521_LED1_CFG_REG				0xA00D
++#define YT8521_LED2_CFG_REG				0xA00E
++
+ #define YTPHY_MISC_CONFIG_REG			0xA006
+ #define YTPHY_MCR_FIBER_SPEED_MASK		BIT(0)
+ #define YTPHY_MCR_FIBER_1000BX			(0x1 << 0)
+@@ -1575,6 +1579,8 @@ static int yt8521_config_init(struct phy
+ 	struct device_node *node = phydev->mdio.dev.of_node;
+ 	int old_page;
+ 	int ret = 0;
++	int i, val;
++	char buf[64];
+ 
+ 	old_page = phy_select_page(phydev, YT8521_RSSR_UTP_SPACE);
+ 	if (old_page < 0)
+@@ -1602,6 +1608,18 @@ static int yt8521_config_init(struct phy
+ 		if (ret < 0)
+ 			goto err_restore_page;
+ 	}
++
++	for (i = 0; i < 3; ++i) {
++		/* get led configuration */
++		snprintf(buf, 64, "motorcomm,led%d", i);
++		if (!of_property_read_u32(node, buf, &val) ) {
++			phydev_info(phydev, "led%d config val: %08x node:%pOF", i, val, node);
++			ret = ytphy_write_ext(phydev, YT8521_LED0_CFG_REG + i, val);
++			if (ret < 0) {
++				phydev_err(phydev, "write led0 config failed!\n");
++			}
++		}
++	}
+ err_restore_page:
+ 	return phy_restore_page(phydev, old_page, ret);
+ }
+@@ -1610,6 +1628,8 @@ static int yt8531_config_init(struct phy
+ {
+ 	struct device_node *node = phydev->mdio.dev.of_node;
+ 	int ret;
++	int i, val;
++	char buf[64];
+ 
+ 	ret = ytphy_rgmii_clk_delay_config_with_lock(phydev);
+ 	if (ret < 0)
+@@ -1633,6 +1653,18 @@ static int yt8531_config_init(struct phy
+ 			return ret;
+ 	}
+ 
++	for (i = 0; i < 3; ++i) {
++		/* get led configuration */
++		snprintf(buf, 64, "motorcomm,led%d", i);
++		if (!of_property_read_u32(node, buf, &val) ) {
++			phydev_info(phydev, "led%d config val: %08x node:%pOF", i, val, node);
++			ret = ytphy_write_ext(phydev, YT8521_LED0_CFG_REG + i, val);
++			if (ret < 0) {
++				phydev_err(phydev, "write led0 config failed!\n");
++			}
++		}
++	}
++
+ 	ret = yt8531_set_ds(phydev);
+ 	if (ret < 0)
+ 		return ret;
