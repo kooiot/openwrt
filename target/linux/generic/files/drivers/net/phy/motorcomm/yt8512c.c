@@ -30,10 +30,7 @@
 #define MDIO_TIMEOUT		(msecs_to_jiffies(500))
 
 struct yt8512_phy_priv {
-	bool use_led0;
-	u16 led0;
-	bool use_led1;
-	u16 led1;
+	struct device_node *of_node;
 };
 
 static int yt_ext_read(struct phy_device *phydev, u16 reg) {
@@ -80,29 +77,12 @@ static int yt8512_probe(struct phy_device *phydev) {
 	struct device *dev = &phydev->mdio.dev;
 	struct device_node *of_node = dev->of_node;
 	struct yt8512_phy_priv *priv;
-	int reg;
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
 
-	if (of_property_read_u32(of_node, "motorcomm,led0", &reg)) {
-		priv->use_led0 = false;
-		phydev_info(phydev, "no led0 config val");
-	} else {
-		priv->use_led0 = true;
-		priv->led0 = (u16)reg;
-		phydev_info(phydev, "led0 config val: %x of_node:%pOF", priv->led0, of_node);
-	}
-
-	if (of_property_read_u32(of_node, "motorcomm,led1", &reg)) {
-		priv->use_led1 = false;
-		phydev_info(phydev, "no led1 config val");
-	} else {
-		priv->use_led1 = true;
-		priv->led1 = (u16)reg;
-		phydev_info(phydev, "led1 config val: %x of_node:%pOF", priv->led1, of_node);
-	}
+	priv->of_node = of_node;
 
 	phydev->priv = priv;
 
@@ -112,14 +92,16 @@ static int yt8512_probe(struct phy_device *phydev) {
 static int yt8512_led_init(struct phy_device *phydev)
 {
 	int ret = 0;
+	int val;
 	struct yt8512_phy_priv *priv = phydev->priv;
+	struct device_node *of_node = priv->of_node;
 
 	ret = yt_ext_read(phydev, YT8512_LED0_CFG_REG);
 	phydev_info(phydev, "read led0 config val: %x", ret);
 
-	if (priv->use_led0) {
-		phydev_info(phydev, "write led0 config val: %x", priv->led0);
-		ret = yt_ext_write(phydev, YT8512_LED0_CFG_REG, priv->led0);
+	if (!of_property_read_u32(of_node, "motorcomm,led0", &val)) {
+		phydev_info(phydev, "write led0 config val: %08x", val);
+		ret = yt_ext_write(phydev, YT8512_LED0_CFG_REG, val);
 		if (ret < 0) {
 			phydev_err(phydev, "write led0 config failed!\n");
 			goto error_return;
@@ -132,9 +114,9 @@ static int yt8512_led_init(struct phy_device *phydev)
 	ret = yt_ext_read(phydev, YT8512_LED1_CFG_REG);
 	phydev_info(phydev, "read led1 config val: %x", ret);
 
-	if (priv->use_led1) {
-		phydev_info(phydev, "write led1 config val: %x", priv->led1);
-		ret = yt_ext_write(phydev, YT8512_LED1_CFG_REG, priv->led1);
+	if (!of_property_read_u32(of_node, "motorcomm,led1", &val)) {
+		phydev_info(phydev, "write led1 config val: %08x", val);
+		ret = yt_ext_write(phydev, YT8512_LED1_CFG_REG, val);
 		if (ret < 0) {
 			phydev_err(phydev, "write led1 config failed!\n");
 			goto error_return;
