@@ -1,4 +1,4 @@
-From a852d3f625ba055661a30629bd59e6bee668d048 Mon Sep 17 00:00:00 2001
+From 9ea339d70cfa03d39fecfc3d980c758ed67c4639 Mon Sep 17 00:00:00 2001
 From: Jernej Skrabec <jernej.skrabec@siol.net>
 Date: Fri, 16 Aug 2019 16:38:57 +0200
 Subject: net: phy: Add support for AC200 EPHY
@@ -21,12 +21,12 @@ Signed-off-by: Andre Przywara <andre.przywara@arm.com>
  create mode 100644 drivers/net/phy/ac200-phy.c
 
 diff --git a/drivers/net/phy/Kconfig b/drivers/net/phy/Kconfig
-index 107880d13d21..43edfd9d61dc 100644
+index 01b235b3bb7e..be4670e6b266 100644
 --- a/drivers/net/phy/Kconfig
 +++ b/drivers/net/phy/Kconfig
-@@ -68,6 +68,13 @@ config SFP
- 
- comment "MII PHY device drivers"
+@@ -84,6 +84,13 @@ config AIR_EN8811H_PHY
+ 	help
+ 	  Currently supports the Airoha EN8811H PHY.
  
 +config AC200_PHY
 +	tristate "AC200 EPHY"
@@ -36,20 +36,20 @@ index 107880d13d21..43edfd9d61dc 100644
 +	  Fast ethernet PHY as found in X-Powers AC200 multi-function device.
 +
  config AMD_PHY
- 	tristate "AMD PHYs"
+ 	tristate "AMD and Altima PHYs"
  	help
 diff --git a/drivers/net/phy/Makefile b/drivers/net/phy/Makefile
-index c945ed9bd14b..e5a46da678ff 100644
+index 90f886844381..4bba8c64bcc9 100644
 --- a/drivers/net/phy/Makefile
 +++ b/drivers/net/phy/Makefile
-@@ -32,6 +32,7 @@ obj-$(CONFIG_SFP)		+= sfp.o
+@@ -33,6 +33,7 @@ obj-$(CONFIG_SFP)		+= sfp.o
  sfp-obj-$(CONFIG_SFP)		+= sfp-bus.o
  obj-y				+= $(sfp-obj-y) $(sfp-obj-m)
  
 +obj-$(CONFIG_AC200_PHY)		+= ac200-phy.o
  obj-$(CONFIG_ADIN_PHY)		+= adin.o
  obj-$(CONFIG_ADIN1100_PHY)	+= adin1100.o
- obj-$(CONFIG_AMD_PHY)		+= amd.o
+ obj-$(CONFIG_AIR_EN8811H_PHY)   += air_en8811h.o
 diff --git a/drivers/net/phy/ac200-phy.c b/drivers/net/phy/ac200-phy.c
 new file mode 100644
 index 000000000000..8499914f49b8

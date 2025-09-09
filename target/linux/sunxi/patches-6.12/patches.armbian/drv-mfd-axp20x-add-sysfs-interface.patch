@@ -1,4 +1,4 @@
-From 21889777d58972be494f78952df91a2c13ec8fa0 Mon Sep 17 00:00:00 2001
+From a8b0c23520df4762b4ebc8ccd67e4e67f7f9a7a0 Mon Sep 17 00:00:00 2001
 From: The-going <48602507+The-going@users.noreply.github.com>
 Date: Tue, 1 Feb 2022 21:38:26 +0300
 Subject: drv:mfd:axp20x add sysfs interface
@@ -8,10 +8,10 @@ Subject: drv:mfd:axp20x add sysfs interface
  1 file changed, 614 insertions(+)
 
 diff --git a/drivers/mfd/axp20x.c b/drivers/mfd/axp20x.c
-index e1f3489c1292..118db04a534f 100644
+index 9d8ed24b6b60..a867b2637f3e 100644
 --- a/drivers/mfd/axp20x.c
 +++ b/drivers/mfd/axp20x.c
-@@ -82,6 +82,7 @@ static const struct regmap_range axp20x_volatile_ranges[] = {
+@@ -84,6 +84,7 @@ static const struct regmap_range axp20x_volatile_ranges[] = {
  	regmap_reg_range(AXP20X_IRQ1_EN, AXP20X_IRQ5_STATE),
  	regmap_reg_range(AXP20X_ACIN_V_ADC_H, AXP20X_IPSOUT_V_HIGH_L),
  	regmap_reg_range(AXP20X_GPIO20_SS, AXP20X_GPIO3_CTRL),
@@ -19,13 +19,13 @@ index e1f3489c1292..118db04a534f 100644
  	regmap_reg_range(AXP20X_FG_RES, AXP20X_RDC_L),
  };
  
-@@ -1171,6 +1172,611 @@ static int axp20x_power_off(struct sys_off_data *data)
+@@ -1282,6 +1283,611 @@ static int axp20x_power_off(struct sys_off_data *data)
  	return NOTIFY_DONE;
  }
  
 +#define kobj_to_device(x) container_of(x, struct device, kobj)
 +
-+int axp20x_get_adc_freq(struct axp20x_dev *axp)
++static int axp20x_get_adc_freq(struct axp20x_dev *axp)
 +{
 +	unsigned int res;
 +	int ret, freq = 25;
@@ -631,7 +631,7 @@ index e1f3489c1292..118db04a534f 100644
  int axp20x_match_device(struct axp20x_dev *axp20x)
  {
  	struct device *dev = axp20x->dev;
-@@ -1375,6 +1981,10 @@ int axp20x_device_probe(struct axp20x_dev *axp20x)
+@@ -1479,6 +2085,10 @@ int axp20x_device_probe(struct axp20x_dev *axp20x)
  					      SYS_OFF_PRIO_DEFAULT,
  					      axp20x_power_off, axp20x);
  
@@ -642,7 +642,7 @@ index e1f3489c1292..118db04a534f 100644
  	dev_info(axp20x->dev, "AXP20X driver loaded\n");
  
  	return 0;
-@@ -1383,6 +1993,10 @@ EXPORT_SYMBOL(axp20x_device_probe);
+@@ -1487,6 +2097,10 @@ EXPORT_SYMBOL(axp20x_device_probe);
  
  void axp20x_device_remove(struct axp20x_dev *axp20x)
  {
@@ -654,5 +654,5 @@ index e1f3489c1292..118db04a534f 100644
  	regmap_del_irq_chip(axp20x->irq, axp20x->regmap_irqc);
  }
 -- 
-2.35.3
+2.43.0
 

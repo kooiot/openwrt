@@ -1,4 +1,4 @@
-From 08e21ea04feee7d2bd2ba4c7caf7c533188fed4d Mon Sep 17 00:00:00 2001
+From a05c0e3c72d2bc0a1338b17279ce9ecb7f887ea2 Mon Sep 17 00:00:00 2001
 From: Mitko Gamishev <hehopmajieh@debian.bg>
 Date: Wed, 5 Feb 2020 14:57:10 +0200
 Subject: drv:iio:adc:axp20x_adc arm64:dts:axp803 hwmon enable thermal
@@ -21,18 +21,18 @@ index a6b4b87f185d..422be59f5d88 100644
  
  	axp_gpio: gpio {
 diff --git a/drivers/iio/adc/axp20x_adc.c b/drivers/iio/adc/axp20x_adc.c
-index 83e228980ad5..1c6978037513 100644
+index 87a5c74e5685..e251fcdd04e2 100644
 --- a/drivers/iio/adc/axp20x_adc.c
 +++ b/drivers/iio/adc/axp20x_adc.c
-@@ -7,6 +7,7 @@
- 
+@@ -8,6 +8,7 @@
+ #include <linux/unaligned.h>
  #include <linux/bitfield.h>
  #include <linux/completion.h>
 +#include <linux/hwmon.h>
  #include <linux/interrupt.h>
  #include <linux/io.h>
  #include <linux/module.h>
-@@ -619,6 +620,74 @@ static int axp813_adc_rate(struct axp20x_adc_iio *info, int rate)
+@@ -1036,6 +1037,74 @@ static int axp813_adc_rate(struct axp20x_adc_iio *info, int rate)
  				 AXP813_ADC_RATE_HZ(rate));
  }
  
@@ -107,7 +107,7 @@ index 83e228980ad5..1c6978037513 100644
  struct axp_data {
  	const struct iio_info		*iio_info;
  	int				num_channels;
-@@ -627,6 +696,7 @@ struct axp_data {
+@@ -1046,6 +1115,7 @@ struct axp_data {
  	unsigned long			adc_en2_mask;
  	int				(*adc_rate)(struct axp20x_adc_iio *info,
  						    int rate);
@@ -115,31 +115,31 @@ index 83e228980ad5..1c6978037513 100644
  	struct iio_map			*maps;
  };
  
-@@ -637,6 +707,7 @@ static const struct axp_data axp20x_data = {
- 	.adc_en1_mask = AXP20X_ADC_EN1_MASK,
+@@ -1068,6 +1138,7 @@ static const struct axp_data axp20x_data = {
+ 	.adc_en2 = AXP20X_ADC_EN2,
  	.adc_en2_mask = AXP20X_ADC_EN2_MASK,
  	.adc_rate = axp20x_adc_rate,
 +	.hwmon_en = false,
  	.maps = axp20x_maps,
  };
  
-@@ -646,6 +717,7 @@ static const struct axp_data axp22x_data = {
- 	.channels = axp22x_adc_channels,
+@@ -1078,6 +1149,7 @@ static const struct axp_data axp22x_data = {
+ 	.adc_en1 = AXP20X_ADC_EN1,
  	.adc_en1_mask = AXP22X_ADC_EN1_MASK,
  	.adc_rate = axp22x_adc_rate,
 +	.hwmon_en = false,
  	.maps = axp22x_maps,
  };
  
-@@ -655,6 +727,7 @@ static const struct axp_data axp813_data = {
- 	.channels = axp813_adc_channels,
+@@ -1097,6 +1169,7 @@ static const struct axp_data axp813_data = {
+ 	.adc_en1 = AXP20X_ADC_EN1,
  	.adc_en1_mask = AXP22X_ADC_EN1_MASK,
  	.adc_rate = axp813_adc_rate,
 +	.hwmon_en = true,
  	.maps = axp22x_maps,
  };
  
-@@ -737,8 +810,23 @@ static int axp20x_probe(struct platform_device *pdev)
+@@ -1184,8 +1257,23 @@ static int axp20x_probe(struct platform_device *pdev)
  		goto fail_register;
  	}
  
@@ -164,5 +164,5 @@ index 83e228980ad5..1c6978037513 100644
  	iio_map_array_unregister(indio_dev);
  
 -- 
-2.35.3
+2.43.0
 

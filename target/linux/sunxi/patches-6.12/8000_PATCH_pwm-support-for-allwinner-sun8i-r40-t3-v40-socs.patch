@@ -138,10 +138,10 @@ new file mode 100644
 index 0000000..d8597e4
 --- /dev/null
 +++ b/drivers/pwm/pwm-sun8i.c
-@@ -0,0 +1,402 @@
+@@ -0,0 +1,404 @@
 +// SPDX-License-Identifier: GPL-2.0
 +// Copyright (C) 2018 Hao Zhang <hao5781286@gmail.com>
-+// Copyright (C) 2020 Dirk Chang <dirk@kooiot.com>
++// Copyright (C) 2020-2025 Dirk Chang <dirk@kooiot.com>
 +
 +#include <linux/bitops.h>
 +#include <linux/clk.h>
@@ -215,8 +215,12 @@ index 0000000..d8597e4
 +#define CAPTURE_FALL_REG(ch)	(0x0074 + (ch) * 0x20)
 +#define CAPTURE_CFLR		GENMASK(15, 0)
 +
++struct sun8i_pwm_data {
++	unsigned int npwm;
++};
++
 +struct sun8i_pwm_chip {
-+	struct pwm_chip chip;
++	struct pwm_chip *chip;
 +	struct clk *clk;
 +	bool is_pll_clk;
 +	void __iomem *base;
@@ -226,7 +230,8 @@ index 0000000..d8597e4
 +
 +static struct sun8i_pwm_chip *to_sun8i_pwm_chip(struct pwm_chip *chip)
 +{
-+	return container_of(chip, struct sun8i_pwm_chip, chip);
++	// return container_of(chip, struct sun8i_pwm_chip, chip);
++	return pwmchip_get_drvdata(chip);
 +}
 +
 +static u32 sun8i_pwm_read(struct sun8i_pwm_chip *sun8i_pwm,
@@ -280,13 +285,13 @@ index 0000000..d8597e4
 +	val = state->period * clk_rate;
 +	do_div(val, NSEC_PER_SEC);
 +	if (val <= 1) {
-+		dev_err(sun8i_pwm->chip.dev,
++		dev_err(&sun8i_pwm->chip->dev,
 +				"Period expects a larger value. clk_rate:%lld period: %lld\n",
 +				clk_rate, state->period);
 +		return -EINVAL;
 +	}
 +
-+	dev_dbg(sun8i_pwm->chip.dev,
++	dev_dbg(&sun8i_pwm->chip->dev,
 +			"[PWM-%d] clock source:%s freq:%lldHz\n",
 +			ch, clk_name, clk_rate);
 +
@@ -305,7 +310,7 @@ index 0000000..d8597e4
 +			prescaler = 0;
 +			div_id++;
 +			if (div_id == 9) {
-+				dev_err(sun8i_pwm->chip.dev,
++				dev_err(&sun8i_pwm->chip->dev,
 +					"unsupport period value\n");
 +				return -EINVAL;
 +			}
@@ -344,7 +349,7 @@ index 0000000..d8597e4
 +	if (!cstate.enabled) {
 +		ret = clk_prepare_enable(sun8i_pwm->clk);
 +		if (ret) {
-+			dev_err(chip->dev, "Failed to enable PWM clock\n");
++			dev_err(&chip->dev, "Failed to enable PWM clock\n");
 +			return ret;
 +		}
 +	}
@@ -353,7 +358,7 @@ index 0000000..d8597e4
 +	    (cstate.duty_cycle != state->duty_cycle)) {
 +		ret = sun8i_pwm_config(sun8i_pwm, pwm->hwpwm, state);
 +		if (ret) {
-+			dev_err(chip->dev, "Failed to config PWM\n");
++			dev_err(&chip->dev, "Failed to config PWM\n");
 +			return ret;
 +		}
 +	}
@@ -429,13 +434,16 @@ index 0000000..d8597e4
 +static const struct pwm_ops sun8i_pwm_ops = {
 +	.apply = sun8i_pwm_apply,
 +	.get_state = sun8i_pwm_get_state,
-+	.owner = THIS_MODULE,
++};
++
++static const struct sun8i_pwm_data sun8i_pwm_data = {
++	.npwm = 3,
 +};
 +
 +static const struct of_device_id sun8i_pwm_dt_ids[] = {
 +	{
 +		.compatible = "allwinner,sun8i-r40-pwm",
-+		.data = NULL,
++		.data = &sun8i_pwm_data,
 +	},
 +	{},
 +};
@@ -444,25 +452,26 @@ index 0000000..d8597e4
 +static int sun8i_pwm_probe(struct platform_device *pdev)
 +{
 +	struct device_node *np = pdev->dev.of_node;
++	struct pwm_chip *chip;
++	const struct sun8i_pwm_data *data;
 +	struct sun8i_pwm_chip *pwm;
-+	struct resource *res;
 +	int ret;
-+	const struct of_device_id *match;
 +
 +	dev_info(&pdev->dev, "%s: start\n", __func__);
 +
-+	match = of_match_device(sun8i_pwm_dt_ids, &pdev->dev);
-+	if (!match) {
++	data = of_device_get_match_data(&pdev->dev);
++	if (!data) {
 +		dev_err(&pdev->dev, "Error: No device match found\n");
 +		return -ENODEV;
 +	}
 +
-+	pwm = devm_kzalloc(&pdev->dev, sizeof(*pwm), GFP_KERNEL);
-+	if (!pwm)
-+		return -ENOMEM;
++	chip = devm_pwmchip_alloc(&pdev->dev, data->npwm, sizeof(*pwm));
++	if (IS_ERR(chip))
++		return PTR_ERR(chip);
++	pwm = to_sun8i_pwm_chip(chip);
 +
-+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-+	pwm->base = devm_ioremap_resource(&pdev->dev, res);
++	pwm->data = data;
++	pwm->base = devm_platform_ioremap_resource(pdev, 0);
 +	if (IS_ERR(pwm->base))
 +		return PTR_ERR(pwm->base);
 +
@@ -493,37 +502,31 @@ index 0000000..d8597e4
 +		pwm->is_pll_clk = true;
 +	}
 +
-+	ret = of_property_read_u32(np, "pwm-channels", &pwm->chip.npwm);
++	ret = of_property_read_u32(np, "pwm-channels", &pwm->chip->npwm);
 +	if (ret) {
 +		dev_err(&pdev->dev, "Can't get pwm-channels\n");
 +		return ret;
 +	}
 +
-+	dev_dbg(&pdev->dev, "pwm-channels:%d\n", pwm->chip.npwm);
-+	pwm->data = match->data;
-+	pwm->chip.dev = &pdev->dev;
-+	pwm->chip.ops = &sun8i_pwm_ops;
-+	pwm->chip.base = -1;
-+	pwm->chip.of_xlate = of_pwm_xlate_with_flags;
-+	pwm->chip.of_pwm_n_cells = 3;
++	dev_dbg(&pdev->dev, "pwm-channels:%d\n", pwm->chip->npwm);
++	chip->ops = &sun8i_pwm_ops;
 +
 +	platform_set_drvdata(pdev, pwm);
 +
-+	ret = pwmchip_add(&pwm->chip);
++	ret = pwmchip_add(pwm->chip);
 +	if (ret < 0)
 +		dev_err(&pdev->dev, "Failed to add PWM chip: %d\n", ret);
 +
 +	return ret;
 +}
 +
-+static int sun8i_pwm_remove(struct platform_device *pdev)
++static void sun8i_pwm_remove(struct platform_device *pdev)
 +{
 +	struct sun8i_pwm_chip *pwm = platform_get_drvdata(pdev);
 +
-+	pwmchip_remove(&pwm->chip);
++	pwmchip_remove(pwm->chip);
 +
 +	clk_disable_unprepare(pwm->clk);
-+	return 0;
 +}
 +
 +static struct platform_driver sun8i_pwm_driver = {
@@ -539,5 +542,4 @@ index 0000000..d8597e4
 +MODULE_ALIAS("platform:sun8i-pwm");
 +MODULE_AUTHOR("Hao Zhang <hao5781286@gmail.com>");
 +MODULE_AUTHOR("Dirk Chang <dirk@kooiot.com>");
-+MODULE_DESCRIPTION("Allwinner sun8i PWM driver");
 +MODULE_LICENSE("GPL v2");

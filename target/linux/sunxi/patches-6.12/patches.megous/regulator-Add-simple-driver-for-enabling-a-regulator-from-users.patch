@@ -1,4 +1,4 @@
-From a547210cab34d9c78f6db8611690920e0b58fb46 Mon Sep 17 00:00:00 2001
+From a15ec988b678b703a222f2b31ec422268af931bb Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Ond=C5=99ej=20Jirman?= <megi@xff.cz>
 Date: Sat, 5 Oct 2019 15:10:11 +0200
 Subject: regulator: Add simple driver for enabling a regulator from userspace
@@ -10,15 +10,15 @@ Signed-off-by: Ondrej Jirman <megi@xff.cz>
 ---
  drivers/regulator/Kconfig                 |   9 ++
  drivers/regulator/Makefile                |   1 +
- drivers/regulator/userspace-consumer-of.c | 137 ++++++++++++++++++++++
- 3 files changed, 147 insertions(+)
+ drivers/regulator/userspace-consumer-of.c | 135 ++++++++++++++++++++++
+ 3 files changed, 145 insertions(+)
  create mode 100644 drivers/regulator/userspace-consumer-of.c
 
 diff --git a/drivers/regulator/Kconfig b/drivers/regulator/Kconfig
-index 965d4f0c18a6..6b94442986f6 100644
+index 39297f7d8177..db7f70e9a015 100644
 --- a/drivers/regulator/Kconfig
 +++ b/drivers/regulator/Kconfig
-@@ -56,6 +56,15 @@ config REGULATOR_USERSPACE_CONSUMER
+@@ -66,6 +66,15 @@ config REGULATOR_NETLINK_EVENTS
  
  	  If unsure, say no.
  
@@ -35,10 +35,10 @@ index 965d4f0c18a6..6b94442986f6 100644
  	tristate "Marvell 88PG86X voltage regulators"
  	depends on I2C
 diff --git a/drivers/regulator/Makefile b/drivers/regulator/Makefile
-index 23074714a81a..933a1529ce12 100644
+index 3d5a803dce8a..267a09e14295 100644
 --- a/drivers/regulator/Makefile
 +++ b/drivers/regulator/Makefile
-@@ -9,6 +9,7 @@ obj-$(CONFIG_OF) += of_regulator.o
+@@ -10,6 +10,7 @@ obj-$(CONFIG_OF) += of_regulator.o
  obj-$(CONFIG_REGULATOR_FIXED_VOLTAGE) += fixed.o
  obj-$(CONFIG_REGULATOR_VIRTUAL_CONSUMER) += virtual.o
  obj-$(CONFIG_REGULATOR_USERSPACE_CONSUMER) += userspace-consumer.o
@@ -48,10 +48,10 @@ index 23074714a81a..933a1529ce12 100644
  obj-$(CONFIG_REGULATOR_88PM800) += 88pm800-regulator.o
 diff --git a/drivers/regulator/userspace-consumer-of.c b/drivers/regulator/userspace-consumer-of.c
 new file mode 100644
-index 000000000000..5b835af17bea
+index 000000000000..bcc9433c352d
 --- /dev/null
 +++ b/drivers/regulator/userspace-consumer-of.c
-@@ -0,0 +1,137 @@
+@@ -0,0 +1,135 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +
 +#include <linux/err.h>
@@ -157,7 +157,7 @@ index 000000000000..5b835af17bea
 +	return 0;
 +}
 +
-+static int regulator_userspace_consumer_remove(struct platform_device *pdev)
++static void regulator_userspace_consumer_remove(struct platform_device *pdev)
 +{
 +	struct userspace_consumer_data *data = platform_get_drvdata(pdev);
 +
@@ -165,8 +165,6 @@ index 000000000000..5b835af17bea
 +
 +	if (data->enabled)
 +		regulator_disable(data->supply);
-+
-+	return 0;
 +}
 +
 +static const struct of_device_id ids_of_match[] = {

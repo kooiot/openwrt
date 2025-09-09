@@ -25,7 +25,7 @@
 + * @bus: points to the mii_bus structure
 + * Description: reset the MII bus
 + */
-+int sun4i_mdio_reset(struct mii_bus *bus)
++static int __maybe_unused sun4i_mdio_reset(struct mii_bus *bus)
 +{
 +	struct sun4i_mdio_data *data = bus->priv;
 +

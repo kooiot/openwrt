@@ -1,4 +1,4 @@
-From fab74d9256e2b237772e68e78d1c213cb0320ca9 Mon Sep 17 00:00:00 2001
+From ff3463fbf49a5856b6ec1c8a4f430705041c9554 Mon Sep 17 00:00:00 2001
 From: Icenowy Zheng <icenowy@aosc.io>
 Date: Tue, 10 Sep 2019 12:03:32 +0800
 Subject: iio: adc: axp20x_adc: allow to set TS pin to GPADC mode
@@ -14,10 +14,10 @@ Signed-off-by: Icenowy Zheng <icenowy@aosc.io>
  1 file changed, 6 insertions(+)
 
 diff --git a/drivers/iio/adc/axp20x_adc.c b/drivers/iio/adc/axp20x_adc.c
-index 75bda94dbce1..83e228980ad5 100644
+index 0226dfbcf4ae..87a5c74e5685 100644
 --- a/drivers/iio/adc/axp20x_adc.c
 +++ b/drivers/iio/adc/axp20x_adc.c
-@@ -40,6 +40,7 @@
+@@ -58,6 +58,7 @@
  #define AXP813_TS_GPIO0_ADC_RATE_HZ(x)		AXP20X_ADC_RATE_HZ(x)
  #define AXP813_V_I_ADC_RATE_HZ(x)		((ilog2((x) / 100) << 4) & AXP813_V_I_ADC_RATE_MASK)
  #define AXP813_ADC_RATE_HZ(x)			(AXP20X_ADC_RATE_HZ(x) | AXP813_V_I_ADC_RATE_HZ(x))
@@ -25,9 +25,9 @@ index 75bda94dbce1..83e228980ad5 100644
  
  #define AXP20X_ADC_CHANNEL(_channel, _name, _type, _reg)	\
  	{							\
-@@ -716,6 +717,11 @@ static int axp20x_probe(struct platform_device *pdev)
- 				   info->data->adc_en2_mask,
- 				   info->data->adc_en2_mask);
+@@ -1162,6 +1163,11 @@ static int axp20x_probe(struct platform_device *pdev)
+ 		regmap_set_bits(info->regmap, info->data->adc_en2,
+ 				info->data->adc_en2_mask);
  
 +	if (of_property_read_bool(pdev->dev.of_node, "x-powers,ts-as-gpadc"))
 +		regmap_update_bits(info->regmap, AXP20X_ADC_RATE,
@@ -35,8 +35,8 @@ index 75bda94dbce1..83e228980ad5 100644
 +				   AXP20X_TS_FUNCTION_GPADC);
 +
  	/* Configure ADCs rate */
- 	info->data->adc_rate(info, 100);
- 
+ 	if (info->data->adc_rate)
+ 		info->data->adc_rate(info, 100);
 -- 
-2.35.3
+2.43.0
 

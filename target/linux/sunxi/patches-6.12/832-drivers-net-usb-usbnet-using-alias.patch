@@ -29,7 +29,7 @@
 +		if (alias_id >= 0) {
 +			dev_info(pdev, "Got alias ethernet%d node:%pOF\n", alias_id, pdev->of_node);
 +			snprintf(buf, IFNAMSIZ, "eth%d", alias_id);
-+			strlcpy(dev->net->name, buf, IFNAMSIZ);
++			strncpy(dev->net->name, buf, IFNAMSIZ);
 +			// dev->net->ifindex = alias_id;
 +		}
 +	}

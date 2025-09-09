@@ -39,13 +39,13 @@
  	if (ret) {
 --- a/drivers/gpu/drm/drm_probe_helper.c
 +++ b/drivers/gpu/drm/drm_probe_helper.c
-@@ -404,6 +404,8 @@
- 
- 	DRM_DEBUG_KMS("[CONNECTOR:%d:%s]\n", connector->base.id,
- 			connector->name);
+@@ -569,6 +569,8 @@ int drm_helper_probe_single_connector_mo
+
+ 	drm_dbg_kms(dev, "[CONNECTOR:%d:%s]\n", connector->base.id,
+ 		    connector->name);
 +	// using console args parsed to kernel to force connector on
 +	// connector->force = DRM_FORCE_ON;
- 
+
  retry:
  	ret = drm_modeset_lock(&dev->mode_config.connection_mutex, &ctx);
 --- a/drivers/gpu/drm/sun4i/sun4i_rgb.c

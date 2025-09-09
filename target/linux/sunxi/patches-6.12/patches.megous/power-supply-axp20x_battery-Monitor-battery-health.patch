@@ -1,4 +1,4 @@
-From eda83cdd1656114e23e8ba5b0e069052130f3a12 Mon Sep 17 00:00:00 2001
+From 1901d7385055ae59155deb6d54b263aa60feeae0 Mon Sep 17 00:00:00 2001
 From: Samuel Holland <samuel@sholland.org>
 Date: Sat, 29 Feb 2020 01:04:33 -0600
 Subject: power: supply: axp20x_battery: Monitor battery health
@@ -9,10 +9,10 @@ Signed-off-by: Samuel Holland <samuel@sholland.org>
  1 file changed, 56 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/power/supply/axp20x_battery.c b/drivers/power/supply/axp20x_battery.c
-index 5b20b8ff354e..4fc21f10dd3f 100644
+index 745976993a95..e38d3aa4f417 100644
 --- a/drivers/power/supply/axp20x_battery.c
 +++ b/drivers/power/supply/axp20x_battery.c
-@@ -81,6 +81,7 @@ struct axp20x_batt_ps {
+@@ -125,6 +125,7 @@ struct axp20x_batt_ps {
  	struct iio_channel *batt_chrg_i;
  	struct iio_channel *batt_dischrg_i;
  	struct iio_channel *batt_v;
@@ -20,7 +20,7 @@ index 5b20b8ff354e..4fc21f10dd3f 100644
  	/* Maximum constant charge current */
  	unsigned int max_ccc;
  	const struct axp_data	*data;
-@@ -272,7 +273,7 @@ static int axp20x_battery_get_prop(struct power_supply *psy,
+@@ -365,7 +366,7 @@ static int axp20x_battery_get_prop(struct power_supply *psy,
  			return 0;
  		}
  
@@ -29,7 +29,7 @@ index 5b20b8ff354e..4fc21f10dd3f 100644
  		break;
  
  	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
-@@ -564,6 +565,39 @@ static irqreturn_t axp20x_battery_changed_irq(int irq, void *devid)
+@@ -1067,6 +1068,39 @@ static irqreturn_t axp20x_battery_changed_irq(int irq, void *devid)
  	return IRQ_HANDLED;
  }
  
@@ -69,7 +69,7 @@ index 5b20b8ff354e..4fc21f10dd3f 100644
  static const struct axp_irq_data axp20x_irqs[] = {
  	{ "BATT_PLUGIN",		axp20x_battery_changed_irq },
  	{ "BATT_REMOVAL",		axp20x_battery_changed_irq },
-@@ -574,6 +608,24 @@ static const struct axp_irq_data axp20x_irqs[] = {
+@@ -1077,6 +1111,24 @@ static const struct axp_irq_data axp20x_irqs[] = {
  	{}
  };
  
@@ -94,24 +94,24 @@ index 5b20b8ff354e..4fc21f10dd3f 100644
  static const struct axp_data axp209_data = {
  	.ccc_scale = 100000,
  	.ccc_offset = 300000,
-@@ -597,7 +649,7 @@ static const struct axp_data axp813_data = {
- 	.has_fg_valid = true,
- 	.get_max_voltage = axp813_battery_get_max_voltage,
+@@ -1128,7 +1180,7 @@ static const struct axp_data axp813_data = {
  	.set_max_voltage = axp20x_battery_set_max_voltage,
+ 	.cfg_iio_chan = axp209_bat_cfg_iio_channels,
+ 	.set_bat_info = axp209_set_battery_info,
 -	.irqs = axp20x_irqs,
 +	.irqs = axp813_irqs,
  };
  
  static const struct of_device_id axp20x_battery_ps_id[] = {
-@@ -674,6 +726,8 @@ static int axp20x_power_probe(struct platform_device *pdev)
+@@ -1189,6 +1241,8 @@ static int axp20x_power_probe(struct platform_device *pdev)
  		return PTR_ERR(axp20x_batt->batt);
  	}
  
 +	axp20x_batt->health = POWER_SUPPLY_HEALTH_GOOD;
 +
  	if (!power_supply_get_battery_info(axp20x_batt->batt, &info)) {
- 		int vmin = info->voltage_min_design_uv;
- 		int ccc = info->constant_charge_current_max_ua;
+ 		axp20x_batt->data->set_bat_info(pdev, axp20x_batt, info);
+ 		power_supply_put_battery_info(axp20x_batt->batt, info);
 -- 
-2.35.3
+2.43.0
 

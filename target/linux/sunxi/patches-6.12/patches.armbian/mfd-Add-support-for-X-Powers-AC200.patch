@@ -1,4 +1,4 @@
-From 7efb8109b2ea4a441a3571d45f729b2153c12fa6 Mon Sep 17 00:00:00 2001
+From 6a6d89b5e81c4481a506f4166ae9a65804b9c333 Mon Sep 17 00:00:00 2001
 From: Jernej Skrabec <jernej.skrabec@siol.net>
 Date: Fri, 16 Aug 2019 16:38:21 +0200
 Subject: mfd: Add support for X-Powers AC200
@@ -31,10 +31,10 @@ Signed-off-by: Andre Przywara <andre.przywara@arm.com>
  create mode 100644 drivers/mfd/ac200.c
 
 diff --git a/drivers/mfd/Kconfig b/drivers/mfd/Kconfig
-index 68d71b4b55bd..caed5e75d11f 100644
+index f9325bcce1b9..912cb6bc4942 100644
 --- a/drivers/mfd/Kconfig
 +++ b/drivers/mfd/Kconfig
-@@ -191,6 +191,18 @@ config MFD_AC100
+@@ -203,6 +203,18 @@ config MFD_AC100
  	  This driver include only the core APIs. You have to select individual
  	  components like codecs or RTC under the corresponding menus.
  
@@ -54,10 +54,10 @@ index 68d71b4b55bd..caed5e75d11f 100644
  	tristate
  	select MFD_CORE
 diff --git a/drivers/mfd/Makefile b/drivers/mfd/Makefile
-index db1ba39de3b5..f03188b74d62 100644
+index 2a9f91e81af8..4e297962d4a8 100644
 --- a/drivers/mfd/Makefile
 +++ b/drivers/mfd/Makefile
-@@ -140,6 +140,7 @@ obj-$(CONFIG_MFD_DA9052_SPI)	+= da9052-spi.o
+@@ -145,6 +145,7 @@ obj-$(CONFIG_MFD_DA9052_SPI)	+= da9052-spi.o
  obj-$(CONFIG_MFD_DA9052_I2C)	+= da9052-i2c.o
  
  obj-$(CONFIG_MFD_AC100)		+= ac100.o

@@ -2291,9 +2291,9 @@ diff -Nrup a/drivers/clk/sunxi-ng/Kconfig b/drivers/clk/sunxi-ng/Kconfig
 --- a/drivers/clk/sunxi-ng/Kconfig	2024-04-03 10:07:17.320420947 +0800
 +++ b/drivers/clk/sunxi-ng/Kconfig	2024-04-03 18:03:54.912199616 +0800
 @@ -22,6 +22,16 @@ config SUN20I_D1_R_CCU
- 	default RISCV && ARCH_SUNXI
- 	depends on (RISCV && ARCH_SUNXI) || COMPILE_TEST
- 
+ 	default y
+ 	depends on MACH_SUN8I || RISCV || COMPILE_TEST
+
 +config SUN20I_T113_CCU
 +	tristate "Support for the Allwinner T113 CCU"
 +	default ARCH_SUNXI
@@ -2306,7 +2306,7 @@ diff -Nrup a/drivers/clk/sunxi-ng/Kconfig b/drivers/clk/sunxi-ng/Kconfig
 +
  config SUN50I_A64_CCU
  	tristate "Support for the Allwinner A64 CCU"
- 	default ARM64 && ARCH_SUNXI
+ 	default y
 diff -Nrup a/drivers/clk/sunxi-ng/Makefile b/drivers/clk/sunxi-ng/Makefile
 --- a/drivers/clk/sunxi-ng/Makefile	2024-04-03 10:07:17.320420947 +0800
 +++ b/drivers/clk/sunxi-ng/Makefile	2024-04-03 18:05:57.750576793 +0800
@@ -2762,10 +2762,10 @@ diff -Nrup a/drivers/pwm/pwm-sun8i-v536.c b/drivers/pwm/pwm-sun8i-v536.c
 diff -Nrup a/drivers/thermal/sun8i_thermal.c b/drivers/thermal/sun8i_thermal.c
 --- a/drivers/thermal/sun8i_thermal.c	2024-04-03 10:07:30.636627785 +0800
 +++ b/drivers/thermal/sun8i_thermal.c	2024-04-03 18:27:18.609214684 +0800
-@@ -298,6 +298,29 @@ static int sun8i_r40_ths_calibrate(struc
+@@ -269,6 +269,29 @@ static int sun8i_r40_ths_calibrate(struc
  	return 0;
  }
- 
+
 +static int sun20i_d1_ths_calibrate(struct ths_device *tmdev,
 +				   u16 *caldata, int callen)
 +{
@@ -2792,10 +2792,10 @@ diff -Nrup a/drivers/thermal/sun8i_thermal.c b/drivers/thermal/sun8i_thermal.c
  static int sun50i_h6_ths_calibrate(struct ths_device *tmdev,
  				   u16 *caldata, int callen)
  {
-@@ -733,6 +756,19 @@ static const struct ths_thermal_chip sun
+@@ -695,6 +718,19 @@ static const struct ths_thermal_chip sun
  	.calc_temp = sun8i_ths_calc_temp,
  };
- 
+
 +static const struct ths_thermal_chip sun20i_d1_ths = {
 +	.sensor_num = 1,
 +	.offset = 188552,
@@ -2812,20 +2812,20 @@ diff -Nrup a/drivers/thermal/sun8i_thermal.c b/drivers/thermal/sun8i_thermal.c
  static const struct ths_thermal_chip sun50i_a64_ths = {
  	.sensor_num = 3,
  	.offset = 260890,
-@@ -819,6 +819,7 @@ static const struct ths_thermal_chip sun
+@@ -745,6 +781,7 @@ static const struct ths_thermal_chip sun
  	.calc_temp = sun8i_ths_calc_temp,
  };
- 
+
 +/*
  static const struct ths_thermal_chip sun20i_d1_ths = {
  	.sensor_num = 1,
  	.has_bus_clk_reset = true,
-@@ -830,6 +831,7 @@ static const struct ths_thermal_chip sun
+@@ -756,6 +793,7 @@ static const struct ths_thermal_chip sun
  	.irq_ack = sun50i_h6_irq_ack,
  	.calc_temp = sun8i_ths_calc_temp,
  };
 +*/
- 
+
  static const struct ths_thermal_chip sun50i_h616_ths = {
  	.sensor_num = 4,
 --- a/drivers/spi/spi-sun6i.c

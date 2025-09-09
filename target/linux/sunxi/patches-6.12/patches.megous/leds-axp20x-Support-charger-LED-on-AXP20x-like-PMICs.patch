@@ -1,4 +1,4 @@
-From 1068066a8c2d0001a7d333f9031c7417b2d56c28 Mon Sep 17 00:00:00 2001
+From 8bec6c9f7661cb8bd91f765b1189fa01602c57a0 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Ond=C5=99ej=20Jirman?= <megi@xff.cz>
 Date: Thu, 4 Feb 2021 00:55:20 +0100
 Subject: leds: axp20x: Support charger LED on AXP20x like PMICs
@@ -17,16 +17,16 @@ Signed-off-by: Ondrej Jirman <megi@xff.cz>
 ---
  drivers/leds/Kconfig       |  15 +++
  drivers/leds/Makefile      |   1 +
- drivers/leds/leds-axp20x.c | 255 +++++++++++++++++++++++++++++++++++++
+ drivers/leds/leds-axp20x.c | 253 +++++++++++++++++++++++++++++++++++++
  drivers/mfd/axp20x.c       |   3 +
- 4 files changed, 274 insertions(+)
+ 4 files changed, 272 insertions(+)
  create mode 100644 drivers/leds/leds-axp20x.c
 
 diff --git a/drivers/leds/Kconfig b/drivers/leds/Kconfig
-index 3132439f99e0..ac64da6991c9 100644
+index b784bb74a837..36a301a19289 100644
 --- a/drivers/leds/Kconfig
 +++ b/drivers/leds/Kconfig
-@@ -885,6 +885,14 @@ config LEDS_IP30
+@@ -952,6 +952,14 @@ config LEDS_IP30
  	  To compile this driver as a module, choose M here: the module
  	  will be called leds-ip30.
  
@@ -41,7 +41,7 @@ index 3132439f99e0..ac64da6991c9 100644
  config LEDS_ACER_A500
  	tristate "Power button LED support for Acer Iconia Tab A500"
  	depends on LEDS_CLASS && MFD_ACER_A500_EC
-@@ -892,6 +900,13 @@ config LEDS_ACER_A500
+@@ -959,6 +967,13 @@ config LEDS_ACER_A500
  	  This option enables support for the Power Button LED of
  	  Acer Iconia Tab A500.
  
@@ -56,23 +56,23 @@ index 3132439f99e0..ac64da6991c9 100644
  
  comment "Flash and Torch LED drivers"
 diff --git a/drivers/leds/Makefile b/drivers/leds/Makefile
-index d7348e8bc019..679153c22b54 100644
+index 18afbb5a23ee..fde9e39f0d53 100644
 --- a/drivers/leds/Makefile
 +++ b/drivers/leds/Makefile
-@@ -88,6 +88,7 @@ obj-$(CONFIG_LEDS_TURRIS_OMNIA)		+= leds-turris-omnia.o
+@@ -92,6 +92,7 @@ obj-$(CONFIG_LEDS_TURRIS_OMNIA)		+= leds-turris-omnia.o
  obj-$(CONFIG_LEDS_WM831X_STATUS)	+= leds-wm831x-status.o
  obj-$(CONFIG_LEDS_WM8350)		+= leds-wm8350.o
  obj-$(CONFIG_LEDS_WRAP)			+= leds-wrap.o
 +obj-$(CONFIG_LEDS_AXP20X)		+= leds-axp20x.o
  
- # LED SPI Drivers
- obj-$(CONFIG_LEDS_CR0014114)		+= leds-cr0014114.o
+ # Kinetic ExpressWire Protocol
+ obj-$(CONFIG_LEDS_EXPRESSWIRE)		+= leds-expresswire.o
 diff --git a/drivers/leds/leds-axp20x.c b/drivers/leds/leds-axp20x.c
 new file mode 100644
-index 000000000000..fd94930f6433
+index 000000000000..e2877af1032a
 --- /dev/null
 +++ b/drivers/leds/leds-axp20x.c
-@@ -0,0 +1,255 @@
+@@ -0,0 +1,253 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + * LED Driver for X-Powers AXP813 PMIC and similar.
@@ -275,11 +275,9 @@ index 000000000000..fd94930f6433
 +	axp20x_set_charger_control(&led->cdev, true);
 +}
 +
-+static int axp20x_led_remove(struct platform_device *pdev)
++static void axp20x_led_remove(struct platform_device *pdev)
 +{
 +	axp20x_led_shutdown(pdev);
-+
-+	return 0;
 +}
 +
 +static const struct of_device_id axp20x_leds_of_match[] = {
@@ -329,10 +327,10 @@ index 000000000000..fd94930f6433
 +MODULE_LICENSE("GPL");
 +MODULE_ALIAS("platform:leds-axp20x");
 diff --git a/drivers/mfd/axp20x.c b/drivers/mfd/axp20x.c
-index 6ac8aec24788..e1f3489c1292 100644
+index cbf1029d0333..5e53600532fc 100644
 --- a/drivers/mfd/axp20x.c
 +++ b/drivers/mfd/axp20x.c
-@@ -1126,6 +1126,9 @@ static const struct mfd_cell axp813_cells[] = {
+@@ -1197,6 +1197,9 @@ static const struct mfd_cell axp813_cells[] = {
  		.num_resources	= ARRAY_SIZE(axp803_usb_power_supply_resources),
  		.resources	= axp803_usb_power_supply_resources,
  		.of_compatible	= "x-powers,axp813-usb-power-supply",
@@ -343,5 +341,5 @@ index 6ac8aec24788..e1f3489c1292 100644
  };
  
 -- 
-2.35.3
+2.43.0
 

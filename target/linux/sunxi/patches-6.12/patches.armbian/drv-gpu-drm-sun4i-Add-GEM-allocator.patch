@@ -1,4 +1,4 @@
-From 7a11b511ee6acc221149809c61b879060a756e75 Mon Sep 17 00:00:00 2001
+From 7534aba07f8e231f18b51153abc2375a52d896bf Mon Sep 17 00:00:00 2001
 From: Maxime Ripard <maxime.ripard@free-electrons.com>
 Date: Mon, 7 Dec 2015 09:47:34 +0100
 Subject: drv:gpu:drm:sun4i: Add GEM allocator
@@ -12,7 +12,7 @@ Signed-off-by: The-going <48602507+The-going@users.noreply.github.com>
  create mode 100644 include/uapi/drm/sun4i_drm.h
 
 diff --git a/drivers/gpu/drm/sun4i/sun4i_drv.c b/drivers/gpu/drm/sun4i/sun4i_drv.c
-index 6a8dfc022d3c..4f7d8818d3f6 100644
+index 35d7a7ffd208..abc4411f3e27 100644
 --- a/drivers/gpu/drm/sun4i/sun4i_drv.c
 +++ b/drivers/gpu/drm/sun4i/sun4i_drv.c
 @@ -24,6 +24,8 @@
@@ -46,7 +46,7 @@ index 6a8dfc022d3c..4f7d8818d3f6 100644
 +
 +static const struct drm_ioctl_desc sun4i_drv_ioctls[] = {
 +	DRM_IOCTL_DEF_DRV(SUN4I_GEM_CREATE, sun4i_gem_create_ioctl,
-+			  DRM_UNLOCKED | DRM_AUTH),
++			  DRM_AUTH),
 +};
 +
  static const struct drm_driver sun4i_drv_driver = {

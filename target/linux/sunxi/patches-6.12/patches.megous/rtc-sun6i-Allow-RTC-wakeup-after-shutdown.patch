@@ -1,4 +1,4 @@
-From 0bf0ffaa108ca8954f69951e0950c147c82e09a5 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Samuel Holland <samuel@sholland.org>
 Date: Sat, 2 Jan 2021 15:52:27 -0600
 Subject: rtc: sun6i: Allow RTC wakeup after shutdown
@@ -10,14 +10,14 @@ during the shutdown process, so the RTC alarm also works after shutdown.
 
 Signed-off-by: Samuel Holland <samuel@sholland.org>
 ---
- drivers/rtc/rtc-sun6i.c | 12 +++++++++++-
+ drivers/rtc/rtc-sun6i.c | 12 +++++++++-
  1 file changed, 11 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/rtc/rtc-sun6i.c b/drivers/rtc/rtc-sun6i.c
-index 8e0c66906103..02129ea346c1 100644
+index 111111111111..222222222222 100644
 --- a/drivers/rtc/rtc-sun6i.c
 +++ b/drivers/rtc/rtc-sun6i.c
-@@ -709,6 +709,7 @@ static struct nvmem_config sun6i_rtc_nvmem_cfg = {
+@@ -710,6 +710,7 @@ static struct nvmem_config sun6i_rtc_nvmem_cfg = {
  };
  
  #ifdef CONFIG_PM_SLEEP
@@ -25,7 +25,7 @@ index 8e0c66906103..02129ea346c1 100644
  /* Enable IRQ wake on suspend, to wake up from RTC. */
  static int sun6i_rtc_suspend(struct device *dev)
  {
-@@ -721,7 +722,7 @@ static int sun6i_rtc_suspend(struct device *dev)
+@@ -722,7 +723,7 @@ static int sun6i_rtc_suspend(struct device *dev)
  }
  
  /* Disable IRQ wake on resume. */
@@ -34,7 +34,7 @@ index 8e0c66906103..02129ea346c1 100644
  {
  	struct sun6i_rtc_dev *chip = dev_get_drvdata(dev);
  
-@@ -730,6 +731,7 @@ static int sun6i_rtc_resume(struct device *dev)
+@@ -731,6 +732,7 @@ static int sun6i_rtc_resume(struct device *dev)
  
  	return 0;
  }
@@ -42,7 +42,7 @@ index 8e0c66906103..02129ea346c1 100644
  #endif
  
  static SIMPLE_DEV_PM_OPS(sun6i_rtc_pm_ops,
-@@ -849,6 +851,13 @@ static int sun6i_rtc_probe(struct platform_device *pdev)
+@@ -850,6 +852,13 @@ static int sun6i_rtc_probe(struct platform_device *pdev)
  	return 0;
  }
  
@@ -56,7 +56,7 @@ index 8e0c66906103..02129ea346c1 100644
  /*
   * As far as RTC functionality goes, all models are the same. The
   * datasheets claim that different models have different number of
-@@ -873,6 +882,7 @@ MODULE_DEVICE_TABLE(of, sun6i_rtc_dt_ids);
+@@ -874,6 +883,7 @@ MODULE_DEVICE_TABLE(of, sun6i_rtc_dt_ids);
  
  static struct platform_driver sun6i_rtc_driver = {
  	.probe		= sun6i_rtc_probe,
@@ -65,5 +65,5 @@ index 8e0c66906103..02129ea346c1 100644
  		.name		= "sun6i-rtc",
  		.of_match_table = sun6i_rtc_dt_ids,
 -- 
-2.35.3
+Armbian
 
