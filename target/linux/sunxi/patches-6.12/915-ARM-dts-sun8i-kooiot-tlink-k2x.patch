@@ -10,7 +10,7 @@
  	sun8i-r40-tlink-nano-a40i.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-r40-tlink-k2x.dts
-@@ -0,0 +1,626 @@
+@@ -0,0 +1,628 @@
 +/*
 + * Copyright (C) 2022 Dirk Chang <dirk@kooiot.com>
 + *
@@ -281,7 +281,7 @@
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&gmac_rgmii_pins>;
 +	phy-handle = <&phy1>;
-+	phy-mode = "rgmii";
++	phy-mode = "rgmii-id";
 +	phy-supply = <&reg_vdd_io_3v3>;
 +	snps,reset-gpio = <&pio 0 9 GPIO_ACTIVE_LOW>; /* PA9 */
 +	snps,reset-delays-us = <0 10000 1000000>;
@@ -292,12 +292,14 @@
 +	phy1: ethernet-phy@3 {
 +		compatible = "ethernet-phy-ieee802.3-c22";
 +		reg = <3>;
-+		tlink,yt8521s-hack;
++		// tlink,yt8521s-hack;
 +		// reset-gpios = <&pio 0 9 GPIO_ACTIVE_LOW>; /* PA9 */
 +		// reset-assert-us = <10000>;
 +		// reset-deassert-us = <1000000>;
 +		// interrupt-parent = <&pio>;
 +		// interrupts = <&pio 0 17 GPIO_ACTIVE_LOW>; /* PA17 */
++		rx-internal-delay-ps = <2250>;
++		tx-internal-delay-ps = <2250>;
 +		motorcomm,auto-sleep-disabled;
 +		motorcomm,keep-pll-enabled;
 +		motorcomm,led0 = <0x0>;
