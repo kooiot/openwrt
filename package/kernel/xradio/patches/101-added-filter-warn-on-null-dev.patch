@@ -1,6 +1,6 @@
 --- a/sta.c
 +++ b/sta.c
-@@ -605,6 +605,10 @@
+@@ -609,6 +609,10 @@
 	struct xradio_common *hw_priv = hw->priv;
 	struct xradio_vif *priv = NULL;
 	int i = 0;
@@ -11,7 +11,7 @@
 
 	/* delete umac warning */
 	if (hw_priv->vif_list[0] == NULL && hw_priv->vif_list[1] == NULL)
-@@ -628,6 +628,7 @@
+@@ -632,6 +636,7 @@
  	                	FIF_BCN_PRBRESP_PROMISC |
  	                	FIF_PROBE_REQ;
  
@@ -19,7 +19,7 @@
  		down(&hw_priv->scan.lock);
  		mutex_lock(&hw_priv->conf_mutex);
  
-@@ -657,8 +658,10 @@
+@@ -661,8 +666,10 @@
  			wsm_unlock_tx(hw_priv);
  		}
  #endif

@@ -1,6 +1,6 @@
 --- a/sta.c
 +++ b/sta.c
-@@ -608,7 +608,7 @@
+@@ -612,7 +612,7 @@
  	if (WARN_ON(!priv))
  		return;
  
@@ -9,7 +9,7 @@
  
  	/* delete umac warning */
  	if (hw_priv->vif_list[0] == NULL && hw_priv->vif_list[1] == NULL)
-@@ -632,7 +632,7 @@
+@@ -636,7 +636,7 @@
  	                	FIF_BCN_PRBRESP_PROMISC |
  	                	FIF_PROBE_REQ;
  
@@ -18,7 +18,7 @@
  		down(&hw_priv->scan.lock);
  		mutex_lock(&hw_priv->conf_mutex);
  
-@@ -662,10 +662,10 @@
+@@ -666,10 +666,10 @@
  			wsm_unlock_tx(hw_priv);
  		}
  #endif

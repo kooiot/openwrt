@@ -1,0 +1,67 @@
+--- a/main.c
++++ b/main.c
+@@ -223,7 +223,7 @@ static void xradio_set_ifce_comb(struct
+ 	hw->wiphy->n_iface_combinations = 3;
+ }
+ 
+-struct ieee80211_hw *xradio_init_common(size_t hw_priv_data_len)
++static struct ieee80211_hw *xradio_init_common(size_t hw_priv_data_len)
+ {
+ 	int i;
+ 	struct ieee80211_hw *hw;
+@@ -439,7 +439,7 @@ struct ieee80211_hw *xradio_init_common(
+ 	return hw;
+ }
+ 
+-void xradio_free_common(struct ieee80211_hw *dev)
++static void xradio_free_common(struct ieee80211_hw *dev)
+ {
+ 	int i;
+ 	struct xradio_common *hw_priv = dev->priv;
+@@ -477,7 +477,7 @@ void xradio_free_common(struct ieee80211
+ 	ieee80211_free_hw(dev);
+ }
+ 
+-int xradio_register_common(struct ieee80211_hw *dev)
++static int xradio_register_common(struct ieee80211_hw *dev)
+ {
+ 	int err = 0;
+ 	struct xradio_common *hw_priv = dev->priv;
+@@ -496,7 +496,7 @@ int xradio_register_common(struct ieee80
+ 	return 0;
+ }
+ 
+-void xradio_unregister_common(struct ieee80211_hw *dev)
++static void xradio_unregister_common(struct ieee80211_hw *dev)
+ {
+ 	struct xradio_common *hw_priv = dev->priv;
+ 
+--- a/sta.c	2025-09-16 10:29:22.079979009 +0800
++++ b/sta.c	2025-09-16 10:29:40.007328092 +0800
+@@ -1289,7 +1289,7 @@ int xradio_setup_mac(struct xradio_commo
+ 	return ret;
+ }
+ 
+-void xradio_pending_offchanneltx_work(struct work_struct *work)
++static void xradio_pending_offchanneltx_work(struct work_struct *work)
+ {
+ 	struct xradio_vif *priv =
+ 	container_of(work, struct xradio_vif, pending_offchanneltx_work.work);
+--- a/p2p.c	2025-09-16 12:12:33.097081668 +0800
++++ b/p2p.c	2025-09-16 12:12:36.351127797 +0800
+@@ -1,4 +1,5 @@
+ #include "xradio.h"
++#include "p2p.h"
+
+ #ifdef TES_P2P_0002_ROC_RESTART
+ ///w, TES_P2P_0002 WorkAround:
+--- a/main.c	2025-09-16 12:21:40.916587075 +0800
++++ b/main.c	2025-09-16 12:21:44.996124660 +0800
+@@ -29,6 +29,7 @@
+ #include "scan.h"
+ #include "pm.h"
+ #include "sdio.h"
++#include "main.h"
+ 
+ /* TODO: use rates and channels from the device */
+ #define RATETAB_ENT(_rate, _rateid, _flags)		\

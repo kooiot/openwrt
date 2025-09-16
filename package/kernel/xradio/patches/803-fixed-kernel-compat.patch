@@ -5,41 +5,35 @@
  		tx_policy_put(hw_priv, txpriv->rate_id);
  	}
 -#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0))
-+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0))
++#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)) || defined(BUILD_OPENWRT)
  	ieee80211_tx_status_skb(hw_priv->hw, skb);
  #else
- 	ieee80211_tx_status(hw_priv->hw, skb)
+ 	ieee80211_tx_status(hw_priv->hw, skb);
 --- a/sta.h
 +++ b/sta.h
-@@ -31,7 +31,11 @@
+@@ -31,7 +31,7 @@
  /* mac80211 API								*/
- 
+
  int xradio_start(struct ieee80211_hw *dev);
-+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 54))
-+void xradio_stop(struct ieee80211_hw *dev, bool suspend);
-+#else
+-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0))
++#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)) || defined(BUILD_OPENWRT)
+ void xradio_stop(struct ieee80211_hw *dev, bool suspend);
+ #else
  void xradio_stop(struct ieee80211_hw *dev);
-+#endif
- int xradio_add_interface(struct ieee80211_hw *dev, struct ieee80211_vif *vif);
- void xradio_remove_interface(struct ieee80211_hw *dev, struct ieee80211_vif *vif);
- int xradio_change_interface(struct ieee80211_hw *dev,
 --- a/sta.c
 +++ b/sta.c
-@@ -117,7 +117,11 @@ out:
+@@ -117,7 +117,7 @@ out:
  	return ret;
  }
- 
-+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 54))
-+void xradio_stop(struct ieee80211_hw *dev, bool suspend)
-+#else
+
+-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0))
++#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)) || defined(BUILD_OPENWRT)
+ void xradio_stop(struct ieee80211_hw *dev, bool suspend)
+ #else
  void xradio_stop(struct ieee80211_hw *dev)
-+#endif
- {
- 	struct xradio_common *hw_priv = dev->priv;
- 	struct xradio_vif *priv = NULL;
 --- a/main.c
 +++ b/main.c
-@@ -171,7 +171,7 @@ static const struct ieee80211_ops xradio
+@@ -167,7 +167,7 @@ static const struct ieee80211_ops xradio
  #if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 2, 0))
  	.wake_tx_queue		= ieee80211_handle_wake_tx_queue,
  #endif

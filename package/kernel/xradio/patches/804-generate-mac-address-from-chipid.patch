@@ -11,7 +11,7 @@
  
  #include "xradio.h"
  #include "fwio.h"
-@@ -497,6 +501,55 @@ void xradio_unregister_common(struct iee
+@@ -503,6 +507,55 @@ void xradio_unregister_common(struct iee
  	hw_priv->driver_ready = 0;
  }
  
@@ -67,7 +67,7 @@
  int xradio_core_init(struct sdio_func* func)
  {
  	int err = -ENOMEM;
-@@ -525,7 +578,11 @@ int xradio_core_init(struct sdio_func* f
+@@ -531,7 +584,11 @@ int xradio_core_init(struct sdio_func* f
  #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 13, 0)
  	// fill in mac addresses
  	if (hw_priv->pdev->of_node) {
@@ -79,7 +79,7 @@
  	}
  	if (err < 0) {
  		dev_warn(hw_priv->pdev, "no mac address provided, using random\n");
-@@ -534,7 +591,13 @@ int xradio_core_init(struct sdio_func* f
+@@ -540,7 +597,13 @@ int xradio_core_init(struct sdio_func* f
  #else
  	// fill in mac addresses
  	if (hw_priv->pdev->of_node) {

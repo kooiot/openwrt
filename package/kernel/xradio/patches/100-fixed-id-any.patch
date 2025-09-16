@@ -1,6 +1,6 @@
 --- a/sdio.c
 +++ b/sdio.c
-@@ -28,7 +28,7 @@
+@@ -27,7 +27,7 @@
  #define SDIO_DEVICE_ID_XRADIO 0x2281
  static const struct sdio_device_id xradio_sdio_ids[] = {
  	{ SDIO_DEVICE(SDIO_VENDOR_ID_XRADIO, SDIO_DEVICE_ID_XRADIO) },

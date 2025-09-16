@@ -1,0 +1,22 @@
+--- a/debug.h	2025-09-16 09:35:52.298154688 +0800
++++ b/debug.h	2025-09-16 09:35:59.410476240 +0800
+@@ -11,12 +11,12 @@
+ #ifndef XRADIO_DEBUG_H_INCLUDED
+ #define XRADIO_DEBUG_H_INCLUDED
+ 
+-#define xradio_dbg(level, ...)
+-#define txrx_printk(level, ...)
+-#define wsm_printk(level, ...)
+-#define sta_printk(level, ...)
+-#define scan_printk(level, ...)
+-#define ap_printk(level, ...)
+-#define pm_printk(level, ...)
++#define xradio_dbg(level, ...) do {} while (0)
++#define txrx_printk(level, ...) do {} while (0)
++#define wsm_printk(level, ...) do {} while (0)
++#define sta_printk(level, ...) do {} while (0)
++#define scan_printk(level, ...) do {} while (0)
++#define ap_printk(level, ...) do {} while (0)
++#define pm_printk(level, ...) do {} while (0)
+ 
+ #endif /* XRADIO_DEBUG_H_INCLUDED */
