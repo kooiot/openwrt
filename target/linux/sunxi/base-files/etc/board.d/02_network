@@ -13,7 +13,7 @@ sunxi_setup_interfaces()
 	kooiot,tlink-x1|\
 	kooiot,tlink-x1s|\
 	kooiot,tlink-x3|\
-	kooiot,tlink-k2x|\
+	kooiot,tlink-k2x-1|\
 	kooiot,tlink-e1-v0|\
 	kooiot,tlink-dly-e204|\
 	kooiot,tlink-r1)
@@ -33,15 +33,19 @@ sunxi_setup_interfaces()
 	kooiot,tlink-k1)
 		ucidef_set_interface_lan "eth0 eth1"
 		;;
+	kooiot,tlink-k2x)
+		ucidef_set_interface_lan "eth0"
+		ucidef_set_interface "lan2" device "eth1" protocol "static"
+		;;
 	kooiot,tlink-k2|\
 	kooiot,tlink-k4a|\
 	kooiot,tlink-k4g|\
 	kooiot,tlink-m408|\
 	kooiot,tlink-m416)
 		ucidef_set_interface_lan "eth0"
-		ucidef_set_interface "lan1" device "eth1" protocol "static"
-		ucidef_set_interface "lan2" device "eth2" protocol "static"
-		ucidef_set_interface "lan3" device "eth3" protocol "static"
+		ucidef_set_interface "lan2" device "eth1" protocol "static"
+		ucidef_set_interface "lan3" device "eth2" protocol "static"
+		ucidef_set_interface "lan4" device "eth3" protocol "static"
 		;;
 	friendlyarm,nanopi-r1|\
 	friendlyarm,nanopi-r1s-h5)

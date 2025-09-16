@@ -23,7 +23,7 @@
 +	list   network		'5g_wan_6'
 +	list   network		'iphone_usb'
 +	list   network		'android_usb'
-+	option input		ACCEPT
++	option input		REJECT
  	option output		ACCEPT
  	option forward		REJECT
  	option masq		1
