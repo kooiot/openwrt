@@ -9,7 +9,7 @@ Signed-off-by: hmz007 <hmz007@gmail.com>
 
 --- a/arch/arm64/boot/dts/rockchip/rk3328.dtsi
 +++ b/arch/arm64/boot/dts/rockchip/rk3328.dtsi
-@@ -1033,6 +1033,13 @@
+@@ -1086,6 +1086,13 @@
  		status = "disabled";
  	};
  

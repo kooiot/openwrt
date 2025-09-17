@@ -8,7 +8,7 @@
  
  / {
  	model = "FriendlyElec NanoPi R2S";
-@@ -141,6 +142,10 @@
+@@ -142,6 +143,10 @@
  	cpu-supply = <&vdd_arm>;
  };
  
@@ -29,7 +29,7 @@
  
  / {
  	model = "Xunlong Orange Pi R1 Plus";
-@@ -107,6 +108,10 @@
+@@ -108,6 +109,10 @@
  	cpu-supply = <&vdd_arm>;
  };
  
@@ -45,7 +45,7 @@
 @@ -14,6 +14,13 @@
  	compatible = "xunlong,orangepi-r1-plus-lts", "rockchip,rk3328";
  };
- 
+
 +&dmc_opp_table {
 +	/delete-node/ opp-798000000;
 +	/delete-node/ opp-840000000;
@@ -54,5 +54,5 @@
 +};
 +
  &gmac2io {
- 	phy-handle = <&yt8531c>;
- 	tx_delay = <0x19>;
+ 	/delete-property/ tx_delay;
+ 	/delete-property/ rx_delay;

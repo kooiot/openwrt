@@ -1633,28 +1633,28 @@
 +
 --- a/drivers/net/ethernet/stmicro/stmmac/Makefile
 +++ b/drivers/net/ethernet/stmicro/stmmac/Makefile
-@@ -21,7 +21,7 @@
+@@ -20,7 +20,7 @@ obj-$(CONFIG_DWMAC_LPC18XX)	+= dwmac-lpc
+ obj-$(CONFIG_DWMAC_MEDIATEK)	+= dwmac-mediatek.o
  obj-$(CONFIG_DWMAC_MESON)	+= dwmac-meson.o dwmac-meson8b.o
- obj-$(CONFIG_DWMAC_OXNAS)	+= dwmac-oxnas.o
  obj-$(CONFIG_DWMAC_QCOM_ETHQOS)	+= dwmac-qcom-ethqos.o
 -obj-$(CONFIG_DWMAC_ROCKCHIP)	+= dwmac-rk.o
 +obj-$(CONFIG_DWMAC_ROCKCHIP)	+= dwmac-rk.o dwmac-rk-tool.o
+ obj-$(CONFIG_DWMAC_RZN1)	+= dwmac-rzn1.o
  obj-$(CONFIG_DWMAC_SOCFPGA)	+= dwmac-altr-socfpga.o
- obj-$(CONFIG_DWMAC_STI)		+= dwmac-sti.o
- obj-$(CONFIG_DWMAC_STM32)	+= dwmac-stm32.o
+ obj-$(CONFIG_DWMAC_STARFIVE)	+= dwmac-starfive.o
 --- a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
 +++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
-@@ -24,6 +24,7 @@
+@@ -23,6 +23,7 @@
  #include <linux/pm_runtime.h>
- 
+
  #include "stmmac_platform.h"
 +#include "dwmac-rk-tool.h"
- 
+
  struct rk_priv_data;
  struct rk_gmac_ops {
-@@ -1704,8 +1705,11 @@ static int rk_gmac_clk_init(struct plat_
+@@ -1835,8 +1836,11 @@ static int rk_gmac_clk_init(struct plat_
  		bsp_priv->clks[i].id = rk_clocks[i];
- 
+
  	if (phy_iface == PHY_INTERFACE_MODE_RMII) {
 -		for (j = 0; j < ARRAY_SIZE(rk_rmii_clocks); j++)
 +		for (j = 0; j < ARRAY_SIZE(rk_rmii_clocks); j++) {
@@ -1663,12 +1663,12 @@
  			bsp_priv->clks[i++].id = rk_rmii_clocks[j];
 +		}
  	}
- 
+
  	ret = devm_clk_bulk_get_optional(dev, bsp_priv->num_clks,
-@@ -2002,6 +2008,40 @@ static void rk_fix_speed(void *priv, uns
+@@ -2171,6 +2175,40 @@ static void rk_fix_speed(void *priv, uns
  	}
  }
- 
+
 +void dwmac_rk_set_rgmii_delayline(struct stmmac_priv *priv,
 +				  int tx_delay, int rx_delay)
 +{
@@ -1706,31 +1706,31 @@
  static int rk_gmac_probe(struct platform_device *pdev)
  {
  	struct plat_stmmacenet_data *plat_dat;
-@@ -2028,6 +2067,7 @@ static int rk_gmac_probe(struct platform
+@@ -2197,6 +2235,7 @@ static int rk_gmac_probe(struct platform
  	 */
  	if (!plat_dat->has_gmac4)
  		plat_dat->has_gmac = true;
 +	plat_dat->flags |= STMMAC_FLAG_SPH_DISABLE;
  	plat_dat->fix_mac_speed = rk_fix_speed;
- 
+
  	plat_dat->bsp_priv = rk_gmac_setup(pdev, plat_dat, data);
-@@ -2047,6 +2087,10 @@ static int rk_gmac_probe(struct platform
+@@ -2214,6 +2253,10 @@ static int rk_gmac_probe(struct platform
  	ret = stmmac_dvr_probe(&pdev->dev, plat_dat, &stmmac_res);
  	if (ret)
  		goto err_gmac_powerdown;
-+ 
++
 +	ret = dwmac_rk_create_loopback_sysfs(&pdev->dev);
 +	if (ret)
 +		goto err_gmac_powerdown;
- 
+
  	return 0;
- 
-@@ -2065,6 +2109,8 @@ static void rk_gmac_remove(struct platfo
+
+@@ -2230,6 +2273,8 @@ static void rk_gmac_remove(struct platfo
  	stmmac_dvr_remove(&pdev->dev);
- 
+
  	rk_gmac_powerdown(bsp_priv);
 +
 +	dwmac_rk_remove_loopback_sysfs(&pdev->dev);
  }
- 
+
  #ifdef CONFIG_PM_SLEEP
