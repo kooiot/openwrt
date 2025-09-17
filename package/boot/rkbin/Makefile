@@ -114,7 +114,7 @@ endif
 
 	$(CP) $(PKG_BUILD_DIR)/tools/ddrbin_param.txt $(PKG_BUILD_DIR)/ddrbin_param_new.txt
 	$(SED) 's/uart baudrate=/uart baudrate=115200/g' $(PKG_BUILD_DIR)/ddrbin_param_new.txt
-	$(PKG_BUILD_DIR)/tools/ddrbin_tool rk3568 $(PKG_BUILD_DIR)/ddrbin_param_new.txt  $(STAGING_DIR_IMAGE)/$$(shell basename $(TPL))
+	$(PKG_BUILD_DIR)/tools/ddrbin_tool.py rk3568 $(PKG_BUILD_DIR)/ddrbin_param_new.txt  $(STAGING_DIR_IMAGE)/$$(shell basename $(TPL))
 endef
 
 $(eval $(call BuildPackage/Trusted-Firmware-A))
