@@ -1,6 +1,6 @@
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk-tool.c
+--- /dev/null
 +++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk-tool.c
-@@ -0,0 +1,1607 @@
+@@ -0,0 +1,1609 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (c) 2020 Fuzhou Rockchip Electronics Co., Ltd
@@ -13,6 +13,7 @@
 +#include <linux/if.h>
 +#include <linux/dma-mapping.h>
 +#include <linux/of_device.h>
++#include <linux/of.h>
 +#include <linux/slab.h>
 +#include <linux/prefetch.h>
 +#include <linux/regmap.h>
@@ -93,11 +94,11 @@
 +
 +#define DMA_CONTROL_OSP		BIT(4)
 +#define DMA_CHAN_BASE_ADDR	0x00001100
-+#define DMA_CHAN_BASE_OFFSET	0x80
-+#define DMA_CHANX_BASE_ADDR(x)	(DMA_CHAN_BASE_ADDR + \
-+				((x) * DMA_CHAN_BASE_OFFSET))
-+#define DMA_CHAN_TX_CONTROL(x)	(DMA_CHANX_BASE_ADDR(x) + 0x4)
-+#define DMA_CHAN_STATUS(x)	(DMA_CHANX_BASE_ADDR(x) + 0x60)
++#define _DMA_CHAN_BASE_OFFSET	0x80
++#define _DMA_CHANX_BASE_ADDR(x)	(DMA_CHAN_BASE_ADDR + \
++				((x) * _DMA_CHAN_BASE_OFFSET))
++#define DMA_CHAN_TX_CONTROL(x)	(_DMA_CHANX_BASE_ADDR(x) + 0x4)
++#define _DMA_CHAN_STATUS(x)	(_DMA_CHANX_BASE_ADDR(x) + 0x60)
 +#define DMA_CHAN_STATUS_ERI	BIT(11)
 +#define DMA_CHAN_STATUS_ETI	BIT(10)
 +
@@ -678,6 +679,7 @@
 +{
 +	struct stmmac_priv *priv = netdev_priv(dev);
 +	unsigned int nopaged_len = skb_headlen(skb);
++	u32 queue = skb_get_queue_mapping(skb);
 +	int csum_insertion = 0;
 +	struct dma_desc *desc;
 +	unsigned int des;
@@ -702,7 +704,7 @@
 +	stmmac_prepare_tx_desc(priv, desc, 1, nopaged_len,
 +			       csum_insertion, priv->mode, 1, 1,
 +			       skb->len);
-+	stmmac_enable_dma_transmission(priv, priv->ioaddr);
++	stmmac_enable_dma_transmission(priv, priv->ioaddr, queue);
 +
 +	lb_priv->tx_tail_addr = lb_priv->dma_tx_phy + sizeof(*desc);
 +	stmmac_set_tx_tail_ptr(priv, priv->ioaddr, lb_priv->tx_tail_addr, 0);
@@ -761,7 +763,7 @@
 +		usleep_range(100, 150);
 +		delay--;
 +		if (priv->plat->has_gmac4) {
-+			status = readl(priv->ioaddr + DMA_CHAN_STATUS(0));
++			status = readl(priv->ioaddr + _DMA_CHAN_STATUS(0));
 +			finish = (status & DMA_CHAN_STATUS_ERI) && (status & DMA_CHAN_STATUS_ETI);
 +		} else {
 +			status = readl(priv->ioaddr + DMA_STATUS);
@@ -1085,7 +1087,7 @@
 +	}
 +
 +	/* DMA Configuration */
-+	stmmac_dma_init(priv, priv->ioaddr, priv->plat->dma_cfg, 0);
++	stmmac_dma_init(priv, priv->ioaddr, priv->plat->dma_cfg);
 +
 +	if (priv->plat->axi)
 +		stmmac_axi(priv, priv->ioaddr, priv->plat->axi);
@@ -1608,7 +1610,7 @@
 +
 +	return 0;
 +}
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk-tool.h
+--- /dev/null
 +++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk-tool.h
 @@ -0,0 +1,20 @@
 +/* SPDX-License-Identifier: (GPL-2.0+ OR MIT) */
