@@ -1850,6 +1850,7 @@ static int wk2xxx_probe(struct i2c_client *client,const struct i2c_device_id *de
 		s->tx_done       = 0;
 		s->wk2xxx_i2c_client        = client;
 		s->port.line     = i;
+		s->port.dev      = &client->dev;
 		s->port.ops      = &wk2xxx_pops;
 		s->port.uartclk  = WK_CRASTAL_CLK;
 		s->port.fifosize = 256;

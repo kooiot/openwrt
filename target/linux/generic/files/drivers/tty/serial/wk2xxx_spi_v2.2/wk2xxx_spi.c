@@ -1866,6 +1866,7 @@ static int wk2xxx_probe(struct spi_device *spi)
 		s->tx_done       = 0;
 		s->spi_wk        = spi;
 		s->port.line     = i;
+		s->port.dev	     = &spi->dev;
 		s->port.ops      = &wk2xxx_pops;
 		s->port.uartclk  = WK_CRASTAL_CLK;
 		s->port.fifosize = 256;
