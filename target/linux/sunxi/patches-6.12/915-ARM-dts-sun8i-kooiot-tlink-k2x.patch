@@ -10,7 +10,7 @@
  	sun8i-r40-tlink-nano-a40i.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-r40-tlink-k2x.dts
-@@ -0,0 +1,628 @@
+@@ -0,0 +1,631 @@
 +/*
 + * Copyright (C) 2022 Dirk Chang <dirk@kooiot.com>
 + *
@@ -143,13 +143,13 @@
 +			gpio-export,output=<1>;
 +			gpios = <&pio 8 7 GPIO_ACTIVE_HIGH>; /* PI7 */
 +		};
-+
++		/*
 +		ex_uart_reset {
 +			gpio-export,name = "ex_uart_reset";
 +			gpio-export,output=<1>;
-+			gpios = <&pio 8 9 GPIO_ACTIVE_LOW>; /* PI9 */
++			gpios = <&pio 8 9 GPIO_ACTIVE_LOW>; /* PI9 /
 +		};
-+
++		*/
 +		can_reset {
 +			gpio-export,name = "can_reset";
 +			gpio-export,output=<1>;
@@ -314,13 +314,14 @@
 +	status = "okay";
 +
 +	spi2_serial: spi2-serial@0 {
-+		compatible = "wkmic,wk2132spi";
++		compatible = "wkmic,wk2132_spi";
 +		reg = <0>;
 +		spi-max-frequency = <10000000>;
 +		poll_mode = <0>;
 +		type = <0>;
 +		enable_dma = <0>;
-+		irq_gpio=<&pio 8 15 IRQ_TYPE_LEVEL_LOW>; /* PI15/EINT27 */
++		reset_gpio = <&pio 8 9 GPIO_ACTIVE_LOW>; /* PI9 */
++		irq_gpio = <&pio 8 15 IRQ_TYPE_LEVEL_LOW>; /* PI15 */
 +		status = "okay";
 +	};
 +
@@ -419,6 +420,8 @@
 +		interrupt-parent = <&pio>;
 +		interrupts = <7 7 IRQ_TYPE_EDGE_RISING>; /* PH7 */
 +		interrupt-names = "host-wake";
++		nvmem-cells = <&chipid>;
++		nvmem-cell-names = "chipid";
 +		local-mac-address = [b0 c9 1a 2b 3c 4d];
 +	};
 +};
