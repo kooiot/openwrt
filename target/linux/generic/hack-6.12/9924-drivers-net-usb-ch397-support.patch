@@ -1,0 +1,30 @@
+--- a/drivers/net/usb/Kconfig
++++ b/drivers/net/usb/Kconfig
+@@ -612,6 +612,17 @@ config USB_VL600
+ 
+ 	  http://ubuntuforums.org/showpost.php?p=10589647&postcount=17
+ 
++config USB_NET_CH397
++	tristate "QingHeng CH397 USB ethernet support"
++	depends on USB_USBNET
++	select MII
++	help
++	  Choose this option if you have a USB ethernet adapter with a QinHeng
++	  CH397 chipset.
++
++	  To compile this driver as a module, choose M here: the
++	  module will be called ch397.
++
+ config USB_NET_CH9200
+ 	tristate "QingHeng CH9200 USB ethernet support"
+ 	depends on USB_USBNET
+--- a/drivers/net/usb/Makefile
++++ b/drivers/net/usb/Makefile
+@@ -39,6 +39,7 @@ obj-$(CONFIG_USB_NET_HUAWEI_CDC_NCM)	+=
+ obj-$(CONFIG_USB_VL600)		+= lg-vl600.o
+ obj-$(CONFIG_USB_NET_QMI_WWAN)	+= qmi_wwan.o
+ obj-$(CONFIG_USB_NET_CDC_MBIM)	+= cdc_mbim.o
++obj-$(CONFIG_USB_NET_CH397)		+= ch397.o
+ obj-$(CONFIG_USB_NET_CH9200)	+= ch9200.o
+ obj-$(CONFIG_USB_NET_AQC111)	+= aqc111.o
+ obj-$(CONFIG_USB_RTL8153_ECM)	+= r8153_ecm.o

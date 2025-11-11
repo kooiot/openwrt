@@ -1,0 +1,10 @@
+--- a/drivers/tty/serial/8250/8250_core.c
++++ b/drivers/tty/serial/8250/8250_core.c
+@@ -1066,6 +1066,7 @@ int serial8250_register_8250_port(const
+ 		uart->rs485_stop_tx	= up->rs485_stop_tx;
+ 		uart->lsr_save_mask	= up->lsr_save_mask;
+ 		uart->dma		= up->dma;
++		uart->port.line		= up->port.line;
+ 
+ 		/* Take tx_loadsz from fifosize if it wasn't set separately */
+ 		if (uart->port.fifosize && !uart->tx_loadsz)
