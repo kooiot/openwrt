@@ -11,7 +11,7 @@
  	sun8i-r40-tlink-nano-a40i.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-r40-tlink-k4x.dtsi
-@@ -0,0 +1,768 @@
+@@ -0,0 +1,770 @@
 +/*
 + * Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 + *
@@ -350,7 +350,7 @@
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&gmac_rgmii_pins>;
 +	phy-handle = <&phy1>;
-+	phy-mode = "rgmii";
++	phy-mode = "rgmii-id";
 +	phy-supply = <&reg_eldo1 &reg_eldo2>;
 +	snps,reset-gpio = <&pio 0 9 GPIO_ACTIVE_LOW>; /* PA9 */
 +	snps,reset-delays-us = <0 10000 1000000>;
@@ -366,6 +366,8 @@
 +		// reset-deassert-us = <1000000>;
 +		// interrupt-parent = <&pio>;
 +		// interrupts = <&pio 0 17 GPIO_ACTIVE_LOW>; /* PA17 */
++		rx-internal-delay-ps = <2250>;
++		tx-internal-delay-ps = <2250>;
 +		motorcomm,auto-sleep-disabled;
 +		motorcomm,keep-pll-enabled;
 +		motorcomm,led0 = <0x0>;
