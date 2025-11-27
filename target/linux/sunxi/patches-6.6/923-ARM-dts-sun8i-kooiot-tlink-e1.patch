@@ -436,7 +436,7 @@
 +};
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-t113-tlink-e1.dts
-@@ -0,0 +1,455 @@
+@@ -0,0 +1,528 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 +
@@ -523,6 +523,30 @@
 +		regulator-min-microvolt = <3300000>;
 +		regulator-max-microvolt = <3300000>; 
 +		vin-supply = <&reg_vcc>;
++	};
++
++	avdd: fixedregulator@1 {
++		compatible = "regulator-fixed";
++		regulator-name = "fixed-supply1";
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++		regulator-boot-on;
++	};
++
++	dvdd: fixedregulator@2 {
++		compatible = "regulator-fixed";
++		regulator-name = "fixed-supply2";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		regulator-boot-on;
++	};
++
++	vref: fixedregulator@3 {
++		compatible = "regulator-fixed";
++		regulator-name = "fixed-supply3";
++		regulator-min-microvolt = <2500000>;
++		regulator-max-microvolt = <2500000>;
++		regulator-boot-on;
 +	};
 +
 +	leds {
@@ -630,6 +654,14 @@
 +
 +		// status = "disabled";
 +	};
++
++	clocks {
++		ad7192_mclk: ad7192-mclk {
++			#clock-cells = <0>;
++			compatible = "fixed-clock";
++			clock-frequency = <4920000>;
++		};
++	};
 +};
 +
 +&reg_ldoa {
@@ -714,6 +746,17 @@
 +	leds_pins: leds-pins {
 +		pins = "PE11", "PD17", "PD18", "PD21", "PD22";
 +		function = "gpio_out";
++	};
++
++	/omit-if-no-ref/
++	spi1_pins: spi1-pins {
++		pins = "PD10", "PD11", "PD12", "PD13", "PD14";
++		function = "spi1";
++	};
++	/omit-if-no-ref/
++	spi1_irq_pins: spi1-irq-pins {
++		pins = "PD14";
++		function = "irq";
 +	};
 +};
 +
@@ -891,4 +934,34 @@
 +
 +&rtc {
 +	status = "disabled";
++};
++
++&spi1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&spi1_pins>, <&spi1_irq_pins>;
++	#address-cells = <1>;
++	#size-cells = <0>;
++	status = "okay";
++
++	ad7190: spidev@0 {
++		compatible = "adi,ad7190";
++		reg = <0>;
++		spi-max-frequency = <10000000>;
++		interrupt-parent = <&pio>;
++		interrupts = <3 14 IRQ_TYPE_EDGE_FALLING>; /* PD14/EINT14 */
++		spi-cpol;
++		spi-cpha;
++
++		dvdd-supply = <&dvdd>;
++		avdd-supply = <&avdd>;
++		vref-supply = <&vref>;
++
++		clocks = <&ad7192_mclk>;
++		clock-names = "mclk";
++
++		adi,clock-xtal;
++		adi,rejection-60-Hz-enable;
++		adi,buffer-enable;
++		adi,burnout-currents-enable;
++	};
 +};
