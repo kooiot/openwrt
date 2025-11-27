@@ -18,6 +18,20 @@ define Build/mstc-header
 	rm -f $@.crclen
 endef
 
+define Device/cmcc_pz-l8
+	$(call Device/FitImageLzma)
+	$(call Device/UbiFit)
+	DEVICE_VENDOR := CMCC
+	DEVICE_MODEL := PZ-L8
+	DEVICE_DTS_CONFIG := config@mp02.1
+	SOC := ipq5018
+	BLOCKSIZE := 128k
+	PAGESIZE := 2048
+	IMAGE_SIZE := 59392k
+	NAND_SIZE := 128m
+endef
+TARGET_DEVICES += cmcc_pz-l8
+
 define Device/elecom_wrc-x3000gs2
 	$(call Device/FitImageLzma)
 	DEVICE_VENDOR := ELECOM
@@ -165,3 +179,19 @@ define Device/yuncore_ax830
 		ipq-wifi-yuncore_ax830
 endef
 TARGET_DEVICES += yuncore_ax830
+
+define Device/yuncore_ax850
+	$(call Device/FitImage)
+	$(call Device/UbiFit)
+	DEVICE_VENDOR := Yuncore
+	DEVICE_MODEL := AX850
+	BLOCKSIZE := 128k
+	PAGESIZE := 2048
+	SOC := ipq5018
+	DEVICE_DTS_CONFIG := config@mp03.1
+	DEVICE_PACKAGES := kmod-ath11k-pci \
+		ath11k-firmware-ipq5018 \
+		ath11k-firmware-qcn9074 \
+		ipq-wifi-yuncore_ax850
+endef
+TARGET_DEVICES += yuncore_ax850

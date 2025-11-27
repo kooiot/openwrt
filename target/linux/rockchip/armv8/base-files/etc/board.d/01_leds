@@ -16,7 +16,6 @@ friendlyarm,nanopi-r3s|\
 friendlyarm,nanopi-r4s|\
 friendlyarm,nanopi-r4s-enterprise|\
 friendlyarm,nanopi-r6c|\
-radxa,e52c|\
 xunlong,orangepi-r1-plus|\
 xunlong,orangepi-r1-plus-lts|\
 friendlyarm,nanopi-r4s|\
@@ -51,6 +50,15 @@ kooiot,tlink-r4x)
 	;;
 kooiot,tlink-r7)
 	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "wwan0"
+	;;
+friendlyarm,nanopi-r76s|\
+radxa,e20c)
+	ucidef_set_led_netdev "wan" "WAN" "green:wan" "eth1"
+	ucidef_set_led_netdev "lan" "LAN" "green:lan" "eth0"
+	;;
+radxa,e52c)
+	ucidef_set_led_netdev "wan" "WAN" "green:wan" "wan"
+	ucidef_set_led_netdev "lan" "LAN" "green:lan" "lan"
 	;;
 esac
 
