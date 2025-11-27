@@ -94,6 +94,27 @@ endef
 $(eval $(call KernelPackage,industrialio-triggered-buffer))
 
 
+define KernelPackage/iio-ad7192
+  TITLE:=Analog Devices AD7190 AD7192 AD7193 AD7195 ADC driver
+  DEPENDS:=+kmod-industrialio-triggered-buffer
+  KCONFIG:= \
+	CONFIG_AD7192
+  FILES:=$(LINUX_DIR)/drivers/iio/adc/ad7192.ko
+  FILES:= \
+      $(LINUX_DIR)/drivers/iio/adc/ad_sigma_delta.ko \
+      $(LINUX_DIR)/drivers/iio/adc/ad7192.ko
+  AUTOLOAD:=$(call AutoLoad,56,ad7192)
+  $(call AddDepends/iio)
+endef
+
+define KernelPackage/iio-ad7192/description
+  support for Analog Devices AD7190,
+  AD7192, AD7193 or AD7195 SPI analog to digital converters (ADC).
+endef
+
+$(eval $(call KernelPackage,iio-ad7192))
+
+
 define KernelPackage/iio-ad799x
   DEPENDS:=+kmod-i2c-core +kmod-industrialio-triggered-buffer
   TITLE:=Analog Devices AD799x ADC driver
