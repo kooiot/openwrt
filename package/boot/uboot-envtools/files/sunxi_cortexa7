@@ -4,7 +4,7 @@
 
 [ -e /etc/config/ubootenv ] && exit 0
 
-touch /etc/config/ubootenv
+touch -r /etc/passwd /etc/config/ubootenv
 
 . /lib/uboot-envtools.sh
 . /lib/functions.sh
