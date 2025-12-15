@@ -436,7 +436,7 @@
 +};
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-t113-tlink-e1.dts
-@@ -0,0 +1,528 @@
+@@ -0,0 +1,532 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 +
@@ -848,6 +848,10 @@
 +	pinctrl-0 = <&mmc2_pins>;
 +	pinctrl-names = "default";
 +	status = "okay";
++};
++
++&mmc2_pins {
++	drive-strength = <10>;
 +};
 +
 +&usb_otg {
