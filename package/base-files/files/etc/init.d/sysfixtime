@@ -9,7 +9,7 @@ HWCLOCK=/sbin/hwclock
 
 boot() {
 	hwclock_load
-	local maxtime="$(find_max_time)"
+	local maxtime="(($(find_max_time) - 3600 * 8))"
 	local curtime="$(date +%s)"
 	if [ $curtime -lt $maxtime ]; then
 		date -s @$maxtime
