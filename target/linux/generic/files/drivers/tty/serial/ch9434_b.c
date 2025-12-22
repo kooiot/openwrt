@@ -235,12 +235,12 @@ struct ch943x_port {
 	struct mutex mutex_bus_access;
 	struct clk *clk;
 	struct spi_device *spi_dev;
+	int reset_gpio;
 	u8 reg485;
 	bool spi_contmode;
 	u8 ver[4];
 	unsigned char buf[65536];
 	struct ch943x_one p[0];
-	int reset_gpio;
 };
 
 #define to_ch943x_one(p, e) ((container_of((p), struct ch943x_one, e)))
@@ -376,12 +376,6 @@ static void ch943x_port_write_spefify(struct uart_port *port, u8 portnum, u8 reg
 	u8 cmd = (0x80 | reg) + (portnum * 0x10);
 	ssize_t status;
 	struct spi_message m;
-	u8 txbuf[2] = { cmd, val };
-
-	struct spi_transfer x = {
-		.tx_buf = txbuf,
-		.len = 2,
-	};
 
 	struct spi_transfer t[2] = {
 		{
@@ -406,12 +400,8 @@ static void ch943x_port_write_spefify(struct uart_port *port, u8 portnum, u8 reg
 
 	mutex_lock(&s->mutex_bus_access);
 	spi_message_init(&m);
-	if (s->spi_contmode) {
-		spi_message_add_tail(&x, &m);
-	} else {
-		spi_message_add_tail(&t[0], &m);
-		spi_message_add_tail(&t[1], &m);
-	}
+	spi_message_add_tail(&t[0], &m);
+	spi_message_add_tail(&t[1], &m);
 	status = spi_sync(s->spi_dev, &m);
 	mutex_unlock(&s->mutex_bus_access);
 	if (status < 0) {
@@ -609,17 +599,19 @@ static int ch943x_dump_register(struct uart_port *port)
 
 	lcr = ch943x_port_read(port, CH943X_LCR_REG);
 	ch943x_port_write(port, CH943X_LCR_REG, CH943X_LCR_CONF_MODE_A);
-	dev_vdbg(&s->spi_dev->dev, "******Dump register at LCR=DLAB\n");
-	for (i = 0; i < 1; i++) {
+	dev_info(&s->spi_dev->dev, "******Dump register at LCR=DLAB\n");
+	for (i = 0; i <= 1; i++) {
 		reg = ch943x_port_read(port, i);
-		dev_vdbg(&s->spi_dev->dev, "Reg[0x%02x] = 0x%02x\n", i, reg);
+		dev_info(&s->spi_dev->dev, "Reg[0x%02x] = 0x%02x\n", i, reg);
 	}
 
-	ch943x_port_update(port, CH943X_LCR_REG, CH943X_LCR_CONF_MODE_A, 0);
-	dev_vdbg(&s->spi_dev->dev, "******Dump register at LCR=Normal\n");
+	// ch943x_port_update(port, CH943X_LCR_REG, CH943X_LCR_CONF_MODE_A, 0);
+	ch943x_port_write(port, CH943X_LCR_REG, lcr);
+
+	dev_info(&s->spi_dev->dev, "******Dump register at LCR=Normal\n");
 	for (i = 0; i < 8; i++) {
 		reg = ch943x_port_read(port, i);
-		dev_vdbg(&s->spi_dev->dev, "Reg[0x%02x] = 0x%02x\n", i, reg);
+		dev_info(&s->spi_dev->dev, "Reg[0x%02x] = 0x%02x\n", i, reg);
 	}
 
 	/* Put LCR back to the normal mode */
@@ -690,7 +682,7 @@ static void ch943x_handle_rx(struct uart_port *port, unsigned int rxlen, unsigne
 	port->icount.rx++;
 
 	if (unlikely(lsr & CH943X_LSR_BRK_ERROR_MASK)) {
-		dev_err(&s->spi_dev->dev, "%s - lsr error detect (%08x)\n", __func__, lsr);
+		dev_err(&s->spi_dev->dev, "%s - lsr error detect(u%d %08x)\n", __func__, port->line, lsr);
 		if (lsr & CH943X_LSR_BI_BIT) {
 			lsr &= ~(CH943X_LSR_FE_BIT | CH943X_LSR_PE_BIT);
 			port->icount.brk++;
@@ -712,7 +704,7 @@ static void ch943x_handle_rx(struct uart_port *port, unsigned int rxlen, unsigne
 			flag = TTY_FRAME;
 
 		if (lsr & CH943X_LSR_OE_BIT)
-			dev_err(&s->spi_dev->dev, "%s - overrun detect\n", __func__);
+			dev_err(&s->spi_dev->dev, "%s - overrun detect(u%d)\n", __func__, port->line);
 	}
 
 	for (i = 0; i < bytes_read; i++) {
@@ -1035,6 +1027,7 @@ static void ch943x_set_termios(struct uart_port *port, struct ktermios *termios,
 	u8 bParityType;
 
 	dev_dbg(&s->spi_dev->dev, "%s\n", __func__);
+	mutex_lock(&s->mutex);
 
 	/* Word size */
 	switch (termios->c_cflag & CSIZE) {
@@ -1125,6 +1118,8 @@ static void ch943x_set_termios(struct uart_port *port, struct ktermios *termios,
 	baud = ch943x_set_baud(port, baud);
 	/* Update timeout according to new baud rate */
 	uart_update_timeout(port, termios->c_cflag, baud);
+
+	mutex_unlock(&s->mutex);
 }
 
 static void ch943x_config_rs485(struct uart_port *port, struct serial_rs485 *rs485)
@@ -1396,7 +1391,7 @@ static int ch943x_probe(struct spi_device *spi, struct ch943x_devtype *devtype, 
 	if(ret!=0){
 		dev_err(&spi->dev, "%s parse reset_gpio failed. reset_gpio= 0x%d\n", __func__, s->reset_gpio);
 		ret = s->reset_gpio;
-		return 1;
+		goto out;
 	}
 
 	/*reset chip*/
@@ -1489,6 +1484,7 @@ static int ch943x_probe(struct spi_device *spi, struct ch943x_devtype *devtype, 
 
 out:
 	mutex_destroy(&s->mutex);
+	mutex_destroy(&s->mutex_bus_access);
 
 	uart_unregister_driver(&s->uart);
 
@@ -1623,7 +1619,7 @@ static int ch943x_spi_probe(struct spi_device *spi)
 	}
 #endif
 
-	// ch9434_create_sysfs(spi);
+	ch9434_create_sysfs(spi);
 
 out:
 	return ret;
