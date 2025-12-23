@@ -100,6 +100,7 @@ platform_do_upgrade() {
 	mediatek,mt7981-rfb|\
 	mediatek,mt7988a-rfb|\
 	mercusys,mr90x-v1-ubi|\
+	netis,nx30v2|\
 	netis,nx31|\
 	nokia,ea0326gmp|\
 	openwrt,one|\
@@ -157,6 +158,7 @@ platform_do_upgrade() {
 		;;
 	cudy,re3000-v1|\
 	cudy,wr3000-v1|\
+	kebidumei,ax3000-u22|\
 	totolink,x6000r|\
 	wavlink,wl-wn573hx3|\
 	widelantech,wap430x|\
@@ -187,6 +189,7 @@ platform_do_upgrade() {
 	mercusys,mr85x|\
 	mercusys,mr90x-v1|\
 	tplink,archer-ax80-v1|\
+	tplink,archer-ax80-v1-eu|\
 	tplink,be450|\
 	tplink,re6000xd)
 		CI_UBIPART="ubi0"
