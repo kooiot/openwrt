@@ -17,10 +17,10 @@ diff --git a/drivers/rtc/Kconfig b/drivers/rtc/Kconfig
 index 65ad9d0b47ab..a0960f0cb7f9 100644
 --- a/drivers/rtc/Kconfig
 +++ b/drivers/rtc/Kconfig
-@@ -658,6 +658,15 @@ config RTC_DRV_RX8025
+@@ -693,6 +693,15 @@ config RTC_DRV_RX8025
  	  This driver can also be built as a module. If so, the module
  	  will be called rtc-rx8025.
- 
+
 +config RTC_DRV_RX8025T
 +	tristate "Epson RX-8025T"
 +	help
@@ -37,14 +37,14 @@ diff --git a/drivers/rtc/Makefile b/drivers/rtc/Makefile
 index bfb57464118d..5ecf6e7868fe 100644
 --- a/drivers/rtc/Makefile
 +++ b/drivers/rtc/Makefile
-@@ -151,6 +151,7 @@ obj-$(CONFIG_RTC_DRV_RX4581)	+= rtc-rx45
+@@ -155,6 +155,7 @@ obj-$(CONFIG_RTC_DRV_RX4581)	+= rtc-rx45
  obj-$(CONFIG_RTC_DRV_RX6110)	+= rtc-rx6110.o
  obj-$(CONFIG_RTC_DRV_RX8010)	+= rtc-rx8010.o
  obj-$(CONFIG_RTC_DRV_RX8025)	+= rtc-rx8025.o
 +obj-$(CONFIG_RTC_DRV_RX8025T)	+= rtc-rx8025t.o
+ obj-$(CONFIG_RTC_DRV_RX8111)	+= rtc-rx8111.o
  obj-$(CONFIG_RTC_DRV_RX8581)	+= rtc-rx8581.o
  obj-$(CONFIG_RTC_DRV_RZN1)	+= rtc-rzn1.o
- obj-$(CONFIG_RTC_DRV_S35390A)	+= rtc-s35390a.o
 diff --git a/drivers/rtc/rtc-rx8025t.c b/drivers/rtc/rtc-rx8025t.c
 new file mode 100644
 index 000000000000..093a88b1c788

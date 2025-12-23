@@ -60,7 +60,7 @@
  static int dp83848_config_init(struct phy_device *phydev)
  {
  	int val;
-@@ -153,7 +192,7 @@
+@@ -155,7 +194,7 @@ static struct phy_driver dp83848_driver[
  	DP83848_PHY_DRIVER(TI_DP83848C_PHY_ID, "TI DP83848C 10/100 Mbps PHY",
  			   NULL),
  	DP83848_PHY_DRIVER(NS_DP83848C_PHY_ID, "NS DP83848C 10/100 Mbps PHY",

@@ -8,7 +8,7 @@
  #include <linux/unaligned.h>
  #include <net/ip6_checksum.h>
  #include <net/netdev_queues.h>
-@@ -5387,6 +5388,9 @@ static int rtl_init_one(struct pci_dev *
+@@ -5388,6 +5389,9 @@ static int rtl_init_one(struct pci_dev *
  	u32 txconfig;
  	u16 xid;
  
@@ -18,7 +18,7 @@
  	dev = devm_alloc_etherdev(&pdev->dev, sizeof (*tp));
  	if (!dev)
  		return -ENOMEM;
-@@ -5555,6 +5559,18 @@ static int rtl_init_one(struct pci_dev *
+@@ -5559,6 +5563,18 @@ static int rtl_init_one(struct pci_dev *
  	if (rc)
  		return rc;
  
