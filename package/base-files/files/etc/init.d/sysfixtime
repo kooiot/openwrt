@@ -9,9 +9,15 @@ HWCLOCK=/sbin/hwclock
 
 boot() {
 	hwclock_load
-	local maxtime="(($(find_max_time) - 3600 * 8))"
+	local maxtime="$(find_max_time)"
 	local curtime="$(date +%s)"
+	# If current time is later than 2025-01-01 00:00:00
+	if [ $curtime -gt 1735660800 ]; then
+		echo "Take RTC time as system time" > /dev/kmsg
+		return
+	fi
 	if [ $curtime -lt $maxtime ]; then
+		echo "Take /ect max time as system time" > /dev/kmsg
 		date -s @$maxtime
 		hwclock_save
 	fi
