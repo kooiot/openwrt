@@ -20,6 +20,24 @@
  void xradio_stop(struct ieee80211_hw *dev, bool suspend);
  #else
  void xradio_stop(struct ieee80211_hw *dev);
+@@ -42,7 +42,7 @@ int xradio_change_interface(struct ieee8
+                             struct ieee80211_vif *vif,
+                             enum nl80211_iftype new_type,
+                             bool p2p);
+-int xradio_config(struct ieee80211_hw *dev, u32 changed);
++int xradio_config(struct ieee80211_hw *dev, int radio_idx, u32 changed);
+ int xradio_change_interface(struct ieee80211_hw *dev,
+                             struct ieee80211_vif *vif,
+                             enum nl80211_iftype new_type,
+@@ -65,7 +65,7 @@ int xradio_get_stats(struct ieee80211_hw
+ int xradio_get_tx_stats(struct ieee80211_hw *dev,
+ 			struct ieee80211_tx_queue_stats *stats);
+ */
+-int xradio_set_rts_threshold(struct ieee80211_hw *hw, u32 value);
++int xradio_set_rts_threshold(struct ieee80211_hw *hw, int radio_idx, u32 value);
+ 
+ void xradio_flush(struct ieee80211_hw *hw, struct ieee80211_vif *vif, u32 queues, bool drop);
+ 
 --- a/sta.c
 +++ b/sta.c
 @@ -117,7 +117,7 @@ out:
@@ -31,6 +49,24 @@
  void xradio_stop(struct ieee80211_hw *dev, bool suspend)
  #else
  void xradio_stop(struct ieee80211_hw *dev)
+@@ -381,7 +381,7 @@ int xradio_change_interface(struct ieee8
+ 	return ret;
+ }
+ 
+-int xradio_config(struct ieee80211_hw *dev, u32 changed)
++int xradio_config(struct ieee80211_hw *dev, int radio_idex, u32 changed)
+ {
+ 	int ret = 0;
+ 	struct xradio_common *hw_priv = dev->priv;
+@@ -803,7 +803,7 @@ void xradio_wep_key_work(struct work_str
+ 	wsm_unlock_tx(hw_priv);
+ }
+ 
+-int xradio_set_rts_threshold(struct ieee80211_hw *hw, u32 value)
++int xradio_set_rts_threshold(struct ieee80211_hw *hw, int radio_idx, u32 value)
+ {
+ 	struct xradio_common *hw_priv = hw->priv;
+ 	int ret = 0;
 --- a/main.c
 +++ b/main.c
 @@ -167,7 +167,7 @@ static const struct ieee80211_ops xradio
