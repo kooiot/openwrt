@@ -328,7 +328,7 @@ static u8 ch943x_port_read_specify(struct uart_port *port, u8 portnum, u8 reg)
 	return val;
 }
 
-void ch943x_port_write(struct uart_port *port, u8 reg, u8 val)
+static void ch943x_port_write(struct uart_port *port, u8 reg, u8 val)
 {
 	struct ch943x_port *s = dev_get_drvdata(port->dev);
 	u8 cmd = (0x80 | reg) + (port->line * 0x10);
@@ -470,7 +470,7 @@ static void ch943x_port_update(struct uart_port *port, u8 reg, u8 mask, u8 val)
 	ch943x_port_write(port, reg, tmp);
 }
 
-void ch943x_raw_write(struct uart_port *port, const void *reg, unsigned char *buf, int len)
+static void ch943x_raw_write(struct uart_port *port, const void *reg, unsigned char *buf, int len)
 {
 	struct ch943x_port *s = dev_get_drvdata(port->dev);
 	struct ch943x_one *one = to_ch943x_one(port, port);
@@ -736,7 +736,8 @@ ignore_char:
 static void ch943x_handle_tx(struct uart_port *port)
 {
 	struct ch943x_port *s = dev_get_drvdata(port->dev);
-	struct circ_buf *xmit = &port->state->xmit;
+	struct tty_port *tport = &port->state->port;
+	unsigned char ch;
 	unsigned int txlen, to_send, i;
 	unsigned char thr_reg;
 
@@ -749,14 +750,14 @@ static void ch943x_handle_tx(struct uart_port *port)
 		return;
 	}
 
-	if (uart_circ_empty(xmit) || uart_tx_stopped(port)) {
+	if (uart_tx_stopped(port) || kfifo_is_empty(&tport->xmit_fifo)) {
 		dev_vdbg(&s->spi_dev->dev, "ch943x_handle_tx stopped\n");
 		ch943x_port_update(port, CH943X_IER_REG, CH943X_IER_THRI_BIT, 0);
 		return;
 	}
 
 	/* Get length of data pending in circular buffer */
-	to_send = uart_circ_chars_pending(xmit);
+	to_send = kfifo_len(&tport->xmit_fifo);
 
 	if (likely(to_send)) {
 		/* Limit to size of TX FIFO */
@@ -768,15 +769,15 @@ static void ch943x_handle_tx(struct uart_port *port)
 
 		/* Convert to linear buffer */
 		for (i = 0; i < to_send; ++i) {
-			s->buf[i] = xmit->buf[xmit->tail];
-			xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE - 1);
+			if (!kfifo_get(&tport->xmit_fifo, &ch))
+				s->buf[i] = ch;
 		}
 		dev_vdbg(&s->spi_dev->dev, "ch943x_handle_tx %d bytes\n", to_send);
 		thr_reg = (0x80 | CH943X_THR_REG) + (port->line * 0x10);
 		ch943x_raw_write(port, &thr_reg, s->buf, to_send);
 	}
 
-	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
+	if (kfifo_len(&tport->xmit_fifo) < WAKEUP_CHARS)
 		uart_write_wakeup(port);
 }
 
@@ -915,7 +916,7 @@ static void ch943x_stop_tx_work_proc(struct work_struct *ws)
 {
 	struct ch943x_one *one = to_ch943x_one(ws, stop_tx_work);
 	struct ch943x_port *s = dev_get_drvdata(one->port.dev);
-	struct circ_buf *xmit = &one->port.state->xmit;
+	struct tty_port *tport = &one->port.state->port;
 
 	dev_dbg(&s->spi_dev->dev, "%s\n", __func__);
 	mutex_lock(&s->mutex);
@@ -927,7 +928,7 @@ static void ch943x_stop_tx_work_proc(struct work_struct *ws)
 			mutex_unlock(&s->mutex);
 			return;
 		}
-		if (uart_circ_empty(xmit) && (one->rs485.delay_rts_after_send > 0))
+		if (kfifo_is_empty(&tport->xmit_fifo) && (one->rs485.delay_rts_after_send > 0))
 			mdelay(one->rs485.delay_rts_after_send);
 	}
 
@@ -1490,8 +1491,9 @@ out:
 	uart_unregister_driver(&s->uart);
 
 out_clk:
-	if (!IS_ERR(s->clk))
+	if (!IS_ERR(s->clk)) {
 		/*clk_disable_unprepare(s->clk)*/;
+	}
 
 	return ret;
 }
@@ -1516,8 +1518,9 @@ static int ch943x_remove(struct device *dev)
 	mutex_destroy(&s->mutex);
 	mutex_destroy(&s->mutex_bus_access);
 	uart_unregister_driver(&s->uart);
-	if (!IS_ERR(s->clk))
+	if (!IS_ERR(s->clk)) {
 		/*clk_disable_unprepare(s->clk)*/;
+	}
 
 	sysfs_remove_group(&dev->kobj, &ch9434_attribute_group);
 
@@ -1560,7 +1563,7 @@ static struct attribute *ch9434_attributes[] = { &dev_attr_reg_dump.attr, NULL }
 
 static struct attribute_group ch9434_attribute_group = { .attrs = ch9434_attributes };
 
-int ch9434_create_sysfs(struct spi_device *spi)
+static int ch9434_create_sysfs(struct spi_device *spi)
 {
 	int err;
 
