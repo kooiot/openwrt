@@ -18,6 +18,7 @@ define Build/sunxi-sdcard
 	rm -rf $@.bootfs
 	mkdir $@.bootfs
 	cp -i $(STAGING_DIR_IMAGE)/$(DEVICE_NAME)-boot.scr $@.bootfs/boot.scr
+	cp -i $(DTS_DIR)/$(SUNXI_DTS).dtb $@.bootfs/dtb
 	cp -i $(IMAGE_KERNEL) $@.bootfs/uImage
 
 	echo $$(stat -c%s $(IMAGE_ROOTFS)) > $@.rootfs.size
