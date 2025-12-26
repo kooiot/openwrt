@@ -11,7 +11,7 @@
  	sun8i-r40-tlink-nano-a40i.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-r40-tlink-k4x.dtsi
-@@ -0,0 +1,770 @@
+@@ -0,0 +1,764 @@
 +/*
 + * Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 + *
@@ -383,10 +383,8 @@
 +	ch9434_0: spidev@0 {
 +		pinctrl-names = "default";
 +		pinctrl-0 = <&spi0_reset_pins>;
-+		#address-cells = <1>;
-+		#size-cells = <1>;
 +		compatible = "wch,ch943x";
-+		reg = <0 0>;
++		reg = <0>;
 +		spi-max-frequency = <10000000>;
 +		interrupt-parent = <&pio>;
 +		interrupts = <8 15 IRQ_TYPE_EDGE_RISING>; /* PI15 */
@@ -406,10 +404,8 @@
 +	ch9434_1: spidev@0 {
 +		pinctrl-names = "default";
 +		pinctrl-0 = <&spi1_reset_pins>;
-+		#address-cells = <1>;
-+		#size-cells = <1>;
 +		compatible = "wch,ch943x_b";
-+		reg = <0 0>;
++		reg = <0>;
 +		spi-max-frequency = <10000000>;
 +		interrupt-parent = <&pio>;
 +		interrupts = <7 2 IRQ_TYPE_EDGE_RISING>; /* PH2 */
@@ -423,7 +419,7 @@
 +
 +	mcp2515_1: mcp2515-1@0 {
 +		compatible = "microchip,mcp2515";
-+		reg = <0 1>;
++		reg = <0>;
 +		clocks = <&can_clk16m>;
 +		interrupt-parent = <&pio>;
 +		interrupts = <7 2 IRQ_TYPE_LEVEL_LOW>; /* PH2/EINT2 */
@@ -440,10 +436,8 @@
 +	ch9434_2: spidev@0 {
 +		pinctrl-names = "default";
 +		pinctrl-0 = <&spi2_reset_pins>;
-+		#address-cells = <1>;
-+		#size-cells = <1>;
 +		compatible = "wch,ch943x_c";
-+		reg = <0 0>;
++		reg = <0>;
 +		spi-max-frequency = <10000000>;
 +		interrupt-parent = <&pio>;
 +		interrupts = <7 3 IRQ_TYPE_EDGE_RISING>; /* PH3 */
@@ -457,7 +451,7 @@
 +
 +	mcp2515_2: mcp2515-2@0 {
 +		compatible = "microchip,mcp2515";
-+		reg = <0 1>;
++		reg = <0>;
 +		clocks = <&can_clk16m>;
 +		interrupt-parent = <&pio>;
 +		interrupts = <7 3 IRQ_TYPE_LEVEL_LOW>; /* PH3/EINT3 */
