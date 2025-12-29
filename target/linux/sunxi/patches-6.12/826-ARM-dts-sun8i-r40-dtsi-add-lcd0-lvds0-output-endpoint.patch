@@ -1,6 +1,6 @@
 --- a/arch/arm/boot/dts/allwinner/sun8i-r40.dtsi
 +++ b/arch/arm/boot/dts/allwinner/sun8i-r40.dtsi
-@@ -1143,6 +1143,10 @@
+@@ -1397,6 +1397,10 @@
  					#size-cells = <0>;
  					reg = <1>;
  
