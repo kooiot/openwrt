@@ -12,6 +12,11 @@ boot() {
 
 	local maxtime="$(maxtime)"
 	local curtime="$(date +%s)"
+	# If current time is later than 2025-01-01 00:00:00
+	if [ $curtime -gt 1735660800 ]; then
+		echo "Take RTC time as system time" > /dev/kmsg
+		return
+	fi
 	[ $curtime -lt $maxtime ] && date -s @$maxtime
 }
 

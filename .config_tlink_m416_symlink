@@ -140,6 +140,7 @@ CONFIG_DEFAULT_libgcc=y
 CONFIG_DEFAULT_libustream-wolfssl=y
 CONFIG_DEFAULT_logd=y
 CONFIG_DEFAULT_luci-app-freeioe=y
+CONFIG_DEFAULT_luci-app-ser2net=y
 CONFIG_DEFAULT_luci-proto-3g=y
 CONFIG_DEFAULT_luci-proto-qmi=y
 CONFIG_DEFAULT_mkf2fs=y
@@ -149,10 +150,10 @@ CONFIG_DEFAULT_odhcp6c=y
 CONFIG_DEFAULT_odhcpd-ipv6only=y
 CONFIG_DEFAULT_opkg=y
 CONFIG_DEFAULT_partx-utils=y
+CONFIG_DEFAULT_phone-usb-tether=y
 CONFIG_DEFAULT_ppp=y
 CONFIG_DEFAULT_ppp-mod-pppoe=y
 CONFIG_DEFAULT_procd=y
-CONFIG_DEFAULT_ser2net=y
 CONFIG_DEFAULT_shellinabox=y
 CONFIG_DEFAULT_tinc-freeioe-tunnel=y
 CONFIG_DEFAULT_uboot-envtools=y
@@ -1767,6 +1768,7 @@ CONFIG_PACKAGE_libiwinfo-data=y
 #
 # end of ath10k Board-Specific Overrides
 
+# CONFIG_PACKAGE_aic8800-usb-firmware is not set
 # CONFIG_PACKAGE_aircard-pcmcia-firmware is not set
 # CONFIG_PACKAGE_amdgpu-firmware is not set
 # CONFIG_PACKAGE_ar3k-firmware is not set
@@ -2554,14 +2556,14 @@ CONFIG_PACKAGE_kmod-usb-net-cdc-ether=y
 # CONFIG_PACKAGE_kmod-usb-net-dm9601-ether is not set
 # CONFIG_PACKAGE_kmod-usb-net-hso is not set
 # CONFIG_PACKAGE_kmod-usb-net-huawei-cdc-ncm is not set
-# CONFIG_PACKAGE_kmod-usb-net-ipheth is not set
+CONFIG_PACKAGE_kmod-usb-net-ipheth=y
 # CONFIG_PACKAGE_kmod-usb-net-kalmia is not set
 # CONFIG_PACKAGE_kmod-usb-net-kaweth is not set
 # CONFIG_PACKAGE_kmod-usb-net-mcs7830 is not set
 # CONFIG_PACKAGE_kmod-usb-net-pegasus is not set
 # CONFIG_PACKAGE_kmod-usb-net-pl is not set
 CONFIG_PACKAGE_kmod-usb-net-qmi-wwan=y
-# CONFIG_PACKAGE_kmod-usb-net-rndis is not set
+CONFIG_PACKAGE_kmod-usb-net-rndis=y
 # CONFIG_PACKAGE_kmod-usb-net-rtl8150 is not set
 # CONFIG_PACKAGE_kmod-usb-net-rtl8152 is not set
 # CONFIG_PACKAGE_kmod-usb-net-sierrawireless is not set
@@ -2661,6 +2663,7 @@ CONFIG_PACKAGE_kmod-usb2=y
 #
 # Wireless Drivers
 #
+# CONFIG_PACKAGE_kmod-aic8800-usb is not set
 # CONFIG_PACKAGE_kmod-ar5523 is not set
 # CONFIG_PACKAGE_kmod-ath is not set
 # CONFIG_PACKAGE_kmod-ath6kl-sdio is not set
@@ -2708,6 +2711,7 @@ CONFIG_PACKAGE_kmod-cfg80211=y
 # CONFIG_PACKAGE_kmod-rtl8812au-ct is not set
 # CONFIG_PACKAGE_kmod-rtl8812au-mw is not set
 # CONFIG_PACKAGE_kmod-rtl8812cu is not set
+# CONFIG_PACKAGE_kmod-rtl8821cs is not set
 # CONFIG_PACKAGE_kmod-rtl8xxxu is not set
 # CONFIG_PACKAGE_kmod-wl12xx is not set
 # CONFIG_PACKAGE_kmod-wl18xx is not set
@@ -2748,6 +2752,7 @@ CONFIG_PACKAGE_zip=y
 # Network Utilities
 #
 # CONFIG_PACKAGE_cloud-watch is not set
+CONFIG_PACKAGE_phone-usb-tether=y
 CONFIG_PACKAGE_tinc-freeioe-tunnel=y
 CONFIG_PACKAGE_wwanleds=y
 # end of Network Utilities
@@ -2779,6 +2784,12 @@ CONFIG_PACKAGE_process-monitor=y
 # CONFIG_PACKAGE_start-stop-daemon is not set
 CONFIG_PACKAGE_xr-usb-watch=y
 # end of Utilities
+
+#
+# VPN
+#
+# CONFIG_PACKAGE_strongswangmalg is not set
+# end of VPN
 
 # CONFIG_PACKAGE_asw-iot-greengrass is not set
 # CONFIG_PACKAGE_bmr200_freeioe is not set
@@ -3835,11 +3846,11 @@ CONFIG_WOLFSSL_HAS_NO_HW=y
 #
 # libimobiledevice
 #
-# CONFIG_PACKAGE_libimobiledevice is not set
+CONFIG_PACKAGE_libimobiledevice=y
 # CONFIG_PACKAGE_libirecovery is not set
-# CONFIG_PACKAGE_libplist is not set
+CONFIG_PACKAGE_libplist=y
 # CONFIG_PACKAGE_libplistcxx is not set
-# CONFIG_PACKAGE_libusbmuxd is not set
+CONFIG_PACKAGE_libusbmuxd=y
 # end of libimobiledevice
 
 # CONFIG_PACKAGE_acsccid is not set
@@ -4241,7 +4252,7 @@ CONFIG_PACKAGE_libuuid=y
 # CONFIG_PACKAGE_libwrap is not set
 # CONFIG_PACKAGE_libxerces-c is not set
 # CONFIG_PACKAGE_libxerces-c-samples is not set
-# CONFIG_PACKAGE_libxml2 is not set
+CONFIG_PACKAGE_libxml2=y
 # CONFIG_PACKAGE_libxslt is not set
 # CONFIG_PACKAGE_libyaml-cpp is not set
 # CONFIG_PACKAGE_libyang is not set
@@ -4377,6 +4388,9 @@ CONFIG_PACKAGE_luci-mod-system=y
 # CONFIG_PACKAGE_luci-app-aria2 is not set
 # CONFIG_PACKAGE_luci-app-attendedsysupgrade is not set
 # CONFIG_PACKAGE_luci-app-babeld is not set
+# CONFIG_PACKAGE_luci-app-bacnet-client is not set
+# CONFIG_PACKAGE_luci-app-bacrouter is not set
+# CONFIG_PACKAGE_luci-app-bacserver is not set
 # CONFIG_PACKAGE_luci-app-banip is not set
 # CONFIG_PACKAGE_luci-app-bcp38 is not set
 # CONFIG_PACKAGE_luci-app-bird1-ipv4 is not set
@@ -5502,6 +5516,13 @@ CONFIG_PACKAGE_3ginfo-text=y
 # CONFIG_PACKAGE_atlas-probe is not set
 # CONFIG_PACKAGE_atlas-sw-probe is not set
 # CONFIG_PACKAGE_atlas-sw-probe-rpc is not set
+# CONFIG_PACKAGE_bacnet-stack-master-utils-base is not set
+# CONFIG_PACKAGE_bacnet-stack-router is not set
+# CONFIG_PACKAGE_bacnet-stack-router-ipv6 is not set
+# CONFIG_PACKAGE_bacnet-stack-router-mstp is not set
+# CONFIG_PACKAGE_bacnet-stack-sc-hub is not set
+# CONFIG_PACKAGE_bacnet-stack-server is not set
+# CONFIG_PACKAGE_bacnet-stack-utils-base is not set
 # CONFIG_PACKAGE_banip is not set
 # CONFIG_PACKAGE_batctl-default is not set
 # CONFIG_PACKAGE_batctl-full is not set
@@ -6067,7 +6088,7 @@ CONFIG_PACKAGE_mkf2fs=y
 # CONFIG_PACKAGE_libimobiledevice-utils is not set
 # CONFIG_PACKAGE_libusbmuxd-utils is not set
 # CONFIG_PACKAGE_plistutil is not set
-# CONFIG_PACKAGE_usbmuxd is not set
+CONFIG_PACKAGE_usbmuxd=y
 # end of libimobiledevice
 
 #
