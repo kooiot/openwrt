@@ -24,7 +24,9 @@ sunxi_setup_interfaces()
 		lsusb -d "0b95:772b" > /dev/null
 		if [ $? -eq 0 ]; then
 			echo "ASIX USB-ETH found!" > /dev/kmsg
-			ucidef_set_interfaces_lan_wan "eth0" "eth1"
+			# ucidef_set_interfaces_lan_wan "eth0" "eth1"
+			ucidef_set_interface_lan "eth0"
+			ucidef_set_interface "lan2" device "eth1" protocol "static"
 		else
 			echo "ASIX USB-ETH not found found!" > /dev/kmsg
 			ucidef_set_interface_lan "eth0"
