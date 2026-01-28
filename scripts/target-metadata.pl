@@ -180,6 +180,7 @@ EOF
 choice
 	prompt "Target System"
 	default TARGET_ath79
+	default TARGET_tina
 	reset if !DEVEL
 	
 EOF

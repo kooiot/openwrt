@@ -1,0 +1,42 @@
+&backlight0 {
+#ifdef USE_LVDS
+    pwms = <&pwm1 0 50000 1>;
+#else
+    pwms = <&pwm1 0 50000 0>;
+#endif
+};
+
+#ifdef USE_LVDS
+&panel {
+    reset-num = <1>;
+    reset-gpios = <&pio PA 1 GPIO_ACTIVE_HIGH>;
+    enable1-gpios = <&pio PA 0 GPIO_ACTIVE_LOW>;
+    enable2-gpios = <&pio PA 2 GPIO_ACTIVE_LOW>;
+};
+#else
+&dsi_panel {
+    reset-num = <1>;
+    reset-gpios = <&pio PA 1 GPIO_ACTIVE_HIGH>;
+    reset-delay-ms = <20>;
+    enable1-gpios = <&pio PA 0 GPIO_ACTIVE_HIGH>;
+};
+#endif
+
+
+#ifndef USE_LVDS
+&gt9xx{
+    goodix_rst_gpio = <&pio PD 20 GPIO_ACTIVE_HIGH>;
+    goodix_irq_gpio = <&pio PD 21 IRQ_TYPE_EDGE_RISING>;
+};
+#endif
+
+&pwm1 {
+    status = "okay";
+};
+
+&pwm1_0 {
+    pinctrl-names = "active", "sleep";
+    pinctrl-0 = <&pwm1_0_pins_active>;
+    pinctrl-1 = <&pwm1_0_pins_sleep>;
+    status = "okay";
+};

@@ -1,0 +1,68 @@
+&sdc1 {
+    bus-width = <4>;
+    no-mmc;
+    no-sd;
+    cap-sd-highspeed;
+    sd-uhs-sdr12;
+    sd-uhs-sdr25;
+    sd-uhs-sdr50;
+    sd-uhs-ddr50;
+    sd-uhs-sdr104;
+    /*sunxi-power-save-mode;*/
+    /*sunxi-dis-signal-vol-sw;*/
+    cap-sdio-irq;
+    keep-power-in-suspend;
+    ignore-pm-notify;
+    max-frequency = <208000000>;
+    sunxi-dly-208M  = <1 1 0 0 0 1>;
+    ctl-spec-caps = <0x408>;
+    vmmc-supply = <&reg_bldo1>;
+    vqmmc-supply = <&reg_bldo1>;
+    status = "okay";
+};
+
+
+&rfkill {
+    compatible = "allwinner,sunxi-rfkill";
+    status = "okay";
+
+    /* wlan session */
+    wlan {
+        compatible    = "allwinner,sunxi-wlan";
+        clocks        = <&rtc_ccu CLK_OSC32K_OUT>;
+        clock-names   = "osc32k-out";
+        wlan_power    = "axp2202-aldo3", "axp2202-bldo1", "axp2202-bldo2"; /* vcc-pl/vcc-pg/vcc-pm */
+        wlan_power_vol= <3300000>, <1800000>, <1800000>;
+        wlan_busnum   = <0x1>;
+        wlan_regon    = <&r_pio PM 1 GPIO_ACTIVE_HIGH>;
+        wlan_hostwake = <&r_pio PM 0 GPIO_ACTIVE_HIGH>;
+        wakeup-source;
+    };
+
+    /* bt session */
+    bt {
+        compatible    = "allwinner,sunxi-bt";
+        clocks        = <&rtc_ccu CLK_OSC32K_OUT>;
+        clock-names   = "osc32k-out";
+        bt_power    = "axp2202-aldo3", "axp2202-bldo1", "axp2202-bldo2"; /* vcc-pl/vcc-pg/vcc-pm */
+        bt_power_vol= <3300000>, <1800000>, <1800000>;
+        bt_rst_n      = <&r_pio PM 2 GPIO_ACTIVE_LOW>;
+    };
+};
+
+&addr_mgt {
+    compatible     = "allwinner,sunxi-addr_mgt";
+    type_addr_wifi = <0x0>;
+    type_addr_bt   = <0x0>;
+    type_addr_eth  = <0x0>;
+    status         = "okay";
+};
+
+&btlpm {
+    compatible  = "allwinner,sunxi-btlpm";
+    uart_index  = <0x0>;
+    bt_wake     = <&r_pio PM 4 GPIO_ACTIVE_HIGH>;
+    bt_hostwake = <&r_pio PM 3 GPIO_ACTIVE_HIGH>;
+    wakeup-source;
+    status      = "okay";
+};

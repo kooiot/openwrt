@@ -1,0 +1,18 @@
+
+menuconfig HZHY_FLASH_LOAD
+	tristate "hzhy fpag firmware load driver"
+	default n
+	help
+	  hzhy fpag.bin load.
+
+if HZHY_FLASH_LOAD
+	
+config HZHY_SPI_FLASH_LOAD
+	tristate "Load the firmware to the SPI-flash driver"
+	help
+	  Load the fpag firmware to the SPI flash.
+
+	default n
+
+endif
+

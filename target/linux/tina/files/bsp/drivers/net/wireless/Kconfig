@@ -1,0 +1,11 @@
+menu "Wireless LAN"
+	depends on !S390
+	depends on NET
+
+if WLAN
+
+source "bsp/drivers/net/wireless/xr819/Kconfig"
+source "bsp/drivers/net/wireless/xr829/Kconfig"
+endif
+
+endmenu

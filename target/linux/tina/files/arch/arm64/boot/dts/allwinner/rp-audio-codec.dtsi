@@ -1,0 +1,59 @@
+/* audio dirver module -> audio codec */
+&codec {
+	tx-hub-en;
+	rx-sync-en;
+
+	dac-vol		= <63>;		/* default value:63 range:0->63 */
+	dacl-vol	= <160>;	/* default value:160 range:0->255 */
+	dacr-vol	= <160>;	/* default value:160 range:0->255 */
+	adc1-vol	= <160>;	/* default value:160 range:0->255 */
+	adc2-vol	= <160>;	/* default value:160 range:0->255 */
+	adc3-vol	= <160>;	/* default value:160 range:0->255 */
+	lineout-gain	= <31>;		/* default value:31 range:0->31 */
+	hpout-gain	= <7>;		/* default value:7 range:0->7 */
+	adc1-gain	= <31>;		/* default value:31 range:0->31 */
+	adc2-gain	= <31>;		/* default value:31 range:0->31 */
+	adc3-gain	= <31>;		/* default value:31 range:0->31 */
+
+	/* to do: avcc-1.8 vdd33-3.3 cpvin-1.8 */
+	avcc-external;
+	avcc-supply	= <&reg_aldo4>;
+	avcc-vol	= <1800000>;
+	vdd-external;
+	vdd-supply	= <&reg_cldo3>;
+	vdd-vol		= <3300000>;
+	cpvin-external;
+	cpvin-supply	= <&reg_cldo1>;
+	cpvin-vol	= <1800000>;
+
+	pa-pin-max	= <2>;
+	pa-pin-0	= <&pio PH 14 GPIO_ACTIVE_HIGH>; //spk on
+	pa-pin-1	= <&pio PH 15 GPIO_ACTIVE_LOW>;  //spk mute
+	pa-pin-level-0	= <1>;
+	pa-pin-msleep-0	= <0>;
+
+	jack-det-level		= <1>;
+	jack-det-threshold	= <8>;
+	jack-det-debouce	= <0>; /* optional value range:0->15 */
+	/* jack-key-det-voltage = <min max> */
+	jack-key-det-voltage-hook	= <0 0>;
+	jack-key-det-voltage-up		= <2 2>;
+	jack-key-det-voltage-down	= <4 5>;
+	jack-key-det-voltage-voice	= <1 1>;
+
+	status = "okay";
+};
+
+&codec_plat {
+	status = "okay";
+};
+
+&codec_mach {
+	status = "okay";
+	soundcard-mach,cpu {
+		sound-dai = <&codec_plat>;
+	};
+	soundcard-mach,codec {
+		sound-dai = <&codec>;
+	};
+};

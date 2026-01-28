@@ -1,0 +1,354 @@
+// SPDX-License-Identifier: (GPL-2.0+ or MIT)
+
+#include "t536-board.dtsi"
+#include "rp-pmic-axp.dtsi"
+#include "rp-sdcard-mmc0.dtsi"
+#include "rp-audio-es8388.dtsi"
+#include "rp-bt-sco-codec.dtsi"
+#include "rp-pcie-m2.dtsi"
+#include "rp-wifi-sdio-mmc1.dtsi"
+#include "rp-gmac0-1000m.dtsi"
+#include "rp-gmac1-1000m.dtsi"
+
+// #include "rp-lcd-duallvds-21-1920x1080.dtsi"
+// #include "rp-lcd-lvds-10-1024x600.dtsi"
+// #include "rp-lcd-mipi-10.1-1920x1200.dtsi"
+// #include "rp-lcd-mipi-10.1-1200x1920.dtsi"
+// #include "rp-lcd-mipi-10.1-800x1280.dtsi"
+// #include "rp-lcd-mipi-8-1200x1920.dtsi"
+// #include "rp-lcd-mipi-8-800x1280.dtsi"
+// #include "rp-lcd-mipi-7-1200x1920.dtsi"
+// #include "rp-lcd-mipi-7-720x1280.dtsi"
+#include "rp-lcd-mipi-7-1024x600.dtsi"
+// #include "rp-lcd-mipi-5.5-720x1280.dtsi"
+// #include "rp-lcd-mipi-5-720x1280.dtsi"
+
+#include "rp-lcd-gpio.dtsi"
+
+/{
+    board = "pro-t536";
+    model = "pro-t536";
+
+    /* bluetooth uart use /dev/ttyAS1 */
+    bt_uart_idx = "1"; 
+
+    usb20_power: usb20-power {
+        compatible = "regulator-fixed";
+        regulator-name = "usb20-power";
+        gpio = <&r_pio PL 13 GPIO_ACTIVE_HIGH>;
+        enable-active-high;
+        regulator-boot-on;
+        regulator-always-on;
+    };
+
+    vdd_3v6: vdd-3v6 {
+        compatible = "regulator-fixed";
+        regulator-name = "vdd-3v6";
+        gpio = <&pio PA 7 GPIO_ACTIVE_HIGH>;
+        enable-active-high;
+        regulator-boot-on;
+        regulator-always-on;
+    };
+
+    sys_vdd_3v3_5v_power: sys-vdd-3v3-5v-power {
+        compatible = "regulator-fixed";
+        regulator-name = "sys-vdd-3v3-5v-power";
+        gpio = <&pio PA 5 GPIO_ACTIVE_HIGH>;
+        enable-active-high;
+        regulator-boot-on;
+        regulator-always-on;
+    };
+
+    /**
+     * rp_power/gpio functions
+     * OUTPUT 0
+     * INPUT 1
+     * IRQ 2
+     * FLASH 3
+     * OUTPUT_CTRL 4
+    */
+    rp_power {
+        status = "okay";
+        compatible = "rp_power";
+        4G_powerkey {
+            gpio_num = <&pio PA 8 GPIO_ACTIVE_HIGH>;
+            gpio_function = <4>;
+        };
+    };
+
+    rp_gpio {
+        status = "okay";
+        compatible = "rp_gpio";
+
+        pinctrl-names = "default";
+        pinctrl-0 = <&rp_gpio_pins &rp_gpio_pins_r>;
+    
+        sys_led {
+            gpio_num = <&pio PG 10 GPIO_ACTIVE_HIGH>;
+            gpio_function = <3>;
+        };
+
+        hub_reset {
+            gpio_num = <&pio PA 6 GPIO_ACTIVE_HIGH>;
+            gpio_function = <4>;
+        };
+
+        IO_PC7 {
+            gpio_num = <&pio PC 7 GPIO_ACTIVE_HIGH>;
+            gpio_function = <4>;
+        };
+
+        IO_PB2 {
+            gpio_num = <&pio PB 2 GPIO_ACTIVE_HIGH>;
+            gpio_function = <4>;
+        };
+
+        IO_PB3 {
+            gpio_num = <&pio PB 3 GPIO_ACTIVE_HIGH>;
+            gpio_function = <4>;
+        };
+
+        IO_PI8 {
+            gpio_num = <&pio PI 8 GPIO_ACTIVE_HIGH>;
+            gpio_function = <4>;
+        };
+
+        IO_PI9 {
+            gpio_num = <&pio PI 9 GPIO_ACTIVE_HIGH>;
+            gpio_function = <4>;
+        };
+
+        IO_PL6 {
+            gpio_num = <&r_pio PL 6 GPIO_ACTIVE_HIGH>;
+            gpio_function = <4>;
+        };
+
+        IO_PL7 {
+            gpio_num = <&r_pio PL 7 GPIO_ACTIVE_HIGH>;
+            gpio_function = <4>;
+        };
+
+        IO_PL10 {
+            gpio_num = <&r_pio PL 10 GPIO_ACTIVE_HIGH>;
+            gpio_function = <4>;
+        };
+
+        IO_PM5 {
+            gpio_num = <&r_pio PM 5 GPIO_ACTIVE_HIGH>;
+            gpio_function = <4>;
+        };
+    };
+
+    rp_fan {
+        status = "okay";
+        compatible = "fan_gpio_control";
+        gpio-pin = <&pio PI 10 GPIO_ACTIVE_HIGH>;
+        thermal-zone = "cpu_thermal_zone";
+        threshold-temp = <60000>; // 60 摄氏度
+        running-time = <10000>; // 10s
+    };
+};
+
+&rfkill {
+    status = "okay";
+    wlan {
+        wlan_regon = <&r_pio PM 1 GPIO_ACTIVE_HIGH>;
+        wlan_hostwake = <&r_pio PM 0 GPIO_ACTIVE_HIGH>;
+    };
+
+    bt {
+        bt_rst_n = <&r_pio PM 2 GPIO_ACTIVE_LOW>;
+    };
+};
+
+&btlpm {
+    bt_wake     = <&r_pio PM 4 GPIO_ACTIVE_HIGH>;
+    bt_hostwake = <&r_pio PM 3 GPIO_ACTIVE_HIGH>;
+};
+
+
+&gmac0_phy0 {
+        reset-gpios = <&pio PA 4 GPIO_ACTIVE_LOW>;
+};
+
+&gmac0 {
+    sunxi,phy-clk-type = <0>; // 0:External phy use phy25m clk provided by Soc, 1: External phy use extern osc 25m
+    tx-delay = <9>;
+    rx-delay = <8>;
+    status = "okay";
+    /delete-property/ aw,rgmii-clk-ext;
+};
+
+&gmac1 {
+    sunxi,phy-clk-type = <0>; // 0:External phy use phy25m clk provided by Soc, 1: External phy use extern osc 25m
+    tx-delay = <10>;
+    rx-delay = <12>;
+    status = "okay";
+    /delete-property/ aw,rgmii-clk-ext;
+};
+
+&gmac1_phy0 {
+        reset-gpios = <&pio PA 3 GPIO_ACTIVE_LOW>;
+};
+
+&can0 {
+    status = "okay";
+    pinctrl-names = "default", "sleep";
+    pinctrl-0 = <&can0_pins_a>;
+    pinctrl-1 = <&can0_pins_b>;
+};
+
+&can1 {
+    status = "okay";
+    pinctrl-names = "default", "sleep";
+    pinctrl-0 = <&can1_pins_a>;
+    pinctrl-1 = <&can1_pins_b>;
+};
+
+&can2 {
+    status = "disabled";
+};
+
+&uart1 {
+    status = "okay";
+};
+
+&uart2_pins_a {
+    pins = "PB0", "PB1";
+};
+
+&uart2_pins_b {
+    pins = "PB0", "PB1";
+};
+
+&uart2 {
+    status = "okay";
+};
+
+&uart4_pins_a {
+    pins = "PI13", "PI14";
+};
+
+&uart4_pins_b {
+    pins = "PI13", "PI14";
+};
+
+&uart4 {
+    status = "okay";
+};
+
+&uart6 {
+    status = "okay";
+};
+
+&uart8 {
+    status = "okay";
+};
+
+&uart9_pins_a{
+    pins = "PI2", "PI3";
+};
+
+&uart9_pins_b{
+    pins = "PI2", "PI3";
+};
+
+&uart9 {
+    status = "okay";
+};
+
+&uart15_pins_a {
+    pins = "PL2", "PL3";
+};
+
+&uart15_pins_b {
+    pins = "PL2", "PL3";
+};
+
+&uart16_pins_a {
+    pins = "PL4", "PL5";
+};
+
+&uart16_pins_b {
+    pins = "PL4", "PL5";
+};
+
+/* s-uart0 */
+&uart15 {
+   status = "okay";
+};
+
+/* s-uart1 */
+&uart16 {
+   status = "okay";
+};
+
+&twi2_pins_default {
+    /* sck sda */
+    pins = "PI15", "PI16";
+};
+
+&twi2_pins_sleep {
+    pins = "PI15", "PI16";
+};
+
+&twi2 {
+    status = "okay";
+    it8563: it8563@51 {
+        compatible = "nxp,pcf8563";
+        // compatible = "haoyu,hym8563";
+        reg = <0x51>;
+        status = "okay";
+    };
+};
+
+&twi3 {
+    status = "okay";
+};
+
+/* twi-8 */
+&s_twi1 {
+    status = "okay";
+};
+
+&spi1 {
+    pinctrl-0 = <&spi1_pins_default &spi1_pins_cs>;
+    pinctrl-1 = <&spi1_pins_sleep>;
+    pinctrl-names = "default", "sleep";
+    sunxi,spi-bus-mode = <SUNXI_SPI_BUS_MASTER>;
+    sunxi,spi-cs-mode = <SUNXI_SPI_CS_AUTO>;
+    // ready-gpio = <&pio PC 15 GPIO_ACTIVE_LOW>;
+    status = "okay";
+
+    spidev@0 {
+        compatible = "rohm,dh2228fv";
+        reg = <0x0>;
+        spi-max-frequency = <2000000>;
+        spi-rx-bus-width = <1>;
+        spi-tx-bus-width = <1>;
+        status = "okay";
+    };
+};
+
+&gpadc0_pins_default {
+    pins = "PA6";
+};
+
+&gpadc0_pins_sleep {
+    pins = "PA6";
+};
+
+
+&pio {
+    rp_gpio_pins:rp_gpio_pins {
+        pins = "PC7", "PB2", "PB3", "PI8", "PI9";
+        function="gpio_out";
+    };
+};
+
+&r_pio {
+    rp_gpio_pins_r:rp_gpio_pins_r {
+        pins = "PL7", "PL6", "PL10", "PM5";
+        function="gpio_out";
+    };
+};

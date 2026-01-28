@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# PHY Layer Configuration
+#
+
+menu "PHY"
+	depends on PHYLIB
+
+config MAXIO_PHY
+	tristate "MAXIO PHYs"
+	help
+	Supports the Maxio MAExxxx PHY.
+
+config MOTORCOMM_PHY
+	tristate "Motorcomm PHY"
+	default n
+	help
+	  Currently supports the YT8512H PHY.
+
+endmenu

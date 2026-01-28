@@ -1,0 +1,97 @@
+&codec {status = "disabled";};
+
+&i2s3_plat {
+    tdm-num     = <3>; // i2s{n}_plat
+    tx-pin      = <0>; // din{n}
+    rx-pin      = <0>; // dout{n}
+    pinctrl-used;
+    pinctrl-names= "default", "sleep";
+    pinctrl-0   = <&i2s3_pins_a &i2s3_pins_b &i2s3_pins_c &i2s3_pins_d &i2s3_pins_e>;
+    pinctrl-1   = <&i2s3_pins_f>;
+
+	clk-en-post-delay = <0>;
+	clk-keep;
+    rx-sync-en;
+
+	/* power amplifier ctrl */
+    pa-pin-max  = <2>;
+
+    pa-pin-0    = <&pio PH 14 GPIO_ACTIVE_HIGH>; // spk on
+    pa-pin-level-0  = <1>;
+    pa-pin-msleep-0 = <0>;
+
+    pa-pin-1    = <&pio PH 15 GPIO_ACTIVE_LOW>;  // spk mute
+    pa-pin-level-1  = <0>;
+    pa-pin-msleep-1 = <0>;
+
+#if 0
+// !!! 驱动未实现耳机检测
+	jack-swpin-max = <1>;
+	jack-swpin-0 = <&pio PH 8 GPIO_ACTIVE_HIGH>;
+	jack-mode-off = <0>;
+#endif
+
+    status = "okay";
+};
+
+&i2s3_mach {
+    status      = "okay";
+	clk-keep;
+    soundcard-mach,format       = "i2s";
+    soundcard-mach,frame-master = <&i2s3_cpu>;
+    soundcard-mach,bitclock-master  = <&i2s3_cpu>;
+    /* soundcard-mach,frame-inversion; */
+    /* soundcard-mach,bitclock-inversion; */
+    soundcard-mach,slot-num     = <2>;
+    soundcard-mach,slot-width   = <32>;
+
+    soundcard-mach,name     = "es8388";
+    soundcard-mach,pin-switches = "SPK", "MIC";
+    soundcard-mach,routing = 
+		"SPK", "LOUT1",
+		"SPK", "LOUT2",
+		"SPK", "ROUT1",
+		"SPK", "ROUT2",
+		"RINPUT2", "MIC",
+		"LINPUT2", "MIC";
+
+    i2s3_cpu: soundcard-mach,cpu {
+        sound-dai = <&i2s3_plat>;
+        /* note: pll freq = 24.576M or 22.5792M * pll-fs */
+        soundcard-mach,pll-fs   = <1>;
+        /* note:
+         * mclk freq = mclk-fs * 12.288M or 11.2896M    (when mclk-fp ture)
+         * mclk freq = mclk-fs * pcm rate       (when mclk-fp false)
+         */
+        soundcard-mach,mclk-fp = <11289600 12288000>;
+        soundcard-mach,mclk-fs  = <1>;
+    };
+
+    i2s3_codec: soundcard-mach,codec {
+        sound-dai               = <&es8388_codec>;
+        soundcard-mach,pll-fs   = <1>;
+    };
+};
+
+&twi5 {
+	status = "okay";
+	clock-frequency = <200000>;
+//	pinctrl-0 = <&twi5_pins_default>;
+//	pinctrl-names = "default";
+	/* For stability and backwards compatibility, we recommend setting ‘twi_drv_used’ to 1 */
+	twi_drv_used = <1>;
+	twi-supply = <&reg_dcdc4>;
+
+	es8388_codec: es8388@10 {
+		status                  = "okay";
+		#sound-dai-cells        = <0>;
+		reg = <0x10>;
+		// compatible              = "everest,es8388", "everest,es8328";
+		compatible              = "everest,es8323";
+		DVDD-supply = <&reg_dcdc4>;
+		AVDD-supply = <&reg_dcdc4>;
+		PVDD-supply = <&reg_dcdc4>;
+		HPVDD-supply = <&reg_dcdc4>;
+//		clocks = <&clks 169>;
+	};
+};

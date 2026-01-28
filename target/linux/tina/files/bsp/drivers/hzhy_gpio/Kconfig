@@ -1,0 +1,15 @@
+
+menuconfig HZHY_GPIO_SUBSYS
+	tristate "hzhy gpio subsystem"
+	default n
+	help
+	  hzhy gpio-device subsystem.
+
+if HZHY_GPIO_SUBSYS
+	
+config HZHY_GPIO_WDT
+	tristate "hzhy gpio based watchdog driver"
+	default n
+
+endif
+

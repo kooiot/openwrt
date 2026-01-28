@@ -1,0 +1,21 @@
+/{
+	/*
+	 * ...
+	 */
+	gpio_serial {
+		compatible = "hzhy,gpio_uart";
+		status = "okay";
+		gpio_uart_1 {
+			gpio_rx {
+				label = "gpio1_rx";
+				gpios = <&gpio2 7 0>;
+				direction = "in";
+			};
+			gpio_tx {
+				label = "gpio1_tx";
+				gpios = <&gpio2 6 0>;
+				direction = "out";
+			};
+		};
+	};
+}

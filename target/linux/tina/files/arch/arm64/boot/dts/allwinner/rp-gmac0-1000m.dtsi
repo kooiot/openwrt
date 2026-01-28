@@ -1,0 +1,30 @@
+&mdio0 {
+	status = "okay";
+};
+
+&gmac0_phy0 {
+        /* RTL8211F (0x001cc916) */
+        reg = <1>;
+        max-speed = <1000>;  /* Max speed capability */
+        reset-gpios = <&pio PA 4 GPIO_ACTIVE_LOW>;
+        /* PHY datasheet rst time */
+        reset-assert-us = <10000>;
+        reset-deassert-us = <150000>;
+    };
+
+&gmac0 {
+	phy-mode = "rgmii";
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&gmac0_pins_default>;
+	pinctrl-1 = <&gmac0_pins_sleep>;
+	sunxi,phy-clk-type = <0>;
+	tx-delay = <3>;
+	rx-delay = <4>;
+	gmac-power0-supply = <&reg_cldo3>;
+	gmac-power1-supply;
+	gmac-power2-supply;
+	gmac-power0-vol = <3300000>;
+	gmac-power1-vol;
+	gmac-power2-vol;
+	status = "okay";
+};

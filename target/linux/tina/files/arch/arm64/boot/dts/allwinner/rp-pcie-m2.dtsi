@@ -1,0 +1,27 @@
+/{
+    vdd_3v3_M2: vdd-3v3-M2 {
+        compatible = "regulator-fixed";
+        regulator-name = "vdd-3v3-M2";
+        gpio = <&pio PA 9 GPIO_ACTIVE_HIGH>;
+        enable-active-high;
+        regulator-boot-on;
+        regulator-always-on;
+    };
+};
+
+
+&combophy {
+    phy_refclk_sel = <0>; /* 0:internal clk; 1:external clk */
+    status = "okay";
+};
+
+&pcie {
+    status = "okay";
+    pcie3v3-supply = <&vdd_3v3_M2>;
+    /delete-property/ reset-gpios;
+    /delete-property/ wake-gpios;
+};
+
+&usbc2 {
+    status = "disabled";
+};

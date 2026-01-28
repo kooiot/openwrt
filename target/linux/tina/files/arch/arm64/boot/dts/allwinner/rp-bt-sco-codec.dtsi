@@ -1,0 +1,31 @@
+/{
+    bt_sco_codec: bt_sco_codec {
+        status = "okay";
+        #sound-dai-cells = <1>;
+        compatible = "linux,bt-sco";
+    };
+
+    sound-bt-sco {
+        status="okay";
+        compatible = "allwinner,sunxi-snd-mach";
+        soundcard-mach,name = "bt-sco-audio";
+        soundcard-mach,format = "dsp_a";
+        soundcard-mach,bitclock-inversion;
+        soundcard-mach,frame-master = <&btcpu>;
+        soundcard-mach,bitclock-master = <&btcpu>;
+        soundcard-mach,slot-num = <2>;
+		soundcard-mach,slot-width = <16>;
+
+        btcpu: soundcard-mach,cpu {
+            sound-dai = <&i2s1_plat>;
+        };
+
+        soundcard-mach,codec {
+            sound-dai = <&bt_sco_codec 1>;
+        };
+    };
+};
+
+&i2s1_plat {
+    status = "okay";
+};

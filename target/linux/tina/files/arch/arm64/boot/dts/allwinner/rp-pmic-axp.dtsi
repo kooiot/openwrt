@@ -1,0 +1,335 @@
+&s_twi0 {
+	clock-frequency = <400000>;
+	pinctrl-0 = <&s_twi0_pins_default>;
+	pinctrl-1 = <&s_twi0_pins_sleep>;
+	pinctrl-names = "default", "sleep";
+	device_type = "s_twi0";
+	/* For stability and backwards compatibility, we recommend setting ‘twi_drv_used’ to 1 */
+	twi_drv_used = <1>;
+	no_suspend = <1>;
+	status = "okay";
+
+	axp1530: axp1530@36{
+		compatible = "ext,axp1530";
+		status = "okay";
+		reg = <0x36>;
+
+		regulators{
+			reg_ext_axp1530_dcdc1: dcdc1 {
+				regulator-name = "axp1530-dcdc1";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <3400000>;
+				regulator-step-delay-us = <25>;
+				regulator-final-delay-us = <50>;
+				regulator-always-on;
+			};
+
+			reg_ext_axp1530_dcdc2: dcdc2 {
+				regulator-name = "axp1530-dcdc2";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <1540000>;
+				regulator-step-delay-us = <25>;
+				regulator-final-delay-us = <50>;
+				regulator-always-on;
+			};
+
+			reg_ext_axp1530_dcdc3: dcdc3 {
+				regulator-name = "axp1530-dcdc3";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <1840000>;
+				regulator-step-delay-us = <25>;
+				regulator-final-delay-us = <50>;
+				regulator-always-on;
+			};
+
+			reg_ext_axp1530_aldo1: ldo1 {
+				regulator-name = "axp1530-aldo1";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <3500000>;
+				regulator-step-delay-us = <25>;
+				regulator-final-delay-us = <50>;
+			};
+
+			reg_ext_axp1530_dldo1: ldo2 {
+				regulator-name = "axp1530-dldo1";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <3500000>;
+				regulator-step-delay-us = <25>;
+				regulator-final-delay-us = <50>;
+			};
+		};
+		virtual-ext-dcdc1 {
+			compatible = "xpower-vregulator,ext-dcdc1";
+			dcdc1-supply = <&reg_ext_axp1530_dcdc1>;
+		};
+		virtual-ext-dcdc2 {
+			compatible = "xpower-vregulator,ext-dcdc2";
+			dcdc2-supply = <&reg_ext_axp1530_dcdc2>;
+		};
+		virtual-ext-dcdc3 {
+			compatible = "xpower-vregulator,ext-dcdc3";
+			dcdc3-supply = <&reg_ext_axp1530_dcdc3>;
+		};
+		virtual-ext-aldo1 {
+			compatible = "xpower-vregulator,ext-aldo1";
+			aldo1-supply = <&reg_ext_axp1530_aldo1>;
+		};
+		virtual-ext-dldo1 {
+			compatible = "xpower-vregulator,ext-dldo1";
+			dldo1-supply = <&reg_ext_axp1530_dldo1>;
+		};
+	};
+
+	pmu0: pmu@34 {
+		compatible = "x-powers,axp2202";
+		reg = <0x35>;
+		status = "okay";
+		interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
+		interrupt-parent = <&nmi_intc>;
+		x-powers,drive-vbus-en;
+		pmu_reset = <1>;
+		pmu_irq_wakeup = <1>;
+		pmu_hot_shutdown = <1>;
+
+		wakeup-source;
+
+		powerkey0: powerkey@0 {
+			status = "okay";
+			compatible = "x-powers,axp2101-pek";
+			pmu_powkey_off_time = <6000>;
+			pmu_powkey_off_func = <0>;
+			pmu_powkey_off_en = <1>;
+			pmu_powkey_long_time = <1500>;
+			pmu_powkey_on_time = <512>;
+			wakeup_rising;
+			wakeup_falling;
+		};
+
+		regulator0: regulators@0 {
+			reg_dcdc1: dcdc1 {
+				regulator-name = "axp2202-dcdc1";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <1540000>;
+				regulator-ramp-delay = <250>;
+				regulator-enable-ramp-delay = <1000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+			reg_dcdc2: dcdc2 {
+				regulator-name = "axp2202-dcdc2";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <3400000>;
+				regulator-ramp-delay = <250>;
+				regulator-enable-ramp-delay = <1000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+			reg_dcdc3: dcdc3 {
+				regulator-name = "axp2202-dcdc3";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <1840000>;
+				regulator-ramp-delay = <250>;
+				regulator-enable-ramp-delay = <1000>;
+				regulator-always-on;
+			};
+			reg_dcdc4: dcdc4 {
+				regulator-name = "axp2202-dcdc4";
+				regulator-min-microvolt = <1000000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-ramp-delay = <250>;
+				regulator-enable-ramp-delay = <1000>;
+			};
+			reg_rtcldo: rtcldo {
+				/* RTC_LDO is a fixed, always-on regulator */
+				regulator-name = "axp2202-rtcldo";
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+			reg_aldo1: aldo1 {
+				regulator-name = "axp2202-aldo1";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <3500000>;
+				regulator-enable-ramp-delay = <1000>;
+			};
+			reg_aldo2: aldo2 {
+				regulator-name = "axp2202-aldo2";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <3500000>;
+				regulator-enable-ramp-delay = <1000>;
+			};
+			reg_aldo3: aldo3 {
+				regulator-name = "axp2202-aldo3";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <3500000>;
+				regulator-enable-ramp-delay = <1000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+			reg_aldo4: aldo4 {
+				regulator-name = "axp2202-aldo4";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <3500000>;
+				regulator-enable-ramp-delay = <1000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+			reg_bldo1: bldo1 {
+				regulator-name = "axp2202-bldo1";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <3500000>;
+				regulator-enable-ramp-delay = <1000>;
+			};
+			reg_bldo2: bldo2 {
+				regulator-name = "axp2202-bldo2";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <3500000>;
+				regulator-enable-ramp-delay = <1000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+			reg_bldo3: bldo3 {
+				regulator-name = "axp2202-bldo3";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <3500000>;
+				regulator-enable-ramp-delay = <1000>;
+			};
+			reg_bldo4: bldo4 {
+				regulator-name = "axp2202-bldo4";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <3500000>;
+				regulator-enable-ramp-delay = <1000>;
+			};
+			reg_cldo1: cldo1 {
+				regulator-name = "axp2202-cldo1";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <3500000>;
+				regulator-enable-ramp-delay = <1000>;
+			};
+			reg_cldo2: cldo2 {
+				regulator-name = "axp2202-cldo2";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <3500000>;
+				regulator-enable-ramp-delay = <1000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+			reg_cldo3: cldo3 {
+				regulator-name = "axp2202-cldo3";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <3500000>;
+				regulator-ramp-delay = <2500>;
+				regulator-enable-ramp-delay = <1000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+			reg_cldo4: cldo4 {
+				regulator-name = "axp2202-cldo4";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <3500000>;
+				regulator-enable-ramp-delay = <1000>;
+			};
+			reg_cpusldo: cpusldo {
+				/* cpus */
+				regulator-name = "axp2202-cpusldo";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <1400000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+			reg_vmid: vmid {
+				regulator-name = "axp2202-vmid";
+				regulator-enable-ramp-delay = <1000>;
+			};
+			reg_drivevbus: drivevbus {
+				regulator-name = "axp2202-drivevbus";
+				regulator-enable-ramp-delay = <1000>;
+				drivevbusin-supply = <&reg_vmid>;
+			};
+		};
+
+		virtual-dcdc1 {
+			compatible = "xpower-vregulator,dcdc1";
+			dcdc1-supply = <&reg_dcdc1>;
+		};
+		virtual-dcdc2 {
+			compatible = "xpower-vregulator,dcdc2";
+			dcdc2-supply = <&reg_dcdc2>;
+		};
+		virtual-dcdc3 {
+			compatible = "xpower-vregulator,dcdc3";
+			dcdc3-supply = <&reg_dcdc3>;
+		};
+		virtual-dcdc4 {
+			compatible = "xpower-vregulator,dcdc4";
+			dcdc4-supply = <&reg_dcdc4>;
+		};
+		virtual-rtcldo {
+			compatible = "xpower-vregulator,rtcldo";
+			rtcldo-supply = <&reg_rtcldo>;
+		};
+		virtual-aldo1 {
+			compatible = "xpower-vregulator,aldo1";
+			aldo1-supply = <&reg_aldo1>;
+		};
+		virtual-aldo2 {
+			compatible = "xpower-vregulator,aldo2";
+			aldo2-supply = <&reg_aldo2>;
+		};
+		virtual-aldo3 {
+			compatible = "xpower-vregulator,aldo3";
+			aldo3-supply = <&reg_aldo3>;
+		};
+		virtual-aldo4 {
+			compatible = "xpower-vregulator,aldo4";
+			aldo4-supply = <&reg_aldo4>;
+		};
+		virtual-bldo1 {
+			compatible = "xpower-vregulator,bldo1";
+			bldo1-supply = <&reg_bldo1>;
+		};
+		virtual-bldo2 {
+			compatible = "xpower-vregulator,bldo2";
+			bldo2-supply = <&reg_bldo2>;
+		};
+		virtual-bldo3 {
+			compatible = "xpower-vregulator,bldo3";
+			bldo3-supply = <&reg_bldo3>;
+		};
+		virtual-bldo4 {
+			compatible = "xpower-vregulator,bldo4";
+			bldo4-supply = <&reg_bldo4>;
+		};
+		virtual-cldo1 {
+			compatible = "xpower-vregulator,cldo1";
+			cldo1-supply = <&reg_cldo1>;
+		};
+		virtual-cldo2 {
+			compatible = "xpower-vregulator,cldo2";
+			cldo2-supply = <&reg_cldo2>;
+		};
+		virtual-cldo3 {
+			compatible = "xpower-vregulator,cldo3";
+			cldo3-supply = <&reg_cldo3>;
+		};
+		virtual-cldo4 {
+			compatible = "xpower-vregulator,cldo4";
+			cldo4-supply = <&reg_cldo4>;
+		};
+		virtual-cpusldo {
+			compatible = "xpower-vregulator,cpusldo";
+			cpusldo-supply = <&reg_cpusldo>;
+		};
+		virtual-drivevbus {
+			compatible = "xpower-vregulator,drivevbus";
+			drivevbus-supply = <&reg_drivevbus>;
+		};
+		axp_gpio0: axp_gpio@0 {
+			gpio-controller;
+			#size-cells = <0>;
+			#gpio-cells = <6>;
+			status = "okay";
+		};
+	};
+};
