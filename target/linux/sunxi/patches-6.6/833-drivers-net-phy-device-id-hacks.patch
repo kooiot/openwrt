@@ -1,6 +1,6 @@
 --- a/drivers/net/phy/phy_device.c	2021-12-22 10:48:18.055470157 +0800
 +++ b/drivers/net/phy/phy_device.c	2021-12-22 10:48:40.373993314 +0800
-@@ -32,6 +32,7 @@
+@@ -38,6 +38,7 @@
  #include <linux/string.h>
  #include <linux/uaccess.h>
  #include <linux/unistd.h>
@@ -8,9 +8,9 @@
  
  MODULE_DESCRIPTION("PHY library");
  MODULE_AUTHOR("Andy Fleming");
-@@ -853,6 +854,13 @@
- 	if (r)
- 		return ERR_PTR(r);
+@@ -972,6 +973,13 @@ struct phy_device *get_phy_device(struct
+ 						 true, &c45_ids);
+ 	}
  
 +	if (phy_id == 0) {
 +		dev_info(&bus->dev, "%s: phy_id:%x %pOF\n", __func__, phy_id, bus->dev.of_node);

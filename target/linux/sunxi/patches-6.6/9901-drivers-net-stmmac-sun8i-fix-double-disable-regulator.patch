@@ -1,9 +1,9 @@
 --- a/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
 +++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
-@@ -1045,8 +1045,14 @@
+@@ -1063,8 +1063,14 @@ static void sun8i_dwmac_exit(struct plat
  	if (gmac->variant->soc_has_internal_phy)
  		sun8i_dwmac_unpower_internal_phy(gmac);
- 
+
 -	regulator_disable(gmac->regulator_phy);
 -	regulator_disable(gmac->regulator_phy_io);
 +	if (gmac->regulator_phy) {
@@ -15,5 +15,5 @@
 +		gmac->regulator_phy_io = NULL;
 +	}
  }
- 
+
  static void sun8i_dwmac_set_mac_loopback(void __iomem *ioaddr, bool enable)
