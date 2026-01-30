@@ -89,6 +89,7 @@ platform_check_image() {
 		;;
 	"kooiot,tlink-e1-v0"|\
 	"kooiot,tlink-e1"|\
+	"kooiot,tlink-e2"|\
 	"kooiot,tlink-dly-e102"|\
 	"kooiot,tlink-dly-e204")
 		tlink_check_image "sun8i-t113s" "$1" && return 0
@@ -130,6 +131,7 @@ platform_pre_upgrade() {
 	"kooiot,tlink-s1"|\
 	"kooiot,tlink-e1-v0"|\
 	"kooiot,tlink-e1"|\
+	"kooiot,tlink-e2"|\
 	"kooiot,tlink-ok-a40i"|\
 	"kooiot,tlink-dj-a40i-e"|\
 	"kooiot,tlink-dr4-a40i"|\
