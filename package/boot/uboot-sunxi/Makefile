@@ -526,6 +526,12 @@ define U-Boot/tlink_e1
   BUILD_DEVICES:=kooiot_tlink-e1
 endef
 
+define U-Boot/tlink_e2
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink E2
+  BUILD_DEVICES:=kooiot_tlink-e2
+endef
+
 define U-Boot/tlink_dly_e102
   BUILD_SUBTARGET:=cortexa7
   NAME:=ThingsLink DLY-E102
@@ -622,6 +628,7 @@ UBOOT_TARGETS := \
 	tlink_m408 \
 	tlink_m416 \
 	tlink_e1 \
+	tlink_e2 \
 	tlink_s1 \
 	tlink_dly_e102 \
 	tlink_dly_e102_spinand \
