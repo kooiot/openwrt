@@ -1605,7 +1605,7 @@ define KernelPackage/usb-net-ch397
   TITLE:=QingHeng CH397 USB ethernet support
   KCONFIG:=CONFIG_USB_NET_CH397
   FILES:=$(LINUX_DIR)/drivers/net/usb/ch397.ko
-  AUTOLOAD:=$(call AutoProbe,ch397)
+  AUTOLOAD:=$(call AutoLoad,39,ch397,1)
   $(call AddDepends/usb-net)
 endef
 
