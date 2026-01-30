@@ -10,7 +10,7 @@
  
  #define PHY_MODE_MARVELL	0x0000
  #define MII_MARVELL_LED_CTRL	0x0018
-@@ -822,6 +825,55 @@ static int ax88772_phylink_setup(struct
+@@ -838,6 +841,55 @@ static int ax88772_phylink_setup(struct
  	return 0;
  }
  
@@ -66,8 +66,8 @@
  static int ax88772_bind(struct usbnet *dev, struct usb_interface *intf)
  {
  	struct asix_common_private *priv;
-@@ -837,9 +889,14 @@ static int ax88772_bind(struct usbnet *d
- 	usbnet_get_endpoints(dev, intf);
+@@ -855,9 +907,14 @@ static int ax88772_bind(struct usbnet *d
+ 		return ret;
  
  	/* Maybe the boot loader passed the MAC address via device tree */
 -	if (!eth_platform_get_mac_address(&dev->udev->dev, buf)) {
