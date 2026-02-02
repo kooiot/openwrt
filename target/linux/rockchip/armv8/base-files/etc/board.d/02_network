@@ -28,6 +28,7 @@ rockchip_setup_interfaces()
 	friendlyarm,nanopi-r5c|\
 	firefly,rk3568-roc-pc|\
 	friendlyarm,nanopi-r76s|\
+	hinlink,h28k|\
 	lunzn,fastrhino-r66s|\
 	radxa,e20c|\
 	radxa,e25|\
@@ -103,6 +104,7 @@ rockchip_setup_macs()
 	friendlyarm,nanopi-r2c|\
 	friendlyarm,nanopi-r2s|\
 	friendlyarm,nanopi-r76s|\
+	hinlink,h28k|\
 	linkease,easepi-r1|\
 	lunzn,fastrhino-r66s)
 		wan_mac=$(macaddr_generate_from_mmc_cid mmcblk0)
