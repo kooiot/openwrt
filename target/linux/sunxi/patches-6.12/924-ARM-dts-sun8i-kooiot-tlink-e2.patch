@@ -305,7 +305,7 @@
 +		// drive-strength = <30>;
 +	};
 +
-+	uart5_pd_pins: uart4-pd7-pins {
++	uart5_pd_pins: uart5-pd-pins {
 +		pins = "PD5", "PD6";
 +		function = "uart5";
 +		// drive-strength = <30>;
