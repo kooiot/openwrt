@@ -11,7 +11,7 @@ FAT32_BLOCK_SIZE=1024
 FAT32_BLOCKS=$(shell echo $$(($(CONFIG_TARGET_KERNEL_PARTSIZE)*1024*1024/$(FAT32_BLOCK_SIZE))))
 
 DEVICE_VARS := SUNXI_DTS SUNXI_DTS_DIR
-KERNEL_LOADADDR:=0x40008000
+KERNEL_LOADADDR:=0x41000000
 
 define Build/sunxi-tina-img
 	# Creates the final SD/eMMC images, 
@@ -20,17 +20,15 @@ define Build/sunxi-tina-img
 	rm -f $@.boot
 	mkfs.fat $@.boot -C $(FAT32_BLOCKS)
 	
-	rm -f uImage
-	mkimage -A arm -O linux -T kernel -C none -a "0x40008000" -e "0x40008000" -n "Linux kernel" -d $(IMAGE_KERNEL) $(STAGING_DIR_IMAGE)/$(DEVICE_NAME)-uImage
+	rm -f $(STAGING_DIR_IMAGE)/$(DEVICE_NAME)-uImage
+	mkimage -A arm -O linux -T kernel -C none -a "0x41000000" -e "0x41000000" -n "Linux kernel" -d $(IMAGE_KERNEL) $(STAGING_DIR_IMAGE)/$(DEVICE_NAME)-uImage
 
 	# Use boot.scr instead of extlinux
 	mkimage -A arm -O linux -T script -C none -a 0 -e 0 -d $(if $(1),$(1),mmc).bootscript $(STAGING_DIR_IMAGE)/$(DEVICE_NAME)-boot.scr
 	# echo $$(stat -c%s $(IMAGE_ROOTFS)) > $@.boot/rootfs.size
 
-	mcopy -i $@.boot $(DTS_DIR)/$(SUNXI_DTS).dtb ::sunxi.dtb
-	mcopy -i $@.boot $(STAGING_DIR_IMAGE)/$(DEVICE_NAME)-uImage ::kernel.img
-	# mcopy -i $@.boot $(IMAGE_KERNEL) ::kernel.img
-	# mcopy -i $@.boot -s extlinux ::/
+	mcopy -i $@.boot $(DTS_DIR)/$(SUNXI_DTS).dtb ::dtb
+	mcopy -i $@.boot $(STAGING_DIR_IMAGE)/$(DEVICE_NAME)-uImage ::uImage
 	mcopy -i $@.boot $(STAGING_DIR_IMAGE)/$(DEVICE_NAME)-boot.scr ::boot.scr
 	./gen_sunxi_tina_sdcard_image.sh $@ \
 		$@.boot \

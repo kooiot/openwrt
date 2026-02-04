@@ -26,11 +26,24 @@
 #include "rp-lcd-gpio.dtsi"
 
 /{
-    board = "dr4-t536";
-    model = "dr4-t536";
+    board = "tlink-t536";
+    model = "tlink-t536";
+	compatible = "allwinner,t536", "arm,sun55iw6p1";
 
     /* bluetooth uart use /dev/ttyAS1 */
     bt_uart_idx = "1"; 
+
+	aliases {
+		serial0 = &uart0;
+		mmc0 = &sdc0;
+		mmc1 = &sdc2;
+		ethernet0 = &gmac0;
+		ethernet1 = &gmac1;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
 
     usb20_power: usb20-power {
         compatible = "regulator-fixed";
@@ -351,4 +364,8 @@
         pins = "PL7", "PL6", "PL10", "PM5";
         function="gpio_out";
     };
+};
+
+&sdc2 {
+    status = "okay";
 };

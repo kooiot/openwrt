@@ -284,12 +284,10 @@
 		bias-pull-up;
 	};
 
-	/*
 	uart0_pins_b: uart0_pins@1 {
 		pins = "PB9", "PB10";
 		function = "io_disabled";
 	};
-	*/
 
 	uart1_pins_a: uart1_pins@0 {
 		pins = "PG6", "PG7", "PG8", "PG9";
@@ -914,10 +912,9 @@
 };
 
 &uart0 {
-	// pinctrl-names = "default", "sleep";
-	pinctrl-names = "default";
+	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&uart0_pins_a>;
-	// pinctrl-1 = <&uart0_pins_b>;
+	pinctrl-1 = <&uart0_pins_b>;
 	status = "okay";
 };
 
@@ -2206,9 +2203,10 @@
 
 &gmac0 {
 	phy-mode = "rgmii";
-	pinctrl-names = "default", "sleep";
+	// pinctrl-names = "default", "sleep";
+	pinctrl-names = "default";
 	pinctrl-0 = <&gmac0_pins_default>;
-	pinctrl-1 = <&gmac0_pins_sleep>;
+	// pinctrl-1 = <&gmac0_pins_sleep>;
 	aw,soc-phy25m;
 	tx-delay = <15>;
 	rx-delay = <3>;
@@ -2227,9 +2225,10 @@
 
 &gmac1 {
 	phy-mode = "rgmii";
-	pinctrl-names = "default", "sleep";
+	// pinctrl-names = "default", "sleep";
+	pinctrl-names = "default";
 	pinctrl-0 = <&gmac1_pins_default>;
-	pinctrl-1 = <&gmac1_pins_sleep>;
+	// pinctrl-1 = <&gmac1_pins_sleep>;
 	aw,soc-phy25m;
 	tx-delay = <15>;
 	rx-delay = <3>;
