@@ -12,7 +12,7 @@
  	sun9i-a80-cubieboard4.dtb
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-t113-tlink-e2.dts
-@@ -0,0 +1,552 @@
+@@ -0,0 +1,601 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 +
@@ -67,7 +67,7 @@
 +		regulator-name = "usbvbus";
 +		regulator-min-microvolt = <5000000>;
 +		regulator-max-microvolt = <5000000>;
-+		//gpio = <&pio 3 9 GPIO_ACTIVE_LOW>; // PD19 
++		//gpio = <&pio 3 9 GPIO_ACTIVE_LOW>; // PD9 
 +		vin-supply = <&reg_vcc>;
 +	};
 +
@@ -129,10 +129,8 @@
 +
 +	leds {
 +		compatible = "gpio-leds";
-+		/*
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&leds_pins>;
-+		*/
++		// pinctrl-names = "default";
++		// pinctrl-0 = <&leds_pins>;
 +
 +		status_led {
 +			linux,default-trigger = "heartbeat";
@@ -187,11 +185,13 @@
 +		};
 +		*/
 +
++		/*
 +		eth1_reset {
 +			gpio-export,name = "eth1_reset";
 +			gpio-export,output=<0>;
-+			gpios = <&pio 3 19 GPIO_ACTIVE_HIGH>; /* PD19 */
++			gpios = <&pio 3 19 GPIO_ACTIVE_HIGH>; // PD19
 +		};
++		*/
 +
 +		pcie_reset {
 +			gpio-export,name = "pcie_reset";
@@ -204,7 +204,56 @@
 +			gpio-export,output=<0>;
 +			gpios = <&pio 3 3 GPIO_ACTIVE_LOW>; /* PD3 */
 +		};
++
++		di_en_1 {
++			gpio-export,name = "di_en_1";
++			gpio-export,output=<0>;
++			gpios = <&pio 1 3 GPIO_ACTIVE_LOW>; /* PB4 */
++		};
++
++		di_en_2 {
++			gpio-export,name = "di_en_2";
++			gpio-export,output=<0>;
++			gpios = <&pio 1 5 GPIO_ACTIVE_LOW>; /* PB5 */
++		};
++
++		di_1 {
++			gpio-export,name = "di_1";
++			gpio-export,direction_may_change = <0>;
++			gpios = <&pio 3 10 GPIO_ACTIVE_LOW>; /* PD10 */
++		};
++
++		di_2 {
++			gpio-export,name = "di_2";
++			gpio-export,direction_may_change = <0>;
++			gpios = <&pio 3 11 GPIO_ACTIVE_LOW>; /* PD11 */
++		};
++
++		di_3 {
++			gpio-export,name = "di_3";
++			gpio-export,direction_may_change = <0>;
++			gpios = <&pio 3 12 GPIO_ACTIVE_LOW>; /* PD12 */
++		};
++
++		di_4 {
++			gpio-export,name = "di_4";
++			gpio-export,direction_may_change = <0>;
++			gpios = <&pio 3 13 GPIO_ACTIVE_LOW>; /* PD13 */
++		};
++
++		di_5 {
++			gpio-export,name = "di_5";
++			gpio-export,direction_may_change = <0>;
++			gpios = <&pio 3 14 GPIO_ACTIVE_LOW>; /* PD14 */
++		};
++
++		di_6 {
++			gpio-export,name = "di_6";
++			gpio-export,direction_may_change = <0>;
++			gpios = <&pio 3 15 GPIO_ACTIVE_LOW>; /* PD15 */
++		};
 +	};
++
 +	// rfkill_wlan needed by RTL official driver
 +	rfkill_wlan {
 +		compatible = "rfkill-gpio";
