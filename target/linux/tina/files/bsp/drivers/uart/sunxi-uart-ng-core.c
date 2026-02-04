@@ -897,7 +897,7 @@ static void sunxi_uart_set_termios(struct uart_port *port, struct ktermios *term
 	dlh = quot >> 8;
 	SERIAL_DBG(port->dev, "set baudrate %d, quot %d\n", baud, quot);
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 83))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 189))
 	if (uart_console(port))
 		console_lock();
 #endif
@@ -993,7 +993,7 @@ static void sunxi_uart_set_termios(struct uart_port *port, struct ktermios *term
 
 	spin_unlock_irqrestore(&port->lock, flags);
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 83))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 189))
 	if (uart_console(port))
 		console_unlock();
 #endif
