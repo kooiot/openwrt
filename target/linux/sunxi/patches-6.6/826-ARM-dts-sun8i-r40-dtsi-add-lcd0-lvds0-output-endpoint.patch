@@ -1,9 +1,9 @@
 --- a/arch/arm/boot/dts/allwinner/sun8i-r40.dtsi
 +++ b/arch/arm/boot/dts/allwinner/sun8i-r40.dtsi
-@@ -1143,6 +1143,10 @@
+@@ -1395,6 +1395,10 @@
  					#size-cells = <0>;
  					reg = <1>;
- 
+
 +					tcon_lcd0_out_lcd0_lvds0_out: endpoint@0 {
 +						reg = <0>;
 +					};

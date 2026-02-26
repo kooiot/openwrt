@@ -12,7 +12,7 @@
  enum stmmac_state {
 --- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
 +++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
-@@ -7794,6 +7794,7 @@ int stmmac_dvr_probe(struct device *devi
+@@ -7807,6 +7807,7 @@ int stmmac_dvr_probe(struct device *devi
  			__func__, ret);
  		goto error_netdev_register;
  	}
@@ -20,7 +20,7 @@
 
  #ifdef CONFIG_DEBUG_FS
  	stmmac_init_fs(ndev);
-@@ -7844,8 +7845,10 @@ void stmmac_dvr_remove(struct device *de
+@@ -7857,8 +7858,10 @@ void stmmac_dvr_remove(struct device *de
 
  	stmmac_stop_all_dma(priv);
  	stmmac_mac_set(priv, priv->ioaddr, false);
