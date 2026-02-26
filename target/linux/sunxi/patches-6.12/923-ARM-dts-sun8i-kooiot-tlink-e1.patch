@@ -1,6 +1,6 @@
 --- a/arch/arm/boot/dts/allwinner/Makefile
 +++ b/arch/arm/boot/dts/allwinner/Makefile
-@@ -342,7 +342,9 @@ dtb-$(CONFIG_MACH_SUN8I) += \
+@@ -282,7 +282,9 @@ dtb-$(CONFIG_MACH_SUN8I) += \
  	sun8i-t113-tlink-rp-t113.dtb \
 	sun8i-t113-tlink-dly-e102.dtb \
 	sun8i-t113-tlink-dly-e102-spinand.dtb \

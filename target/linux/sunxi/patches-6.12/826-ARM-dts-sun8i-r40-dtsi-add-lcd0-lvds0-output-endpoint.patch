@@ -1,9 +1,13 @@
 --- a/arch/arm/boot/dts/allwinner/sun8i-r40.dtsi
 +++ b/arch/arm/boot/dts/allwinner/sun8i-r40.dtsi
+<<<<<<< HEAD:target/linux/sunxi/patches-6.12/826-ARM-dts-sun8i-r40-dtsi-add-lcd0-lvds0-output-endpoint.patch
 @@ -1397,6 +1397,10 @@
+=======
+@@ -1395,6 +1395,10 @@
+>>>>>>> a8e1802116 (sunxi: update our kernel patches):target/linux/sunxi/patches-6.6/826-ARM-dts-sun8i-r40-dtsi-add-lcd0-lvds0-output-endpoint.patch
  					#size-cells = <0>;
  					reg = <1>;
- 
+
 +					tcon_lcd0_out_lcd0_lvds0_out: endpoint@0 {
 +						reg = <0>;
 +					};

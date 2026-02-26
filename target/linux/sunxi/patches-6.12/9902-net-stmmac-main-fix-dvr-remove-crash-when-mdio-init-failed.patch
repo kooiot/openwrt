@@ -12,7 +12,11 @@
  enum stmmac_state {
 --- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
 +++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+<<<<<<< HEAD:target/linux/sunxi/patches-6.12/9902-net-stmmac-main-fix-dvr-remove-crash-when-mdio-init-failed.patch
 @@ -7903,6 +7903,7 @@ int stmmac_dvr_probe(struct device *devi
+=======
+@@ -7807,6 +7807,7 @@ int stmmac_dvr_probe(struct device *devi
+>>>>>>> a8e1802116 (sunxi: update our kernel patches):target/linux/sunxi/patches-6.6/9902-net-stmmac-main-fix-dvr-remove-crash-when-mdio-init-failed.patch
  			__func__, ret);
  		goto error_netdev_register;
  	}
@@ -20,7 +24,11 @@
 
  #ifdef CONFIG_DEBUG_FS
  	stmmac_init_fs(ndev);
+<<<<<<< HEAD:target/linux/sunxi/patches-6.12/9902-net-stmmac-main-fix-dvr-remove-crash-when-mdio-init-failed.patch
 @@ -7952,7 +7953,9 @@ void stmmac_dvr_remove(struct device *de
+=======
+@@ -7857,8 +7858,10 @@ void stmmac_dvr_remove(struct device *de
+>>>>>>> a8e1802116 (sunxi: update our kernel patches):target/linux/sunxi/patches-6.6/9902-net-stmmac-main-fix-dvr-remove-crash-when-mdio-init-failed.patch
 
  	stmmac_stop_all_dma(priv);
  	stmmac_mac_set(priv, priv->ioaddr, false);

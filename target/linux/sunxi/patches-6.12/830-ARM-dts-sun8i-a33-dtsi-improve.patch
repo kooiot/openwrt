@@ -1,9 +1,9 @@
 --- a/arch/arm/boot/dts/allwinner/sun8i-a23-a33.dtsi	2021-12-10 17:47:18.181082708 +0800
 +++ b/arch/arm/boot/dts/allwinner/sun8i-a23-a33.dtsi	2021-12-10 17:55:57.716674700 +0800
-@@ -472,6 +472,22 @@
+@@ -481,6 +481,22 @@
  			status = "disabled";
  		};
- 
+
 +		sid: eeprom@1c23800 {
 +			compatible = "allwinner,sun7i-a20-sid";
 +			reg = <0x01c23800 0x200>;
