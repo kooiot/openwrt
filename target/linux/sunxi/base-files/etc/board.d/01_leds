@@ -32,6 +32,7 @@ kooiot,tlink-k2x)
 	;;
 kooiot,tlink-e1|\
 kooiot,tlink-e2|\
+kooiot,tlink-e2-spinand|\
 kooiot,tlink-s1)
 	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "wwan0"
 	;;
