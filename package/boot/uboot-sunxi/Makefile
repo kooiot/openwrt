@@ -532,6 +532,13 @@ define U-Boot/tlink_e2
   BUILD_DEVICES:=kooiot_tlink-e2
 endef
 
+define U-Boot/tlink_e2_spinand
+  BUILD_SUBTARGET:=cortexa7
+  NAME:=ThingsLink E2 (SPI NAND)
+  BUILD_DEVICES:=kooiot_tlink-e2-spinand
+  UENV_NAND:=nand
+endef
+
 define U-Boot/tlink_dly_e102
   BUILD_SUBTARGET:=cortexa7
   NAME:=ThingsLink DLY-E102
@@ -540,7 +547,7 @@ endef
 
 define U-Boot/tlink_dly_e102_spinand
   BUILD_SUBTARGET:=cortexa7
-  NAME:=ThingsLink DLY-E102
+  NAME:=ThingsLink DLY-E102 (SPI NAND)
   BUILD_DEVICES:=kooiot_tlink-dly-e102-spinand
   UENV_NAND:=nand
 endef
@@ -629,6 +636,7 @@ UBOOT_TARGETS := \
 	tlink_m416 \
 	tlink_e1 \
 	tlink_e2 \
+	tlink_e2_spinand \
 	tlink_s1 \
 	tlink_dly_e102 \
 	tlink_dly_e102_spinand \

@@ -9,7 +9,7 @@
  dtb-$(CONFIG_MACH_SUN8I_H3) += \
  	sun8i-h2-plus-bananapi-m2-zero.dtb \
  	sun8i-h2-plus-libretech-all-h3-cc.dtb \
-@@ -798,19 +800,41 @@ dtb-$(CONFIG_MACH_SUN8I_H3) += \
+@@ -798,19 +800,43 @@ dtb-$(CONFIG_MACH_SUN8I_H3) += \
  	sun8i-h3-orangepi-plus2e.dtb \
  	sun8i-h3-orangepi-zero-plus2.dtb \
  	sun8i-h3-rervision-dvk.dtb \
@@ -49,7 +49,9 @@
 +	sun8i-t113s-tlink-dly-e102.dtb \
 +	sun8i-t113s-tlink-dly-e102-spinand.dtb \
 +	sun8i-t113s-tlink-dly-e204.dtb \
-+	sun8i-t113s-tlink-e1.dtb
++	sun8i-t113s-tlink-e1.dtb \
++	sun8i-t113s-tlink-e2.dtb \
++	sun8i-t113s-tlink-e2-spinand.dtb
  dtb-$(CONFIG_MACH_SUN50I_H5) += \
  	sun50i-h5-bananapi-m2-plus.dtb \
  	sun50i-h5-emlid-neutis-n5-devboard.dtb \

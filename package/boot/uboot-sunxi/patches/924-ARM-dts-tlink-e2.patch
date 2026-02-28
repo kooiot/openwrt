@@ -20,7 +20,7 @@
 +CONFIG_CONS_INDEX=5
 --- /dev/null
 +++ b/arch/arm/dts/sun8i-t113s-tlink-e2.dts
-@@ -0,0 +1,124 @@
+@@ -0,0 +1,138 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 +
@@ -144,4 +144,18 @@
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&uart4_pd_pins>;
 +	status = "okay";
++};
++
++&spi0 {
++	pinctrl-0 = <&spi0_pins>;
++	pinctrl-names = "default";
++	status = "disabled";
++
++	flash: spinand@0 {
++		#address-cells = <1>;
++		#size-cells = <1>;
++		compatible = "spi-nand";
++		reg = <0>;
++		spi-max-frequency = <50000000>;
++	};
 +};
