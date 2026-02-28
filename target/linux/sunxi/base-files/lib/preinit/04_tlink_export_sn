@@ -94,7 +94,8 @@ do_kooiot_tlink_generic() {
 	"kooiot,tlink-k4g"|\
 	"kooiot,tlink-e1-v0"|\
 	"kooiot,tlink-e1"|\
-	"kooiot,tlink-e2")
+	"kooiot,tlink-e2"|\
+	"kooiot,tlink-e2-spinand")
 		do_product_sn_kooiot_nvmem "3" "0050"
 		;;
 	"kooiot,tlink-k2x")
