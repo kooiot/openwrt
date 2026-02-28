@@ -22,6 +22,7 @@ platform_check_image() {
 	local diskdev partdev diff
 
 	case "$(board_name)" in
+		"kooiot,tlink-e2-spinand"|\
 		"kooiot,tlink-dly-e102-spinand")
 			nand_do_platform_check "$(board_name)" "$1"
 			return $?
@@ -132,6 +133,7 @@ platform_pre_upgrade() {
 	"kooiot,tlink-e1-v0"|\
 	"kooiot,tlink-e1"|\
 	"kooiot,tlink-e2"|\
+	"kooiot,tlink-e2-spinand"|\
 	"kooiot,tlink-ok-a40i"|\
 	"kooiot,tlink-dj-a40i-e"|\
 	"kooiot,tlink-dr4-a40i"|\
@@ -152,6 +154,7 @@ platform_copy_config() {
 	local partdev
 
 	case "$(board_name)" in
+		"kooiot,tlink-e2-spinand"|\
 		"kooiot,tlink-dly-e102-spinand")
 			echo "Backup configuration is not supported!!!!"
 			return 0;
@@ -169,6 +172,7 @@ platform_do_upgrade() {
 	local diskdev partdev diff
 
 	case "$(board_name)" in
+		"kooiot,tlink-e2-spinand"|\
 		"kooiot,tlink-dly-e102-spinand")
 			echo "Do SPI-NAND sysupgrade!!!"
 			CI_KERNPART="kernel"

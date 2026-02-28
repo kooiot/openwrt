@@ -747,6 +747,28 @@ define Device/kooiot_tlink-e2
 endef
 TARGET_DEVICES += kooiot_tlink-e2
 
+define Device/kooiot_tlink-e2-spinand
+  $(Device/NAND)
+  DEVICE_VENDOR := KooIoT
+  DEVICE_MODEL := ThingsLink E2 (SPI NAND)
+  DEVICE_PACKAGES:=kmod-rtc-sunxi \
+    wpad-basic-mbedtls \
+    kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-usb-net-ch397 \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+	kmod-can-bcm kmod-can-raw ip-full\
+    uqmi fdisk usbutils freeioe wwanleds \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+    tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
+    blockd kmod-usb-storage \
+	usb-otg-sunxi kmod-usb-gadget-serial
+  SOC := sun8i-t113
+endef
+TARGET_DEVICES += kooiot_tlink-e2-spinand
+
 define Device/kooiot_tlink-dly-e102
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink DLY-E102
