@@ -303,7 +303,7 @@
 +};
 --- /dev/null
 +++ b/drivers/mtd/nand/spi/dosilicon.c
-@@ -0,0 +1,269 @@
+@@ -0,0 +1,271 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Dosilicon SPI NAND Flash driver for DS35 Series
@@ -342,8 +342,10 @@
 +		SPINAND_PROG_LOAD(true, 0, NULL, 0));
 +
 +static SPINAND_OP_VARIANTS(ds_update_cache_variants,
-+		SPINAND_PROG_LOAD_X4(false, 0, NULL, 0),
-+		SPINAND_PROG_LOAD(false, 0, NULL, 0));
++		SPINAND_PROG_LOAD_X4(true, 0, NULL, 0),
++		SPINAND_PROG_LOAD(true, 0, NULL, 0));
++		//SPINAND_PROG_LOAD_X4(false, 0, NULL, 0), // 34/84 command won't update ECC when write FF
++		//SPINAND_PROG_LOAD(false, 0, NULL, 0));
 +
 +static int ds_ooblayout_64_ecc(struct mtd_info *mtd, int section, struct mtd_oob_region *region)
 +{
