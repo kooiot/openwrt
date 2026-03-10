@@ -10,9 +10,9 @@
  extern const struct spinand_manufacturer macronix_spinand_manufacturer;
 --- a/drivers/mtd/nand/spi/core.c
 +++ b/drivers/mtd/nand/spi/core.c
-@@ -822,6 +822,7 @@ static const struct nand_ops spinand_ops
+@@ -826,6 +826,7 @@ static const struct nand_ops spinand_ops
  };
- 
+
  static const struct spinand_manufacturer *spinand_manufacturers[] = {
 +	&dosilicon_spinand_manufacturer,
  	&foresee_spinand_manufacturer,
@@ -20,11 +20,11 @@
  	&macronix_spinand_manufacturer,
 --- a/drivers/mtd/nand/spi/Makefile
 +++ b/drivers/mtd/nand/spi/Makefile
-@@ -1,4 +1,4 @@
- # SPDX-License-Identifier: GPL-2.0
- 
--spinand-objs := core.o foresee.o gigadevice.o macronix.o micron.o paragon.o toshiba.o winbond.o
-+spinand-objs := core.o dosilicon.o foresee.o gigadevice.o macronix.o micron.o paragon.o toshiba.o winbond.o
+@@ -3,4 +3,5 @@
+ spinand-objs := core.o esmt.o gigadevice.o macronix.o micron.o paragon.o
+ spinand-objs += toshiba.o winbond.o xtx.o
+ spinand-objs += foresee.o
++spinand-objs += dosilicon.o
  obj-$(CONFIG_MTD_SPI_NAND) += spinand.o
 --- /dev/null
 +++ b/drivers/mtd/nand/spi/dosilicon_rockchip.c
