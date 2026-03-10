@@ -24,7 +24,7 @@ KERNSIZE=$(stat -c %s "$KERNEL")
 DTBSIZE=$(stat -c %s "$DTB")
 TOTALSIZE=$(($KERNSIZE + $DTBSIZE))
 
-LEBS=$((($TOTALSIZE / ($LEBSIZE*1024)) + 17))
+LEBS=$((($TOTALSIZE / ($LEBSIZE*1024)) + 18))
 
 WORKDIR=$(mktemp -d)
 
