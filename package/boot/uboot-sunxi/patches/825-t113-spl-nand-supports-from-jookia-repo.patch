@@ -245,9 +245,10 @@ diff -Nurp a/arch/arm/mach-sunxi/spl_spi_sunxi.c b/arch/arm/mach-sunxi/spl_spi_s
 +
  /*****************************************************************************/
 
- static int spl_spi_load_image(struct spl_image_info *spl_image,
+-static int spl_spi_load_image(struct spl_image_info *spl_image,
 -			      struct spl_boot_device *bootdev)
-+			      struct spl_boot_device *bootdev
++static int spl_spi_try_load(struct spl_image_info *spl_image,
++			      struct spl_boot_device *bootdev,
 +				  struct spl_load_info *load, u32 offset,
 +				  bool allow_raw)
  {
@@ -274,7 +275,7 @@ diff -Nurp a/arch/arm/mach-sunxi/spl_spi_sunxi.c b/arch/arm/mach-sunxi/spl_spi_s
 -		ret = spl_load_simple_fit(spl_image, &load,
 -					  load_offset, header);
 +		ret = spl_load_simple_fit(spl_image, load,
-+					load_offset, header);
++					offset, header);
  	} else {
 +		if (!allow_raw && image_get_magic(header) != IH_MAGIC)
 +			return -EINVAL;
