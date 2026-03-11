@@ -3,7 +3,7 @@
 @@ -0,0 +1,20 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
-+CONFIG_DEFAULT_DEVICE_TREE="sun8i-s3-lichee-zero-plus"
++CONFIG_DEFAULT_DEVICE_TREE="allwinner/sun8i-s3-lichee-zero-plus"
 +CONFIG_SPL=y
 +CONFIG_MACH_SUN8I_V3S=y
 +CONFIG_SUNXI_DRAM_DDR3_1333=y

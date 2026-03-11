@@ -1,6 +1,6 @@
 --- a/arch/arm/dts/Makefile
 +++ b/arch/arm/dts/Makefile
-@@ -772,6 +772,8 @@ dtb-$(CONFIG_MACH_SUN8I_A83T) += \
+@@ -618,6 +618,8 @@ dtb-$(CONFIG_MACH_SUN8I_A83T) += \
  	sun8i-a83t-bananapi-m3.dtb \
  	sun8i-a83t-cubietruck-plus.dtb \
  	sun8i-a83t-tbs-a711.dtb
@@ -9,7 +9,7 @@
  dtb-$(CONFIG_MACH_SUN8I_H3) += \
  	sun8i-h2-plus-bananapi-m2-zero.dtb \
  	sun8i-h2-plus-libretech-all-h3-cc.dtb \
-@@ -798,19 +800,43 @@ dtb-$(CONFIG_MACH_SUN8I_H3) += \
+@@ -644,14 +646,35 @@ dtb-$(CONFIG_MACH_SUN8I_H3) += \
  	sun8i-h3-orangepi-plus2e.dtb \
  	sun8i-h3-orangepi-zero-plus2.dtb \
  	sun8i-h3-rervision-dvk.dtb \
@@ -34,14 +34,6 @@
 +	sun8i-r40-tlink-k4g.dtb \
 +	sun8i-t3-tlink-m408.dtb \
 +	sun8i-t3-tlink-m416.dtb
- dtb-$(CONFIG_MACH_SUN8I_V3S) += \
- 	sun8i-s3-elimo-initium.dtb \
- 	sun8i-s3-pinecube.dtb \
- 	sun8i-v3-sl631-imx179.dtb \
-+	sun8i-s3-lichee-zero-plus.dtb \
-+	sun8i-s3-tlink-s1.dtb \
-+	sun8i-v3s-sinlinx-sin-v3s.dtb \
- 	sun8i-v3s-licheepi-zero.dtb
  dtb-$(CONFIG_MACH_SUN8I_R528) += \
 -	sun8i-t113s-mangopi-mq-r-t113.dtb
 +	sun8i-t113s-mangopi-mq-r-t113.dtb \

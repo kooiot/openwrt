@@ -388,7 +388,7 @@ diff -Nurp a/common/spl/spl_ubi.c b/common/spl/spl_ubi.c
 diff -Nurp a/configs/mangopi_mq_r_defconfig b/configs/mangopi_mq_r_defconfig
 --- a/configs/mangopi_mq_r_defconfig	2024-04-10 16:56:16.963212159 +0800
 +++ b/configs/mangopi_mq_r_defconfig	2024-04-10 18:12:00.426321658 +0800
-@@ -6,10 +6,38 @@ CONFIG_MACH_SUN8I_R528=y
+@@ -10,5 +10,33 @@ CONFIG_MACH_SUN8I_R528=y
  CONFIG_DRAM_CLK=792
  CONFIG_DRAM_ZQ=8092667
  CONFIG_SUNXI_MINIMUM_DRAM_MB=128
@@ -420,11 +420,6 @@ diff -Nurp a/configs/mangopi_mq_r_defconfig b/configs/mangopi_mq_r_defconfig
 +CONFIG_SPI_FLASH_MTD=y
 +CONFIG_MTD_UBI_FASTMAP=y
 +CONFIG_MTD_UBI_FASTMAP_AUTOCONVERT=1
- CONFIG_DRAM_SUNXI_ODT_EN=0
- CONFIG_DRAM_SUNXI_TPR0=0x004a2195
- CONFIG_DRAM_SUNXI_TPR11=0x340000
- CONFIG_DRAM_SUNXI_TPR12=0x46
- CONFIG_DRAM_SUNXI_TPR13=0x34000100
 -CONFIG_CONS_INDEX=4
 +CONFIG_CONS_INDEX=2
 +CONFIG_SPI=y
