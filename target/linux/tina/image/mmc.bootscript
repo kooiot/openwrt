@@ -1,8 +1,9 @@
 part uuid mmc ${devnum}:2 uuid
 
+setenv kernel_addr_r 0x41000000
 setenv loaddtb load mmc ${devnum}:1 ${fdt_addr_r} dtb
 setenv loadkernel load mmc ${devnum}:1 ${kernel_addr_r} uImage
-setenv bootargs earlyprintk=sunxi-uart,0x02600000 initcall_debug=0 console=ttyAS0,115200 loglevel=8 root=PARTUUID=${uuid} rootwait
+setenv bootargs earlyprintk=sunxi-uart,0x02600000 initcall_debug=0 console=ttyS0,115200 console=ttyAS0,115200 loglevel=8 root=PARTUUID=${uuid} rootwait
 setenv verify N
 setenv uenvcmd run loadkernel \&\& run loaddtb \&\& bootm \$kernel_addr_r - \$fdt_addr_r
 run uenvcmd

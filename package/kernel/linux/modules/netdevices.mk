@@ -374,6 +374,38 @@ endef
 $(eval $(call KernelPackage,phy-aquantia))
 
 
+define KernelPackage/dsa
+  SUBMENU:=$(NETWORK_DEVICES_MENU)
+  TITLE:=Distributed Switch Architecture support
+  DEPENDS:=+kmod-mdio-devres +kmod-net-selftests +kmod-phylink
+  KCONFIG:=CONFIG_NET_DSA
+  FILES:=$(LINUX_DIR)/net/dsa/dsa_core.ko
+endef
+
+define KernelPackage/dsa/description
+  Kernel module support for Distributed Switch Architecture
+endef
+
+$(eval $(call KernelPackage,dsa))
+
+define KernelPackage/dsa-yt921x
+  SUBMENU:=$(NETWORK_DEVICES_MENU)
+  TITLE:=Motorcomm YT9215 ethernet switch driver
+  DEPENDS:=+kmod-dsa
+  KCONFIG:=CONFIG_NET_DSA_TAG_YT921X \
+		   CONFIG_NET_DSA_YT921X
+  FILES:=$(LINUX_DIR)/drivers/net/dsa/yt921x.ko \
+		 $(LINUX_DIR)/net/dsa/tag_yt921x.ko
+  AUTOLOAD:=$(call AutoLoad,41,yt921x,1)
+endef
+
+define KernelPackage/dsa-yt921x/description
+  Kernel module support Motorcomm YT9215 ethernet switch chip
+endef
+
+$(eval $(call KernelPackage,dsa-yt921x))
+
+
 define KernelPackage/swconfig
   SUBMENU:=$(NETWORK_DEVICES_MENU)
   TITLE:=switch configuration API

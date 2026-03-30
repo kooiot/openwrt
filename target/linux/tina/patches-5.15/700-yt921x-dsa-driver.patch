@@ -1,0 +1,91 @@
+--- a/drivers/net/dsa/Kconfig
++++ b/drivers/net/dsa/Kconfig
+@@ -147,4 +147,11 @@ config NET_DSA_VITESSE_VSC73XX_PLATFORM
+ 	  This enables support for the Vitesse VSC7385, VSC7388, VSC7395
+ 	  and VSC7398 SparX integrated ethernet switches, connected over
+ 	  a CPU-attached address bus and work in memory-mapped I/O mode.
++
++config NET_DSA_YT921X
++	tristate "Motorcomm YT9215 ethernet switch chip support"
++	select NET_DSA_TAG_YT921X
++	help
++	  This enables support for the Motorcomm YT9215 ethernet switch
++	  chip.
+ endmenu
+--- a/drivers/net/dsa/Makefile
++++ b/drivers/net/dsa/Makefile
+@@ -18,6 +18,7 @@ obj-$(CONFIG_NET_DSA_SMSC_LAN9303_MDIO)
+ obj-$(CONFIG_NET_DSA_VITESSE_VSC73XX) += vitesse-vsc73xx-core.o
+ obj-$(CONFIG_NET_DSA_VITESSE_VSC73XX_PLATFORM) += vitesse-vsc73xx-platform.o
+ obj-$(CONFIG_NET_DSA_VITESSE_VSC73XX_SPI) += vitesse-vsc73xx-spi.o
++obj-$(CONFIG_NET_DSA_YT921X) += yt921x.o
+ obj-y				+= b53/
+ obj-y				+= hirschmann/
+ obj-y				+= microchip/
+--- a/include/uapi/linux/if_ether.h
++++ b/include/uapi/linux/if_ether.h
+@@ -111,6 +111,7 @@
+ #define ETH_P_QINQ1	0x9100		/* deprecated QinQ VLAN [ NOT AN OFFICIALLY REGISTERED ID ] */
+ #define ETH_P_QINQ2	0x9200		/* deprecated QinQ VLAN [ NOT AN OFFICIALLY REGISTERED ID ] */
+ #define ETH_P_QINQ3	0x9300		/* deprecated QinQ VLAN [ NOT AN OFFICIALLY REGISTERED ID ] */
++#define ETH_P_YT921X	0x9988		/* Motorcomm YT921x DSA [ NOT AN OFFICIALLY REGISTERED ID ] */
+ #define ETH_P_EDSA	0xDADA		/* Ethertype DSA [ NOT AN OFFICIALLY REGISTERED ID ] */
+ #define ETH_P_DSA_8021Q	0xDADB		/* Fake VLAN Header for DSA [ NOT AN OFFICIALLY REGISTERED ID ] */
+ #define ETH_P_IFE	0xED3E		/* ForCES inter-FE LFB type */
+--- a/include/net/dsa.h
++++ b/include/net/dsa.h
+@@ -51,6 +51,7 @@ struct phylink_link_state;
+ #define DSA_TAG_PROTO_SEVILLE_VALUE		21
+ #define DSA_TAG_PROTO_BRCM_LEGACY_VALUE		22
+ #define DSA_TAG_PROTO_SJA1110_VALUE		23
++#define DSA_TAG_PROTO_YT921X_VALUE		24
+
+ enum dsa_tag_protocol {
+ 	DSA_TAG_PROTO_NONE		= DSA_TAG_PROTO_NONE_VALUE,
+@@ -77,6 +78,7 @@ enum dsa_tag_protocol {
+ 	DSA_TAG_PROTO_OCELOT_8021Q	= DSA_TAG_PROTO_OCELOT_8021Q_VALUE,
+ 	DSA_TAG_PROTO_SEVILLE		= DSA_TAG_PROTO_SEVILLE_VALUE,
+ 	DSA_TAG_PROTO_SJA1110		= DSA_TAG_PROTO_SJA1110_VALUE,
++	DSA_TAG_PROTO_YT921X		= DSA_TAG_PROTO_YT921X_VALUE,
+ };
+
+ struct dsa_switch;
+@@ -524,6 +526,18 @@ static inline u32 dsa_user_ports(struct
+ 			mask |= BIT(p);
+
+ 	return mask;
++}
++
++static inline u32 dsa_cpu_ports(struct dsa_switch *ds)
++{
++	u32 mask = 0;
++	int p;
++
++	for (p = 0; p < ds->num_ports; p++)
++		if (dsa_is_cpu_port(ds, p))
++			mask |= BIT(p);
++
++	return mask;
+ }
+
+ /* Return the local port used to reach an arbitrary switch device */
+--- a/net/dsa/Kconfig
++++ b/net/dsa/Kconfig
+@@ -153,4 +153,10 @@ config NET_DSA_TAG_XRS700X
+ 	  Say Y or M if you want to enable support for tagging frames for
+ 	  Arrow SpeedChips XRS700x switches that use a single byte tag trailer.
+
++config NET_DSA_TAG_YT921X
++	tristate "Tag driver for Motorcomm YT921x switches"
++	help
++	  Say Y or M if you want to enable support for tagging frames for
++	  Motorcomm YT921x switches.
++
+ endif
+--- a/net/dsa/Makefile
++++ b/net/dsa/Makefile
+@@ -19,3 +19,4 @@ obj-$(CONFIG_NET_DSA_TAG_QCA) += tag_qca
+ obj-$(CONFIG_NET_DSA_TAG_SJA1105) += tag_sja1105.o
+ obj-$(CONFIG_NET_DSA_TAG_TRAILER) += tag_trailer.o
+ obj-$(CONFIG_NET_DSA_TAG_XRS700X) += tag_xrs700x.o
++obj-$(CONFIG_NET_DSA_TAG_YT921X) += tag_yt921x.o

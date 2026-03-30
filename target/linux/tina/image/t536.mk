@@ -31,3 +31,21 @@ define Device/kooiot_tlink-t536
 endef
 TARGET_DEVICES += kooiot_tlink-t536
 
+define Device/rp-dr4-t536
+  DEVICE_VENDOR := RongPin
+  DEVICE_MODEL := DR4-T536
+  DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-rtc-sd3078 kmod-usb-net-asix \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+	luci-app-freeioe luci-proto-qmi luci-proto-3g \
+    kmod-xradio melsem-xr819-firmware wpad-basic-wolfssl \
+    tinc-freeioe-tunnel iperf3 \
+    uqmi fdisk usbutils freeioe wwanleds \
+    blockd usb-otg-sunxi kmod-eeprom-at24 fdisk
+  SOC := sun55i-t536
+endef
+TARGET_DEVICES += rp-dr4-t536
+

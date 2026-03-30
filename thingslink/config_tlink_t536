@@ -1,0 +1,193 @@
+CONFIG_TARGET_tina=y
+CONFIG_TARGET_tina_t536=y
+CONFIG_TARGET_tina_t536_DEVICE_kooiot_tlink-t536=y
+# CONFIG_PACKAGE_freeioe is not set
+CONFIG_PACKAGE_kmod-dsa=y
+CONFIG_PACKAGE_kmod-dsa-yt921x=y
+CONFIG_PACKAGE_kmod-phylink=y
+# CONFIG_PACKAGE_luci-app-freeioe is not set
+# CONFIG_PACKAGE_skynet is not set
+CONFIG_TARGET_KERNEL_PARTSIZE=32
+CONFIG_LIBCURL_COOKIES=y
+# CONFIG_LIBCURL_CRYPTO_AUTH is not set
+# CONFIG_LIBCURL_DICT is not set
+CONFIG_LIBCURL_FILE=y
+CONFIG_LIBCURL_FTP=y
+# CONFIG_LIBCURL_GNUTLS is not set
+# CONFIG_LIBCURL_GOPHER is not set
+CONFIG_LIBCURL_HTTP=y
+# CONFIG_LIBCURL_IMAP is not set
+# CONFIG_LIBCURL_LDAP is not set
+# CONFIG_LIBCURL_LIBCURL_OPTION is not set
+# CONFIG_LIBCURL_LIBIDN2 is not set
+CONFIG_LIBCURL_MBEDTLS=y
+CONFIG_LIBCURL_NGHTTP2=y
+# CONFIG_LIBCURL_NOSSL is not set
+CONFIG_LIBCURL_NO_SMB="!"
+# CONFIG_LIBCURL_OPENSSL is not set
+# CONFIG_LIBCURL_POP3 is not set
+CONFIG_LIBCURL_PROXY=y
+# CONFIG_LIBCURL_RTSP is not set
+# CONFIG_LIBCURL_SMTP is not set
+# CONFIG_LIBCURL_SSH2 is not set
+# CONFIG_LIBCURL_TELNET is not set
+# CONFIG_LIBCURL_TFTP is not set
+# CONFIG_LIBCURL_THREADED_RESOLVER is not set
+# CONFIG_LIBCURL_TLS_SRP is not set
+CONFIG_LIBCURL_UNIX_SOCKETS=y
+# CONFIG_LIBCURL_VERBOSE is not set
+# CONFIG_LIBCURL_WOLFSSL is not set
+# CONFIG_LIBCURL_ZLIB is not set
+# CONFIG_LIBCURL_ZSTD is not set
+CONFIG_OPENSSL_ENGINE_BUILTIN=y
+# CONFIG_OPENSSL_ENGINE_BUILTIN_AFALG is not set
+# CONFIG_OPENSSL_ENGINE_BUILTIN_DEVCRYPTO is not set
+CONFIG_OPENSSL_WITH_SM234=y
+CONFIG_PACKAGE_cgi-io=y
+CONFIG_PACKAGE_libcurl=y
+CONFIG_PACKAGE_liblua=y
+CONFIG_PACKAGE_liblucihttp=y
+CONFIG_PACKAGE_liblucihttp-lua=y
+CONFIG_PACKAGE_liblucihttp-ucode=y
+CONFIG_PACKAGE_libnghttp2=y
+CONFIG_PACKAGE_libstdcpp=y
+CONFIG_PACKAGE_libubus-lua=y
+CONFIG_PACKAGE_lua=y
+# CONFIG_PACKAGE_lua-examples is not set
+CONFIG_PACKAGE_luci=y
+CONFIG_PACKAGE_luci-app-firewall=y
+# CONFIG_PACKAGE_luci-app-lldpd is not set
+CONFIG_PACKAGE_luci-app-opkg=y
+# CONFIG_PACKAGE_luci-app-upnp is not set
+CONFIG_PACKAGE_luci-base=y
+# CONFIG_PACKAGE_luci-i18n-base-ar is not set
+# CONFIG_PACKAGE_luci-i18n-base-bg is not set
+# CONFIG_PACKAGE_luci-i18n-base-bn is not set
+# CONFIG_PACKAGE_luci-i18n-base-ca is not set
+# CONFIG_PACKAGE_luci-i18n-base-cs is not set
+# CONFIG_PACKAGE_luci-i18n-base-da is not set
+# CONFIG_PACKAGE_luci-i18n-base-de is not set
+# CONFIG_PACKAGE_luci-i18n-base-el is not set
+# CONFIG_PACKAGE_luci-i18n-base-es is not set
+# CONFIG_PACKAGE_luci-i18n-base-fi is not set
+# CONFIG_PACKAGE_luci-i18n-base-fr is not set
+# CONFIG_PACKAGE_luci-i18n-base-he is not set
+# CONFIG_PACKAGE_luci-i18n-base-hi is not set
+# CONFIG_PACKAGE_luci-i18n-base-hu is not set
+# CONFIG_PACKAGE_luci-i18n-base-it is not set
+# CONFIG_PACKAGE_luci-i18n-base-ja is not set
+# CONFIG_PACKAGE_luci-i18n-base-ko is not set
+# CONFIG_PACKAGE_luci-i18n-base-lt is not set
+# CONFIG_PACKAGE_luci-i18n-base-mr is not set
+# CONFIG_PACKAGE_luci-i18n-base-ms is not set
+# CONFIG_PACKAGE_luci-i18n-base-nl is not set
+# CONFIG_PACKAGE_luci-i18n-base-no is not set
+# CONFIG_PACKAGE_luci-i18n-base-pl is not set
+# CONFIG_PACKAGE_luci-i18n-base-pt is not set
+# CONFIG_PACKAGE_luci-i18n-base-pt-br is not set
+# CONFIG_PACKAGE_luci-i18n-base-ro is not set
+# CONFIG_PACKAGE_luci-i18n-base-ru is not set
+# CONFIG_PACKAGE_luci-i18n-base-sk is not set
+# CONFIG_PACKAGE_luci-i18n-base-sv is not set
+# CONFIG_PACKAGE_luci-i18n-base-tr is not set
+# CONFIG_PACKAGE_luci-i18n-base-uk is not set
+# CONFIG_PACKAGE_luci-i18n-base-vi is not set
+# CONFIG_PACKAGE_luci-i18n-base-zh-cn is not set
+# CONFIG_PACKAGE_luci-i18n-base-zh-tw is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-ar is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-bg is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-bn is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-ca is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-cs is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-da is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-de is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-el is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-es is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-fi is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-fr is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-he is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-hi is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-hu is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-it is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-ja is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-ko is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-lt is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-mr is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-ms is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-nl is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-no is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-pl is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-pt is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-pt-br is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-ro is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-ru is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-sk is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-sv is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-tr is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-uk is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-vi is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-zh-cn is not set
+# CONFIG_PACKAGE_luci-i18n-firewall-zh-tw is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-ar is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-bg is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-bn is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-ca is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-cs is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-da is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-de is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-el is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-es is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-fi is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-fr is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-he is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-hi is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-hu is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-it is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-ja is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-ko is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-lt is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-mr is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-ms is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-no is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-pl is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-pt is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-pt-br is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-ro is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-ru is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-sk is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-sv is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-tr is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-uk is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-vi is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-zh-cn is not set
+# CONFIG_PACKAGE_luci-i18n-opkg-zh-tw is not set
+CONFIG_PACKAGE_luci-lib-base=y
+CONFIG_PACKAGE_luci-lib-ip=y
+CONFIG_PACKAGE_luci-lib-jsonc=y
+CONFIG_PACKAGE_luci-lib-nixio=y
+CONFIG_PACKAGE_luci-light=y
+CONFIG_PACKAGE_luci-lua-runtime=y
+CONFIG_PACKAGE_luci-mod-admin-full=y
+CONFIG_PACKAGE_luci-mod-network=y
+CONFIG_PACKAGE_luci-mod-status=y
+CONFIG_PACKAGE_luci-mod-system=y
+CONFIG_PACKAGE_luci-proto-ipv6=y
+CONFIG_PACKAGE_luci-proto-ppp=y
+CONFIG_PACKAGE_luci-theme-bootstrap=y
+CONFIG_PACKAGE_process-monitor=y
+CONFIG_PACKAGE_rpcd=y
+CONFIG_PACKAGE_rpcd-mod-file=y
+CONFIG_PACKAGE_rpcd-mod-iwinfo=y
+CONFIG_PACKAGE_rpcd-mod-luci=y
+# CONFIG_PACKAGE_rpcd-mod-rpcsys is not set
+CONFIG_PACKAGE_rpcd-mod-rrdns=y
+CONFIG_PACKAGE_rpcd-mod-ucode=y
+CONFIG_PACKAGE_ucode-mod-html=y
+CONFIG_PACKAGE_ucode-mod-lua=y
+CONFIG_PACKAGE_ucode-mod-math=y
+CONFIG_PACKAGE_uhttpd=y
+# CONFIG_PACKAGE_uhttpd-mod-lua is not set
+CONFIG_PACKAGE_uhttpd-mod-ubus=y
+# CONFIG_PACKAGE_uhttpd-mod-ucode is not set
+CONFIG_PACKAGE_unzip=y
+CONFIG_PACKAGE_zip=y

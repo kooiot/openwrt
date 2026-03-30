@@ -28,7 +28,7 @@
 /{
     board = "tlink-t536";
     model = "tlink-t536";
-	compatible = "allwinner,t536", "arm,sun55iw6p1";
+	compatible = "kooiot,tlink-t536", "arm,sun55iw6p1";
 
     /* bluetooth uart use /dev/ttyAS1 */
     bt_uart_idx = "1"; 
