@@ -645,6 +645,7 @@
 		wakeup-source;
 
 		rtc {
+			compatible = "rk808-rtc";
 			status = "disabled";
 		};
 
