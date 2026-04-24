@@ -51,6 +51,8 @@ tlink_mount_storage() {
 		fi
 	fi
 
+	mkdir -p /mnt/storage
+
 	rule_name=$(uci add fstab mount)
 	uci batch <<EOF
 set fstab.$rule_name.target='/mnt/storage'
