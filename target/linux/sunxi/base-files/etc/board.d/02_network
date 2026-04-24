@@ -26,7 +26,7 @@ sunxi_setup_interfaces()
 			echo "ASIX USB-ETH found!" > /dev/kmsg
 			ucidef_set_interfaces_lan_wan "eth0" "eth1"
 		else
-			echo "ASIX USB-ETH not found found!" > /dev/kmsg
+			echo "ASIX USB-ETH not found!!!" > /dev/kmsg
 			ucidef_set_interface_lan "eth0"
 		fi
 		;;
@@ -40,7 +40,7 @@ sunxi_setup_interfaces()
 			ucidef_set_interface_lan "eth0"
 			ucidef_set_interface "lan2" device "eth1" protocol "static"
 		else
-			echo "CH397 USB-ETH not found found!" > /dev/kmsg
+			echo "CH397 USB-ETH not found!!!" > /dev/kmsg
 			ucidef_set_interface_lan "eth0"
 		fi
 		;;
