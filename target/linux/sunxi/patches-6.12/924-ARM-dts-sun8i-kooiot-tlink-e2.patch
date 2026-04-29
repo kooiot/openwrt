@@ -505,7 +505,7 @@
 +	vqmmc-supply = <&reg_vcc_3v3>;
 +	pinctrl-0 = <&mmc2_pins>;
 +	pinctrl-names = "default";
-+	status = "disabled";
++	status = "okay";
 +};
 +
 +&mmc2_pins {
@@ -601,7 +601,7 @@
 +&spi0 {
 +	pinctrl-0 = <&spi0_pc_pins &spi0_cs0_pin>;
 +	pinctrl-names = "default";
-+	status = "okay";
++	status = "disabled";
 +
 +	flash: spinand@0 {
 +		#address-cells = <1>;
