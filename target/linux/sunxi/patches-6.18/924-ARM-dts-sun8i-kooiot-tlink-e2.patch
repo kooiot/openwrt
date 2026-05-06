@@ -10,7 +10,7 @@
  	sun8i-t113s-netcube-nagami-keypad-carrier.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-t113s-tlink-e2.dts
-@@ -0,0 +1,627 @@
+@@ -0,0 +1,638 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 +
@@ -25,7 +25,7 @@
 +
 +/ {
 +	model = "ThingsLink E2";
-+	compatible = "kooiot,tlink-e2", "allwinner,sun8i-t113";
++	compatible = "kooiot,tlink-e2", "allwinner,sun8i-t113s";
 +
 +	aliases {
 +		ethernet0 = &emac;
@@ -191,6 +191,17 @@
 +			gpios = <&pio 3 19 GPIO_ACTIVE_HIGH>; // PD19
 +		};
 +		*/
++		hub_reset {
++			gpio-export,name = "hub_reset";
++			gpio-export,output=<1>;
++			gpios = <&pio 3 0 GPIO_ACTIVE_LOW>; // PD0
++		};
++
++		usb_power {
++			gpio-export,name = "usb_power";
++			gpio-export,output=<1>;
++			gpios = <&pio 6 15 GPIO_ACTIVE_HIGH>; // PG15
++		};
 +
 +		pcie_reset {
 +			gpio-export,name = "pcie_reset";
