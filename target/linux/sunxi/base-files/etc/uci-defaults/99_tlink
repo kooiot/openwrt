@@ -117,11 +117,7 @@ tlink_add_4g_wan() {
 
 # WAN is eth1 which is usb-eth has not unique MAC
 tlink_set_wan_mac() {
-	local MACADDR
-
-	export_tlink_efuse_mac MACADDR 2 || {
-		return
-	}
+	local MACADDR=$(tlink_gen_mac_efuse 2)
 
 	uci set network.wan.macaddr=${MACADDR}
 	uci set network.wan6.macaddr=${MACADDR}

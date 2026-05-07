@@ -1,12 +1,11 @@
 #!/bin/sh
 
-export_tlink_efuse_mac() {
-	local var="$1"
-	local offset="$2"
+tlink_gen_mac_efuse() {
+	local offset="$1"
 	local nvmem_file="/sys/bus/nvmem/devices/sunxi-sid0/nvmem"
 	local mac_val oem nv1 mac_base mac1 mac2 sid chip0 chip3
 
-	[ -z "$var" -o -z "$offset" ] && return -1
+	[ -z "$offset" ] && return 0
 	[ -b ${nvmem_file} ] && return -2
 
 	sid=$( hexdump -v -n 24 -e '/1 "%02x"' ${nvmem_file} )
@@ -39,7 +38,7 @@ export_tlink_efuse_mac() {
 	mac2=$(printf '%08x' ${chip3})
 	mac_val="${mac1:0:2}:${mac1:2:2}:${mac2:0:2}:${mac2:2:2}:${mac2:4:2}:${mac2:6:2}"
 
-	export "$var=${mac_val}"
+	echo "${mac_val}"
 	return 0
 }
 
@@ -130,8 +129,7 @@ EOF
 
 
 #test() {
-#	local mac
-#	export_tlink_efuse_mac mac 1
+#	local mac=$(tlink_gen_mac_efuse mac 1)
 #	echo "MAC ${mac}"
 #}
 #
