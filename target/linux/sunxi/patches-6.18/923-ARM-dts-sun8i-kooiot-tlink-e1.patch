@@ -849,7 +849,7 @@
 +};
 +
 +&mmc2_pins {
-+	drive-strength = <20>;
++	drive-strength = <10>;
 +};
 +
 +&usb_otg {
