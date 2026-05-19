@@ -1,16 +1,16 @@
 diff -uNra a/include/configs/sunxi-common.h b/include/configs/sunxi-common.h
 --- a/include/configs/sunxi-common.h	2021-12-06 18:39:35.038127434 +0800
 +++ b/include/configs/sunxi-common.h	2021-12-06 19:15:32.413875179 +0800
-@@ -60,6 +60,9 @@
+@@ -63,6 +63,9 @@
 
- #define PHYS_SDRAM_0			CONFIG_SYS_SDRAM_BASE
+ #define PHYS_SDRAM_0			CFG_SYS_SDRAM_BASE
  #define PHYS_SDRAM_0_SIZE		0x80000000 /* 2 GiB */
 +#ifdef CONFIG_MACH_SUN8I_X3
 +#define PHYS_SDRAM_0_SIZE		0x8000000 /* 128 MB */
 +#endif
 
- #ifdef CONFIG_AHCI
- #define CONFIG_SYS_64BIT_LBA
+ /****************************************************************************
+  *           environment variables holding default load addresses           *
 diff -uNra a/arch/arm/include/asm/arch-sunxi/dram.h b/arch/arm/include/asm/arch-sunxi/dram.h
 --- a/arch/arm/include/asm/arch-sunxi/dram.h	2021-12-08 11:00:23.709072012 +0800
 +++ b/arch/arm/include/asm/arch-sunxi/dram.h	2021-12-08 11:10:12.707333223 +0800
@@ -26,7 +26,7 @@ diff -uNra a/arch/arm/include/asm/arch-sunxi/dram.h b/arch/arm/include/asm/arch-
 diff -uNra a/include/sunxi_gpio.h b/include/sunxi_gpio.h
 --- a/include/sunxi_gpio.h	2021-12-08 11:00:23.709072012 +0800
 +++ b/include/sunxi_gpio.h	2021-12-08 11:09:47.754677395 +0800
-@@ -117,6 +117,7 @@
+@@ -114,6 +114,7 @@
  #define SUN5I_GPB_UART0		2
  #define SUN8I_GPB_UART2		2
  #define SUN8I_A33_GPB_UART0	3
@@ -49,7 +49,7 @@ diff -uNra a/arch/arm/include/asm/arch-sunxi/pwm.h b/arch/arm/include/asm/arch-s
 diff -uNra a/arch/arm/mach-sunxi/board.c b/arch/arm/mach-sunxi/board.c
 --- a/arch/arm/mach-sunxi/board.c	2021-12-08 11:00:23.745074609 +0800
 +++ b/arch/arm/mach-sunxi/board.c	2021-12-08 11:08:21.748198106 +0800
-@@ -118,6 +118,10 @@
+@@ -121,6 +121,10 @@ static int gpio_init(void)
  	sunxi_gpio_set_cfgpin(SUNXI_GPB(0), SUN8I_A33_GPB_UART0);
  	sunxi_gpio_set_cfgpin(SUNXI_GPB(1), SUN8I_A33_GPB_UART0);
  	sunxi_gpio_set_pull(SUNXI_GPB(1), SUNXI_GPIO_PULL_UP);
@@ -107,7 +107,7 @@ diff -uNra a/arch/arm/mach-sunxi/Kconfig b/arch/arm/mach-sunxi/Kconfig
 
  config DRAM_SUN8I_A83T
  	bool
-@@ -363,6 +363,19 @@ config MACH_SUN8I_A33
+@@ -440,6 +440,19 @@ config MACH_SUN8I_A33
  	select SYS_I2C_SUN8I_RSB
  	select ARMV7_BOOT_SEC_DEFAULT if OLD_SUNXI_KERNEL_COMPAT
 
@@ -127,7 +127,7 @@ diff -uNra a/arch/arm/mach-sunxi/Kconfig b/arch/arm/mach-sunxi/Kconfig
  config MACH_SUN8I_A83T
  	bool "sun8i (Allwinner A83T)"
  	select CPU_V7A
-@@ -468,13 +481,14 @@ config MACH_SUN50I_H616
+@@ -563,13 +576,14 @@ config MACH_SUN55I_A523
 
  endchoice
 
@@ -143,9 +143,9 @@ diff -uNra a/arch/arm/mach-sunxi/Kconfig b/arch/arm/mach-sunxi/Kconfig
  	default y if MACH_SUN8I_A83T
  	default y if MACH_SUNXI_H3_H5
  	default y if MACH_SUN8I_R40
-@@ -621,7 +635,8 @@ config DRAM_ZQ
- 	int "sunxi dram zq value"
- 	depends on !MACH_SUN50I_H616
+@@ -756,7 +770,8 @@ config DRAM_ZQ
+ 	depends on !MACH_SUN50I_A133
+ 	depends on !MACH_SUN55I_A523
  	default 123 if MACH_SUN4I || MACH_SUN5I || MACH_SUN6I || \
 -		       MACH_SUN8I_A23 || MACH_SUN8I_A33 || MACH_SUN8I_A83T
 +		       MACH_SUN8I_A23 || MACH_SUN8I_A33 || MACH_SUN8I_X3 || \
@@ -156,7 +156,7 @@ diff -uNra a/arch/arm/mach-sunxi/Kconfig b/arch/arm/mach-sunxi/Kconfig
 diff -uNra a/board/sunxi/board.c b/board/sunxi/board.c
 --- a/board/sunxi/board.c	2021-12-08 11:00:23.917087022 +0800
 +++ b/board/sunxi/board.c	2021-12-08 11:12:39.046692643 +0800
-@@ -741,7 +741,8 @@
+@@ -759,7 +759,8 @@
  	 */
  #if !defined(CONFIG_MACH_SUN4I) && !defined(CONFIG_MACH_SUN5I) && \
      !defined(CONFIG_MACH_SUN6I) && !defined(CONFIG_MACH_SUN7I) && \

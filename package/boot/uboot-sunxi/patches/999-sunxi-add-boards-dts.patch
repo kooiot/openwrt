@@ -9,7 +9,7 @@
  dtb-$(CONFIG_MACH_SUN8I_H3) += \
  	sun8i-h2-plus-bananapi-m2-zero.dtb \
  	sun8i-h2-plus-libretech-all-h3-cc.dtb \
-@@ -644,14 +646,35 @@ dtb-$(CONFIG_MACH_SUN8I_H3) += \
+@@ -644,13 +646,34 @@ dtb-$(CONFIG_MACH_SUN8I_H3) += \
  	sun8i-h3-orangepi-plus2e.dtb \
  	sun8i-h3-orangepi-zero-plus2.dtb \
  	sun8i-h3-rervision-dvk.dtb \
@@ -18,11 +18,6 @@
 +	sun8i-h3-tlink-r1.dtb \
  	sun8i-h3-zeropi.dtb
  dtb-$(CONFIG_MACH_SUN8I_R40) += \
- 	sun8i-r40-bananapi-m2-ultra.dtb \
- 	sun8i-r40-oka40i-c.dtb \
- 	sun8i-t3-cqa3t-bv3.dtb \
--	sun8i-v40-bananapi-m2-berry.dtb
-+	sun8i-v40-bananapi-m2-berry.dtb \
 +	sun8i-r40-tlink-ok-a40i.dtb \
 +	sun8i-r40-tlink-k1.dtb \
 +	sun8i-r40-tlink-dj-a40i-e.dtb \
@@ -33,17 +28,19 @@
 +	sun8i-r40-tlink-k4a.dtb \
 +	sun8i-r40-tlink-k4g.dtb \
 +	sun8i-t3-tlink-m408.dtb \
-+	sun8i-t3-tlink-m416.dtb
++	sun8i-t3-tlink-m416.dtb \
+ 	sun8i-r40-bananapi-m2-ultra.dtb \
+ 	sun8i-r40-oka40i-c.dtb \
+ 	sun8i-t3-cqa3t-bv3.dtb \
+ 	sun8i-v40-bananapi-m2-berry.dtb
  dtb-$(CONFIG_MACH_SUN8I_R528) += \
--	sun8i-t113s-mangopi-mq-r-t113.dtb
-+	sun8i-t113s-mangopi-mq-r-t113.dtb \
 +	sun8i-t113s-tlink-rp-t113.dtb \
 +	sun8i-t113s-tlink-dly-e102.dtb \
 +	sun8i-t113s-tlink-dly-e102-spinand.dtb \
 +	sun8i-t113s-tlink-dly-e204.dtb \
 +	sun8i-t113s-tlink-e1.dtb \
 +	sun8i-t113s-tlink-e2.dtb \
-+	sun8i-t113s-tlink-e2-spinand.dtb
- dtb-$(CONFIG_MACH_SUN50I_H5) += \
- 	sun50i-h5-bananapi-m2-plus.dtb \
- 	sun50i-h5-emlid-neutis-n5-devboard.dtb \
++	sun8i-t113s-tlink-e2-spinand.dtb \
+ 	sun8i-t113s-mangopi-mq-r-t113.dtb \
+ 	sun8i-t113s-mangopi-mqdual-t113.dtb \
+ 	sun8i-t113s-myir-myd-yt113x-emmc.dtb \

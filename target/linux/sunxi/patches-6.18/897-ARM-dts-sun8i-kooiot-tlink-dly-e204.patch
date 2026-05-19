@@ -1,0 +1,62 @@
+--- a/arch/arm/boot/dts/allwinner/Makefile
++++ b/arch/arm/boot/dts/allwinner/Makefile
+@@ -341,7 +341,8 @@ dtb-$(CONFIG_MACH_SUN8I) += \
+	sun8i-t113-iot-station.dtb \
+	sun8i-t113-tlink-rp-t113.dtb \
+	sun8i-t113-tlink-dly-e102.dtb \
+-	sun8i-t113-tlink-dly-e102-spinand.dtb
++	sun8i-t113-tlink-dly-e102-spinand.dtb \
++	sun8i-t113-tlink-dly-e204.dtb
+ dtb-$(CONFIG_MACH_SUN9I) += \
+ 	sun9i-a80-optimus.dtb \
+ 	sun9i-a80-cubieboard4.dtb
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/sun8i-t113-tlink-dly-e204.dts
+@@ -0,0 +1,47 @@
++// SPDX-License-Identifier: (GPL-2.0+ or MIT)
++// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
++
++/dts-v1/;
++
++#include "sun8i-t113-tlink-dly-e102.dts"
++
++/ {
++	model = "ThingsLink DLY-E204";
++	compatible = "kooiot,tlink-dly-e204", "allwinner,sun8i-t113";
++
++	chosen {
++		bootargs = "root=/dev/fit0 rootwait";
++	};
++
++	aliases {
++		ethernet1 = &usb_eth;
++	};
++};
++
++&gpio_export {
++	hub_reset {
++		gpio-export,name = "hub_reset";
++		gpio-export,output=<1>;
++		gpios = <&pio 4 10 GPIO_ACTIVE_LOW>; /* PE10 */
++	};
++};
++
++&ehci0 {
++	status = "okay";
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	ch334g: ch334g@1 {
++		compatible = "usb1a86,8092";
++		reg = <1>;
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		usb_eth: ch397a@1 {
++			reg = <1>;
++			nvmem-cells = <&chipid>;
++			nvmem-cell-names = "chipid";
++			local-mac-address = [00 00 00 00 00 00];
++		};
++	};
++};

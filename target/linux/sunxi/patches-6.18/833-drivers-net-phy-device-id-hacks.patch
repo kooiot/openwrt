@@ -1,0 +1,24 @@
+--- a/drivers/net/phy/phy_device.c	2021-12-22 10:48:18.055470157 +0800
++++ b/drivers/net/phy/phy_device.c	2021-12-22 10:48:40.373993314 +0800
+@@ -32,6 +32,7 @@
+ #include <linux/string.h>
+ #include <linux/uaccess.h>
+ #include <linux/unistd.h>
++#include <linux/of.h>
+ 
+ MODULE_DESCRIPTION("PHY library");
+ MODULE_AUTHOR("Andy Fleming");
+@@ -853,6 +854,13 @@
+ 	if (r)
+ 		return ERR_PTR(r);
+ 
++	if (phy_id == 0) {
++		dev_info(&bus->dev, "%s: phy_id:%x %pOF\n", __func__, phy_id, bus->dev.of_node);
++		if (!of_property_read_u32(bus->dev.of_node, "allwinner,emac-fix-phy-id", &phy_id)) {
++			dev_info(&bus->dev, "%s: zero phy_id fixed to:%x\n", __func__, phy_id);
++		}
++	}
++
+ 	return phy_device_create(bus, addr, phy_id, is_c45, &c45_ids);
+ }
+ EXPORT_SYMBOL(get_phy_device);

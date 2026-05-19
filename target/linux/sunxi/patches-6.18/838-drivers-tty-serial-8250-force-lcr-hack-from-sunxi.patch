@@ -1,0 +1,69 @@
+--- a/drivers/tty/serial/8250/8250_port.c
++++ a/drivers/tty/serial/8250/8250_port.c
+@@ -2764,6 +2764,37 @@
+ }
+ EXPORT_SYMBOL_GPL(serial8250_update_uartclk);
+ 
++#ifdef CONFIG_ARCH_SUNXI
++#define SUNXI_UART_HALT (0xa4 >> 2) 		/* halt tx register */
++/* Halt Register */
++#define SUNXI_UART_HALT_LCRUP     (BIT(2))
++#define SUNXI_UART_HALT_FORCECFG  (BIT(1))
++#define SUNXI_UART_HALT_HTX       (BIT(0))
++static void sw_uart_force_lcr(struct uart_port *port, unsigned dll, unsigned dlh, unsigned msecs)
++{
++	unsigned long expire = jiffies + msecs_to_jiffies(msecs);
++	struct uart_8250_port *up = up_to_u8250p(port);
++
++	/* hold tx so that uart will update lcr and baud in the gap of rx */
++	serial_port_out(port, SUNXI_UART_HALT, SUNXI_UART_HALT_HTX|SUNXI_UART_HALT_FORCECFG);
++	serial_port_out(port, UART_LCR, up->lcr|UART_LCR_DLAB);
++	serial_port_out(port, UART_DLL, dll);
++	serial_port_out(port, UART_DLM, dlh);
++	serial_port_out(port, SUNXI_UART_HALT, SUNXI_UART_HALT_HTX|SUNXI_UART_HALT_FORCECFG|SUNXI_UART_HALT_LCRUP);
++	while (time_before(jiffies, expire) && (serial_port_in(port, SUNXI_UART_HALT) & SUNXI_UART_HALT_LCRUP));
++
++	/*
++	 * In fact there are two DLABs(DLAB and DLAB_BAK) in the hardware implementation.
++	 * The DLAB_BAK is sellected only when SW_UART_HALT_FORCECFG is set to 1,
++	 * and this bit can be access no matter uart is busy or not.
++	 * So we select the DLAB_BAK always by leaving SW_UART_HALT_FORCECFG to be 1.
++	 */
++	serial_port_out(port, UART_LCR, up->lcr);
++	serial_port_out(port, SUNXI_UART_HALT, SUNXI_UART_HALT_FORCECFG);
++}
++#endif
++
++
+ void
+ serial8250_do_set_termios(struct uart_port *port, struct ktermios *termios,
+ 		          const struct ktermios *old)
+@@ -2772,6 +2803,7 @@
+ 	unsigned char cval;
+ 	unsigned long flags;
+ 	unsigned int baud, quot, frac = 0;
++	unsigned int dll, dlh = 0;
+ 
+ 	if (up->capabilities & UART_CAP_MINI) {
+ 		termios->c_cflag &= ~(CSTOPB | PARENB | PARODD | CMSPAR);
+@@ -2784,6 +2816,10 @@
+ 	baud = serial8250_get_baud_rate(port, termios, old);
+ 	quot = serial8250_get_divisor(port, baud, &frac);
+ 
++	/* for SUNXI */
++	dll = quot & 0xff;
++	dlh = quot >> 8;
++
+ 	/*
+ 	 * Ok, we're now changing the port state.  Do it with
+ 	 * interrupts disabled.
+@@ -2891,6 +2927,9 @@
+ 			serial_port_out(port, UART_FCR, UART_FCR_ENABLE_FIFO);
+ 		serial_port_out(port, UART_FCR, up->fcr);	/* set fcr */
+ 	}
++#ifdef CONFIG_ARCH_SUNXI
++	sw_uart_force_lcr(port, dll, dlh, 50);
++#endif
+ 	serial8250_set_mctrl(port, port->mctrl);
+ 	spin_unlock_irqrestore(&port->lock, flags);
+ 	serial8250_rpm_put(up);

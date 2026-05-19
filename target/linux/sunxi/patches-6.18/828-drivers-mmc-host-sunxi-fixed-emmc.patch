@@ -1,0 +1,34 @@
+--- a/drivers/mmc/host/sunxi-mmc.c
++++ b/drivers/mmc/host/sunxi-mmc.c
+@@ -1153,6 +1153,22 @@
+ 	.ccu_has_timings_switch = true,
+ };
+
++static const struct sunxi_mmc_cfg sun8i_s3_emmc_cfg = {
++	.idma_des_size_bits = 16,
++	.clk_delays = sunxi_mmc_clk_delays,
++	.can_calibrate = false,
++	// .needs_new_timings = true,
++	// .ccu_has_timings_switch = true,
++};
++
++static const struct sunxi_mmc_cfg sun8i_r40_emmc_cfg = {
++	.idma_des_size_bits = 13,
++	.clk_delays = NULL,
++	.can_calibrate = true,
++	.needs_new_timings = true,
++	.ccu_has_timings_switch = true,
++};
++
+ static const struct sunxi_mmc_cfg sun9i_a80_cfg = {
+ 	.idma_des_size_bits = 16,
+ 	.clk_delays = sun9i_mmc_clk_delays,
+@@ -1186,6 +1194,8 @@
+ 	{ .compatible = "allwinner,sun5i-a13-mmc", .data = &sun5i_a13_cfg },
+ 	{ .compatible = "allwinner,sun7i-a20-mmc", .data = &sun7i_a20_cfg },
+ 	{ .compatible = "allwinner,sun8i-a83t-emmc", .data = &sun8i_a83t_emmc_cfg },
++	{ .compatible = "allwinner,sun8i-s3-emmc", .data = &sun8i_s3_emmc_cfg },
++	{ .compatible = "allwinner,sun8i-r40-emmc", .data = &sun8i_r40_emmc_cfg },
+ 	{ .compatible = "allwinner,sun9i-a80-mmc", .data = &sun9i_a80_cfg },
+ 	{ .compatible = "allwinner,sun50i-a64-mmc", .data = &sun50i_a64_cfg },
+ 	{ .compatible = "allwinner,sun50i-a64-emmc", .data = &sun50i_a64_emmc_cfg },
