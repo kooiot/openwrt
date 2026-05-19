@@ -31,7 +31,7 @@
  		crypto@1c15000 {
  			compatible = "allwinner,sun8i-v3s-crypto",
  				     "allwinner,sun8i-a33-crypto";
-@@ -563,6 +587,8 @@
+@@ -613,6 +637,8 @@
  			phy-handle = <&int_mii_phy>;
  			phy-mode = "mii";
  			status = "disabled";

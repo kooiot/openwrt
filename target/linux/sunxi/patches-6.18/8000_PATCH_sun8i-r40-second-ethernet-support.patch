@@ -2,8 +2,8 @@ diff --git a/Documentation/devicetree/bindings/net/allwinner,sun4i-a10-emac.yaml
 index 8d8560a67abf..27f99372d153 100644
 --- a/Documentation/devicetree/bindings/net/allwinner,sun4i-a10-emac.yaml
 +++ b/Documentation/devicetree/bindings/net/allwinner,sun4i-a10-emac.yaml
-@@ -15,7 +15,12 @@  maintainers:
- 
+@@ -15,7 +15,12 @@ maintainers:
+
  properties:
    compatible:
 -    const: allwinner,sun4i-a10-emac
@@ -13,20 +13,20 @@ index 8d8560a67abf..27f99372d153 100644
 +      - items:
 +          - const: allwinner,sun8i-r40-emac
 +          - const: allwinner,sun4i-a10-emac
- 
+
    reg:
      maxItems: 1
-@@ -30,6 +35,9 @@  properties:
-     description: Phandle to the device SRAM
-     $ref: /schemas/types.yaml#/definitions/phandle-array
- 
+@@ -43,6 +48,9 @@ properties:
+       - const: rx
+       - const: tx
+
 +  resets:
 +    maxItems: 1
 +
  required:
    - compatible
    - reg
-@@ -47,6 +55,7 @@  examples:
+@@ -60,6 +68,7 @@ examples:
          reg = <0x01c0b000 0x1000>;
          interrupts = <55>;
          clocks = <&ahb_gates 17>;
@@ -38,18 +38,18 @@ diff --git a/drivers/net/ethernet/allwinner/sun4i-emac.c b/drivers/net/ethernet/
 index 5ed80d9a6b9f..b26913610a38 100644
 --- a/drivers/net/ethernet/allwinner/sun4i-emac.c
 +++ b/drivers/net/ethernet/allwinner/sun4i-emac.c
-@@ -28,6 +28,7 @@ 
+@@ -28,6 +28,7 @@
  #include <linux/of_platform.h>
  #include <linux/platform_device.h>
  #include <linux/phy.h>
 +#include <linux/reset.h>
  #include <linux/soc/sunxi/sunxi_sram.h>
- 
- #include "sun4i-emac.h"
-@@ -68,6 +69,15 @@  MODULE_PARM_DESC(watchdog, "transmit timeout in milliseconds");
+ #include <linux/dmaengine.h>
+
+@@ -69,6 +70,15 @@ MODULE_PARM_DESC(watchdog, "transmit tim
   * devices, EMACA and EMACB.
   */
- 
+
 +/**
 + * struct emac_quirks - Differences between SoC variants.
 + *
@@ -62,26 +62,26 @@ index 5ed80d9a6b9f..b26913610a38 100644
  struct emac_board_info {
  	struct clk		*clk;
  	struct device		*dev;
-@@ -85,6 +95,7 @@  struct emac_board_info {
+@@ -85,6 +95,7 @@ struct emac_board_info {
  	unsigned int		link;
  	unsigned int		speed;
  	unsigned int		duplex;
 +	struct reset_control	*reset;
- 
+
  	phy_interface_t		phy_interface;
- };
-@@ -791,6 +802,7 @@  static int emac_probe(struct platform_device *pdev)
-	struct emac_board_info *db;
+ 	struct dma_chan	*rx_chan;
+@@ -968,6 +979,7 @@ static int emac_probe(struct platform_de
+ 	struct emac_board_info *db;
  	struct net_device *ndev;
  	int ret = 0;
 +	const struct emac_quirks *quirks;
- 
+
  	ndev = alloc_etherdev(sizeof(struct emac_board_info));
  	if (!ndev) {
-@@ -809,6 +821,13 @@  static int emac_probe(struct platform_device *pdev)
- 
+@@ -986,6 +998,13 @@ static int emac_probe(struct platform_de
+
  	spin_lock_init(&db->lock);
- 
+
 +	quirks = of_device_get_match_data(&pdev->dev);
 +	if (!quirks) {
 +		dev_err(&pdev->dev, "Failed to determine the quirks to use\n");
@@ -92,10 +92,10 @@ index 5ed80d9a6b9f..b26913610a38 100644
  	db->membase = of_iomap(np, 0);
  	if (!db->membase) {
  		dev_err(&pdev->dev, "failed to remap registers\n");
-@@ -825,16 +844,31 @@  static int emac_probe(struct platform_device *pdev)
- 		goto out_iounmap;
- 	}
- 
+@@ -1005,16 +1024,31 @@ static int emac_probe(struct platform_de
+ 	if (emac_configure_dma(db))
+ 		netdev_info(ndev, "configure dma failed. disable dma.\n");
+
 +	if (quirks->has_reset) {
 +		db->reset = devm_reset_control_get_exclusive(&pdev->dev, NULL);
 +		if (IS_ERR(db->reset)) {
@@ -117,24 +117,16 @@ index 5ed80d9a6b9f..b26913610a38 100644
 -		goto out_dispose_mapping;
 +		goto out_assert_reset;
  	}
- 
+
  	ret = clk_prepare_enable(db->clk);
  	if (ret) {
  		dev_err(&pdev->dev, "Error couldn't enable clock (%d)\n", ret);
 -		goto out_dispose_mapping;
 +		goto out_assert_reset;
  	}
- 
+
  	ret = sunxi_sram_claim(&pdev->dev);
-@@ -852,6 +886,7 @@  static int emac_probe(struct platform_device *pdev)
- 		goto out_release_sram;
- 	}
- 
-+
- 	/* Read MAC-address from DT */
- 	mac_addr = of_get_mac_address(np);
- 	if (!IS_ERR(mac_addr))
-@@ -893,6 +928,8 @@  static int emac_probe(struct platform_device *pdev)
+@@ -1070,6 +1104,8 @@ out_release_sram:
  	sunxi_sram_release(&pdev->dev);
  out_clk_disable_unprepare:
  	clk_disable_unprepare(db->clk);
@@ -142,8 +134,8 @@ index 5ed80d9a6b9f..b26913610a38 100644
 +	reset_control_assert(db->reset);
  out_dispose_mapping:
  	irq_dispose_mapping(ndev->irq);
- out_iounmap:
-@@ -913,6 +950,7 @@  static int emac_remove(struct platform_device *pdev)
+ 	dma_release_channel(db->rx_chan);
+@@ -1096,6 +1132,7 @@ static void emac_remove(struct platform_
  	unregister_netdev(ndev);
  	sunxi_sram_release(&pdev->dev);
  	clk_disable_unprepare(db->clk);
@@ -151,20 +143,20 @@ index 5ed80d9a6b9f..b26913610a38 100644
  	irq_dispose_mapping(ndev->irq);
  	iounmap(db->membase);
  	free_netdev(ndev);
-@@ -944,11 +982,28 @@  static int emac_resume(struct platform_device *dev)
+@@ -1126,11 +1163,28 @@ static int emac_resume(struct platform_d
  	return 0;
  }
- 
+
 -static const struct of_device_id emac_of_match[] = {
 -	{.compatible = "allwinner,sun4i-a10-emac",},
 +static const struct emac_quirks sun4i_a10_emac_quirks = {
 +	.has_reset = false,
 +};
- 
++
 +static const struct emac_quirks sun8i_r40_emac_quirks = {
 +	.has_reset = true,
 +};
-+
+
 +static const struct of_device_id emac_of_match[] = {
 +	{
 +		.compatible = "allwinner,sun4i-a10-emac",
@@ -182,15 +174,15 @@ index 5ed80d9a6b9f..b26913610a38 100644
 +	},
  	{},
  };
- 
+
 diff --git a/arch/arm/boot/dts/allwinner/sun8i-r40.dtsi b/arch/arm/boot/dts/allwinner/sun8i-r40.dtsi
 index d5ad3b9efd12..c31386e421b1 100644
 --- a/arch/arm/boot/dts/allwinner/sun8i-r40.dtsi
 +++ b/arch/arm/boot/dts/allwinner/sun8i-r40.dtsi
-@@ -217,6 +217,20 @@ 
+@@ -271,6 +271,20 @@
  			#size-cells = <1>;
  			ranges;
- 
+
 +			sram_a: sram@0 {
 +				compatible = "mmio-sram";
 +				reg = <0x00000000 0xc000>;
@@ -208,10 +200,10 @@ index d5ad3b9efd12..c31386e421b1 100644
  			sram_c: sram@1d00000 {
  				compatible = "mmio-sram";
  				reg = <0x01d00000 0xd0000>;
-@@ -541,6 +555,24 @@ 
+@@ -610,6 +624,24 @@
  				drive-strength = <40>;
  			};
- 
+
 +			emac_pa_pins: emac-pa-pins {
 +				pins = "PA0", "PA1", "PA2",
 +				       "PA3", "PA4", "PA5", "PA6",
@@ -233,10 +225,10 @@ index d5ad3b9efd12..c31386e421b1 100644
  			i2c0_pins: i2c0-pins {
  				pins = "PB0", "PB1";
  				function = "i2c0";
-@@ -885,6 +917,24 @@ 
- 			};
+@@ -1101,6 +1133,24 @@
+ 			#interconnect-cells = <1>;
  		};
- 
+
 +		emac: ethernet@1c0b000 {
 +			compatible = "allwinner,sun8i-r40-emac";
 +			reg = <0x01c0b000 0x1000>;
@@ -255,6 +247,6 @@ index d5ad3b9efd12..c31386e421b1 100644
 +			#size-cells = <0>;
 +		};
 +
-		tcon_top: tcon-top@1c70000 {
-			compatible = "allwinner,sun8i-r40-tcon-top";
-			reg = <0x01c70000 0x1000>;
+ 		tcon_top: tcon-top@1c70000 {
+ 			compatible = "allwinner,sun8i-r40-tcon-top";
+ 			reg = <0x01c70000 0x1000>;

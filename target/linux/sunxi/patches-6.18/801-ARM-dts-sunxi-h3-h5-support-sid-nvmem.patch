@@ -1,6 +1,6 @@
 --- a/arch/arm/boot/dts/allwinner/sunxi-h3-h5.dtsi
 --- b/arch/arm/boot/dts/allwinner/sunxi-h3-h5.dtsi
-@@ -482,6 +482,12 @@
+@@ -460,6 +460,12 @@
  				bias-pull-up;
  			};
 

@@ -1,6 +1,6 @@
 --- a/arch/arm/boot/dts/allwinner/sun8i-r40.dtsi
 +++ b/arch/arm/boot/dts/allwinner/sun8i-r40.dtsi
-@@ -1395,6 +1395,10 @@
+@@ -1383,6 +1383,10 @@
  					#size-cells = <0>;
  					reg = <1>;
 
@@ -10,4 +10,4 @@
 +
  					tcon_lcd0_out_dsi_out: endpoint@1 {
  						reg = <1>;
- 						remote-endpoint = <&dsi_in_tcon_lcd0_out>;
+ 						remote-endpoint = <&dsi_in_tcon_lcd0_out>

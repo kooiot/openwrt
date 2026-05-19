@@ -5,13 +5,13 @@
  #include <linux/kernel.h>
  #include <linux/pm_runtime.h>
 +#include <linux/of.h>
- 
+
  /*-------------------------------------------------------------------------*/
- 
-@@ -1671,6 +1672,10 @@ usbnet_probe (struct usb_interface *udev
+
+@@ -1713,6 +1714,10 @@ usbnet_probe (struct usb_interface *udev
  	const char			*name;
  	struct usb_driver 	*driver = to_usb_driver(udev->dev.driver);
- 
+
 +	struct device* pdev;
 +	char buf[IFNAMSIZ];
 +	int alias_id;
@@ -19,10 +19,10 @@
  	/* usbnet already took usb runtime pm, so have to enable the feature
  	 * for usb interface, otherwise usb_autopm_get_interface may return
  	 * failure if RUNTIME_PM is enabled.
-@@ -1822,6 +1827,17 @@ usbnet_probe (struct usb_interface *udev
+@@ -1864,6 +1869,17 @@ usbnet_probe (struct usb_interface *udev
  		}
  	}
- 
+
 +	pdev = &dev->udev->dev;
 +	if (pdev->of_node) {
 +		alias_id = of_alias_get_id(pdev->of_node, "ethernet");

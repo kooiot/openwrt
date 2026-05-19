@@ -1,6 +1,6 @@
 --- a/arch/arm/boot/dts/allwinner/Makefile
 +++ b/arch/arm/boot/dts/allwinner/Makefile
-@@ -321,6 +321,8 @@
+@@ -266,6 +266,8 @@
  	sun8i-r40-tlink-k1.dtb \
  	sun8i-r40-tlink-k2.dtb \
  	sun8i-r40-tlink-k2x.dtb \

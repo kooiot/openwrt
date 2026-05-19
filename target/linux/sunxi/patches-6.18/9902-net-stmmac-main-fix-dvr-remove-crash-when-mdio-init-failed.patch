@@ -1,6 +1,6 @@
 --- a/drivers/net/ethernet/stmicro/stmmac/stmmac.h
 +++ b/drivers/net/ethernet/stmicro/stmmac/stmmac.h
-@@ -324,6 +324,9 @@
+@@ -363,6 +363,9 @@ struct stmmac_priv {
  	/* XDP BPF Program */
  	unsigned long *af_xdp_zc_qps;
  	struct bpf_prog *xdp_prog;
@@ -8,11 +8,11 @@
 +	/* For unregister_netdev crash */
 +	int netdev_inited;
  };
- 
+
  enum stmmac_state {
 --- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
 +++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
-@@ -7807,6 +7807,7 @@ int stmmac_dvr_probe(struct device *devi
+@@ -7775,6 +7775,7 @@ int stmmac_dvr_probe(struct device *devi
  			__func__, ret);
  		goto error_netdev_register;
  	}
@@ -20,10 +20,10 @@
 
  #ifdef CONFIG_DEBUG_FS
  	stmmac_init_fs(ndev);
-@@ -7857,8 +7858,10 @@ void stmmac_dvr_remove(struct device *de
+@@ -7822,7 +7823,9 @@ void stmmac_dvr_remove(struct device *de
 
- 	stmmac_stop_all_dma(priv);
- 	stmmac_mac_set(priv, priv->ioaddr, false);
+ 	pm_runtime_get_sync(dev);
+
 -	unregister_netdev(ndev);
 +	if (priv->netdev_inited)
 +		unregister_netdev(ndev);

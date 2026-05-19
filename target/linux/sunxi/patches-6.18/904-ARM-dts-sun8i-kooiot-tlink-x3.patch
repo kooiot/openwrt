@@ -1,13 +1,13 @@
 --- a/arch/arm/boot/dts/allwinner/Makefile
 +++ b/arch/arm/boot/dts/allwinner/Makefile
-@@ -275,6 +275,7 @@
- 	sun8i-a33-olinuxino.dtb \
- 	sun8i-a33-q8-tablet.dtb \
- 	sun8i-a33-sinlinx-sina33.dtb \
+@@ -253,6 +253,7 @@
+ 	sun8i-h3-tlink-x1.dtb \
+ 	sun8i-h3-tlink-r1.dtb \
+ 	sun8i-h3-tlink-x1s.dtb \
 +	sun8i-x3-tlink-x3.dtb \
- 	sun8i-a83t-allwinner-h8homlet-v2.dtb \
- 	sun8i-a83t-bananapi-m3.dtb \
- 	sun8i-a83t-cubietruck-plus.dtb \
+ 	sun8i-h3-zeropi.dtb \
+ 	sun8i-h3-emlid-neutis-n5h3-devboard.dtb \
+ 	sun8i-r16-bananapi-m2m.dtb \
 --- a/arch/arm/boot/dts/allwinner/sun8i-x3-tlink-x3.dts
 +++ b/arch/arm/boot/dts/allwinner/sun8i-x3-tlink-x3.dts
 @@ -0,0 +1,283 @@

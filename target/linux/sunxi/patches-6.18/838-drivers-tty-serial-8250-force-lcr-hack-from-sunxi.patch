@@ -1,9 +1,9 @@
 --- a/drivers/tty/serial/8250/8250_port.c
 +++ a/drivers/tty/serial/8250/8250_port.c
-@@ -2764,6 +2764,37 @@
+@@ -2753,6 +2753,37 @@ static void serial8250_set_fcr(struct ua
+ 	serial_port_out(port, UART_FCR, up->fcr);
  }
- EXPORT_SYMBOL_GPL(serial8250_update_uartclk);
- 
+
 +#ifdef CONFIG_ARCH_SUNXI
 +#define SUNXI_UART_HALT (0xa4 >> 2) 		/* halt tx register */
 +/* Halt Register */
@@ -38,32 +38,31 @@
  void
  serial8250_do_set_termios(struct uart_port *port, struct ktermios *termios,
  		          const struct ktermios *old)
-@@ -2772,6 +2803,7 @@
- 	unsigned char cval;
- 	unsigned long flags;
+@@ -2760,12 +2791,17 @@ serial8250_do_set_termios(struct uart_po
+ 	struct uart_8250_port *up = up_to_u8250p(port);
  	unsigned int baud, quot, frac = 0;
+ 	u8 lcr;
 +	unsigned int dll, dlh = 0;
- 
- 	if (up->capabilities & UART_CAP_MINI) {
- 		termios->c_cflag &= ~(CSTOPB | PARENB | PARODD | CMSPAR);
-@@ -2784,6 +2816,10 @@
+
+ 	serial8250_set_mini(port, termios);
+ 	lcr = serial8250_compute_lcr(up, termios->c_cflag);
  	baud = serial8250_get_baud_rate(port, termios, old);
  	quot = serial8250_get_divisor(port, baud, &frac);
- 
+
 +	/* for SUNXI */
 +	dll = quot & 0xff;
 +	dlh = quot >> 8;
 +
  	/*
- 	 * Ok, we're now changing the port state.  Do it with
- 	 * interrupts disabled.
-@@ -2891,6 +2927,9 @@
- 			serial_port_out(port, UART_FCR, UART_FCR_ENABLE_FIFO);
- 		serial_port_out(port, UART_FCR, up->fcr);	/* set fcr */
- 	}
+ 	 * Ok, we're now changing the port state. Do it with interrupts disabled.
+ 	 *
+@@ -2783,6 +2819,9 @@ serial8250_do_set_termios(struct uart_po
+ 		serial8250_set_efr(port, termios);
+ 		serial8250_set_divisor(port, baud, quot, frac);
+ 		serial8250_set_fcr(port, termios);
 +#ifdef CONFIG_ARCH_SUNXI
-+	sw_uart_force_lcr(port, dll, dlh, 50);
++		sw_uart_force_lcr(port, dll, dlh, 50);
 +#endif
- 	serial8250_set_mctrl(port, port->mctrl);
- 	spin_unlock_irqrestore(&port->lock, flags);
- 	serial8250_rpm_put(up);
+ 		serial8250_set_mctrl(port, port->mctrl);
+ 	}
+

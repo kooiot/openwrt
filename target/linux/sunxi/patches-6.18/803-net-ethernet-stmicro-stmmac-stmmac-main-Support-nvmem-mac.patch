@@ -9,9 +9,9 @@
  #include <linux/if.h>
  #include <linux/if_vlan.h>
  #include <linux/dma-mapping.h>
-@@ -2875,6 +2877,81 @@
+@@ -3010,6 +3012,81 @@ static int stmmac_get_hw_features(struct
  }
- 
+
  /**
 + * Generate mac address from chipid as what u-boot does
 + */
@@ -91,7 +91,7 @@
   * stmmac_check_ether_addr - check if the MAC addr is valid
   * @priv: driver private structure
   * Description:
-@@ -2890,7 +2967,7 @@
+@@ -3025,7 +3102,7 @@ static void stmmac_check_ether_addr(stru
  		if (is_valid_ether_addr(addr))
  			eth_hw_addr_set(priv->dev, addr);
  		else

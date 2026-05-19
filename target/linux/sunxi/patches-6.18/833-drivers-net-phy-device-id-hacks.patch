@@ -1,17 +1,17 @@
 --- a/drivers/net/phy/phy_device.c	2021-12-22 10:48:18.055470157 +0800
 +++ b/drivers/net/phy/phy_device.c	2021-12-22 10:48:40.373993314 +0800
-@@ -32,6 +32,7 @@
+@@ -40,6 +40,7 @@
  #include <linux/string.h>
  #include <linux/uaccess.h>
  #include <linux/unistd.h>
 +#include <linux/of.h>
- 
- MODULE_DESCRIPTION("PHY library");
- MODULE_AUTHOR("Andy Fleming");
-@@ -853,6 +854,13 @@
- 	if (r)
- 		return ERR_PTR(r);
- 
+
+ #include "phylib-internal.h"
+ #include "phy-caps.h"
+@@ -1134,6 +1135,13 @@ struct phy_device *get_phy_device(struct
+ 						 true, &c45_ids);
+ 	}
+
 +	if (phy_id == 0) {
 +		dev_info(&bus->dev, "%s: phy_id:%x %pOF\n", __func__, phy_id, bus->dev.of_node);
 +		if (!of_property_read_u32(bus->dev.of_node, "allwinner,emac-fix-phy-id", &phy_id)) {

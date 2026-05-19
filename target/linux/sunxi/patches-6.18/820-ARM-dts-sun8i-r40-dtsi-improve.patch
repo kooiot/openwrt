@@ -1,6 +1,6 @@
 --- a/arch/arm/boot/dts/allwinner/sun8i-r40.dtsi
 +++ b/arch/arm/boot/dts/allwinner/sun8i-r40.dtsi
-@@ -244,6 +244,21 @@
+@@ -298,6 +298,21 @@
  					reg = <0x000000 0x80000>;
  				};
  			};
@@ -20,12 +20,12 @@
 +				};
 +			};
  		};
- 
+
  		nmi_intc: interrupt-controller@1c00030 {
-@@ -379,6 +394,20 @@
+@@ -435,6 +450,20 @@
  			#size-cells = <0>;
  		};
- 
+
 +		usb_otg: usb@1c13000 {
 +			compatible = "allwinner,sun4i-a10-musb";
 +			reg = <0x01c13000 0x0400>;
@@ -43,10 +43,10 @@
  		usbphy: phy@1c13400 {
  			compatible = "allwinner,sun8i-r40-usb-phy";
  			reg = <0x01c13400 0x14>,
-@@ -427,6 +456,45 @@
+@@ -483,6 +512,45 @@
  			#size-cells = <0>;
  		};
- 
+
 +		ehci0: usb@1c14000 {
 +			compatible = "allwinner,sun8i-r40-ehci", "generic-ehci";
 +			reg = <0x01c14000 0x100>;
@@ -89,9 +89,9 @@
  		ahci: sata@1c18000 {
  			compatible = "allwinner,sun8i-r40-ahci";
  			reg = <0x01c18000 0x1000>;
-@@ -704,6 +829,12 @@
+@@ -703,6 +771,12 @@
  			};
- 
+
  			/omit-if-no-ref/
 +			pwm_ch1_pin: pwm-ch1-pin {
 +				pins = "PB3";
@@ -102,10 +102,10 @@
  			mmc3_pins: mmc3-pins {
  				pins = "PI4", "PI5", "PI6",
  				       "PI7", "PI8", "PI9";
-@@ -716,6 +790,12 @@
+@@ -783,6 +857,12 @@
  				function = "uart4";
  			};
- 
+
 + 			/omit-if-no-ref/
 +			uart4_ph_pins: uart4-ph-pins {
 +				pins = "PH4", "PH5";
@@ -115,7 +115,7 @@
  			/omit-if-no-ref/
  			uart5_ph_pins: uart5-ph-pins {
  				pins = "PH6", "PH7";
-@@ -781,7 +861,8 @@
+@@ -905,7 +985,8 @@
  			clock-names = "bus", "mod";
  			interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>;
  			resets = <&ccu RST_BUS_THS>;
@@ -124,12 +124,12 @@
 +			nvmem-cell-names = "calibration";
  			#thermal-sensor-cells = <1>;
  		};
- 
-@@ -969,6 +1050,7 @@
+
+@@ -1102,6 +1183,7 @@
  			clocks = <&ccu CLK_BUS_GPU>, <&ccu CLK_GPU>;
  			clock-names = "bus", "core";
  			resets = <&ccu RST_BUS_GPU>;
 +			#cooling-cells = <2>;
  		};
- 
+
  		gmac: ethernet@1c50000 {

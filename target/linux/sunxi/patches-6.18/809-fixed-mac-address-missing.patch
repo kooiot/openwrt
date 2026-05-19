@@ -1,8 +1,8 @@
 --- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
 +++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
-@@ -4019,6 +4019,12 @@ static int __stmmac_open(struct net_devi
+@@ -4051,6 +4051,12 @@ static int stmmac_open(struct net_device
  	if (ret < 0)
- 		return ret;
+ 		goto err_dma_resources;
 
 +	if (!is_valid_ether_addr(priv->dev->dev_addr)) {
 +		eth_hw_addr_nvmem_sun8i_chipid(priv->device, priv->dev);
@@ -10,6 +10,6 @@
 +			priv->dev->dev_addr);
 +	}
 +
- 	if ((!priv->hw->xpcs ||
- 	     xpcs_get_an_mode(priv->hw->xpcs, mode) != DW_AN_C73)) {
- 		ret = stmmac_init_phy(dev);
+ 	ret = stmmac_init_phy(dev);
+ 	if (ret)
+ 		goto err_runtime_pm;

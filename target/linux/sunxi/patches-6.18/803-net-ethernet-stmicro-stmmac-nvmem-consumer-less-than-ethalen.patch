@@ -8,7 +8,7 @@
 
  #include "stmmac.h"
  #include "stmmac_platform.h"
-@@ -410,15 +411,81 @@ static void *stmmac_get_nvmem_address(st
+@@ -384,15 +385,81 @@ static void *stmmac_get_nvmem_address(st
  {
  	struct nvmem_cell *cell;
  	size_t cell_size;
@@ -91,7 +91,7 @@
  	return mac;
  }
 
-@@ -462,6 +529,13 @@ stmmac_probe_config_dt(struct platform_d
+@@ -474,6 +541,13 @@ stmmac_probe_config_dt(struct platform_d
  	if (mac_addr && is_valid_ether_addr(mac_addr))
  		ether_addr_copy(mac, mac_addr);
 

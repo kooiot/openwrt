@@ -8,18 +8,18 @@ diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c b/drivers/net
 index 72da77b94ecd..8a7b804528ef 100644
 --- a/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c
 +++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c
-@@ -15,6 +15,7 @@
+@@ -16,6 +16,7 @@
+ #include <linux/of.h>
  #include <linux/of_net.h>
- #include <linux/of_device.h>
  #include <linux/of_mdio.h>
 +#include <linux/nvmem-consumer.h>
- 
+
  #include "stmmac.h"
  #include "stmmac_platform.h"
-@@ -385,6 +386,22 @@
- 	return -ENODEV;
+@@ -379,6 +380,22 @@ static int stmmac_mdio_setup(struct plat
+ 	return 0;
  }
- 
+
 +static void *stmmac_get_nvmem_address(struct device *dev)
 +{
 +	struct nvmem_cell *cell;
@@ -37,18 +37,18 @@ index 72da77b94ecd..8a7b804528ef 100644
 +}
 +
  /**
-  * stmmac_probe_config_dt - parse device-tree driver parameters
-  * @pdev: platform_device structure
-@@ -401,11 +418,16 @@
- 	struct stmmac_dma_cfg *dma_cfg;
+  * stmmac_of_get_mac_mode - retrieves the interface of the MAC
+  * @np: - device-tree node
+@@ -435,11 +452,16 @@ stmmac_probe_config_dt(struct platform_d
  	int phy_mode;
+ 	void *ret;
  	int rc;
 +	const u8 *mac_addr;
- 
+
  	plat = devm_kzalloc(&pdev->dev, sizeof(*plat), GFP_KERNEL);
  	if (!plat)
  		return ERR_PTR(-ENOMEM);
- 
+
 +	/* U-boot passes a MAC address it found/generated for the
 +	   interface as a "local-mac-address" attribute in the dt
 +	   node. Here it is received.
@@ -56,10 +56,10 @@ index 72da77b94ecd..8a7b804528ef 100644
  	rc = of_get_mac_address(np, mac);
  	if (rc) {
  		if (rc == -EPROBE_DEFER)
-@@ -414,6 +436,10 @@
+@@ -448,6 +470,10 @@ stmmac_probe_config_dt(struct platform_d
  		eth_zero_addr(mac);
  	}
- 
+
 +	mac_addr = stmmac_get_nvmem_address(&pdev->dev);
 +	if (mac_addr && is_valid_ether_addr(mac_addr))
 +		ether_addr_copy(mac, mac_addr);

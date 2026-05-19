@@ -1,8 +1,8 @@
 --- a/arch/arm/boot/dts/allwinner/Makefile
 +++ b/arch/arm/boot/dts/allwinner/Makefile
-@@ -305,6 +305,7 @@
- 	sun8i-h3-orangepi-plus2e.dtb \
+@@ -250,6 +250,7 @@
  	sun8i-h3-orangepi-zero-plus2.dtb \
+ 	sun8i-h3-orangepi-zero-plus2-interface-board.dtb \
  	sun8i-h3-rervision-dvk.dtb \
 +	sun8i-h3-tlink-x1.dtb \
  	sun8i-h3-zeropi.dtb \

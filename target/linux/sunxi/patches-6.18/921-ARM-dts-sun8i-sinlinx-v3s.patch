@@ -1,13 +1,13 @@
 --- a/arch/arm/boot/dts/allwinner/Makefile
 +++ b/arch/arm/boot/dts/allwinner/Makefile
-@@ -334,6 +334,7 @@ dtb-$(CONFIG_MACH_SUN8I) += \
- 	sun8i-v3-sl631-imx179.dtb \
+@@ -295,6 +295,7 @@ dtb-$(CONFIG_MACH_SUN8I) += \
  	sun8i-v3s-licheepi-zero.dtb \
  	sun8i-v3s-licheepi-zero-dock.dtb \
+ 	sun8i-v3s-netcube-kumquat.dtb \
 +	sun8i-v3s-sinlinx-sin-v3s.dtb \
- 	sun8i-v40-bananapi-m2-berry.dtb \
- 	sun8i-t113-mangopi-dual.dtb \
- 	sun8i-t113-iot-station.dtb
+ 	sun8i-v40-bananapi-m2-berry.dtb
+ sun8i-h2-plus-orangepi-zero-interface-board-dtbs += \
+ 	sun8i-h2-plus-orangepi-zero.dtb sun8i-orangepi-zero-interface-board.dtbo
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-v3s-sinlinx-sin-v3s.dts
 @@ -0,0 +1,101 @@

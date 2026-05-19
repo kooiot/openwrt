@@ -1,6 +1,6 @@
 --- a/drivers/mfd/axp20x.c
 +++ b/drivers/mfd/axp20x.c
-@@ -623,6 +623,9 @@
+@@ -996,6 +996,9 @@ static const struct mfd_cell axp221_cell
  		.num_resources	= ARRAY_SIZE(axp22x_pek_resources),
  		.resources	= axp22x_pek_resources,
  	}, {
@@ -12,8 +12,8 @@
  		.name		= "axp22x-adc",
 --- a/arch/arm/boot/dts/allwinner/axp22x.dtsi
 +++ b/arch/arm/boot/dts/allwinner/axp22x.dtsi
-@@ -62,6 +62,12 @@
- 		#io-channel-cells = <1>;
+@@ -67,6 +67,12 @@
+ 		status = "disabled";
  	};
 
 +	axp_gpio: gpio {

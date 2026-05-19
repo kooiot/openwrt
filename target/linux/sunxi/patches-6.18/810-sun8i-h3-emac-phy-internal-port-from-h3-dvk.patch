@@ -1,9 +1,9 @@
 --- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
 +++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
-@@ -1189,6 +1189,30 @@ static int stmmac_init_phy(struct net_de
- 		ret = phylink_fwnode_phy_connect(priv->phylink, fwnode, 0);
+@@ -1168,6 +1168,30 @@ static int stmmac_init_phy(struct net_de
+ 		return ret;
  	}
- 
+
 +	if (ret == 0 && priv->plat->need_sun8i_ephy_hack)
 +	{
 +		struct phy_device* phydev = priv->dev->phydev;
@@ -28,38 +28,38 @@
 +		netdev_info(priv->dev, "%s: H3 phy hacks end\n", __func__);
 +	}
 +
- 	if (!priv->plat->pmt) {
- 		struct ethtool_wolinfo wol = { .cmd = ETHTOOL_GWOL };
- 
+ 	/* Configure phylib's copy of the LPI timer. Normally,
+ 	 * phylink_config.lpi_timer_default would do this, but there is a
+ 	 * chance that userspace could change the eee_timer setting via sysfs
 --- a/include/linux/stmmac.h
 +++ b/include/linux/stmmac.h
-@@ -297,6 +297,7 @@ struct plat_stmmacenet_data {
+@@ -289,6 +289,7 @@ struct plat_stmmacenet_data {
+ 	struct reset_control *stmmac_rst;
  	struct reset_control *stmmac_ahb_rst;
  	struct stmmac_axi *axi;
- 	int has_gmac4;
 +	bool need_sun8i_ephy_hack;
  	int rss_en;
  	int mac_port_sel_speed;
- 	int has_xgmac;
+ 	u8 vlan_fail_q;
 --- a/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
 +++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
-@@ -51,6 +51,7 @@ struct emac_variant {
- 	u32 default_syscon_value;
+@@ -46,6 +46,7 @@
+ struct emac_variant {
  	const struct reg_field *syscon_field;
  	bool soc_has_internal_phy;
 +	bool soc_has_ephy_hack;
  	bool support_mii;
  	bool support_rmii;
  	bool support_rgmii;
-@@ -100,6 +101,7 @@ static const struct emac_variant emac_va
- 	.default_syscon_value = 0x58000,
+@@ -91,6 +92,7 @@ static const struct reg_field sun8i_ccu_
+ static const struct emac_variant emac_variant_h3 = {
  	.syscon_field = &sun8i_syscon_reg_field,
  	.soc_has_internal_phy = true,
 +	.soc_has_ephy_hack = true,
  	.support_mii = true,
  	.support_rmii = true,
  	.support_rgmii = true,
-@@ -1253,6 +1255,7 @@ static int sun8i_dwmac_probe(struct plat
+@@ -1195,6 +1197,7 @@ static int sun8i_dwmac_probe(struct plat
  	plat_dat->rx_coe = STMMAC_RX_COE_TYPE2;
  	plat_dat->tx_coe = 1;
  	plat_dat->flags |= STMMAC_FLAG_HAS_SUN8I;
@@ -67,4 +67,3 @@
  	plat_dat->bsp_priv = gmac;
  	plat_dat->init = sun8i_dwmac_init;
  	plat_dat->exit = sun8i_dwmac_exit;
-

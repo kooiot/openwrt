@@ -1,6 +1,6 @@
 --- a/arch/arm/boot/dts/allwinner/Makefile
 +++ b/arch/arm/boot/dts/allwinner/Makefile
-@@ -319,6 +319,8 @@
+@@ -272,6 +272,8 @@
  	sun8i-s3-pinecube.dtb \
 	sun8i-t113s-mangopi-mq-r-t113.dtb \
  	sun8i-t3-cqa3t-bv3.dtb \
