@@ -130,6 +130,49 @@ tlink_k2_ch432_spi() {
 	esac
 }
 
+tlink_usb_serial() {
+	[ "${SUBSYSTEM}" = "usb-serial" ] || return
+	# logger -t hotplug $(env)
+	case "$DEVICENAME" in
+		ttyUSB0 |\
+		ttyUSB1 |\
+		ttyUSB2 |\
+		ttyUSB3 |\
+		ttyUSB4 |\
+		ttyUSB5)
+			if [ ! -f /sys$DEVPATH/../../../../idVendor ]; then
+				return
+			fi
+
+			vid=$(cat /sys$DEVPATH/../../../../idVendor)
+			pid=$(cat /sys$DEVPATH/../../../../idProduct)
+		
+			echo "USB Serial Check: ""${vid}:${pid}" > /dev/kmsg
+
+			#Quectel Fibocomm USB vid
+			case "$vid" in
+				"2c7c"|\
+				"2cb7"|\
+				"1508")
+					echo "4G/5G module skip" > /dev/kmsg
+					;;
+				*)
+					for i in $(seq 0 9)
+					do
+						if [ ! -e "/dev/ttyUSB1${i}" ]; then
+							echo "USB Serial rename from $DEVICENAME ttyUSB1${i}" > /dev/kmsg
+							mv /dev/$DEVICENAME /dev/ttyUSB1${i}
+							break;
+						fi
+					done
+					;;
+			esac
+			;;
+		*)
+			;;
+	esac
+}
+
 tlink_k4x_ch_spi() {
 	case "$DEVICENAME" in
 		ttyWCH0)
@@ -198,6 +241,7 @@ kooiot,tlink-k2|\
 kooiot,tlink-k2x)
 	tlink_k2_wk_spi
 	tlink_k2_ch432_spi
+	# tlink_usb_serial
 	;;
 kooiot,tlink-k4a|\
 kooiot,tlink-k4g)
