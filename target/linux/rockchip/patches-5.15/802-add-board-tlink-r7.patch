@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/arch/arm64/boot/dts/rockchip/rk3568-tlink-r7.dts
-@@ -0,0 +1,1331 @@
+@@ -0,0 +1,1332 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (c) 2022 KooIoT.com
@@ -634,6 +634,7 @@
 +		wakeup-source;
 +
 +		rtc {
++			compatible = "rk808-rtc";
 +			status = "disabled";
 +		};
 +
