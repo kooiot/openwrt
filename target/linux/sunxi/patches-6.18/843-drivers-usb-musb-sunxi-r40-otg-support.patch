@@ -1,0 +1,33 @@
+--- a/drivers/usb/musb/sunxi.c
++++ b/drivers/usb/musb/sunxi.c
+@@ -771,6 +771,8 @@ static int sunxi_musb_probe(struct platf
+ 			PTR_ERR(glue->usb_phy));
+ 		return PTR_ERR(glue->usb_phy);
+ 	}
++	// DIRK: Change the phy_mode by "echo device > /sys/class/usb_role/usb0-role-switch/role"
++	// phy_set_mode(glue->phy, glue->phy_mode);
+ 
+ 	glue->xceiv = devm_usb_get_phy(&pdev->dev, USB_PHY_TYPE_USB2);
+ 	if (IS_ERR(glue->xceiv)) {
+@@ -837,6 +839,12 @@ static const struct sunxi_musb_cfg sun8i
+ 	.no_configdata = true,
+ };
+ 
++static const struct sunxi_musb_cfg sun8i_r40_musb_cfg = {
++	.hdrc_config = &sunxi_musb_hdrc_config_5eps,
++	.has_sram = true,
++	.has_reset = true,
++};
++
+ static const struct sunxi_musb_cfg suniv_f1c100s_musb_cfg = {
+ 	.hdrc_config = &sunxi_musb_hdrc_config_5eps,
+ 	.has_sram = true,
+@@ -853,6 +861,8 @@ static const struct of_device_id sunxi_m
+ 	  .data = &sun8i_a33_musb_cfg, },
+ 	{ .compatible = "allwinner,sun8i-h3-musb",
+ 	  .data = &sun8i_h3_musb_cfg, },
++	{ .compatible = "allwinner,sun8i-r40-musb",
++	  .data = &sun8i_r40_musb_cfg, },
+ 	{ .compatible = "allwinner,suniv-f1c100s-musb",
+ 	  .data = &suniv_f1c100s_musb_cfg, },
+ 	{}
