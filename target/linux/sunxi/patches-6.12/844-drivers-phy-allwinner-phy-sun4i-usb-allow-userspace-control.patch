@@ -1,0 +1,10 @@
+--- a/drivers/phy/allwinner/phy-sun4i-usb.c
++++ b/drivers/phy/allwinner/phy-sun4i-usb.c
+@@ -968,6 +968,7 @@ static int sun4i_usb_phy_probe(struct pl
+ 	data->switch_desc.set = sun4i_usb_role_set;
+ 	data->switch_desc.get = sun4i_usb_role_get;
+ 	data->switch_desc.driver_data = data;
++	data->switch_desc.allow_userspace_control = true;
+ 
+ 	/*
+ 	 * Don't interfere with the default behavior of this driver until
