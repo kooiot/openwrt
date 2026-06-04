@@ -2,15 +2,15 @@ diff --git a/drivers/phy/allwinner/phy-sun4i-usb.c b/drivers/phy/allwinner/phy-s
 index 651d5e2a25ce..f7c974914619 100644
 --- a/drivers/phy/allwinner/phy-sun4i-usb.c
 +++ b/drivers/phy/allwinner/phy-sun4i-usb.c
-@@ -120,6 +120,7 @@
+@@ -106,6 +106,7 @@ struct sun4i_usb_phy_cfg {
  	u8 phyctl_offset;
  	bool dedicated_clocks;
  	bool phy0_dual_route;
 +	bool phy_reg_access_v2;
  	bool needs_phy2_siddq;
- 	int missing_phys;
- };
-@@ -194,13 +195,38 @@
+ 	bool siddq_in_base;
+ 	bool poll_vbusen;
+@@ -185,13 +186,38 @@ static void sun4i_usb_phy_write(struct s
  				int len)
  {
  	struct sun4i_usb_phy_data *phy_data = to_sun4i_usb_phy_data(phy);
@@ -20,9 +20,9 @@ index 651d5e2a25ce..f7c974914619 100644
 +	void __iomem *phyctl_latch;
  	unsigned long flags;
  	int i;
-
+ 
  	spin_lock_irqsave(&phy_data->reg_lock, flags);
-
+ 
 +	/* On older SoCs (prior to H3) PHY register are accessed by manipulating the
 +	 * common register for all PHYs. PHY index is specified by pulsing usbc bit.
 +	 * Newer SoCs leave the access procedure mostly unchanged, the difference
@@ -50,61 +50,61 @@ index 651d5e2a25ce..f7c974914619 100644
  	if (phy_data->cfg->phyctl_offset == REG_PHYCTL_A33) {
  		/* SoCs newer than A33 need us to set phyctl to 0 explicitly */
  		writel(0, phyctl);
-@@ -226,17 +252,21 @@
+@@ -217,17 +243,21 @@ static void sun4i_usb_phy_write(struct s
  		writeb(temp, phyctl);
-
+ 
  		/* pulse usbc_bit */
 -		temp = readb(phyctl);
 +		temp = readb(phyctl_latch);
  		temp |= usbc_bit;
 -		writeb(temp, phyctl);
 +		writeb(temp, phyctl_latch);
-
+ 
 -		temp = readb(phyctl);
 +		temp = readb(phyctl_latch);
  		temp &= ~usbc_bit;
 -		writeb(temp, phyctl);
 +		writeb(temp, phyctl_latch);
-
+ 
  		data >>= 1;
  	}
-
+ 
 +	/* Restore PHY routing and the rest of OTGCTL */
 +	if (phy_data->cfg->phy_reg_access_v2)
 +		writel(otgctl_val, phy_data->base + REG_PHY_OTGCTL);
 +
  	spin_unlock_irqrestore(&phy_data->reg_lock, flags);
  }
-
-@@ -982,6 +1012,7 @@
+ 
+@@ -1021,6 +1051,7 @@ static const struct sun4i_usb_phy_cfg su
  	.dedicated_clocks = true,
  	.hci_phy_ctl_clear = PHY_CTL_H3_SIDDQ,
  	.phy0_dual_route = true,
 +	.phy_reg_access_v2 = true,
  };
-
+ 
  static const struct sun4i_usb_phy_cfg sun8i_r40_cfg = {
-@@ -992,6 +1023,7 @@
+@@ -1030,6 +1061,7 @@ static const struct sun4i_usb_phy_cfg su
  	.dedicated_clocks = true,
  	.hci_phy_ctl_clear = PHY_CTL_H3_SIDDQ,
  	.phy0_dual_route = true,
 +	.phy_reg_access_v2 = true,
  };
-
+ 
  static const struct sun4i_usb_phy_cfg sun8i_v3s_cfg = {
-@@ -1002,6 +1034,7 @@
+@@ -1039,6 +1071,7 @@ static const struct sun4i_usb_phy_cfg su
  	.dedicated_clocks = true,
  	.hci_phy_ctl_clear = PHY_CTL_H3_SIDDQ,
  	.phy0_dual_route = true,
 +	.phy_reg_access_v2 = true,
  };
-
+ 
  static const struct sun4i_usb_phy_cfg sun20i_d1_cfg = {
-@@ -1011,6 +1044,7 @@
+@@ -1057,6 +1090,7 @@ static const struct sun4i_usb_phy_cfg su
  	.dedicated_clocks = true,
- 	.hci_phy_ctl_clear = PHY_CTL_SIDDQ,
+ 	.hci_phy_ctl_clear = PHY_CTL_H3_SIDDQ,
  	.phy0_dual_route = true,
 +	.phy_reg_access_v2 = true,
  };
-
- static const struct sun4i_usb_phy_cfg sun50i_a64_cfg = {
+ 
+ static const struct sun4i_usb_phy_cfg sun50i_h6_cfg = {
