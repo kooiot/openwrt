@@ -22,11 +22,7 @@
  		};
 
  		nmi_intc: interrupt-controller@1c00030 {
-<<<<<<< HEAD:target/linux/sunxi/patches-6.18/820-ARM-dts-sun8i-r40-dtsi-improve.patch
-@@ -435,6 +450,20 @@
-=======
-@@ -379,6 +394,21 @@
->>>>>>> 71728630df (sunxi: A40i musb otg has reset register):target/linux/sunxi/patches-6.12/820-ARM-dts-sun8i-r40-dtsi-improve.patch
+@@ -435,6 +450,21 @@
  			#size-cells = <0>;
  		};
 
@@ -48,11 +44,7 @@
  		usbphy: phy@1c13400 {
  			compatible = "allwinner,sun8i-r40-usb-phy";
  			reg = <0x01c13400 0x14>,
-<<<<<<< HEAD:target/linux/sunxi/patches-6.18/820-ARM-dts-sun8i-r40-dtsi-improve.patch
 @@ -483,6 +512,45 @@
-=======
-@@ -427,6 +457,45 @@
->>>>>>> 71728630df (sunxi: A40i musb otg has reset register):target/linux/sunxi/patches-6.12/820-ARM-dts-sun8i-r40-dtsi-improve.patch
  			#size-cells = <0>;
  		};
 
@@ -98,11 +90,7 @@
  		ahci: sata@1c18000 {
  			compatible = "allwinner,sun8i-r40-ahci";
  			reg = <0x01c18000 0x1000>;
-<<<<<<< HEAD:target/linux/sunxi/patches-6.18/820-ARM-dts-sun8i-r40-dtsi-improve.patch
 @@ -703,6 +771,12 @@
-=======
-@@ -704,6 +830,12 @@
->>>>>>> 71728630df (sunxi: A40i musb otg has reset register):target/linux/sunxi/patches-6.12/820-ARM-dts-sun8i-r40-dtsi-improve.patch
  			};
 
  			/omit-if-no-ref/
@@ -115,11 +103,7 @@
  			mmc3_pins: mmc3-pins {
  				pins = "PI4", "PI5", "PI6",
  				       "PI7", "PI8", "PI9";
-<<<<<<< HEAD:target/linux/sunxi/patches-6.18/820-ARM-dts-sun8i-r40-dtsi-improve.patch
 @@ -783,6 +857,12 @@
-=======
-@@ -716,6 +791,12 @@
->>>>>>> 71728630df (sunxi: A40i musb otg has reset register):target/linux/sunxi/patches-6.12/820-ARM-dts-sun8i-r40-dtsi-improve.patch
  				function = "uart4";
  			};
 
@@ -132,11 +116,7 @@
  			/omit-if-no-ref/
  			uart5_ph_pins: uart5-ph-pins {
  				pins = "PH6", "PH7";
-<<<<<<< HEAD:target/linux/sunxi/patches-6.18/820-ARM-dts-sun8i-r40-dtsi-improve.patch
 @@ -905,7 +985,8 @@
-=======
-@@ -781,7 +862,8 @@
->>>>>>> 71728630df (sunxi: A40i musb otg has reset register):target/linux/sunxi/patches-6.12/820-ARM-dts-sun8i-r40-dtsi-improve.patch
  			clock-names = "bus", "mod";
  			interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>;
  			resets = <&ccu RST_BUS_THS>;
@@ -145,13 +125,8 @@
 +			nvmem-cell-names = "calibration";
  			#thermal-sensor-cells = <1>;
  		};
-<<<<<<< HEAD:target/linux/sunxi/patches-6.18/820-ARM-dts-sun8i-r40-dtsi-improve.patch
 
 @@ -1102,6 +1183,7 @@
-=======
- 
-@@ -969,6 +1051,7 @@
->>>>>>> 71728630df (sunxi: A40i musb otg has reset register):target/linux/sunxi/patches-6.12/820-ARM-dts-sun8i-r40-dtsi-improve.patch
  			clocks = <&ccu CLK_BUS_GPU>, <&ccu CLK_GPU>;
  			clock-names = "bus", "core";
  			resets = <&ccu RST_BUS_GPU>;
