@@ -1,6 +1,6 @@
-diff -Nurp a/arch/arm/dts/sun8i-t113s-mangopi-mq-r-t113.dts b/arch/arm/dts/sun8i-t113s-mangopi-mq-r-t113.dts
---- a/arch/arm/dts/sun8i-t113s-mangopi-mq-r-t113.dts	2024-04-10 16:56:14.903177504 +0800
-+++ b/arch/arm/dts/sun8i-t113s-mangopi-mq-r-t113.dts	2024-04-10 17:00:09.515133159 +0800
+diff -Nurp a/dts/upstream/src/arm/allwinner/sun8i-t113s-mangopi-mq-r-t113.dts b/dts/upstream/src/arm/allwinner/sun8i-t113s-mangopi-mq-r-t113.dts
+--- a/dts/upstream/src/arm/allwinner/sun8i-t113s-mangopi-mq-r-t113.dts	2024-04-10 16:56:14.903177504 +0800
++++ b/dts/upstream/src/arm/allwinner/sun8i-t113s-mangopi-mq-r-t113.dts	2024-04-10 17:00:09.515133159 +0800
 @@ -33,3 +33,56 @@
  		interrupt-names = "host-wake";
  	};
@@ -187,7 +187,7 @@ diff -Nurp a/arch/arm/mach-sunxi/board.c b/arch/arm/mach-sunxi/board.c
 diff -Nurp a/arch/arm/mach-sunxi/Kconfig b/arch/arm/mach-sunxi/Kconfig
 --- a/arch/arm/mach-sunxi/Kconfig	2024-04-10 16:56:15.295184098 +0800
 +++ b/arch/arm/mach-sunxi/Kconfig	2024-04-10 17:27:48.459658682 +0800
-@@ -913,6 +913,18 @@ config UART3_PINS_PE
+@@ -915,6 +915,18 @@ config UART3_PINS_PE
  	Select this option for boards where uart3 uses the Port E pinmux.
  	(Some T113-S3 boards use uart3 as console.)
 
@@ -237,10 +237,10 @@ diff -Nurp a/arch/arm/mach-sunxi/spl_spi_sunxi.c b/arch/arm/mach-sunxi/spl_spi_s
 +#if defined(CONFIG_SPL_SPINAND_SUPPORT)
 +SPL_LOAD_IMAGE_METHOD("sunxi SPI NAND", 0, BOOT_DEVICE_SPINAND, spl_spi_load_image);
 +#endif
-diff -Nurp a/arch/riscv/dts/sunxi-d1s-t113.dtsi b/arch/riscv/dts/sunxi-d1s-t113.dtsi
---- a/arch/riscv/dts/sunxi-d1s-t113.dtsi	2024-04-10 16:56:15.519187867 +0800
-+++ b/arch/riscv/dts/sunxi-d1s-t113.dtsi	2024-04-10 18:04:04.850187902 +0800
-@@ -147,6 +147,12 @@
+diff -Nurp a/dts/upstream/src/riscv/allwinner/sunxi-d1s-t113.dtsi b/dts/upstream/src/riscv/allwinner/sunxi-d1s-t113.dtsi
+--- a/dts/upstream/src/riscv/allwinner/sunxi-d1s-t113.dtsi	2024-04-10 16:56:15.519187867 +0800
++++ b/dts/upstream/src/riscv/allwinner/sunxi-d1s-t113.dtsi	2024-04-10 18:04:04.850187902 +0800
+@@ -195,6 +195,12 @@
  			};
 
  			/omit-if-no-ref/
@@ -298,10 +298,10 @@ diff -Nurp a/common/spl/Kconfig b/common/spl/Kconfig
 diff -Nurp a/common/spl/spl_ubi.c b/common/spl/spl_ubi.c
 --- a/common/spl/spl_ubi.c	2024-04-10 16:56:16.843210140 +0800
 +++ b/common/spl/spl_ubi.c	2024-04-10 18:11:01.137311750 +0800
-@@ -11,6 +11,14 @@
- #include <ubispl.h>
- #include <spl.h>
- 
+@@ -41,6 +41,14 @@ int spl_ubi_load_image_os(struct spl_ima
+ }
+ #endif
+
 +static ulong ram_spl_load_read(struct spl_load_info *load, ulong sector,
 +                             ulong count, void *buf)
 +{
@@ -313,9 +313,9 @@ diff -Nurp a/common/spl/spl_ubi.c b/common/spl/spl_ubi.c
  int spl_ubi_load_image(struct spl_image_info *spl_image,
  		       struct spl_boot_device *bootdev)
  {
-@@ -20,6 +28,13 @@ int spl_ubi_load_image(struct spl_image_
+@@ -50,6 +58,13 @@ int spl_ubi_load_image(struct spl_image_
  	int ret = 1;
- 
+
  	switch (bootdev->boot_device) {
 +#ifdef CONFIG_SPL_SPINAND_SUPPORT
 +	case BOOT_DEVICE_SPINAND:
@@ -327,19 +327,20 @@ diff -Nurp a/common/spl/spl_ubi.c b/common/spl/spl_ubi.c
  #ifdef CONFIG_SPL_NAND_SUPPORT
  	case BOOT_DEVICE_NAND:
  		nand_init();
-@@ -61,7 +76,8 @@ int spl_ubi_load_image(struct spl_image_
- 		puts("Loading Linux failed, falling back to U-Boot.\n");
+@@ -86,8 +101,8 @@ int spl_ubi_load_image(struct spl_image_
+ 		printf("Fallback to U-Boot\n");
  	}
  #endif
+-
 -	header = spl_get_load_buffer(-sizeof(*header), sizeof(header));
 +	/* Ensure there's enough room for the full UBI volume! */
 +	header = (void*)CONFIG_SYS_LOAD_ADDR;
  #ifdef CONFIG_SPL_UBI_LOAD_BY_VOLNAME
  	volumes[0].vol_id = -1;
  	strncpy(volumes[0].name,
-@@ -73,15 +89,35 @@ int spl_ubi_load_image(struct spl_image_
+@@ -99,15 +114,35 @@ int spl_ubi_load_image(struct spl_image_
  	volumes[0].load_addr = (void *)header;
- 
+
  	ret = ubispl_load_volumes(&info, volumes, 1);
 -	if (!ret)
 -		spl_parse_image_header(spl_image, bootdev, header);
@@ -379,8 +380,8 @@ diff -Nurp a/common/spl/spl_ubi.c b/common/spl/spl_ubi.c
 diff -Nurp a/configs/mangopi_mq_r_defconfig b/configs/mangopi_mq_r_defconfig
 --- a/configs/mangopi_mq_r_defconfig	2024-04-10 16:56:16.963212159 +0800
 +++ b/configs/mangopi_mq_r_defconfig	2024-04-10 18:12:00.426321658 +0800
-@@ -11,5 +11,33 @@ CONFIG_MACH_SUN8I_R528=y
- CONFIG_DRAM_CLK=792
+@@ -11,5 +11,33 @@ CONFIG_DRAM_SUNXI_TPR13=0x34000100
+ CONFIG_MACH_SUN8I_R528=y
  CONFIG_DRAM_ZQ=8092667
  CONFIG_SUNXI_MINIMUM_DRAM_MB=128
 +CONFIG_UART2_PORT_E=y

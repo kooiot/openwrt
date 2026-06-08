@@ -3,7 +3,7 @@
 @@ -0,0 +1,18 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
-+CONFIG_DEFAULT_DEVICE_TREE="sun8i-t113s-tlink-e1"
++CONFIG_DEFAULT_DEVICE_TREE="allwinner/sun8i-t113s-tlink-e1"
 +CONFIG_SPL=y
 +CONFIG_MACH_SUN8I_R528=y
 +CONFIG_DRAM_CLK=792
@@ -20,7 +20,7 @@
 +CONFIG_DRAM_SUNXI_TPR13=0x34000100
 +CONFIG_CONS_INDEX=5
 --- /dev/null
-+++ b/arch/arm/dts/sun8i-t113s-tlink-e1.dts
++++ b/dts/upstream/src/arm/allwinner/sun8i-t113s-tlink-e1.dts
 @@ -0,0 +1,124 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>

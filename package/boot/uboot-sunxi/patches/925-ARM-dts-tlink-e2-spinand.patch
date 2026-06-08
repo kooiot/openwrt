@@ -3,7 +3,7 @@
 @@ -0,0 +1,51 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
-+CONFIG_DEFAULT_DEVICE_TREE="sun8i-t113s-tlink-e2-spinand"
++CONFIG_DEFAULT_DEVICE_TREE="allwinner/sun8i-t113s-tlink-e2-spinand"
 +CONFIG_SPL=y
 +CONFIG_MACH_SUN8I_R528=y
 +CONFIG_DRAM_CLK=792
@@ -53,7 +53,7 @@
 +# CONFIG_MTD_UBI_FASTMAP=y
 +# CONFIG_MTD_UBI_FASTMAP_AUTOCONVERT=1
 --- /dev/null
-+++ b/arch/arm/dts/sun8i-t113s-tlink-e2-spinand.dts
++++ b/dts/upstream/src/arm/allwinner/sun8i-t113s-tlink-e2-spinand.dts
 @@ -0,0 +1,37 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +// Copyright (C) 2026 KooIoT.com

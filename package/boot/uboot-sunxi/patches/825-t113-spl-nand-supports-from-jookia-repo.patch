@@ -347,14 +347,14 @@ diff -Nurp a/doc/board/allwinner/sunxi.rst b/doc/board/allwinner/sunxi.rst
 diff -Nurp a/include/nand.h b/include/nand.h
 --- a/include/nand.h	2024-05-27 11:50:55.093513041 +0800
 +++ b/include/nand.h	2024-05-27 12:28:05.094041727 +0800
-@@ -10,6 +10,7 @@
- 
- #include <config.h>
- 
+@@ -8,6 +8,7 @@
+ #ifndef _NAND_H_
+ #define _NAND_H_
+
 +extern void spinand_init(void);
  extern void nand_init(void);
+ void nand_reinit(void);
  unsigned long nand_size(void);
- 
 @@ -107,7 +108,9 @@ int nand_get_lock_status(struct mtd_info
  u32 nand_spl_adjust_offset(u32 sector, u32 offs);
  int nand_spl_load_image(uint32_t offs, unsigned int size, void *dst);
@@ -362,6 +362,6 @@ diff -Nurp a/include/nand.h b/include/nand.h
 +int spinand_spl_read_block(int block, int offset, int len, void *dst);
  void nand_deselect(void);
 +void spinand_deselect(void);
- 
+
  #ifdef CONFIG_SYS_NAND_SELECT_DEVICE
  void board_nand_select_device(struct nand_chip *nand, int chip);

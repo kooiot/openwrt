@@ -127,7 +127,7 @@ diff -uNra a/arch/arm/mach-sunxi/Kconfig b/arch/arm/mach-sunxi/Kconfig
  config MACH_SUN8I_A83T
  	bool "sun8i (Allwinner A83T)"
  	select CPU_V7A
-@@ -563,13 +576,14 @@ config MACH_SUN55I_A523
+@@ -565,13 +578,14 @@ config MACH_SUN55I_A523
 
  endchoice
 
@@ -143,7 +143,7 @@ diff -uNra a/arch/arm/mach-sunxi/Kconfig b/arch/arm/mach-sunxi/Kconfig
  	default y if MACH_SUN8I_A83T
  	default y if MACH_SUNXI_H3_H5
  	default y if MACH_SUN8I_R40
-@@ -756,7 +770,8 @@ config DRAM_ZQ
+@@ -758,7 +772,8 @@ config DRAM_ZQ
  	depends on !MACH_SUN50I_A133
  	depends on !MACH_SUN55I_A523
  	default 123 if MACH_SUN4I || MACH_SUN5I || MACH_SUN6I || \
@@ -156,7 +156,7 @@ diff -uNra a/arch/arm/mach-sunxi/Kconfig b/arch/arm/mach-sunxi/Kconfig
 diff -uNra a/board/sunxi/board.c b/board/sunxi/board.c
 --- a/board/sunxi/board.c	2021-12-08 11:00:23.917087022 +0800
 +++ b/board/sunxi/board.c	2021-12-08 11:12:39.046692643 +0800
-@@ -759,7 +759,8 @@
+@@ -768,7 +768,8 @@ static bool get_unique_sid(unsigned int
  	 */
  #if !defined(CONFIG_MACH_SUN4I) && !defined(CONFIG_MACH_SUN5I) && \
      !defined(CONFIG_MACH_SUN6I) && !defined(CONFIG_MACH_SUN7I) && \
@@ -165,7 +165,7 @@ diff -uNra a/board/sunxi/board.c b/board/sunxi/board.c
 +	!defined(CONFIG_MACH_SUN8I_X3)
  	sid[3] = crc32(0, (unsigned char *)&sid[1], 12);
  #endif
- 
+
 diff -uNra a/drivers/clk/sunxi/Kconfig b/drivers/clk/sunxi/Kconfig
 --- a/drivers/clk/sunxi/Kconfig	2021-12-08 11:00:24.017094236 +0800
 +++ b/drivers/clk/sunxi/Kconfig	2021-12-08 11:13:53.064121503 +0800
@@ -185,13 +185,13 @@ diff -uNra a/drivers/clk/sunxi/Kconfig b/drivers/clk/sunxi/Kconfig
 diff -uNra a/drivers/power/Kconfig b/drivers/power/Kconfig
 --- a/drivers/power/Kconfig	2021-12-08 11:00:24.061097405 +0800
 +++ b/drivers/power/Kconfig	2021-12-08 11:13:19.359490719 +0800
-@@ -57,7 +57,7 @@
- 	default AXP209_POWER if MACH_SUN4I || MACH_SUN5I || MACH_SUN7I
+@@ -59,7 +59,7 @@ choice
  	default AXP221_POWER if MACH_SUN6I || MACH_SUN8I_A23 || MACH_SUN8I_A33 || MACH_SUN8I_R40
  	default AXP818_POWER if MACH_SUN8I_A83T
+ 	default AXP318W_POWER if MACH_SUN60I_A733
 -	default SUNXI_NO_PMIC if MACH_SUNXI_H3_H5 || MACH_SUN50I || MACH_SUN8I_V3S
 +	default SUNXI_NO_PMIC if MACH_SUNXI_H3_H5 || MACH_SUN50I || MACH_SUN8I_V3S || MACH_SUN8I_X3
- 
+
  config SUNXI_NO_PMIC
  	bool "board without a pmic"
 diff -uNra a/drivers/video/sunxi/sunxi_display.c b/drivers/video/sunxi/sunxi_display.c
