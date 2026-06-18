@@ -64,6 +64,7 @@ realtek_setup_macs()
 	netgear,gs308t-v1|\
 	netgear,gs310tp-v1|\
 	tplink,sg2008p-v1|\
+	tplink,sg2008p-v3|\
 	tplink,sg2210p-v3|\
 	tplink,sg2452p-v4|\
 	tplink,t1600g-28ts-v3|\
@@ -93,6 +94,7 @@ realtek_setup_macs()
 	plasmacloud,psx8|\
 	plasmacloud,psx10|\
 	plasmacloud,psx28|\
+	sirivision,sr-st3408f|\
 	zyxel,gs1920-24hp-v2)
 		lan_mac="$(get_mac_label)"
 		;;
