@@ -228,7 +228,10 @@ $(eval $(call KernelPackage,usb-gadget-ncm))
 
 define KernelPackage/usb-gadget-serial
   TITLE:=USB Serial Gadget support
-  KCONFIG:=CONFIG_USB_G_SERIAL
+  KCONFIG:=CONFIG_USB_G_SERIAL \
+		   CONFIG_USB_CONFIGFS \
+		   CONFIG_USB_CONFIGFS_SERIAL=y \
+		   CONFIG_USB_CONFIGFS_ACM=y
   FILES:= \
 	$(LINUX_DIR)/drivers/usb/gadget/function/u_serial.ko \
 	$(LINUX_DIR)/drivers/usb/gadget/function/usb_f_acm.ko \
