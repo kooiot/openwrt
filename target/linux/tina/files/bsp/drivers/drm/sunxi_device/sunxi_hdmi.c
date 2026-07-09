@@ -586,10 +586,11 @@ int sunxi_hdmi_disp_select_format(struct disp_device_config *info, u32 vic_code)
 	case DISP_CSC_TYPE_YUV420:
 		if (dw_sink_support_yuv420(vic_code)) {
 			if (info->bits == DISP_DATA_8BITS ||
-					dw_sink_support_yuv420_dc((u8)info->bits))
+					dw_sink_support_yuv420_dc((u8)info->bits)) {
 				hdmi_trace("hdmi check continue use yuv420-%s\n",
 					sunxi_hdmi_color_depth_string(info->bits));
 				return 0;
+			}
 		}
 		break;
 	case DISP_CSC_TYPE_YUV422:
