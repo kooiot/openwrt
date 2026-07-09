@@ -41,11 +41,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#ifndef __LISTS_UTILS__
-#define __LISTS_UTILS__
+#ifndef LISTS_UTILS_H
+#define LISTS_UTILS_H
 
 /* instruct QAC to ignore warnings about the following custom formatted macros */
 /* PRQA S 0881,3410 ++ */
+
 #if defined(__linux__)
  #include <linux/version.h>
 
@@ -57,6 +58,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #else
  #include <stdarg.h>
 #endif /* __linux__ */
+
 #include "img_types.h"
 #include "device.h"
 #include "power.h"

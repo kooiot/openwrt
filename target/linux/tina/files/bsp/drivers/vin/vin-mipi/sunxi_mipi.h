@@ -50,6 +50,12 @@ struct mipi_tvin {
 	struct tvin_init_info tvin_info;
 };
 
+struct mipi_multiplex_status {
+	bool is_virtual;
+	unsigned int depend_on_mipi_map;
+	unsigned int be_dependent_on_mipi_map;
+};
+
 struct mipi_dev {
 	struct v4l2_subdev subdev;
 	struct media_pad mipi_pads[MIPI_PAD_NUM];
@@ -64,9 +70,12 @@ struct mipi_dev {
 	struct combo_wdr_cfg wdr_cfg;
 	struct combo_csi_cfg cmb_csi_cfg;
 	struct v4l2_mbus_framefmt format;
+	struct mipi_multiplex_status multiplex_status;
 	struct pinctrl *pctrl;
 	void __iomem *base;
 	void __iomem *port_base;
+	int irq;
+	spinlock_t slock;
 	char if_name[20];
 	unsigned char id;
 	unsigned char if_type;
@@ -90,10 +99,15 @@ void sunxi_combo_set_lane_map(struct v4l2_subdev *sd,
 		struct combo_lane_map *map);
 void sunxi_combo_wdr_config(struct v4l2_subdev *sd,
 		struct combo_wdr_cfg *wdr);
-struct v4l2_subdev *sunxi_mipi_get_subdev(int id);
+struct v4l2_subdev *sunxi_mipi_get_subdev(unsigned int id);
 int sunxi_mipi_debug_register_driver(void);
 void sunxi_mipi_debug_unregister_driver(void);
 int sunxi_mipi_platform_register(void);
 void sunxi_mipi_platform_unregister(void);
+#if defined MIPI_COMBO_CSI
+int sunxi_mipi_get_deskew(struct v4l2_subdev *sd);
+int sunxi_mipi_set_deskew(struct v4l2_subdev *sd, unsigned int delay);
+int sunxi_mipi_get_error(struct v4l2_subdev *sd);
+#endif
 
 #endif /* _SUNXI_MIPI__H_ */

@@ -15,6 +15,7 @@
 #include <linux/of_gpio.h>
 #include <linux/dmaengine.h>
 #include <linux/device.h>
+#include <linux/time.h>
 #include <sound/pcm.h>
 #include <sound/soc.h>
 #include <sound/jack.h>
@@ -40,6 +41,18 @@ struct sunxi_adapt_dai_ops_priv {
 #define sunxi_adpt_rtd_cpu_dai(rtd)		asoc_rtd_to_cpu(rtd, 0)
 #define sunxi_adpt_of_get_dai_name(of_node, dai_name) snd_soc_of_get_dai_name(of_node, dai_name, 0)
 #define sunxi_adpt_class_create(owner, name)	class_create(name)
+static inline void sunxi_adpt_vm_flags_set(struct vm_area_struct *vma, vm_flags_t flags)
+{
+	vm_flags_set(vma, flags);
+}
+static inline void *sunxi_adpt_dai_dma_data_get(const struct snd_soc_dai *dai, int stream)
+{
+	return dai->stream[stream].dma_data;
+}
+static inline void sunxi_adpt_wait_time_conv(struct snd_pcm_substream *substream, long wait_time)
+{
+	substream->wait_time = wait_time;
+}
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 #define SUNXI_ATTR_SHOW_CONVERT(func_ptr)	func_ptr
 #define SUNXI_ATTR_STORE_CONVERT(func_ptr)	func_ptr
@@ -47,6 +60,45 @@ struct sunxi_adapt_dai_ops_priv {
 #define sunxi_adpt_rtd_cpu_dai(rtd)		asoc_rtd_to_cpu(rtd, 0)
 #define sunxi_adpt_of_get_dai_name(of_node, dai_name)	snd_soc_of_get_dai_name(of_node, dai_name)
 #define sunxi_adpt_class_create(owner, name)	class_create(owner, name)
+static inline void sunxi_adpt_vm_flags_set(struct vm_area_struct *vma, vm_flags_t flags)
+{
+	vma->vm_flags |= flags;
+}
+static inline void *sunxi_adpt_dai_dma_data_get(const struct snd_soc_dai *dai, int stream)
+{
+	if (stream == SNDRV_PCM_STREAM_PLAYBACK)
+		return dai->playback_dma_data;
+	else if (stream == SNDRV_PCM_STREAM_CAPTURE)
+		return dai->capture_dma_data;
+	return NULL;
+}
+static inline void sunxi_adpt_wait_time_conv(struct snd_pcm_substream *substream, long wait_time)
+{
+	substream->wait_time = msecs_to_jiffies(wait_time);
+}
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+#define SUNXI_ATTR_SHOW_CONVERT(func_ptr)	func_ptr
+#define SUNXI_ATTR_STORE_CONVERT(func_ptr)	func_ptr
+#define sunxi_adpt_rtd_codec_dai(rtd, i, dai)	for_each_rtd_codec_dai(rtd, i, dai)
+#define sunxi_adpt_rtd_cpu_dai(rtd)		rtd->cpu_dai
+#define sunxi_adpt_of_get_dai_name(of_node, dai_name)	snd_soc_of_get_dai_name(of_node, dai_name)
+#define sunxi_adpt_class_create(owner, name)	class_create(owner, name)
+static inline void sunxi_adpt_vm_flags_set(struct vm_area_struct *vma, vm_flags_t flags)
+{
+	vma->vm_flags |= flags;
+}
+static inline void *sunxi_adpt_dai_dma_data_get(const struct snd_soc_dai *dai, int stream)
+{
+	if (stream == SNDRV_PCM_STREAM_PLAYBACK)
+		return dai->playback_dma_data;
+	else if (stream == SNDRV_PCM_STREAM_CAPTURE)
+		return dai->capture_dma_data;
+	return NULL;
+}
+static inline void sunxi_adpt_wait_time_conv(struct snd_pcm_substream *substream, long wait_time)
+{
+	substream->wait_time = msecs_to_jiffies(wait_time);
+}
 #else
 #define SUNXI_ATTR_SHOW_CONVERT(func_ptr)	func_ptr
 #define SUNXI_ATTR_STORE_CONVERT(func_ptr)	func_ptr
@@ -54,6 +106,23 @@ struct sunxi_adapt_dai_ops_priv {
 #define sunxi_adpt_rtd_cpu_dai(rtd)		rtd->cpu_dai
 #define sunxi_adpt_of_get_dai_name(of_node, dai_name)	snd_soc_of_get_dai_name(of_node, dai_name)
 #define sunxi_adpt_class_create(owner, name)	class_create(owner, name)
+static inline void sunxi_adpt_vm_flags_set(struct vm_area_struct *vma, vm_flags_t flags)
+{
+	vma->vm_flags |= flags;
+}
+static inline void *sunxi_adpt_dai_dma_data_get(const struct snd_soc_dai *dai, int stream)
+{
+	if (stream == SNDRV_PCM_STREAM_PLAYBACK)
+		return dai->playback_dma_data;
+	else if (stream == SNDRV_PCM_STREAM_CAPTURE)
+		return dai->capture_dma_data;
+	return NULL;
+}
+static inline void sunxi_adpt_wait_time_conv(struct snd_pcm_substream *substream, long wait_time)
+{
+	void(substream);
+	void(wait_time);
+}
 #endif
 
 void sunxi_adpt_runtime_action(struct snd_soc_component *component, int action);

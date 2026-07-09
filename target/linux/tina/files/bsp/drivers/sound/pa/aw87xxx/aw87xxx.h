@@ -16,6 +16,7 @@
 #define __AW87XXX_H__
 #include <linux/version.h>
 #include <linux/kernel.h>
+#include <linux/power_supply.h>
 #include <sound/control.h>
 #include <sound/soc.h>
 
@@ -143,6 +144,7 @@ struct aw87xxx {
 #ifdef AW_ALGO_AUTH_DSP
 	struct delayed_work auth_work;
 #endif
+	struct power_supply *psy;
 };
 
 int aw87xxx_update_profile(struct aw87xxx *aw87xxx, char *profile);

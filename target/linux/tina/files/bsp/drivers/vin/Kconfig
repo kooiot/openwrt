@@ -107,6 +107,21 @@ config TDM_ONE_BUFFER
 	help
 		need ensure sensor vbland > 20%
 
+config TDM_ONE_BUFFER_WITH_TWORX
+	bool "tdm use one buffer mode with two tdm_rx run"
+	depends on TDM_ONE_BUFFER
+	default n
+
+config TDM_OFFLINE_HANDLE_RAW
+	bool "tdm receive raw data to user and than get it from user, finally return to isp"
+	depends on SUPPORT_ISP_TDM
+	default n
+
+config AVG_TDM_FIFO
+	bool "set the tdm four channels fifo the same"
+	depends on SUPPORT_ISP_TDM
+	default n
+
 choice
 	depends on AW_VIDEO_SUNXI_VIN
 	prompt "select rgb mode"
@@ -135,10 +150,21 @@ config DISPPLAY_SYNC
 	depends on AW_VIDEO_SUNXI_VIN
 	default n
 
-config VIN_IOMMU
-	bool "use IOMMU for memery alloc"
+choice
 	depends on AW_VIDEO_SUNXI_VIN
-	default y
+	prompt "select memory alloc mode"
+	default VIN_CMA
+
+config VIN_CMA
+	bool "use CMA for memory alloc"
+
+config VIN_IOMMU
+	bool "use IOMMU for memory alloc"
+
+config VIN_USE_ION_SIZE_POOL_HEAP
+	bool "use memory pool for memory alloc"
+
+endchoice
 
 config D3D
 	bool "ISP 3D denoise module"
@@ -169,6 +195,13 @@ config D3D_LBC_MODE
 	bool "use d3d lbc mode"
 endchoice
 
+config D3D_COMPRESS_EN
+	bool "ISP 3D denoise reduces buf size by compression"
+	depends on AW_VIDEO_SUNXI_VIN
+	depends on D3D
+	depends on D3D_LBC_MODE
+	default	n
+
 config WDR
 	bool "ISP WDR module"
 	depends on AW_VIDEO_SUNXI_VIN
@@ -182,6 +215,7 @@ config WDR_COMPRESS_EN
 
 config FRAMEDONE_TWO_BUFFER
 	bool "use two buffer in bk frame done interrupt"
+	depends on AW_VIDEO_SUNXI_VIN
 	default	n
 
 config SAME_I2C
@@ -204,14 +238,51 @@ config ISP_SERVER_MELIS
 	depends on AW_VIDEO_SUNXI_VIN
 	default n
 
+config ISP_SPECIAL_LDCI
+	bool "use isp ldci on fastboot"
+	depends on ISP_SERVER_MELIS
+	default n
+
+config RPMSG_SEND_ISP_PARA
+	bool "use rpmsg send isp para to rtos"
+	depends on ISP_SERVER_MELIS
+	default n
+
 config VIN_INIT_MELIS
 	bool "vin and isp init in melis"
 	depends on AW_VIDEO_SUNXI_VIN
 	default n
 
+config ISP0_THRESHOLD_PARAM_OFFSET
+	int "isp0 threshold param offset(sector)"
+	default 111
+	help
+	  This section is located between boot0 and uboot.
+	  Must ensure that the offset of this section is not less than the size of boot0.
+	  The sizeof of the boot0&uboot reserved section is defined at the 'flashmap'
+	  dts node in uboot-board.dts.
+
+config ISP1_THRESHOLD_PARAM_OFFSET
+	int "isp1 threshold param offset(sector)"
+	default 119
+	help
+	  This section is located between boot0 and uboot.
+	  Must ensure that the offset of this section is not less than the size of boot0.
+	  The sizeof of the boot0&uboot reserved section is defined at the 'flashmap'
+	  dts node in uboot-board.dts.
+
+config VIN_THRESHOLD_PARAM_SIZE
+	hex "vin threshold param size"
+	default 0x200
+
 config RV_RUN_CAR_REVERSE
 	bool "special function for vin used on rv"
 	depends on VIN_INIT_MELIS && VIDEO_SUNXI_VIN_SPECIAL
+	default n
+
+config ISP_REG_DEBUG_NODE
+	bool "open isp register debug node"
+	depends on AW_VIDEO_SUNXI_VIN
 	default n
 
 source "bsp/drivers/vin/modules/sensor/Kconfig"

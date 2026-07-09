@@ -23,7 +23,6 @@
 #include <drm/drm_framebuffer.h>
 #include <linux/module.h>
 #include <linux/printk.h>
-#include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 #include <linux/types.h>
 #include <sunxi-iommu.h>
@@ -68,7 +67,6 @@ typedef struct sunxidrm_debug_data {
 
 	frame_trace_t *frames[DE_MAX_COUNT];
 	struct work_struct work;
-	struct proc_dir_entry *proc_entry;
 } sunxidrm_debug_data_t;
 
 static sunxidrm_debug_data_t dbgdat;
@@ -127,12 +125,13 @@ static void sunxidrm_debug_work_func(struct work_struct *work)
 	}
 }
 
-#if IS_ENABLED(CONFIG_PROC_FS)
-
-static int sunxidrm_debug_show(struct seq_file *sfile, void *offset)
+int sunxidrm_debug_show(struct seq_file *sfile, void *offset)
 {
 	int i, id = 0;
 	unsigned long flags;
+
+	if (!dbgdat.init)
+		return 0;
 
 	seq_printf(sfile, "SUNXI-DRM exception: %d timestamp %lld\n", atomic_read(&dbgdat.exception),
 		   dbgdat.exception_ts);
@@ -164,35 +163,6 @@ static int sunxidrm_debug_show(struct seq_file *sfile, void *offset)
 	return 0;
 }
 
-static int sunxidrm_debug_procfs_init(void)
-{
-	struct proc_dir_entry *proc_entry;
-
-	proc_entry = proc_mkdir("sunxi-drm", NULL);
-	if (IS_ERR_OR_NULL(proc_entry)) {
-		pr_err("Couldn't create sunxi-drm procfs directory !\n");
-		return -ENOMEM;
-	}
-	dbgdat.proc_entry = proc_entry;
-	proc_create_single_data("debug", 444, dbgdat.proc_entry, sunxidrm_debug_show, NULL);
-	return 0;
-}
-
-static void sunxidrm_debug_procfs_term(void)
-{
-	remove_proc_subtree("sunxi-drm", NULL);
-	dbgdat.proc_entry = NULL;
-}
-
-#else
-static int sunxidrm_debug_procfs_init(void)
-{
-}
-static void sunxidrm_debug_procfs_term(void)
-{
-}
-#endif
-
 void sunxidrm_debug_init(struct platform_device *pdev)
 {
 	int id = 0;
@@ -204,7 +174,6 @@ void sunxidrm_debug_init(struct platform_device *pdev)
 	}
 	atomic_set(&dbgdat.exception, 0);
 	INIT_WORK(&dbgdat.work, sunxidrm_debug_work_func);
-	sunxidrm_debug_procfs_init();
 
 #if IS_ENABLED(CONFIG_AW_IOMMU)
 {
@@ -227,7 +196,6 @@ void sunxidrm_debug_term(void)
 	int id = 0;
 
 	dbgdat.init = 0;
-	sunxidrm_debug_procfs_term();
 	for (id = 0; id < DE_MAX_COUNT; id++) {
 		kfree(dbgdat.frames[id]);
 	}

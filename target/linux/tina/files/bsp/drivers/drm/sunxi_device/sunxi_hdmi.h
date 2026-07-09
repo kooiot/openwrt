@@ -158,9 +158,24 @@ enum HDMI_CEA_VIC {
 /******************************************************************
  * @desc: sunxi hdmi level struct
  *****************************************************************/
+struct sunxi_hdmi_rescal_s {
+	unsigned long rescal_ctrl_pa;
+	u32 bit_hdmi_res_sel;
+	u32 bit_rescal_mode;
+	u32 bit_cal_ana_en;
+	u32 bit_cal_en;
+
+	unsigned long res0_ctrl_pa;
+	u32 res0_ctrl_bitmask;
+};
+
 struct sunxi_hdmi_plat_s {
 	unsigned char version;
 	unsigned char use_top_phy;
+	/* resistance calibration */
+	unsigned char need_res_cal;
+	struct sunxi_hdmi_rescal_s  rescal_regs;
+
 	struct dw_phy_ops_s  phy_func;
 };
 
@@ -171,11 +186,14 @@ struct sunxi_hdmi_s {
 
 	u8 smooth_boot;
 	u8 clock_src;
+	u8 resistor_src;
 	uintptr_t reg_base;
 
 	struct sunxi_hdmi_plat_s    *plat_data;
 	struct disp_device_config	disp_info;
 	struct dw_hdmi_dev_s    	dw_hdmi;
+
+	struct mutex  lock_config;
 };
 
 /**
@@ -256,6 +274,14 @@ void sunxi_hdmi_phy_reset(void);
  */
 int sunxi_hdmi_phy_resume(void);
 /**
+ * @desc: sunxi hdmi i2c set mode and rate
+ * @mode: i2c mode. standard or fast mode
+ * @rate: i2c rate. (*100Hz)
+ * @return: 0 - suaccess
+ *         -1 - failed
+ */
+int sunxi_hdmi_i2cm_set_ddc(u32 mode, u32 rate);
+/**
  * @desc: sunxi hdmi i2c master xfer, support send and receive
  * @msgs: buffer fot send or receive message
  * @num: send or receive message number
@@ -322,6 +348,7 @@ int sunxi_hdcp2x_config(u8 state);
  *          SUNXI_HDCP_SUCCESS - encry success
  */
 u8 sunxi_hdcp_get_state(void);
+void sunxi_hdcp_set_path(u8 path);
 
 /*******************************************************************************
  * sunxi hdmi core cec function

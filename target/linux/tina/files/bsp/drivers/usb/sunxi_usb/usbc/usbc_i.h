@@ -58,7 +58,7 @@ typedef struct __usbc_otg {
 #define PHY_RANGE_MODE_MASK			0x1000		/* bit12, mod_type */
 #define PHY_RANGE_COMM_MASK			0xE00		/* bit11:9, common_data */
 #if IS_ENABLED(CONFIG_ARCH_SUN8IW21) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) \
-	|| IS_ENABLED(CONFIG_ARCH_SUN300IW1)
+	|| IS_ENABLED(CONFIG_ARCH_SUN300IW1) || IS_ENABLED(CONFIG_ARCH_SUN251IW1)
 #define PHY_RANGE_TRAN_MASK			0x3C0		/* bit9:6, trancevie_data */
 #else
 #define PHY_RANGE_TRAN_MASK			0x1C0		/* bit8:6, trancevie_data */

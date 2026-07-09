@@ -42,20 +42,26 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### ###########################################################################
 
-LWS_COMPONENTS += lws
+ifeq ($(SUPPORT_COMPUTE_ONLY),)
+ LWS_COMPONENTS += lws
 
-ifeq ($(MESA_EGL),)
- COMPONENTS += null_drm_ws
+ ifeq ($(MESA_EGL),)
+  COMPONENTS += null_drm_ws
 
- ifeq ($(PVR_REMOTE),1)
-  COMPONENTS += null_remote null_none
+  ifeq ($(PVR_REMOTE),1)
+   COMPONENTS += null_remote null_none
+  else ifeq ($(PVR_NONE),1)
+   COMPONENTS += null_none
+  endif
+
+  ifneq ($(GBM_BACKEND),)
+   COMPONENTS += gbm
+  endif
+ else
+  -include ../common/window_systems/lws-generic.mk
  endif
 
- ifneq ($(GBM_BACKEND),)
-  COMPONENTS += gbm
+ ifneq ($(MESA_EGL)$(MESA_WSI),)
+  SUPPORT_BUILD_LWS ?= 1
  endif
-else
- -include ../common/window_systems/lws-generic.mk
-
- SUPPORT_BUILD_LWS ?= 1
 endif

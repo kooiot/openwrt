@@ -43,8 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "pvrsrv_device.h"
 #include "syscommon.h"
-#include "vz_support.h"
-#include "allocmem.h"
+#include "vz_vmm_pvz.h"
 #include "sysinfo.h"
 #include "sysconfig.h"
 #include "physheap.h"
@@ -133,15 +132,17 @@ static PHYS_HEAP_FUNCTIONS gsPhysHeapFuncs =
 	UMAPhysHeapCpuPAddrToDevPAddr,
 	/* pfnDevPAddrToCpuPAddr */
 	UMAPhysHeapDevPAddrToCpuPAddr,
-	/* pfnGetRegionId */
-	NULL,
 };
 
 static PVRSRV_ERROR PhysHeapsCreate(PHYS_HEAP_CONFIG **ppasPhysHeapsOut,
 									IMG_UINT32 *puiPhysHeapCountOut)
 {
+	/*
+	 * This function is called during device initialisation, which on Linux,
+	 * means it won't be called concurrently. As such, there's no need to
+	 * protect it with a lock or use an atomic variable.
+	 */
 	PHYS_HEAP_CONFIG *pasPhysHeaps;
-	IMG_UINT32 ui32NextHeapID = 0;
 	IMG_UINT32 uiHeapCount = 2;
 
 #if defined(SUPPORT_TRUSTED_DEVICE)
@@ -156,40 +157,39 @@ static PVRSRV_ERROR PhysHeapsCreate(PHYS_HEAP_CONFIG **ppasPhysHeapsOut,
 		return PVRSRV_ERROR_OUT_OF_MEMORY;
 	}
 
-	pasPhysHeaps[ui32NextHeapID].ui32PhysHeapID = PHYS_HEAP_IDX_GENERAL;
-	pasPhysHeaps[ui32NextHeapID].pszPDumpMemspaceName = "SYSMEM";
-	pasPhysHeaps[ui32NextHeapID].eType = PHYS_HEAP_TYPE_UMA;
-	pasPhysHeaps[ui32NextHeapID].psMemFuncs = &gsPhysHeapFuncs;
-	ui32NextHeapID++;
+	pasPhysHeaps[PHYS_HEAP_IDX_GENERAL].pszPDumpMemspaceName = "SYSMEM";
+	pasPhysHeaps[PHYS_HEAP_IDX_GENERAL].eType = PHYS_HEAP_TYPE_UMA;
+	pasPhysHeaps[PHYS_HEAP_IDX_GENERAL].psMemFuncs = &gsPhysHeapFuncs;
+	pasPhysHeaps[PHYS_HEAP_IDX_GENERAL].ui32UsageFlags = PHYS_HEAP_USAGE_GPU_LOCAL;
 
-	pasPhysHeaps[ui32NextHeapID].ui32PhysHeapID = PHYS_HEAP_IDX_FW;
-	pasPhysHeaps[ui32NextHeapID].pszPDumpMemspaceName = "SYSMEM_FW";
-	pasPhysHeaps[ui32NextHeapID].eType = PHYS_HEAP_TYPE_UMA;
-	pasPhysHeaps[ui32NextHeapID].psMemFuncs = &gsPhysHeapFuncs;
-	ui32NextHeapID++;
+	pasPhysHeaps[PHYS_HEAP_IDX_FW].pszPDumpMemspaceName = "SYSMEM_FW";
+	pasPhysHeaps[PHYS_HEAP_IDX_FW].eType = PHYS_HEAP_TYPE_UMA;
+	pasPhysHeaps[PHYS_HEAP_IDX_FW].psMemFuncs = &gsPhysHeapFuncs;
+	pasPhysHeaps[PHYS_HEAP_IDX_FW].ui32UsageFlags = PHYS_HEAP_USAGE_FW_SHARED;
 
 #if defined(SUPPORT_TRUSTED_DEVICE)
-	pasPhysHeaps[ui32NextHeapID].ui32PhysHeapID = PHYS_HEAP_IDX_TDFWCODE;
-	pasPhysHeaps[ui32NextHeapID].pszPDumpMemspaceName = "TDFWCODEMEM";
-	pasPhysHeaps[ui32NextHeapID].eType = PHYS_HEAP_TYPE_UMA;
-	pasPhysHeaps[ui32NextHeapID].psMemFuncs = &gsPhysHeapFuncs;
-	ui32NextHeapID++;
+	pasPhysHeaps[PHYS_HEAP_IDX_TDFWMEM].pszPDumpMemspaceName = "TDFWMEM";
+	pasPhysHeaps[PHYS_HEAP_IDX_TDFWMEM].eType = PHYS_HEAP_TYPE_UMA;
+	pasPhysHeaps[PHYS_HEAP_IDX_TDFWMEM].psMemFuncs = &gsPhysHeapFuncs;
+	pasPhysHeaps[PHYS_HEAP_IDX_TDFWMEM].ui32UsageFlags =
+		PHYS_HEAP_USAGE_FW_CODE | PHYS_HEAP_USAGE_FW_PRIV_DATA;
 
-	pasPhysHeaps[ui32NextHeapID].ui32PhysHeapID = PHYS_HEAP_IDX_TDSECUREBUF;
-	pasPhysHeaps[ui32NextHeapID].pszPDumpMemspaceName = "TDSECUREBUFMEM";
-	pasPhysHeaps[ui32NextHeapID].eType = PHYS_HEAP_TYPE_UMA;
-	pasPhysHeaps[ui32NextHeapID].psMemFuncs = &gsPhysHeapFuncs;
-	ui32NextHeapID++;
+	pasPhysHeaps[PHYS_HEAP_IDX_TDSECUREBUF].pszPDumpMemspaceName = "TDSECBUFMEM";
+	pasPhysHeaps[PHYS_HEAP_IDX_TDSECUREBUF].eType = PHYS_HEAP_TYPE_UMA;
+	pasPhysHeaps[PHYS_HEAP_IDX_TDSECUREBUF].psMemFuncs = &gsPhysHeapFuncs;
+	pasPhysHeaps[PHYS_HEAP_IDX_TDSECUREBUF].ui32UsageFlags =
+		PHYS_HEAP_USAGE_GPU_SECURE;
+
 #elif defined(SUPPORT_DEDICATED_FW_MEMORY)
-	pasPhysHeaps[ui32NextHeapID].ui32PhysHeapID = PHYS_HEAP_IDX_FW_MEMORY;
-	pasPhysHeaps[ui32NextHeapID].pszPDumpMemspaceName = "DEDICATEDFWMEM";
-	pasPhysHeaps[ui32NextHeapID].eType = PHYS_HEAP_TYPE_UMA;
-	pasPhysHeaps[ui32NextHeapID].psMemFuncs = &gsPhysHeapFuncs;
-	ui32NextHeapID++;
+	pasPhysHeaps[PHYS_HEAP_IDX_FW_MEMORY].pszPDumpMemspaceName = "DEDICATEDFWMEM";
+	pasPhysHeaps[PHYS_HEAP_IDX_FW_MEMORY].eType = PHYS_HEAP_TYPE_UMA;
+	pasPhysHeaps[PHYS_HEAP_IDX_FW_MEMORY].psMemFuncs = &gsPhysHeapFuncs;
+	pasPhysHeaps[PHYS_HEAP_IDX_FW_MEMORY].ui32UsageFlags =
+		PHYS_HEAP_USAGE_FW_CODE | PHYS_HEAP_USAGE_FW_PRIV_DATA;
 #endif
 
 	*ppasPhysHeapsOut = pasPhysHeaps;
-	*puiPhysHeapCountOut = ui32NextHeapID;
+	*puiPhysHeapCountOut = uiHeapCount;
 
 	return PVRSRV_OK;
 }
@@ -228,10 +228,12 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 
 	sunxi_data = (struct sunxi_platform *)dev->platform_data;
 
+#if defined(LINUX)
 #if defined(CONFIG_64BIT)
-       dma_set_mask(pvOSDevice, DMA_BIT_MASK(48));
+	dma_set_mask(pvOSDevice, DMA_BIT_MASK(48));
 #else
-       dma_set_mask(pvOSDevice, DMA_BIT_MASK(32));
+	dma_set_mask(pvOSDevice, DMA_BIT_MASK(32));
+#endif
 #endif
 
 	psDevConfig = OSAllocZMem(sizeof(*psDevConfig) +
@@ -258,7 +260,7 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 	} else {
 		psRGXTimingInfo->bEnableActivePM           = IMG_FALSE;
 	}
-	psRGXTimingInfo->bEnableRDPowIsland        = IMG_FALSE;
+	psRGXTimingInfo->bEnableRDPowIsland        = IMG_TRUE;
 	psRGXTimingInfo->ui32ActivePMLatencyms     = SYS_RGX_ACTIVE_POWER_LATENCY_MS;
 
 	/* Set up the RGX data */
@@ -289,15 +291,8 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 
 	psDevConfig->pasPhysHeaps			= pasPhysHeaps;
 	psDevConfig->ui32PhysHeapCount		= uiPhysHeapCount;
+	psDevConfig->eDefaultHeap = PVRSRV_PHYS_HEAP_GPU_LOCAL;
 
-	psDevConfig->aui32PhysHeapID[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL] = PHYS_HEAP_IDX_GENERAL;
-	psDevConfig->aui32PhysHeapID[PVRSRV_DEVICE_PHYS_HEAP_CPU_LOCAL] = PHYS_HEAP_IDX_GENERAL;
-	psDevConfig->aui32PhysHeapID[PVRSRV_DEVICE_PHYS_HEAP_EXTERNAL] = PHYS_HEAP_IDX_GENERAL;
-	psDevConfig->aui32PhysHeapID[PVRSRV_DEVICE_PHYS_HEAP_FW_LOCAL] = PHYS_HEAP_IDX_FW;
-
-	psDevConfig->eBIFTilingMode = geBIFTilingMode;
-	psDevConfig->pui32BIFTilingHeapConfigs = gauiBIFTilingHeapXStrides;
-	psDevConfig->ui32BIFTilingHeapCount = ARRAY_SIZE(gauiBIFTilingHeapXStrides);
 
 	/* No power management on no HW system */
 	psDevConfig->pfnPrePowerState       = sunxiPrePowerState;

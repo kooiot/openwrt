@@ -13,7 +13,6 @@
 #include <linux/version.h>
 #include <linux/tty_flip.h>
 #include <linux/interrupt.h>
-#include <linux/math64.h>
 
 #include "sunxi-soft-uart-queue.h"
 #include "sunxi-soft-uart-core.h"
@@ -32,7 +31,6 @@ static ktime_t period;
 static int gpio_tx;
 static int gpio_rx;
 static int rx_bit_index = -1;
-int soft_uart_parity_flag = 0;
 
 void print_current_time(void)
 {
@@ -157,10 +155,7 @@ int sunxi_soft_uart_close(void)
  */
 int sunxi_soft_uart_set_baudrate(const int baudrate)
 {
-	uint64_t nsec_per_sec = 1000000000;
-
-	do_div(nsec_per_sec, baudrate);
-	period = ktime_set(0, nsec_per_sec);
+	period = ktime_set(0, 1000000000/baudrate);
 	/* 0x41 means debounce rate is 1.5M */
 	gpio_set_debounce(gpio_rx, 0x41);
 	return 1;
@@ -212,12 +207,9 @@ int sunxi_soft_uart_get_tx_queue_size(void)
  */
 static irq_handler_t handle_rx_start(unsigned int irq, void *device, struct pt_regs *registers)
 {
-	uint64_t tmp = period;
-
-	do_div(tmp, 100);
 	print_current_time1();
 	if (rx_bit_index == -1) {
-		hrtimer_start(&timer_rx, ktime_set(0, tmp), HRTIMER_MODE_REL);
+		hrtimer_start(&timer_rx, ktime_set(0, period / 100), HRTIMER_MODE_REL);
 	}
 	return (irq_handler_t)IRQ_HANDLED;
 }
@@ -233,8 +225,6 @@ static enum hrtimer_restart handle_tx(struct hrtimer *timer)
 	static int bit_index = -1;
 	enum hrtimer_restart result = HRTIMER_NORESTART;
 	bool must_restart_timer = false;
-	static int high_level_count = 0;
-	static int parity_complete = 0;
 
 	// Start bit.
 	if (bit_index == -1) {
@@ -243,30 +233,15 @@ static enum hrtimer_restart handle_tx(struct hrtimer *timer)
 			bit_index++;
 			must_restart_timer = true;
 		}
-		parity_complete = 0;
 	} else if (0 <= bit_index && bit_index < 8) { /* Data bits */
-		if (1 & (character >> bit_index))
-			high_level_count++;
 		gpio_set_value(gpio_tx, 1 & (character >> bit_index));
 		bit_index++;
 		must_restart_timer = true;
 	} else if (bit_index == 8) { /* Stop bit */
-		/* parity bit */
-		if ((soft_uart_parity_flag & PARENB) && !parity_complete) {
-			if (soft_uart_parity_flag & PARODD)
-				gpio_set_value(gpio_tx, (high_level_count % 2) ? 0 : 1);
-			else
-				gpio_set_value(gpio_tx, (high_level_count % 2) ? 1 : 0);
-			high_level_count = 0;
-			parity_complete = 1;
-			must_restart_timer = true;
-		} else {
-		/* stop bit */
-			gpio_set_value(gpio_tx, 1);
-			character = 0;
-			bit_index = -1;
-			must_restart_timer = get_queue_size(&queue_tx) > 0;
-		}
+		gpio_set_value(gpio_tx, 1);
+		character = 0;
+		bit_index = -1;
+		must_restart_timer = get_queue_size(&queue_tx) > 0;
 	}
 
 	// Restarts the TX timer.
@@ -288,7 +263,6 @@ static enum hrtimer_restart handle_rx(struct hrtimer *timer)
 	int bit_value;
 	enum hrtimer_restart result;
 	bool must_restart_timer;
-	static int parity_complete = 0;
 
 	print_current_time();
 	current_time = ktime_get();
@@ -301,7 +275,6 @@ static enum hrtimer_restart handle_rx(struct hrtimer *timer)
 		rx_bit_index++;
 		character = 0;
 		must_restart_timer = true;
-		parity_complete = 0;
 	} else if (0 <= rx_bit_index && rx_bit_index < 8) {// Data bits.
 		if (bit_value == 0) {
 			character &= 0xfeff;
@@ -313,14 +286,8 @@ static enum hrtimer_restart handle_rx(struct hrtimer *timer)
 		character >>= 1;
 		must_restart_timer = true;
 	} else if (rx_bit_index == 8) {// Stop bit.
-		// parity
-		if ((soft_uart_parity_flag & PARENB) && !parity_complete) {
-			parity_complete = 1;
-			must_restart_timer = true;
-		} else {
-			receive_character(character);
-			rx_bit_index = -1;
-		}
+		receive_character(character);
+		rx_bit_index = -1;
 	}
 
 	// Restarts the RX timer.

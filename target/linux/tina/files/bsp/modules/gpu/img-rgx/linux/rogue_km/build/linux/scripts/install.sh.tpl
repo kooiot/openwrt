@@ -103,41 +103,18 @@ PVRVERSION=[PVRVERSION]
 PVRBUILD=[PVRBUILD]
 PRIMARY_ARCH="[PRIMARY_ARCH]"
 ARCHITECTURES=([ARCHITECTURES])
-LWS_PREFIX=[LWS_PREFIX]
 SHLIB_DESTDIR_DEFAULT=[SHLIB_DESTDIR]
 
 BIN_DESTDIR_DEFAULT=[BIN_DESTDIR]
+SHARE_DESTDIR_DEFAULT=[SHARE_DESTDIR]
 SHADER_DESTDIR_DEFAULT=[SHADER_DESTDIR]
 FW_DESTDIR_DEFAULT=[FW_DESTDIR]
+DTB_DESTDIR_DEFAULT=[DTB_DESTDIR]
 INCLUDE_DESTDIR_DEFAULT=[INCLUDE_DESTDIR]
 
 RC_DESTDIR=/etc/init.d
-UDEV_DESTDIR=/etc/udev/rules.d
 
-for i in lib64 lib32 lib; do
-    DEFAULT_DDX_DESTDIRS+=("/usr/$i/xorg/modules/drivers")
-done
-
-function get_destination_from_list() {
-    for path in "$@"; do
-        if [ -d "${DISCIMAGE}/$path" ] ; then
-            echo "$path"
-            return 0
-        fi
-    done
-
-    echo >&2 "WARNING: None of the destinations '$*' exist"
-    return 1
-}
-
-if [ -z "${DDX_DESTDIR}" ];then
-    if [ "${LWS_PREFIX}" = /usr ]; then
-        # Install into the standard place.
-        DDX_DESTDIR=$(get_destination_from_list "${DEFAULT_DDX_DESTDIRS[@]}")
-    else
-        DDX_DESTDIR="${LWS_PREFIX}"/lib/xorg/modules/drivers
-    fi
-fi
+LOG_DIR=/etc
 
 if [ ${#ARCHITECTURES[@]} -le 2 ]; then
     INSTALLING_SINGLELIB=true
@@ -252,6 +229,14 @@ function install_via_ssh() {
         INSTALL_TARGET_PORT=22
     fi
 
+    set -- $(realpath --canonicalize-missing --no-symlinks -- "/$INSTALL_TARGET_PATH")
+    INSTALL_TARGET_PATH="$1"
+    if [ -z "$INSTALL_TARGET_PATH" ]; then
+        bail "Bad INSTALL_TARGET_PATH; no 'realpath' command on this system?"
+    elif [ -n "$2" ]; then
+        bail "INSTALL_TARGET_PATH must not contain spaces"
+    fi
+
     # Execute something on the target machine via SSH
     # $1 The command to execute
     function remote_execute() {
@@ -272,11 +257,23 @@ function install_via_ssh() {
     PACKAGEDIR_REMOTE=/tmp/Rogue_DDK_Install_Root
     copy_files_locally
 
+    if [ -n "$INSTALL_TARGET_COMPRESS" ]; then
+        # The comma converts the first character to lower case
+        if [  "${INSTALL_TARGET_COMPRESS,}" = "y" ]; then
+            RSYNC_ZIP="--compress"
+        # The hash removes the shortest matching prefix, effectively checking the value is a digit
+        elif [ -z "${INSTALL_TARGET_COMPRESS#[0-9]}" ]; then
+            RSYNC_ZIP="--compress --compress-level=${INSTALL_TARGET_COMPRESS}"
+        else
+            bail "Invalid value for INSTALL_TARGET_COMPRESS"
+        fi
+    fi
+
     echo "RSyncing $PACKAGEDIR to $INSTALL_TARGET:$INSTALL_TARGET_PORT."
-    $DOIT rsync -crlpt -e "ssh -p \"$INSTALL_TARGET_PORT\"" --delete "$PACKAGEDIR"/ root@"$INSTALL_TARGET":"$PACKAGEDIR_REMOTE" || bail "Couldn't rsync $PACKAGEDIR to root@$INSTALL_TARGET"
+    $DOIT rsync -crlpt $RSYNC_ZIP -e "ssh -p \"$INSTALL_TARGET_PORT\"" --delete "$PACKAGEDIR"/ root@"$INSTALL_TARGET":"$PACKAGEDIR_REMOTE" || bail "Couldn't rsync $PACKAGEDIR to root@$INSTALL_TARGET"
     echo "Running ${INSTALL_PREFIX}nstall remotely."
 
-    REMOTE_COMMAND="bash $PACKAGEDIR_REMOTE/install.sh -r /"
+    REMOTE_COMMAND="bash $PACKAGEDIR_REMOTE/install.sh -r $INSTALL_TARGET_PATH"
 
     if [ "$UNINSTALL_ONLY" == "y" ]; then
         REMOTE_COMMAND="$REMOTE_COMMAND -u"
@@ -384,14 +381,21 @@ function install_locally {
             setup_bindir_for_arch "${BIN_DESTDIR_DEFAULT}64"
             echo "$SHLIB_DESTDIR"
             ;;
+        'target_riscv64')
+            setup_libdir_for_arch "${SHLIB_DESTDIR_DEFAULT}/riscv64-linux-gnu"
+            setup_bindir_for_arch "${BIN_DESTDIR_DEFAULT}64"
+            echo "$SHLIB_DESTDIR"
+            ;;
         'target_neutral' | '')
             unset SHLIB_DESTDIR
             unset BIN_DESTDIR
             unset EGL_DESTDIR
             INCLUDE_DESTDIR="${INCLUDE_DESTDIR_DEFAULT}"
+            SHARE_DESTDIR="${SHARE_DESTDIR_DEFAULT}"
             SHADER_DESTDIR="${SHADER_DESTDIR_DEFAULT}"
             DATA_DESTDIR="${BIN_DESTDIR_DEFAULT}"
             FW_DESTDIR="${FW_DESTDIR_DEFAULT}"
+            DTB_DESTDIR="${DTB_DESTDIR_DEFAULT}"
             return
             ;;
         *)
@@ -524,6 +528,8 @@ function install_locally {
             echo "Failed copying $3 from $1 to ${DISCIMAGE}$2"
         fi
     }
+
+    mkdir -p "$DISCIMAGE/$LOG_DIR"
 
     # Install UM components
     if [ "$INCLUDE_INDIVIDUAL_MODULE" != "y" ] || [ "$INCLUDE_COMPONENTS" == "y" ]; then
@@ -760,10 +766,10 @@ elif [ ! -z "$DISCIMAGE" ]; then
     echo
 
     if [ -z "${DISABLE_LOGGING}" ]; then
-        KMLOG="$DISCIMAGE"/etc/powervr_ddk_install_km.log
-        OLDUMLOG="$DISCIMAGE"/etc/powervr_ddk_install_um.log
-        UMLOG="$DISCIMAGE"/etc/powervr_ddk_install_components.log
-        FWLOG="$DISCIMAGE"/etc/powervr_ddk_install_fw.log
+        KMLOG="$DISCIMAGE/$LOG_DIR/powervr_ddk_install_km.log"
+        OLDUMLOG="$DISCIMAGE/$LOG_DIR/powervr_ddk_install_um.log"
+        UMLOG="$DISCIMAGE/$LOG_DIR/powervr_ddk_install_components.log"
+        FWLOG="$DISCIMAGE/$LOG_DIR/powervr_ddk_install_fw.log"
 
         # Can't do uninstall unless we are doing logging
         uninstall_locally

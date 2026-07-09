@@ -262,7 +262,43 @@ static int sun55iw6_ths_get_temp(void *data, int *temp)
 	return 0;
 }
 
+#define SUN8IW22_SENSOR_DATA_CODE (1790)
+#define SUN8IW22_OFFSET_BELOW (-2800)
+#define SUN8IW22_SCALE_BELOW (-64)
+#define SUN8IW22_OFFSET_ABOVE (-2980)
+#define SUN8IW22_SCALE_ABOVE (-55)
+static int sun8iw22_calc_temp(struct ths_device *tmdev,
+			       int id, int reg)
+{
+	return ((reg + SUN8IW22_OFFSET_BELOW) * SUN8IW22_SCALE_BELOW);
+}
 
+static int sun8iw22_get_temp(struct ths_device *tmdev,
+			       int id, int temp_calibration_para, int reg)
+{
+	if (reg > SUN8IW22_SENSOR_DATA_CODE)
+		return ((reg + SUN8IW22_OFFSET_BELOW + temp_calibration_para) * SUN8IW22_SCALE_BELOW);
+	else
+		return ((reg + SUN8IW22_OFFSET_ABOVE + temp_calibration_para) * SUN8IW22_SCALE_ABOVE);
+}
+
+static int sun8iw22_ths_get_temp(void *data, int *temp)
+{
+	struct tsensor *s = data;
+	struct ths_device *tmdev = s->tmdev;
+	int val = 0;
+
+	regmap_read(tmdev->regmap, tmdev->chip->temp_data_base +
+		    0x4 * s->id, &val);
+
+	/* ths have no data yet */
+	if (unlikely(!val))
+		return -EAGAIN;
+
+	*temp = sun8iw22_get_temp(tmdev, s->id, s->temp_calibration_para, val);
+
+	return 0;
+}
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)
 static int sunxi_ths_get_temp(void *data, int *temp)
@@ -608,6 +644,42 @@ static int sun55iw3_ths0_calibrate(struct ths_device *tmdev)
 	}
 
 	tmdev->has_calibration = true;
+	return 0;
+}
+
+#define SUN8IW22_THS_EFUSE_OFF0 (0x2C)
+#define SUN8IW22_THS_EFUSE_OFF1 (0x30)
+#define SUN8IW22_CAL_COM (0)
+static int sun8iw22_ths_calibrate(struct ths_device *tmdev)
+{
+	int i, ft_temp, reg;
+	u32 ths_cal_0x2c = 0;
+	u32 ths_cal_0x30 = 0;
+
+	sunxi_get_module_param_from_sid(&ths_cal_0x2c, SUN8IW22_THS_EFUSE_OFF0, 4);
+	sunxi_get_module_param_from_sid(&ths_cal_0x30, SUN8IW22_THS_EFUSE_OFF1, 4);
+
+	ft_temp = ((ths_cal_0x2c & GENMASK(23, 12)) >> 12);
+	if (!ft_temp)
+		return 0;
+
+	for (i = 0; i < tmdev->chip->sensor_num; i++) {
+		switch (i) {
+		case 0:
+			reg = ths_cal_0x2c & GENMASK(11, 0);
+			break;
+		case 1:
+			reg = ((ths_cal_0x2c & GENMASK(31, 24)) >> 24) | ((ths_cal_0x30 & GENMASK(4, 0)) << 8);
+			break;
+		default:
+			reg = 0;
+			break;
+		}
+
+		tmdev->sensor[i].temp_calibration_para = (ft_temp * 100 + SUN8IW22_CAL_COM - sun8iw22_calc_temp(tmdev, i, reg))
+											/SUN8IW22_SCALE_BELOW;
+	}
+
 	return 0;
 }
 
@@ -972,6 +1044,16 @@ static const struct ths_thermal_chip sun55iw6p1_ths = {
 	.get_temp = sun55iw6_ths_get_temp,
 };
 
+static const struct ths_thermal_chip sun8iw22p1_ths = {
+	.sensor_num = 2,
+	.has_bus_clk = true,
+	.has_gpadc_clk = true,
+	.temp_data_base = SUN50I_H616_THS_TEMP_DATA,
+	.calibrate = sun8iw22_ths_calibrate,
+	.init = sun55iw3_thermal_init,
+	.get_temp = sun8iw22_ths_get_temp,
+};
+
 static const struct of_device_id of_ths_match[] = {
 	{ .compatible = "allwinner,sun50iw9p1-ths", .data = &sun50iw9p1_ths },
 	{ .compatible = "allwinner,sun50iw10p1-ths", .data = &sun50iw10p1_ths },
@@ -983,6 +1065,7 @@ static const struct of_device_id of_ths_match[] = {
 	{ .compatible = "allwinner,sun55iw3p1-ths1", .data = &sun55iw3p1_ths1 },
 	{ .compatible = "allwinner,sun8iw21p1-ths", .data = &sun8iw21p1_ths },
 	{ .compatible = "allwinner,sun55iw6p1-ths", .data = &sun55iw6p1_ths },
+	{ .compatible = "allwinner,sun8iw22p1-ths", .data = &sun8iw22p1_ths },
 	{ /* sentinel */ },
 };
 MODULE_DEVICE_TABLE(of, of_ths_match);

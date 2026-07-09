@@ -52,17 +52,6 @@ config BT_RTKH5
 
 	  Say Y here to compile support for Realtek H5 into the kernel.
 
-config BT_HCIBTUSB_RTLBTUSB
-	tristate "Realtek HCI USB driver support"
-	depends on USB
-	help
-	  Realtek Bluetooth HCI USB driver.
-	  This driver is required if you want to use Realtek Bluetooth
-	  device with USB interface.
-
-	  Say Y here to compile support for Bluetooth USB devices into the
-	  kernel or say M to compile it as module (rtk_btusb).
-
 endmenu
 
 endmenu

@@ -25,4 +25,7 @@
 #define  PM	1
 #define  PN	2
 
+/* rtc pio */
+#define  PW	0	/* for sun8iw22 PWR_IRQ bank */
+
 #endif /* __DT_SUN4I_GPIO_H */

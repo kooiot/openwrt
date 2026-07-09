@@ -52,7 +52,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 
 #define DRVNAME					"dc_sunxi"
-#define DC_PHYS_HEAP_ID			0
 #define MAX_COMMANDS_IN_FLIGHT	2
 
 #if defined(DC_SUNXI_NUM_PREFERRED_BUFFERS)
@@ -419,7 +418,6 @@ IMG_BOOL DC_SUNXI_GetBufferID(DC_SUNXI_CONTEXT *psDeviceContext, IMG_UINT32 *pui
 		if ((psDeviceContext->ui32AllocUseMask & (1UL << ui32BufferID)) == 0)
 		{
 			psDeviceContext->ui32AllocUseMask |= (1UL << ui32BufferID);
-			
 			*pui32BufferID = ui32BufferID;
 
 			return IMG_TRUE;
@@ -441,7 +439,6 @@ PVRSRV_ERROR DC_SUNXI_BufferAlloc(IMG_HANDLE hDisplayContext,
 								  DC_BUFFER_CREATE_INFO *psCreateInfo,
 								  IMG_DEVMEM_LOG2ALIGN_T *puiLog2PageSize,
 								  IMG_UINT32 *pui32PageCount,
-								  IMG_UINT32 *pui32PhysHeapID,
 								  IMG_UINT32 *pui32ByteStride,
 								  IMG_HANDLE *phBuffer)
 {
@@ -482,7 +479,6 @@ PVRSRV_ERROR DC_SUNXI_BufferAlloc(IMG_HANDLE hDisplayContext,
 
 	*puiLog2PageSize = PAGE_SHIFT;
 	*pui32PageCount	 = BYTE_TO_PAGES(ui32ByteSize);
-	*pui32PhysHeapID = DC_PHYS_HEAP_ID;
 	*pui32ByteStride = psBuffer->ui32ByteStride;
 	*phBuffer	 = psBuffer;
 

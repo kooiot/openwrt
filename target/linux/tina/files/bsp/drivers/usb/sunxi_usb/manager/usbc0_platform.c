@@ -31,6 +31,7 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/power_supply.h>
+#include <linux/usb/typec.h>
 
 #include <asm/io.h>
 #include <asm/unaligned.h>
@@ -58,12 +59,34 @@ static int set_cc_status(int type)
 	return 0;
 }
 
+static enum typec_orientation typec_orientation_lookup(void)
+{
+	struct power_supply *pmu_psy;
+	union power_supply_propval temp;
+	enum typec_orientation orientation = TYPEC_ORIENTATION_NONE;
+
+	if (g_usb_cfg.port.detect_type == USB_DETECT_TYPE_VBUS_PMU) {
+		pmu_psy = g_usb_cfg.port.pmu_psy;
+		if (pmu_psy) {
+			power_supply_get_property(pmu_psy, POWER_SUPPLY_PROP_SCOPE, &temp);
+			temp.intval &= BIT(2);
+			if (temp.intval)
+				orientation = TYPEC_ORIENTATION_NORMAL;
+			else
+				orientation = TYPEC_ORIENTATION_REVERSE;
+		}
+	}
+
+	return orientation;
+}
+
 static ssize_t otg_enable(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 
 	mutex_lock(&g_usb_cfg.lock);
 	/* restart usb scan */
+	atomic_set(&rolesw_suspend_flag, 0);
 	atomic_set(&thread_suspend_flag, 0);
 	atomic_set(&notify_suspend_flag, 0);
 	set_cc_status(POWER_SUPPLY_SCOPE_UNKNOWN);
@@ -75,7 +98,7 @@ static ssize_t otg_enable(struct device *dev,
 		usb_hw_scan(&g_usb_cfg);
 		usb_msg_center(&g_usb_cfg);
 
-		msleep(100);
+		msleep(1000);
 		usb_hw_scan(&g_usb_cfg);
 		usb_msg_center(&g_usb_cfg);
 		/* restore det_flag for auto detect */
@@ -91,6 +114,7 @@ static ssize_t device_chose(struct device *dev,
 {
 	mutex_lock(&g_usb_cfg.lock);
 	/* stop usb scan */
+	atomic_set(&rolesw_suspend_flag, 1);
 	atomic_set(&thread_suspend_flag, 1);
 	atomic_set(&notify_suspend_flag, 1);
 
@@ -111,6 +135,7 @@ static ssize_t host_chose(struct device *dev,
 {
 	mutex_lock(&g_usb_cfg.lock);
 	/* stop usb scan */
+	atomic_set(&rolesw_suspend_flag, 1);
 	atomic_set(&thread_suspend_flag, 1);
 	atomic_set(&notify_suspend_flag, 1);
 
@@ -131,6 +156,7 @@ static ssize_t null_chose(struct device *dev,
 {
 	mutex_lock(&g_usb_cfg.lock);
 	/* stop usb scan */
+	atomic_set(&rolesw_suspend_flag, 1);
 	atomic_set(&thread_suspend_flag, 1);
 	atomic_set(&notify_suspend_flag, 1);
 
@@ -176,6 +202,7 @@ static ssize_t set_otg_role(struct device *dev,
 		const char *buf, size_t count)
 {
 	int value = 0;
+	char buf_role[64];
 	int ret = 0;
 
 	if (strncmp(buf, "usb_host", 8) == 0) {
@@ -192,20 +219,20 @@ static ssize_t set_otg_role(struct device *dev,
 
 	switch (value) {
 	case SW_USB_ROLE_NULL:
-		null_chose(dev, attr, (char *)buf);
+		null_chose(dev, attr, (char *)buf_role);
 		break;
 
 	case SW_USB_ROLE_DEVICE:
-		device_chose(dev, attr, (char *)buf);
+		device_chose(dev, attr, (char *)buf_role);
 		break;
 
 	case SW_USB_ROLE_HOST:
-		host_chose(dev, attr, (char *)buf);
+		host_chose(dev, attr, (char *)buf_role);
 		break;
 
 	default:
 		DMSG_INFO("err: unknown otg role(%d)\n", value);
-		null_chose(dev, attr, (char *)buf);
+		null_chose(dev, attr, (char *)buf_role);
 	}
 
 	return count;
@@ -245,6 +272,13 @@ static DEVICE_ATTR(hw_scan_debug,
 		show_otg_hw_scan_debug,
 		otg_hw_scan_debug);
 
+static ssize_t typec_orientation_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", typec_orientation_lookup());
+}
+static DEVICE_ATTR(typec_orientation, 0400, typec_orientation_show, NULL);
+
 __s32 create_node_file(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -252,6 +286,7 @@ __s32 create_node_file(struct platform_device *pdev)
 
 	mutex_init(&g_usb_cfg.lock);
 	device_create_file(&pdev->dev, &dev_attr_hw_scan_debug);
+	device_create_file(&pdev->dev, &dev_attr_typec_orientation);
 
 	for (i = 0; i < ARRAY_SIZE(chose_attrs); i++) {
 		ret = device_create_file(&pdev->dev, &chose_attrs[i]);
@@ -267,6 +302,7 @@ __s32 remove_node_file(struct platform_device *pdev)
 	int i = 0;
 
 	device_remove_file(&pdev->dev, &dev_attr_hw_scan_debug);
+	device_remove_file(&pdev->dev, &dev_attr_typec_orientation);
 
 	for (i = 0; i < ARRAY_SIZE(chose_attrs); i++)
 		device_remove_file(&pdev->dev, &chose_attrs[i]);

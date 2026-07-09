@@ -1,49 +1,57 @@
-/* -*- mode: c; indent-tabs-mode: t; c-basic-offset: 8; tab-width: 8 -*- */
-/* vi: set ts=8 sw=8 sts=8: */
-/*************************************************************************/ /*!
-@File
-@Codingstyle    LinuxKernel
-@Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
-@License        Dual MIT/GPLv2
-
-The contents of this file are subject to the MIT license as set out below.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-Alternatively, the contents of this file may be used under the terms of
-the GNU General Public License Version 2 ("GPL") in which case the provisions
-of GPL are applicable instead of those above.
-
-If you wish to allow use of your version of this file only under the terms of
-GPL, and not to allow others to use your version of this file under the terms
-of the MIT license, indicate your decision by deleting the provisions above
-and replace them with the notice and other provisions required by GPL as set
-out in the file called "GPL-COPYING" included in this distribution. If you do
-not delete the provisions above, a recipient may use your version of this file
-under the terms of either the MIT license or GPL.
-
-This License is also included in this distribution in the file called
-"MIT-COPYING".
-
-EXCEPT AS OTHERWISE STATED IN A NEGOTIATED AGREEMENT: (A) THE SOFTWARE IS
-PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
-BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE AND NONINFRINGEMENT; AND (B) IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/ /**************************************************************************/
+/*
+ * @File
+ * @Codingstyle LinuxKernel
+ * @Copyright   Copyright (c) Imagination Technologies Ltd. All Rights Reserved
+ * @License     Dual MIT/GPLv2
+ *
+ * The contents of this file are subject to the MIT license as set out below.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * Alternatively, the contents of this file may be used under the terms of
+ * the GNU General Public License Version 2 ("GPL") in which case the provisions
+ * of GPL are applicable instead of those above.
+ *
+ * If you wish to allow use of your version of this file only under the terms of
+ * GPL, and not to allow others to use your version of this file under the terms
+ * of the MIT license, indicate your decision by deleting the provisions above
+ * and replace them with the notice and other provisions required by GPL as set
+ * out in the file called "GPL-COPYING" included in this distribution. If you do
+ * not delete the provisions above, a recipient may use your version of this file
+ * under the terms of either the MIT license or GPL.
+ *
+ * This License is also included in this distribution in the file called
+ * "MIT-COPYING".
+ *
+ * EXCEPT AS OTHERWISE STATED IN A NEGOTIATED AGREEMENT: (A) THE SOFTWARE IS
+ * PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+ * BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+ * PURPOSE AND NONINFRINGEMENT; AND (B) IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 
 #include <linux/version.h>
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0))
+#include <drm/drm_drv.h>
+#include <drm/drm_file.h>
+#include <drm/drm_framebuffer.h>
+#include <drm/drm_gem.h>
+#include <drm/drm_vma_manager.h>
+#else
 #include <drm/drmP.h>
+#endif
+
 #include <drm/drm_crtc.h>
 #include <linux/mutex.h>
 #include <linux/list.h>
@@ -222,6 +230,9 @@ static struct genl_family nlpvrdpy_family = {
 	.name = "nlpvrdpy",
 	.version = 1,
 	.maxattr = NLPVRDPY_ATTR_MAX,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 2, 0))
+	.policy = nlpvrdpy_policy,
+#endif
 	.pre_doit = &nlpvrdpy_pre_cmd,
 	.post_doit = &nlpvrdpy_post_cmd
 };
@@ -307,8 +318,9 @@ static int nlpvrdpy_get_offsets_and_sizes(struct drm_framebuffer *fb,
 
 		err = drm_gem_create_mmap_offset(obj);
 		if (err) {
-			DRM_ERROR("Failed to get mmap offset for buffer[%d] = %p\n",
-				  i, obj);
+			DRM_ERROR(
+			    "Failed to get mmap offset for buffer[%d] = %p\n",
+			    i, obj);
 			return err;
 		}
 
@@ -324,62 +336,109 @@ static int nlpvrdpy_put_fb_attributes(struct sk_buff *msg,
 				      struct nlpvrdpy *nlpvrdpy,
 				      struct drm_gem_object **objs)
 {
-#define RETURN_ON_ERROR(f) \
-	{ \
-		int err = (f); \
-		if (err) { \
-			pr_err("%s: command failed: %s", __func__, #f); \
-			return err; \
-		} \
-	}
-
-	int i;
+	int i, err;
 	const int num_planes = nulldisp_drm_fb_num_planes(fb);
 	u64 plane_addr[NLPVRDPY_MAX_NUM_PLANES],
 	    plane_size[NLPVRDPY_MAX_NUM_PLANES];
 
-	RETURN_ON_ERROR(nlpvrdpy_get_offsets_and_sizes(fb, objs, &plane_addr[0],
-						       &plane_size[0]));
+	err = nlpvrdpy_get_offsets_and_sizes(fb, objs, &plane_addr[0], &plane_size[0]);
+	if (err) {
+		pr_err("%s: nlpvrdpy_get_offsets_and_sizes failed", __func__);
+		return err;
+	}
 
-	RETURN_ON_ERROR(nla_put_u32(msg, NLPVRDPY_ATTR_MINOR, NLPVRDPY_MINOR(nlpvrdpy)));
+	err = nla_put_u32(msg, NLPVRDPY_ATTR_MINOR, NLPVRDPY_MINOR(nlpvrdpy));
+	if (err) {
+		pr_err("%s: nla_put_u32 NLPVRDPY_ATTR_MINOR failed", __func__);
+		return err;
+	}
 
-	RETURN_ON_ERROR(nla_put_u8(msg, NLPVRDPY_ATTR_NUM_PLANES, num_planes));
+	err = nla_put_u8(msg, NLPVRDPY_ATTR_NUM_PLANES, num_planes);
+	if (err) {
+		pr_err("%s: nla_put_u8 NLPVRDPY_ATTR_NUM_PLANES failed", __func__);
+		return err;
+	}
 
-	RETURN_ON_ERROR(nla_put_u32(msg, NLPVRDPY_ATTR_WIDTH,  fb->width));
-	RETURN_ON_ERROR(nla_put_u32(msg, NLPVRDPY_ATTR_HEIGHT, fb->height));
-	RETURN_ON_ERROR(nla_put_u32(msg, NLPVRDPY_ATTR_PIXFMT, nulldisp_drm_fb_format(fb)));
-	RETURN_ON_ERROR(nla_put_u64_64bit(msg,
-					  NLPVRDPY_ATTR_FB_MODIFIER,
-					  nulldisp_drm_fb_modifier(fb),
-					  NLPVRDPY_ATTR_PAD));
+	err = nla_put_u32(msg, NLPVRDPY_ATTR_WIDTH, fb->width);
+	if (err) {
+		pr_err("%s: nla_put_u32 NLPVRDPY_ATTR_WIDTH failed", __func__);
+		return err;
+	}
 
-	/*
-	 * TODO YUV: get the actual CSC and BPP
-	 * for now only 8-bit BT601 short range is supported
-	 */
-	RETURN_ON_ERROR(nla_put_u8(msg, NLPVRDPY_ATTR_YUV_CSC, 1));  /* IMG_COLORSPACE_BT601_CONFORMANT_RANGE */
-	RETURN_ON_ERROR(nla_put_u8(msg, NLPVRDPY_ATTR_YUV_BPP, 8));  /* 8-bit per sample */
+	err = nla_put_u32(msg, NLPVRDPY_ATTR_HEIGHT, fb->height);
+	if (err) {
+		pr_err("%s: nla_put_u32 NLPVRDPY_ATTR_HEIGHT failed", __func__);
+		return err;
+	}
+
+	err = nla_put_u32(msg, NLPVRDPY_ATTR_PIXFMT, nulldisp_drm_fb_format(fb));
+	if (err) {
+		pr_err("%s: nla_put_u32 NLPVRDPY_ATTR_PIXFMT failed",
+		       __func__);
+		return err;
+	}
+
+	err = nla_put_u64_64bit(msg, NLPVRDPY_ATTR_FB_MODIFIER,
+				nulldisp_drm_fb_modifier(fb), NLPVRDPY_ATTR_PAD);
+	if (err) {
+		pr_err("%s: nla_put_u64_64bit NLPVRDPY_ATTR_FB_MODIFIER "
+		       "NLPVRDPY_ATTR_PAD failed", __func__);
+		return err;
+	}
+
+	/* IMG_COLORSPACE_BT601_CONFORMANT_RANGE */
+	err = nla_put_u8(msg, NLPVRDPY_ATTR_YUV_CSC, 1);
+	if (err) {
+		pr_err("%s: nla_put_u8 NLPVRDPY_ATTR_YUV_CSC 1 failed", __func__);
+		return err;
+	}
+
+	/* 8-bit per sample */
+	err = nla_put_u8(msg, NLPVRDPY_ATTR_YUV_BPP, 8);
+	if (err) {
+		pr_err("%s: nla_put_u8 NLPVRDPY_ATTR_YUV_BPP 8 failed", __func__);
+		return err;
+	}
 
 	for (i = 0; i < num_planes; i++) {
-		RETURN_ON_ERROR(nla_put_u64_64bit(msg,
-						  NLPVRDPY_ATTR_PLANE(i, ADDR),
-						  plane_addr[i],
-						  NLPVRDPY_ATTR_PAD));
-		RETURN_ON_ERROR(nla_put_u64_64bit(msg,
-						  NLPVRDPY_ATTR_PLANE(i, SIZE),
-						  plane_size[i],
-						  NLPVRDPY_ATTR_PAD));
-		RETURN_ON_ERROR(nla_put_u64_64bit(msg,
-						  NLPVRDPY_ATTR_PLANE(i, OFFSET),
-						  fb->offsets[i],
-						  NLPVRDPY_ATTR_PAD));
-		RETURN_ON_ERROR(nla_put_u64_64bit(msg,
-						  NLPVRDPY_ATTR_PLANE(i, PITCH),
-						  fb->pitches[i],
-						  NLPVRDPY_ATTR_PAD));
-		RETURN_ON_ERROR(nla_put_u32(msg,
-					    NLPVRDPY_ATTR_PLANE(i, GEM_OBJ_NAME),
-					    (u32)objs[0]->name));
+		err = nla_put_u64_64bit(msg, NLPVRDPY_ATTR_PLANE(i, ADDR),
+					plane_addr[i], NLPVRDPY_ATTR_PAD);
+		if (err) {
+			pr_err("%s: nla_put_u64_64bit NLPVRDPY_ATTR_PLANE(%d, ADDR)"
+			       " NLPVRDPY_ATTR_PAD failed", __func__, i);
+			return err;
+		}
+
+		err = nla_put_u64_64bit(msg, NLPVRDPY_ATTR_PLANE(i, SIZE),
+					plane_size[i], NLPVRDPY_ATTR_PAD);
+		if (err) {
+			pr_err("%s: nla_put_u64_64bit NLPVRDPY_ATTR_PLANE(%d, SIZE)"
+			       " NLPVRDPY_ATTR_PAD failed", __func__, i);
+			return err;
+		}
+
+		err = nla_put_u64_64bit(msg, NLPVRDPY_ATTR_PLANE(i, OFFSET),
+					fb->offsets[i], NLPVRDPY_ATTR_PAD);
+		if (err) {
+			pr_err("%s: nla_put_u64_64bit NLPVRDPY_ATTR_PLANE(%d, OFFSET)"
+			       " NLPVRDPY_ATTR_PAD failed", __func__, i);
+			return err;
+		}
+
+		err = nla_put_u64_64bit(msg, NLPVRDPY_ATTR_PLANE(i, PITCH),
+					fb->pitches[i], NLPVRDPY_ATTR_PAD);
+		if (err) {
+			pr_err("%s: nla_put_u64_64bit NLPVRDPY_ATTR_PLANE(%d, PITCH)"
+			       " NLPVRDPY_ATTR_PAD failed", __func__, i);
+			return err;
+		}
+
+		err = nla_put_u32(msg, NLPVRDPY_ATTR_PLANE(i, GEM_OBJ_NAME), (u32)objs[0]->name);
+		if (err) {
+			pr_err("%s: nla_put_u32 NLPVRDPY_ATTR_PLANE(%d, GEM_OBJ_NAME)"
+			       " failed", __func__, i);
+			return err;
+		}
 	}
 
 	WARN_ONCE(num_planes > NLPVRDPY_MAX_NUM_PLANES,
@@ -387,7 +446,6 @@ static int nlpvrdpy_put_fb_attributes(struct sk_buff *msg,
 		  NLPVRDPY_MAX_NUM_PLANES, num_planes);
 
 	return 0;
-#undef RETURN_ON_ERROR
 }
 
 static int nlpvrdpy_name_gem_obj(struct drm_device *dev,
@@ -589,28 +647,36 @@ static int nlpvrdpy_cmd_copied(struct sk_buff *skb, struct genl_info *info)
 static struct genl_ops nlpvrdpy_ops[] = {
 	{
 		.cmd = NLPVRDPY_CMD_CONNECT,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0))
 		.policy = nlpvrdpy_policy,
+#endif
 		.doit = nlpvrdpy_cmd_connect,
 		.flags = GENL_ADMIN_PERM,
 		.internal_flags = NLPVRDPY_CIF_NLPVRDPY_NOT_CONNECTED
 	},
 	{
 		.cmd = NLPVRDPY_CMD_DISCONNECT,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0))
 		.policy = nlpvrdpy_policy,
+#endif
 		.doit = nlpvrdpy_cmd_disconnect,
 		.flags = 0,
 		.internal_flags = NLPVRDPY_CIF_NLPVRDPY
 	},
 	{
 		.cmd = NLPVRDPY_CMD_FLIPPED,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0))
 		.policy = nlpvrdpy_policy,
+#endif
 		.doit = nlpvrdpy_cmd_flipped,
 		.flags = 0,
 		.internal_flags = NLPVRDPY_CIF_NLPVRDPY
 	},
 	{
 		.cmd = NLPVRDPY_CMD_COPIED,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0))
 		.policy = nlpvrdpy_policy,
+#endif
 		.doit = nlpvrdpy_cmd_copied,
 		.flags = 0,
 		.internal_flags = NLPVRDPY_CIF_NLPVRDPY

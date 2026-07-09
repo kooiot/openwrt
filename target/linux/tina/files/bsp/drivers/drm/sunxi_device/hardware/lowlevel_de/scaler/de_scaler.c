@@ -304,7 +304,7 @@ s32 de_scaler_calc_lay_scale_para(struct de_scaler_handle *hdl,
 			/* odd crop_h, crop down height, */
 			/* last line may disappear */
 			crop32->height--;
-		} else if (((crop32->height & 0x1) == 0x1) &&
+		} else if (((crop32->top & 0x1) == 0x1) &&
 			   ((crop32->height & 0x1) == 0x0)) {
 			/* odd crop_y, crop down y, and phase + 1 */
 			ypara->vphase += (1 << priv->phase_frac_bit_width);
@@ -1066,11 +1066,14 @@ static s32 de_gsu_set_para(struct de_scaler_handle *hdl, const struct de_scaler_
 	return 0;
 }
 
+
+
 static s32 de_asu_set_para(struct de_scaler_handle *hdl, const struct de_scaler_apply_cfg *cfg)
 {
 	struct de_scaler_private *priv = hdl->private;
 	struct asu_reg *reg = get_asu_reg(priv);
 	u32 scale_mode = 0;
+	u32 lb_mode = 0;
 	u32 pt_coef;
 
 	if (cfg->px_fmt_space == DE_FORMAT_SPACE_YUV) {
@@ -1101,8 +1104,16 @@ static s32 de_asu_set_para(struct de_scaler_handle *hdl, const struct de_scaler_
 		return -1;
 	}
 
+	if (cfg->px_fmt_space == DE_FORMAT_SPACE_RGB ||
+	    (cfg->px_fmt_space == DE_FORMAT_SPACE_YUV && cfg->yuv_sampling == DE_YUV444)) {
+		u32 line_mode_size = priv->dsc->line_buffer_rgb / 2;
+
+		if (cfg->ovl_out_win.width > line_mode_size)
+			lb_mode = 1;
+	}
+
 	reg->ctl.dwval = 0x111;
-	reg->scale_mode.dwval = scale_mode;
+	reg->scale_mode.dwval = ((lb_mode & 0x1) << 16) | (scale_mode & 0x3);
 	reg->diret_thr.dwval = 0x280414;
 	reg->g_alpha.dwval = cfg->glb_alpha;
 	scaler_set_block_dirty(priv, ASU_REG_BLK_CTL, 1);
@@ -1164,9 +1175,13 @@ static s32 de_asu_set_para(struct de_scaler_handle *hdl, const struct de_scaler_
 	       sizeof(u32) * VSU_PHASE_NUM);
 	memcpy(reg->y_hcoef1, lan3coefftab32_right + pt_coef,
 	       sizeof(u32) * VSU_PHASE_NUM);
-	pt_coef = de_scaler_calc_fir_coef(hdl->private->dsc->type, cfg->ovl_ypara.vstep);
-	memcpy(reg->y_vcoef, lan2coefftab32 + pt_coef,
-	       sizeof(u32) * VSU_PHASE_NUM);
+	if (lb_mode) {
+		memcpy(reg->y_vcoef, linearcoefftab32_4tab, sizeof(linearcoefftab32_4tab));
+	} else {
+		pt_coef = de_scaler_calc_fir_coef(hdl->private->dsc->type, cfg->ovl_ypara.vstep);
+		memcpy(reg->y_vcoef, lan2coefftab32 + pt_coef,
+		       sizeof(u32) * VSU_PHASE_NUM);
+	}
 
 	/* ch1/2 */
 	if (cfg->px_fmt_space == DE_FORMAT_SPACE_RGB) {
@@ -1175,9 +1190,14 @@ static s32 de_asu_set_para(struct de_scaler_handle *hdl, const struct de_scaler_
 		       sizeof(u32) * VSU_PHASE_NUM);
 		memcpy(reg->c_hcoef1, lan3coefftab32_right + pt_coef,
 		       sizeof(u32) * VSU_PHASE_NUM);
-		pt_coef = de_scaler_calc_fir_coef(hdl->private->dsc->type, cfg->ovl_cpara.vstep);
-		memcpy(reg->c_vcoef, lan2coefftab32 + pt_coef,
-		       sizeof(u32) * VSU_PHASE_NUM);
+
+		if (lb_mode) {
+			memcpy(reg->c_vcoef, linearcoefftab32_4tab, sizeof(linearcoefftab32_4tab));
+		} else {
+			pt_coef = de_scaler_calc_fir_coef(hdl->private->dsc->type, cfg->ovl_cpara.vstep);
+			memcpy(reg->c_vcoef, lan2coefftab32 + pt_coef,
+			       sizeof(u32) * VSU_PHASE_NUM);
+		}
 	} else {
 		pt_coef = de_scaler_calc_fir_coef(hdl->private->dsc->type, cfg->ovl_cpara.hstep);
 		memcpy(reg->c_hcoef0, bicubic8coefftab32_left + pt_coef,
@@ -1201,20 +1221,23 @@ static s32 de_asu_set_para(struct de_scaler_handle *hdl, const struct de_scaler_
 static s32 de_scaler_disable(struct de_scaler_handle *hdl)
 {
 	struct de_scaler_private *priv = hdl->private;
+	enum scaler_type type = priv->dsc->type;
 
-	if (priv->dsc->type == DE_SCALER_TYPE_VSU8) {
+	if (type == DE_SCALER_TYPE_SHARE)
+		type = priv->dsc->share_type;
+	if (type == DE_SCALER_TYPE_VSU8) {
 		struct vsu8_reg *reg = get_vsu8_reg(priv);
 		reg->ctl.bits.en = 0;
-	} else if (priv->dsc->type == DE_SCALER_TYPE_VSU10) {
+	} else if (type == DE_SCALER_TYPE_VSU10) {
 		struct vsu10_reg *reg = get_vsu10_reg(priv);
 		reg->ctl.bits.en = 0;
-	} else if (priv->dsc->type == DE_SCALER_TYPE_VSU_ED) {
+	} else if (type == DE_SCALER_TYPE_VSU_ED) {
 		struct vsu_ed_reg *reg = get_vsu_ed_reg(priv);
 		reg->ctl.bits.en = 0;
-	} else if (priv->dsc->type == DE_SCALER_TYPE_ASU) {
+	} else if (type == DE_SCALER_TYPE_ASU) {
 		struct asu_reg *reg = get_asu_reg(priv);
 		reg->ctl.dwval = 0;
-	} else if (priv->dsc->type == DE_SCALER_TYPE_GSU) {
+	} else if (type == DE_SCALER_TYPE_GSU) {
 		struct gsu_reg *reg = get_gsu_reg(priv);
 		reg->ctl.dwval = 0;
 	}
@@ -1231,13 +1254,13 @@ void dump_scaler_state(struct drm_printer *p, struct de_scaler_handle *hdl, cons
 	struct de_scaler_private *priv = hdl->private;
 	struct asu_reg *reg = get_asu_reg(priv);
 
-	drm_printf(p, "\n\tscaler@%8x: %sable\n", (unsigned int)(base - de_base), debug->enable ? "en" : "dis");
+	drm_printf(p, "\n\tscaler@%8x: %sable (%s)\n", (unsigned int)(base - de_base), debug->enable ? "en" : "dis",
+		priv->dsc->type == DE_SCALER_TYPE_SHARE ? "share" : "indep");
 	if (debug->enable) {
 		drm_printf(p, "\t\t%4dx%4d ==> %4dx%4d\n", debug->in_w, debug->in_h, debug->out_w, debug->out_h);
 		if (priv->dsc->type == DE_SCALER_TYPE_ASU)
 			drm_printf(p, "\t\t asu_pq %sable\n", reg->peaking_en.bits.peaking_en ? "en" : "dis");
-	} else
-		drm_printf(p, "\n");
+	}
 }
 
 bool de_scaler_pq_is_enabled(struct de_scaler_handle *hdl)
@@ -1308,6 +1331,7 @@ s32 de_scaler_apply_asu_pq_config(struct de_scaler_handle *hdl, asu_module_param
 s32 de_scaler_apply(struct de_scaler_handle *hdl, const struct de_scaler_apply_cfg *cfg)
 {
 	struct de_scaler_private *priv = hdl->private;
+	enum scaler_type type = priv->dsc->type;
 
 	if (!cfg->scale_en) {
 		priv->debug.enable = false;
@@ -1323,15 +1347,20 @@ s32 de_scaler_apply(struct de_scaler_handle *hdl, const struct de_scaler_apply_c
 	priv->debug.out_w = cfg->scn_win.width;
 	priv->debug.out_h = cfg->scn_win.height;
 
-	if (priv->dsc->type == DE_SCALER_TYPE_VSU8) {
+	hdl->vsu_mux = 0;
+	if (type == DE_SCALER_TYPE_SHARE) {
+		hdl->vsu_mux = 1;
+		type = priv->dsc->share_type;
+	}
+	if (type == DE_SCALER_TYPE_VSU8) {
 		return de_vsu8_set_para(hdl, cfg);
-	} else if (priv->dsc->type == DE_SCALER_TYPE_VSU10) {
+	} else if (type == DE_SCALER_TYPE_VSU10) {
 		return de_vsu10_set_para(hdl, cfg);
-	} else if (priv->dsc->type == DE_SCALER_TYPE_VSU_ED) {
+	} else if (type == DE_SCALER_TYPE_VSU_ED) {
 		return de_vsu_ed_set_para(hdl, cfg);
-	} else if (priv->dsc->type == DE_SCALER_TYPE_ASU) {
+	} else if (type == DE_SCALER_TYPE_ASU) {
 		return de_asu_set_para(hdl, cfg);
-	} else if (priv->dsc->type == DE_SCALER_TYPE_GSU) {
+	} else if (type == DE_SCALER_TYPE_GSU) {
 		return de_gsu_set_para(hdl, cfg);
 	}
 
@@ -1346,6 +1375,7 @@ struct de_scaler_handle *de_scaler_create(const struct module_create_info *info)
 	struct de_reg_block *block;
 	struct de_reg_mem_info *reg_mem_info;
 	unsigned int offset = CHN_SCALER_OFFSET;
+	enum scaler_type type = DE_SCALER_TYPE_NONE;
 	u8 __iomem *reg_base = (u8 __iomem *)(info->de_reg_base + info->reg_offset);
 	const struct de_scaler_dsc *dsc;
 
@@ -1357,6 +1387,9 @@ struct de_scaler_handle *de_scaler_create(const struct module_create_info *info)
 	hdl->private = kmalloc(sizeof(*hdl->private), GFP_KERNEL | __GFP_ZERO);
 	memcpy(&hdl->cinfo, info, sizeof(*info));
 	hdl->linebuff_share_ids = dsc->linebuff_share_ids;
+	hdl->linebuff_yuv = dsc->line_buffer_yuv;
+	hdl->linebuff_rgb = dsc->line_buffer_rgb;
+	hdl->linebuff_yuv_ed = dsc->line_buffer_yuv_ed;
 	hdl->private->dsc = dsc;
 	if (dsc->offset)
 		offset = dsc->offset;
@@ -1365,7 +1398,12 @@ struct de_scaler_handle *de_scaler_create(const struct module_create_info *info)
 	reg_mem_info = &(hdl->private->reg_mem_info);
 	priv = hdl->private;
 
-		switch (hdl->private->dsc->type) {
+	type = priv->dsc->type;
+	if (type == DE_SCALER_TYPE_SHARE) {
+		reg_base = (u8 __iomem *)(info->de_reg_base + dsc->offset);
+		type = priv->dsc->share_type;
+	}
+	switch (type) {
 		case DE_SCALER_TYPE_GSU:
 			reg_mem_info->size = sizeof(struct gsu_reg);
 			reg_mem_info->vir_addr = (u8 *)sunxi_de_reg_buffer_alloc(hdl->cinfo.de,
@@ -1750,4 +1788,3 @@ struct de_scaler_handle *de_scaler_create(const struct module_create_info *info)
 
 	return hdl;
 }
-

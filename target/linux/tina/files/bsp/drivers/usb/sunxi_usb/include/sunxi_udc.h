@@ -21,6 +21,7 @@
 #include <linux/usb/gadget.h>
 #include <linux/dma-mapping.h>
 #include <linux/regulator/consumer.h>
+#include <linux/phy/phy.h>
 
 #if 1
 typedef struct sunxi_udc_dma {
@@ -124,7 +125,8 @@ struct sw_udc_fifo {
 	|| IS_ENABLED(CONFIG_ARCH_SUN8IW20) || IS_ENABLED(CONFIG_ARCH_SUN20IW1) \
 	|| IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN60IW2) \
 	|| IS_ENABLED(CONFIG_ARCH_SUN8IW21) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) \
-	|| IS_ENABLED(CONFIG_ARCH_SUN300IW1)
+	|| IS_ENABLED(CONFIG_ARCH_SUN300IW1) || IS_ENABLED(CONFIG_ARCH_SUN65IW1) \
+	|| IS_ENABLED(CONFIG_ARCH_SUN251IW1) || IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 /**
  * fifo 8k
  *
@@ -255,8 +257,9 @@ typedef struct sunxi_udc_io {
 
 	struct reset_control	*reset_otg;
 	struct reset_control	*reset_phy;
-	struct reset_control    *reset_usb;
+	struct reset_control	*reset_usb;
 
+	struct phy *usb2_generic_phy;		/* pointer to USB2 PHY */
 	int phy_range;
 	int rate_clk;
 	bool rext_cal_bypass; /* Hardware: the USB0/1-REXT is floating ? */
@@ -336,6 +339,7 @@ typedef struct sunxi_udc_mach_info {
 
 extern atomic_t thread_suspend_flag;
 extern atomic_t notify_suspend_flag;
+extern atomic_t rolesw_suspend_flag;
 extern int device_insmod_delay;
 
 extern atomic_t vfs_read_flag;

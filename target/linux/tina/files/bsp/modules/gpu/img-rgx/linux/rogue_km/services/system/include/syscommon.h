@@ -42,8 +42,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /***************************************************************************/
 
-#if !defined(__SYSCOMMON_H__)
-#define __SYSCOMMON_H__
+#if !defined(SYSCOMMON_H)
+#define SYSCOMMON_H
 
 #include "img_types.h"
 #include "pvr_notifier.h"
@@ -126,4 +126,40 @@ PVRSRV_ERROR SysInstallDeviceLISR(IMG_HANDLE hSysData,
 */ /***************************************************************************/
 PVRSRV_ERROR SysUninstallDeviceLISR(IMG_HANDLE hLISRData);
 
-#endif /* !defined(__SYSCOMMON_H__) */
+/**************************************************************************/ /*!
+@Function       SysRGXErrorNotify
+@Description    Error reporting callback function, registered as the
+                pfnSysDevErrorNotify member of the PVRSRV_DEVICE_CONFIG
+                struct. System layer will be notified of device errors and
+                resets via this callback.
+                NB. implementers should ensure that the minimal amount of
+                work is done in this callback function, as it will be
+                executed in the main RGX MISR. (e.g. any blocking or lengthy
+                work should be performed by a worker queue/thread instead).
+@Input          hSysData      pointer to the system data of the device
+@Output         psErrorData   structure containing details of the reported error
+@Return         None.
+*/ /***************************************************************************/
+void SysRGXErrorNotify(IMG_HANDLE hSysData,
+                       PVRSRV_ROBUSTNESS_NOTIFY_DATA *psErrorData);
+
+/**************************************************************************/ /*!
+@Function       SysRestrictGpuLocalPhysheap
+@Description    If the Restriction apphint has been set, validate the
+                restriction value and return the new GPU_LOCAL heap size.
+
+@Input          uiHeapSize      Current syslayer detected GPU_LOCAL heap size.
+@Return         IMG_UINT64      New GPU_LOCAL heap size in bytes.
+*/ /***************************************************************************/
+IMG_UINT64 SysRestrictGpuLocalPhysheap(IMG_UINT64 uiHeapSize);
+
+/**************************************************************************/ /*!
+@Function       SysRestrictGpuLocalAddPrivateHeap
+@Description    Determine if the restriction apphint has been set.
+
+@Return         IMG_BOOL        IMG_TRUE if the restriction apphint has been
+                                set.
+*/ /***************************************************************************/
+IMG_BOOL SysRestrictGpuLocalAddPrivateHeap(void);
+
+#endif /* !defined(SYSCOMMON_H) */

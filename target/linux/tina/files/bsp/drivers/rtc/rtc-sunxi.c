@@ -156,6 +156,15 @@
 #define ALARM0_COUNTER_REG			0x0020
 #define ALARM0_CUR_VAL_REG			0x0024
 
+#define RBT_RCD_STAT_REG0_OFFSET 		0x4
+#define RBT_RCD_STAT_REG1_OFFSET 		0x8
+#define RBT_RCD_STAT_CLR_REG_OFFSET		0x18
+#define RBT_RCD_STAT_MASK				0x1f
+#define RBT_RCD_STAT_ENABLE				BIT(0)
+#define WDT_RBT_RCD_STAT_CLR			BIT(8)
+#define HARD_RBT_RCD_STAT_CLR			BIT(6)
+#define RBT_RCD_LST_STAT_CLR			BIT(16)
+#define HARD_RBT_RCD_STAT_VAL_OFFSET	24
 /* when gpr base address is same with rtc, set gpr_base_address to GPR_BASEADDR_SAMEWITH_RTC */
 #define GPR_BASEADDR_SAMEWITH_RTC	0x0
 
@@ -926,6 +935,7 @@ static void poweroff_deal(void *data)
 
 static void __iomem *gpr_cur_addr;  /* Currently Used General Purpose Register's Address */
 static void __iomem *boot_reasonbase;
+static void __iomem *reboot_reason_base;
 
 struct str_num_pair {
 	const char *str;
@@ -938,6 +948,8 @@ enum {
 	SUNXI_RTC_BOOT_REASON_HOT_REBOOT,
 	SUNXI_RTC_BOOT_REASON_PANIC_REBOOT,
 	SUNXI_RTC_BOOT_REASON_OTHER_REBOOT,
+	SUNXI_RTC_BOOT_REASON_WATCHDOG_REBOOT,
+	SUNXI_RTC_BOOT_REASON_HDRESET_REBOOT,
 	SUNXI_RTC_BOOT_REASON_MAX,
 	WRITE_SUNXI_RTC_BOOT_REASON_NONE = 0xb000,
 	WRITE_SUNXI_RTC_BOOT_REASON_COLD_BOOT,
@@ -1025,6 +1037,38 @@ static int sunxi_rtc_bootreason_get(void)
 	return (value & 0xffff);
 }
 
+static int sunxi_rtc_hardware_bootreason_get(void)
+{
+	u32 value, wdt_bootreason, hard_reset_bootreason;
+
+	if (IS_ERR_OR_NULL(reboot_reason_base)) {
+		sunxi_warn(NULL, "reboot_reason_base NULL\n");
+		return 0;
+	}
+
+	value = readl(reboot_reason_base);
+	value |= RBT_RCD_STAT_ENABLE;
+	writel(value, reboot_reason_base);
+
+	hard_reset_bootreason = readl(reboot_reason_base + RBT_RCD_STAT_REG0_OFFSET);
+	wdt_bootreason = readl(reboot_reason_base + RBT_RCD_STAT_REG1_OFFSET);
+	if (RBT_RCD_STAT_MASK & wdt_bootreason) {
+		writel(WDT_RBT_RCD_STAT_CLR, reboot_reason_base + RBT_RCD_STAT_CLR_REG_OFFSET);
+		writel(RBT_RCD_LST_STAT_CLR, reboot_reason_base + RBT_RCD_STAT_CLR_REG_OFFSET);
+		writel(HARD_RBT_RCD_STAT_CLR, reboot_reason_base + RBT_RCD_STAT_CLR_REG_OFFSET);
+		return SUNXI_RTC_BOOT_REASON_WATCHDOG_REBOOT;
+	} else if ((hard_reset_bootreason >> HARD_RBT_RCD_STAT_VAL_OFFSET) & RBT_RCD_STAT_MASK) {
+		writel(RBT_RCD_LST_STAT_CLR, reboot_reason_base + RBT_RCD_STAT_CLR_REG_OFFSET);
+		writel(HARD_RBT_RCD_STAT_CLR, reboot_reason_base + RBT_RCD_STAT_CLR_REG_OFFSET);
+		return SUNXI_RTC_BOOT_REASON_HDRESET_REBOOT;
+	} else {
+		sunxi_debug(NULL, "No hardware reset information was obtained, possibly a soft reset.\n");
+	}
+
+	return 0;
+
+}
+
 static int sunxi_rtc_bootreason_init(void)
 {
 	unsigned int bootreason = 0;
@@ -1048,17 +1092,40 @@ static int sunxi_rtc_bootreason_init(void)
 		sunxi_rtc_bootreason_set(SUNXI_RTC_BOOT_REASON_OTHER_REBOOT);
 	}
 
+	/* Such as Watchdog and Key */
+	bootreason = sunxi_rtc_hardware_bootreason_get();
+	if (bootreason) {
+		if ((bootreason & 0xffff) == SUNXI_RTC_BOOT_REASON_WATCHDOG_REBOOT) {
+			sunxi_info(NULL, " Saving SoC boot-reason: WATCHDOG-BOOT\n");
+			sunxi_rtc_bootreason_set(SUNXI_RTC_BOOT_REASON_WATCHDOG_REBOOT);
+		} else if ((bootreason & 0xffff) == SUNXI_RTC_BOOT_REASON_HDRESET_REBOOT) {
+			sunxi_info(NULL, " Saving SoC boot-reason: HARDREST-BOOT\n");
+			sunxi_rtc_bootreason_set(SUNXI_RTC_BOOT_REASON_HDRESET_REBOOT);
+		} else {
+			/* other --> hot */
+			sunxi_info(NULL, "reason large than max, fix to hot reboot, save boot reason\n");
+			sunxi_rtc_bootreason_set(SUNXI_RTC_BOOT_REASON_HOT_REBOOT);
+		}
+	}
+
 	return 0;
 }
 
 static int reboot_callback(struct notifier_block *this,
 	unsigned long code, void *data)
 {
-	u32 ret;
+	u32 ret, value;
 	ret = sunxi_rtc_bootreason_set(WRITE_SUNXI_RTC_BOOT_REASON_HOT_REBOOT);
 	if (ret)
 		sunxi_err(NULL, "rtc set bootreason hot reboot fail\n");
 	reboot_deal(data);
+
+	if (reboot_reason_base) {
+		value = readl(reboot_reason_base);
+		value &= ~(RBT_RCD_STAT_ENABLE);
+		writel(value, reboot_reason_base);
+	}
+
 	#ifdef CONFIG_AW_FAKE_POWEROFF
 	switch (code) {
 	case SYS_RESTART:
@@ -1087,11 +1154,17 @@ static struct notifier_block reboot_notifier = {
 static int panic_callback(struct notifier_block *nb,
 				      unsigned long code, void *unused)
 {
-	u32 ret;
+	u32 ret, value;
 
 	ret = sunxi_rtc_bootreason_set(WRITE_SUNXI_RTC_BOOT_REASON_PANIC_REBOOT);
 	if (ret)
 		sunxi_err(NULL, "rtc set bootreason panic reboot fail\n");
+
+	if (reboot_reason_base) {
+		value = readl(reboot_reason_base);
+		value &= ~(RBT_RCD_STAT_ENABLE);
+		writel(value, reboot_reason_base);
+	}
 
 	return NOTIFY_DONE;
 }
@@ -1181,6 +1254,7 @@ static int sunxi_rtc_reboot_flag_setup(struct sunxi_rtc_dev *chip)
 	u32 value;
 	const char *name = "gpr_cur_pos";  /* A dts property indicating where to store the reboot flag */
 	u32 gpr_bootcount = 0;
+	u32 reboot_reason_offset = 0;
 
 	#ifdef CONFIG_AW_FAKE_POWEROFF
 	u32 gpr_fake_poweroff = 0;
@@ -1205,6 +1279,15 @@ static int sunxi_rtc_reboot_flag_setup(struct sunxi_rtc_dev *chip)
 		boot_reasonbase = NULL;
 	} else {
 		boot_reasonbase = chip->gpr_base + chip->data->gpr_offset + gpr_bootcount * 0x4;
+	}
+
+	err = of_property_read_u32(dev->of_node,
+					"reboot-reason-offset", &reboot_reason_offset);
+	if (err) {
+		sunxi_warn(dev, "Fail to read dts property 'reboot-reason-offset'\n");
+		reboot_reason_base = NULL;
+	} else {
+		reboot_reason_base = chip->base + reboot_reason_offset;
 	}
 
 #if IS_ENABLED(CONFIG_AW_FAKE_POWEROFF)
@@ -1280,6 +1363,7 @@ static void sunxi_rtc_reboot_flag_destroy(struct sunxi_rtc_dev *chip)
 
 	gpr_cur_addr = NULL;
 	boot_reasonbase = NULL;
+	reboot_reason_base = NULL;
 
 #if IS_ENABLED(CONFIG_AW_FAKE_POWEROFF)
 	fake_poweroff_rtc_addr = NULL;
@@ -1575,4 +1659,4 @@ module_exit(sunxi_rtc_exit);
 MODULE_DESCRIPTION("sunxi RTC driver");
 MODULE_AUTHOR("Martin <wuyan@allwinnertech.com>");
 MODULE_LICENSE("GPL v2");
-MODULE_VERSION("1.3.0");
+MODULE_VERSION("1.5.2");

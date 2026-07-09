@@ -21,6 +21,8 @@
 
 extern int fb_debug_val;
 
+#define FB_BUFFER_CNT		2
+
 #define fb_debug_inf(fmt, args...) \
 	do {\
 		if (unlikely(fb_debug_val)) {\
@@ -58,25 +60,42 @@ struct fb_create_info {
 	struct fb_output_map map;
 	enum fb_output_mode mode;
 	unsigned int fb_output_cnt;
+
+	u32 is_safebuf;
+	void *offline_vaddr;
+	dma_addr_t offline_paddr;
+	u32 buf_size;
 };
 
+struct drm_fb_info {
+	void *par;
+	void *pseudo_palette;
+	union {
+		char __iomem *screen_base;
+		char *screen_buffer;
+	};
+	u32 reserved[3];
+	unsigned int xres;
+	unsigned int yres;
+	unsigned int yoffset;
+};
 /* platform */
 struct fb_hw_info;
 struct display_channel_state;
 
 int platform_get_private_size(void);
-int platform_update_fb_output(struct fb_hw_info *hw_info, const struct fb_var_screeninfo *var);
+int platform_update_fb_output(struct fb_hw_info *hw_info, void *info);
 int platform_fb_mmap(struct fb_hw_info *hw_info, struct vm_area_struct *vma);
 int platform_fb_memory_alloc(struct fb_hw_info *hw_info, void **vir_addr, unsigned long *device_addr,
 			    unsigned int w, unsigned int h, int fmt);
 int platform_fb_memory_free(struct fb_hw_info *hw_info);
 int platform_fb_pan_display_post_proc(struct fb_hw_info *hw_info);
 int platform_fb_set_blank(struct fb_hw_info *hw_info, bool is_blank);
-int platform_fb_init_finish(struct fb_hw_info *hw_info, const struct fb_var_screeninfo *var,
+int platform_fb_init_finish(struct fb_hw_info *hw_info, void *info,
 			    struct display_channel_state *out_state);
 
 int platform_fb_init(struct fb_create_info *create, struct fb_hw_info *info, void **pseudo_palette);
-int platform_fb_exit(void);
-struct dma_buf *platform_fb_get_dmabuf(struct fb_hw_info *hw_info);
+int platform_fb_exit(struct fb_create_info *create, struct fb_hw_info *info);
+int platform_fb_get_dmabuf(struct fb_hw_info *hw_info, int *fd);
 
 #endif

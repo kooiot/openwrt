@@ -44,13 +44,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define __KERNEL_COMPATIBILITY_H__
 
 #include <linux/version.h>
+#include <linux/compiler.h>
 
 /*
  * Stop supporting an old kernel? Remove the top block.
  * New incompatible kernel?       Append a new block at the bottom.
  *
- * Please write you version test as `VERSION < X.Y`, and use the earliest
+ * Please write your version test as `VERSION < X.Y`, and use the earliest
  * possible version :)
+ *
+ * If including this header file in other files, this should always be the
+ * last file included, as it can affect definitions/declarations in files
+ * included after it.
  */
 
 /* Linux 3.6 introduced seq_vprintf(). Earlier versions don't have this
@@ -62,7 +67,7 @@ do { \
 	char aszBuffer[512]; /* maximum message buffer size */ \
 	vsnprintf(aszBuffer, sizeof(aszBuffer), fmt, args); \
 	seq_puts(seq_file, aszBuffer); \
-} while(0)
+} while (0)
 #endif /* (LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0)) */
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 7, 0))
@@ -83,7 +88,7 @@ do { \
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0))
 
 /* Linux 3.19 removed get_unused_fd() */
-/* get_unused_fd_flags  was introduced in 3.7 */
+/* get_unused_fd_flags was introduced in 3.7 */
 #define get_unused_fd() get_unused_fd_flags(0)
 
 #endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)) */
@@ -164,7 +169,7 @@ do { \
  */
 #define drm_crtc_send_vblank_event(crtc, e) drm_send_vblank_event((crtc)->dev, drm_crtc_index(crtc), e)
 
-/* seq_has_overflowed() was introduced in 3.19-rc1 but the structure elements
+/* seq_has_overflowed() was introduced in 3.19 but the structure elements
  * have been available since 2.x
  */
 #include <linux/seq_file.h>
@@ -189,6 +194,13 @@ static inline bool seq_has_overflowed(struct seq_file *m)
 
 #endif /* (LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0)) */
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0))
+#define drm_fb_helper_unregister_fbi(fb_helper) \
+	({ \
+		if ((fb_helper) && (fb_helper)->fbdev) \
+			unregister_framebuffer((fb_helper)->fbdev); \
+	})
+#endif
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0))
 
@@ -274,6 +286,8 @@ static inline bool seq_has_overflowed(struct seq_file *m)
 
 /* Linux 4.9 changed the second argument to a drm_file pointer */
 #define drm_vma_node_is_allowed(node, file_priv) drm_vma_node_is_allowed(node, (file_priv)->filp)
+#define drm_vma_node_allow(node, file_priv) drm_vma_node_allow(node, (file_priv)->filp)
+#define drm_vma_node_revoke(node, file_priv) drm_vma_node_revoke(node, (file_priv)->filp)
 
 #endif /* (LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)) */
 
@@ -306,9 +320,8 @@ static inline bool seq_has_overflowed(struct seq_file *m)
 #define drm_framebuffer_get(obj)          drm_framebuffer_reference(obj)
 #define drm_framebuffer_put(obj)          drm_framebuffer_unreference(obj)
 #define drm_gem_object_get(obj)           drm_gem_object_reference(obj)
-#define drm_gem_object_put(obj)           drm_gem_object_unreference(obj)
+#define drm_gem_object_put_locked(obj)    drm_gem_object_unreference(obj)
 #define __drm_gem_object_put(obj)         __drm_gem_object_unreference(obj)
-#define drm_gem_object_put_unlocked(obj)  drm_gem_object_unreference_unlocked(obj)
 #define drm_property_blob_get(obj)        drm_property_reference_blob(obj)
 #define drm_property_blob_put(obj)        drm_property_unreference_blob(obj)
 
@@ -438,17 +451,120 @@ __pvr_access_ok_compat(int type, const void __user * addr, unsigned long size)
 
 #endif
 
-#if defined(CONFIG_L4)
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 3, 0))
+#define MODULE_IMPORT_NS(ns)
+#endif
 
 /*
- * Headers shouldn't normally be included by this file but this is a special
- * case to access the memory translation API when running on the L4 ukernel
+ * Before v5.8, the "struct mm" has a semaphore named "mmap_sem" which is
+ * renamed to "mmap_lock" in v5.8. Moreover, new APIs are provided to
+ * access this lock starting from v5.8.
  */
-#include <asm/api-l4env/api.h>
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0))
 
-#undef page_to_phys
-#define page_to_phys(x) l4x_virt_to_phys((void *)((phys_addr_t)page_to_pfn(x) << PAGE_SHIFT))
+#define mmap_write_lock(mm)   down_write(&mm->mmap_sem)
+#define mmap_write_unlock(mm) up_write(&mm->mmap_sem)
 
-#endif /* defined(CONFIG_L4) */
+#define mmap_read_lock(mm)    down_read(&mm->mmap_sem)
+#define mmap_read_unlock(mm)  up_read(&mm->mmap_sem)
+
+#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0) */
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0))
+#define drm_gem_object_put(obj) drm_gem_object_unreference_unlocked(obj)
+#elif (LINUX_VERSION_CODE < KERNEL_VERSION(5, 9, 0))
+#define drm_gem_object_put(obj) drm_gem_object_put_unlocked(obj)
+#endif /* (LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)) */
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
+
+#define drm_prime_pages_to_sg(dev, pages, nr_pages) \
+	drm_prime_pages_to_sg(pages, nr_pages)
+
+#endif /* (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)) */
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0))
+
+struct dma_buf_map {
+	void *vaddr;
+};
+
+#define dma_buf_vmap(dmabuf, map) \
+	({ \
+		(map)->vaddr = dma_buf_vmap(dmabuf); \
+		(map)->vaddr ? 0 : ((dmabuf) && (dmabuf)->ops->vmap) ? -ENOMEM : -EINVAL; \
+	})
+
+#define dma_buf_vunmap(dmabuf, map) \
+	({ \
+		dma_buf_vunmap(dmabuf, (map)->vaddr); \
+		(map)->vaddr = NULL; \
+	})
+
+#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0) */
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 12, 0))
+
+#define drm_prime_sg_to_page_array(sgt, pages, npages) \
+	drm_prime_sg_to_page_addr_arrays(sgt, pages, NULL, npages)
+
+#endif /* (LINUX_VERSION_CODE < KERNEL_VERSION(5, 12, 0)) */
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 13, 0))
+
+#define drm_gem_plane_helper_prepare_fb drm_gem_fb_prepare_fb
+
+#endif /* (LINUX_VERSION_CODE < KERNEL_VERSION(5, 13, 0)) */
+
+/*
+ * Linux 5.11 renames the privileged uaccess routines for arm64 and Android
+ * kernel v5.10 merges the change as well. These routines are only used for
+ * arm64 so CONFIG_ARM64 testing can be ignored.
+ */
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)) || \
+	((LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)) && !defined(ANDROID))
+#define uaccess_enable_privileged() uaccess_enable()
+#define uaccess_disable_privileged() uaccess_disable()
+#endif
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 16, 0))
+#define pde_data PDE_DATA
+#endif /* (LINUX_VERSION_CODE < KERNEL_VERSION(5, 16, 0)) */
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 18, 0))
+#define iosys_map dma_buf_map
+#define iosys_map_set_vaddr_iomem dma_buf_map_set_vaddr_iomem
+#define iosys_map_clear dma_buf_map_clear
+#endif /* (LINUX_VERSION_CODE < KERNEL_VERSION(5, 18, 0)) */
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 0, 0))
+
+#define register_shrinker(shrinker, name) \
+	register_shrinker(shrinker)
+
+#endif /* (LINUX_VERSION_CODE < KERNEL_VERSION(6, 0, 0)) */
+
+#if defined(__GNUC__)
+#define GCC_VERSION_AT_LEAST(major, minor) \
+	(__GNUC__ > (major) || \
+	(__GNUC__ == (major) && __GNUC_MINOR__ >= (minor)))
+#else
+#define GCC_VERSION_AT_LEAST(major, minor) 0
+#endif
+
+#if defined(__clang__)
+#define CLANG_VERSION_AT_LEAST(major) \
+	(__clang_major__ >= (major))
+#else
+#define CLANG_VERSION_AT_LEAST(major) 0
+#endif
+
+#if !defined(__fallthrough)
+	#if GCC_VERSION_AT_LEAST(7, 0) || CLANG_VERSION_AT_LEAST(10)
+		#define __fallthrough __attribute__((__fallthrough__))
+	#else
+		#define __fallthrough
+	#endif
+#endif
 
 #endif /* __KERNEL_COMPATIBILITY_H__ */

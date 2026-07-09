@@ -56,6 +56,13 @@ DEFINE_EVENT(clk_set_rate, clk_mp_set_rate,
 	TP_ARGS(hw, _rate, parent_rate, reg)
 );
 
+DEFINE_EVENT(clk_set_rate, clk_nm_set_rate,
+
+	TP_PROTO(struct clk_hw *hw, unsigned long _rate, unsigned long parent_rate, u32 reg),
+
+	TP_ARGS(hw, _rate, parent_rate, reg)
+);
+
 DEFINE_EVENT(clk_set_rate, clk_nkm_set_rate,
 
 	TP_PROTO(struct clk_hw *hw, unsigned long _rate, unsigned long parent_rate, u32 reg),
@@ -123,6 +130,7 @@ TRACE_EVENT(clk_ng_set_parent,
 
 	TP_printk("clk_name: %s parent_index: %d", __get_str(name), __entry->index)
 );
+
 #endif
 
 #undef TRACE_INCLUDE_PATH

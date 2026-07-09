@@ -991,11 +991,21 @@ static void sunxi_ledc_trans_data(struct sunxi_ledc *led)
 	} else {
 		sunxi_err(led->dev, "dma xfer\n");
 
+		if (!led->dma_chan) {
+			sunxi_err(led->dev, "led dma_chain is NULL");
+			return;
+		}
+
 		size = led->length * 4;
 		led->src_dma = dma_map_single(dev, led->data,
 					size, DMA_TO_DEVICE);
-		dst_addr = led->res->start + LEDC_DATA_REG_OFFSET;
+		if (dma_mapping_error(led->dev, led->src_dma)) {
+			dma_unmap_single(led->dev, led->src_dma, size, DMA_TO_DEVICE);
+			sunxi_err(led->dev, "dma mapping err\n");
+			return;
+		}
 
+		dst_addr = led->res->start + LEDC_DATA_REG_OFFSET;
 		flags = DMA_PREP_INTERRUPT | DMA_CTRL_ACK;
 
 		slave_config.direction = DMA_MEM_TO_DEV;
@@ -1023,11 +1033,11 @@ static void sunxi_ledc_trans_data(struct sunxi_ledc *led)
 		}
 
 		dma_desc->callback = sunxi_ledc_dma_callback;
+
 		dma_desc->callback_param = led;
 
 		dmaengine_submit(dma_desc);
 		dma_async_issue_pending(led->dma_chan);
-
 		ktime_get_coarse_real_ts64(&(led->start_time));
 		sunxi_ledc_set_time(led);
 		sunxi_ledc_set_output_mode(led, led->output_mode.str);
@@ -1175,7 +1185,7 @@ static int sunxi_ledc_irq_init(struct sunxi_ledc *led)
 	if (led->irqnum < 0)
 		sunxi_err(led->dev, "failed to get ledc irq!\n");
 
-	err = request_irq(led->irqnum, sunxi_ledc_irq_handler, flags, name, led);
+	err = devm_request_irq(led->dev, led->irqnum, sunxi_ledc_irq_handler, flags, name, led);
 	if (err) {
 		sunxi_err(led->dev, "failed to install IRQ handler for irqnum %d\n", led->irqnum);
 		return -EPERM;
@@ -1186,7 +1196,7 @@ static int sunxi_ledc_irq_init(struct sunxi_ledc *led)
 
 static void sunxi_ledc_irq_deinit(struct sunxi_ledc *led)
 {
-	free_irq(led->irqnum, led->dev);
+	devm_free_irq(led->dev, led->irqnum, led);
 	sunxi_ledc_disable_irq(LEDC_TRANS_FINISH_INT_EN | LEDC_FIFO_CPUREQ_INT_EN
 			| LEDC_WAITDATA_TIMEOUT_INT_EN | LEDC_FIFO_OVERFLOW_INT_EN
 			| LEDC_GLOBAL_INT_EN, led);
@@ -1394,22 +1404,10 @@ static void sunxi_ledc_unregister_led_classdev(struct sunxi_ledc *led)
 	u32 i;
 
 	for (i = 0; i < led->led_count; i++) {
-		kfree(led->pcdev_group[i].b.cdev.name);
-		led->pcdev_group[i].b.cdev.name = NULL;
-		kfree(led->pcdev_group[i].g.cdev.name);
-		led->pcdev_group[i].g.cdev.name = NULL;
-		kfree(led->pcdev_group[i].r.cdev.name);
-		led->pcdev_group[i].r.cdev.name = NULL;
 		led_classdev_unregister(&led->pcdev_group[i].b.cdev);
 		led_classdev_unregister(&led->pcdev_group[i].g.cdev);
 		led_classdev_unregister(&led->pcdev_group[i].r.cdev);
 	}
-	kfree(led->data);
-	led->data = NULL;
-
-
-	kfree(led->pcdev_group);
-	led->pcdev_group = NULL;
 }
 
 static void sunxi_ledc_get_para_from_dts(struct sunxi_ledc *led)
@@ -1540,7 +1538,7 @@ static ssize_t sunxi_ledc_store(const struct device *dev, const struct device_at
 	struct sunxi_ledc *led = dev_get_drvdata(dev);
 
 	if (len < 3 || len > led->led_count * 3) {
-		sunxi_err(led->dev, "unexpected ledc len:%lu\n", len);
+		sunxi_err(led->dev, "unexpected ledc len:%zu\n", len);
 		return -EINVAL;
 	}
 
@@ -1627,11 +1625,20 @@ static int sunxi_ledc_resource_get(struct sunxi_ledc *led)
 		return -EINVAL;
 	}
 
+	/* prepare for dma xfer, dynamic apply dma channel */
+	if (led->led_count > SUNXI_LEDC_FIFO_DEPTH) {
+		err = sunxi_ledc_dma_get(led);
+		if (err) {
+			sunxi_err(led->dev, "request dma failed!\n");
+			return -EINVAL;
+		}
+	}
 	return 0;
 }
 
 static void sunxi_ledc_resource_put(struct sunxi_ledc *led)
 {
+	sunxi_ledc_dma_put(led);
 	sunxi_ledc_regulator_release(led);
 	sunxi_ledc_clk_put(led);
 }
@@ -1762,7 +1769,7 @@ static int sunxi_ledc_remove(struct platform_device *pdev)
 
 	sunxi_ledc_resource_put(led);
 
-	sunxi_err(led->dev, "finish\n");
+	sunxi_info(led->dev, "ledc remove finish\n");
 
 	return 0;
 }
@@ -1921,7 +1928,7 @@ module_platform_driver(sunxi_ledc_driver);
 
 MODULE_ALIAS("sunxi ledc dirver");
 MODULE_LICENSE("GPL v2");
-MODULE_VERSION("1.3.6");
+MODULE_VERSION("1.3.8");
 MODULE_AUTHOR("liuyu <SWCliuyus@allwinnertech.com>");
 MODULE_AUTHOR("danghao <danghao@allwinnertech.com>");
 MODULE_AUTHOR("zhaiyaya <zhaiyaya@allwinnertech.com>");

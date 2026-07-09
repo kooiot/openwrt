@@ -108,13 +108,11 @@ help:
 	@echo '  make whatis-FILE       Show which module builds an output FILE'
 	@echo '  make ls-modules        List all modules defined by makefiles'
 
-# This rule runs in the configuration stage, in config/help.mk. Make a dummy
+# This rule runs in the configuration stage, in config/help.mk. Make an empty
 # target here to suppress "no rule to make target 'confighelp' messages.
 confighelp: ;
 
 ifneq ($(filter help,$(D)),)
-empty :=
-space := $(empty) $(empty)
 $(info Debug options)
 $(info $(space)D=modules            dump module info)
 $(info $(space)D=config             dump all config options + type and origin)

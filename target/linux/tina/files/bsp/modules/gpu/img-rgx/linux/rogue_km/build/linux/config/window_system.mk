@@ -48,19 +48,33 @@
 
 ifeq ($(SUPPORT_NEUTRINO_PLATFORM),)
 WINDOW_SYSTEM ?= ews
+_supported_window_systems := ews lws-generic nulldrmws nullws surfaceless wayland xorg
 else
 WINDOW_SYSTEM ?= nullws
+_supported_window_systems := nullws screen
 endif
 
 _window_system_mk_path := ../common/window_systems
 _window_systems := \
  $(sort $(patsubst $(_window_system_mk_path)/%.mk,%,$(wildcard $(_window_system_mk_path)/*.mk)))
+_window_systems := $(filter $(_supported_window_systems),$(_window_systems))
 
 _unrecognised_window_system := $(strip $(filter-out $(_window_systems),$(WINDOW_SYSTEM)))
 ifneq ($(_unrecognised_window_system),)
 $(warning *** Unrecognised WINDOW_SYSTEM: $(_unrecognised_window_system))
 $(warning *** WINDOW_SYSTEM was set via: $(origin WINDOW_SYSTEM))
 $(error Supported Window Systems are: $(_window_systems))
+endif
+
+ifeq ($(MESA_EGL),1)
+ ifeq ($(WINDOW_SYSTEM),nulldrmws)
+  ifeq ($(SUPPORT_FALLBACK_FENCE_SYNC),1)
+   # The Mesa EGL version of nulldrmws requires a display driver that
+   # supports atomic modesetting, and so it also requires native fence sync.
+   $(warning Fallback fence sync selected. Using IMG EGL for nulldrmws.)
+   override undefine MESA_EGL
+  endif
+ endif
 endif
 
 # Use this to mark config options that are user-tunable for certain window
@@ -78,14 +92,16 @@ endef
 $(call WindowSystemTunableOption,EGL_EXTENSION_ANDROID_NATIVE_FENCE_SYNC,)
 $(call WindowSystemTunableOption,GBM_BACKEND,$(if $(MESA_EGL),,nulldrmws))
 $(call WindowSystemTunableOption,MESA_EGL,nulldrmws)
+$(call WindowSystemTunableOption,MESA_WSI,nulldrmws)
+$(call WindowSystemTunableOption,SC_EGL,nullws nulldrmws)
+$(call WindowSystemTunableOption,SERVICES_SC,nullws nulldrmws)
 $(call WindowSystemTunableOption,OPK_DEFAULT,)
 $(call WindowSystemTunableOption,OPK_FALLBACK,)
-$(call WindowSystemTunableOption,PVR_XORG_USE_MODESETTING_DRIVER,lws-generic xorg)
 $(call WindowSystemTunableOption,SUPPORT_ACTIVE_FLUSH,\
-	ews lws-generic nullws nulldrmws wayland\
-	$(if $(PVR_XORG_USE_MODESETTING_DRIVER),,xorg) screen)
+	ews lws-generic nullws nulldrmws wayland screen)
 $(call WindowSystemTunableOption,SUPPORT_DISPLAY_CLASS,ews nullws screen)
-$(call WindowSystemTunableOption,SUPPORT_FALLBACK_FENCE_SYNC,)
+$(call WindowSystemTunableOption,SUPPORT_FALLBACK_FENCE_SYNC,\
+		lws-generic nulldrmws surfaceless wayland xorg)
 $(call WindowSystemTunableOption,SUPPORT_INSECURE_EXPORT,ews)
 $(call WindowSystemTunableOption,SUPPORT_KMS,ews)
 $(call WindowSystemTunableOption,SUPPORT_NATIVE_FENCE_SYNC,\
@@ -94,34 +110,62 @@ $(call WindowSystemTunableOption,SUPPORT_SECURE_EXPORT,nullws ews)
 $(call WindowSystemTunableOption,SUPPORT_VK_PLATFORMS,lws-generic)
 $(call WindowSystemTunableOption,PVRSRV_WRAP_EXTMEM_WRITE_ATTRIB_ENABLE,\
 	$(if $(SUPPORT_KMS),,ews) nullws)
+$(call WindowSystemTunableOption,SUPPORT_XWAYLAND,wayland)
+
+ifneq ($(MESA_EGL),1)
+ # Tests of MESA_EGL are against the value 1 and the empty string, so values
+ # other than 1, such as 0, should be mapped to the empty string.
+ override undefine MESA_EGL
+else
+ # MESA_WSI defaults to the same value as MESA_EGL.
+ MESA_WSI ?= 1
+endif
+
+ifneq ($(filter lws-generic surfaceless,$(WINDOW_SYSTEM)),)
+ ifeq ($(SUPPORT_VK_PLATFORMS),)
+  # There is no point building Mesa WSI if no platforms have been selected.
+  override undefine MESA_WSI
+ else
+  override MESA_WSI := 1
+ endif
+endif
+
+ifneq ($(MESA_WSI),1)
+ # Tests of MESA_WSI are against the value 1 and the empty string, so values
+ # other than 1, such as 0, should be mapped to the empty string.
+ override undefine MESA_WSI
+endif
 
 ifeq ($(WINDOW_SYSTEM),xorg)
- MESA_EGL := 1
+ override MESA_EGL := 1
+ override MESA_WSI := 1
  SUPPORT_VK_PLATFORMS := x11
  SUPPORT_DISPLAY_CLASS := 0
  SUPPORT_NATIVE_FENCE_SYNC := 1
  SUPPORT_KMS := 1
- PVR_XORG_USE_MODESETTING_DRIVER ?= 1
  override PVRSRV_WRAP_EXTMEM_WRITE_ATTRIB_ENABLE := 0
- ifeq ($(PVR_XORG_USE_MODESETTING_DRIVER),1)
-  SUPPORT_ACTIVE_FLUSH := 1
- endif
+ SUPPORT_ACTIVE_FLUSH := 1
 else ifeq ($(WINDOW_SYSTEM),wayland)
- MESA_EGL := 1
+ override MESA_EGL := 1
+ override MESA_WSI := 1
  SUPPORT_VK_PLATFORMS := wayland
  SUPPORT_DISPLAY_CLASS := 0
  SUPPORT_NATIVE_FENCE_SYNC := 1
  SUPPORT_KMS := 1
  override PVRSRV_WRAP_EXTMEM_WRITE_ATTRIB_ENABLE := 0
+ ifeq ($(SUPPORT_XWAYLAND),1)
+  SUPPORT_VK_PLATFORMS += x11
+  SUPPORT_ACTIVE_FLUSH := 1
+ endif
 else ifeq ($(WINDOW_SYSTEM),surfaceless)
- MESA_EGL := 1
+ override MESA_EGL := 1
  SUPPORT_ACTIVE_FLUSH := 1
  SUPPORT_DISPLAY_CLASS := 0
  SUPPORT_NATIVE_FENCE_SYNC := 1
  SUPPORT_KMS := 1
  override PVRSRV_WRAP_EXTMEM_WRITE_ATTRIB_ENABLE := 0
 else ifeq ($(WINDOW_SYSTEM),lws-generic)
- MESA_EGL := 1
+ override MESA_EGL := 1
  SUPPORT_DISPLAY_CLASS := 0
  SUPPORT_NATIVE_FENCE_SYNC := 1
  SUPPORT_KMS := 1
@@ -177,14 +221,15 @@ else ifeq ($(WINDOW_SYSTEM),screen) # Neutrino builds
  SUPPORT_VK_PLATFORMS := null
  SUPPORT_DISPLAY_CLASS ?= 1
  SUPPORT_FALLBACK_FENCE_SYNC := 1
- override PVRSRV_WRAP_EXTMEM_WRITE_ATTRIB_ENABLE := 0
+ PVRSRV_WRAP_EXTMEM_WRITE_ATTRIB_ENABLE ?= 1
 endif
 
-# Some Linux platforms can not support Fence Sync, older kernels, ill configured.
-ifeq ($(EXCLUDE_FENCE_SYNC_SUPPORT),1)
- override SUPPORT_FALLBACK_FENCE_SYNC := 0
- override SUPPORT_NATIVE_FENCE_SYNC := 0
- override SUPPORT_SERVER_SYNC := 1
+ifeq ($(SUPPORT_FALLBACK_FENCE_SYNC),1)
+ ifneq ($(filter lws-generic nulldrmws surfaceless wayland xorg,\
+		 $(WINDOW_SYSTEM)),)
+  $(warning Fallback fence sync selected for window system $(WINDOW_SYSTEM).)
+  undefine SUPPORT_NATIVE_FENCE_SYNC
+ endif
 endif
 
 ifeq ($(MESA_EGL),1)
@@ -195,3 +240,10 @@ ifeq ($(MESA_EGL),1)
  endif
 endif
 
+ifeq ($(SUPPORT_KMS),1)
+ SUPPORT_DRM_FBDEV_EMULATION ?= 1
+endif
+
+ifeq ($(call is-not-target-os,neutrino),true)
+ SUPPORT_VKEXT_IMAGE_FORMAT_MOD := 1
+endif

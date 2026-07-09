@@ -39,8 +39,13 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### ###########################################################################
 
+MODULE_AR := $(AR_SECONDARY)
 MODULE_CC := $(CC_SECONDARY) $(TARGET_FORCE_32BIT) -march=i686
 MODULE_CXX := $(CXX_SECONDARY) $(TARGET_FORCE_32BIT) -march=i686
+MODULE_NM := $(NM_SECONDARY)
+MODULE_OBJCOPY := $(OBJCOPY_SECONDARY)
+MODULE_RANLIB := $(RANLIB_SECONDARY)
+MODULE_STRIP := $(STRIP_SECONDARY)
 
 MODULE_CFLAGS := $(ALL_CFLAGS) $($(THIS_MODULE)_cflags) $(TARGET_FORCE_32BIT) -march=i686 -mstackrealign
 MODULE_CXXFLAGS := $(ALL_CXXFLAGS) $($(THIS_MODULE)_cxxflags) $(TARGET_FORCE_32BIT) -march=i686 -mstackrealign
@@ -70,10 +75,6 @@ SYSTEM_LIBRARY_LIBC  := $(strip $(call path-to-system-library,$(_lib),c))
 SYSTEM_LIBRARY_LIBM  := $(strip $(call path-to-system-library,$(_lib),m))
 SYSTEM_LIBRARY_LIBDL := $(strip $(call path-to-system-library,$(_lib),dl))
 
-ifeq ($(USE_LLD),1)
- MODULE_LDFLAGS += -fuse-ld=lld
-endif
-
 MODULE_EXE_LDFLAGS += $(SYSTEM_LIBRARY_LIBC)
 
 # APK unittests
@@ -92,12 +93,20 @@ else
 
 _vndk := $(strip $(call path-to-vndk,$(_lib)))
 _vndk-sp := $(strip $(call path-to-vndk-sp,$(_lib)))
+_apex-vndk := $(strip $(call path-to-apex-vndk,$(_lib)))
 
 MODULE_SYSTEM_LIBRARY_DIR_FLAGS := \
  -L$(TARGET_ROOT)/product/$(TARGET_DEVICE)/system/lib/$(_vndk) \
  -Xlinker -rpath-link=$(TARGET_ROOT)/product/$(TARGET_DEVICE)/system/lib/$(_vndk) \
  -L$(TARGET_ROOT)/product/$(TARGET_DEVICE)/system/lib/$(_vndk-sp) \
- -Xlinker -rpath-link=$(TARGET_ROOT)/product/$(TARGET_DEVICE)/system/lib/$(_vndk-sp)
+ -Xlinker -rpath-link=$(TARGET_ROOT)/product/$(TARGET_DEVICE)/system/lib/$(_vndk-sp) \
+ -L$(TARGET_ROOT)/product/$(TARGET_DEVICE)/$(_apex-vndk)/lib \
+ -Xlinker -rpath-link=$(TARGET_ROOT)/product/$(TARGET_DEVICE)/$(_apex-vndk)/lib
+
+# Vendor libraries are required for gralloc, hwcomposer, and proprietary HIDL HALs.
+MODULE_VENDOR_LIBRARY_DIR_FLAGS := \
+ -L$(TARGET_ROOT)/product/$(TARGET_DEVICE)/vendor/lib \
+ -Xlinker -rpath-link=$(TARGET_ROOT)/product/$(TARGET_DEVICE)/vendor/lib
 
 # LL-NDK libraries
 ifneq ($(PVR_ANDROID_LLNDK_LIBRARIES),)
@@ -110,11 +119,12 @@ endif
 MODULE_LIBRARY_FLAGS_SUBST += \
  neuralnetworks_common:$(_obj)/STATIC_LIBRARIES/libneuralnetworks_common_intermediates/libneuralnetworks_common.a \
  BlobCache:$(_obj)/STATIC_LIBRARIES/libBlobCache_intermediates/libBlobCache.a  \
- nnCache:$(_obj)/STATIC_LIBRARIES/lib_nnCache_intermediates/lib_nnCache.a
-
-# Gralloc and hwcomposer depend on libdrm
-MODULE_LIBRARY_FLAGS_SUBST += \
- drm:$(TARGET_ROOT)/product/$(TARGET_DEVICE)/system/lib/libdrm.so
+ nnCache:$(_obj)/STATIC_LIBRARIES/lib_nnCache_intermediates/lib_nnCache.a \
+ perfetto_client_experimental:$(_obj)/STATIC_LIBRARIES/libperfetto_client_experimental_intermediates/libperfetto_client_experimental.a \
+ protobuf-cpp-lite:$(_obj)/STATIC_LIBRARIES/libprotobuf-cpp-lite_intermediates/libprotobuf-cpp-lite.a \
+ perfetto_trace_protos:$(_obj)/STATIC_LIBRARIES/perfetto_trace_protos_intermediates/perfetto_trace_protos.a \
+ clang_rt:$(__clang_bindir)../lib64/clang/$(__clang_version)/lib/linux/libclang_rt.builtins-i686-android.a \
+ dmabufinfo:$(_obj)/STATIC_LIBRARIES/libdmabufinfo_intermediates/libdmabufinfo.a
 
 # Unittests dependent on libRScpp_static.a
 ifneq (,$(findstring $(THIS_MODULE),$(PVR_UNITTESTS_DEP_LIBRSCPP)))
@@ -150,10 +160,10 @@ MODULE_INCLUDE_FLAGS := \
 
 MODULE_LIBRARY_FLAGS_SUBST := \
  art:$(TARGET_ROOT)/product/$(TARGET_DEVICE)/system/lib/libart.so \
- RScpp:$(NDK_ROOT)/toolchains/renderscript/prebuilt/$(HOST_OS)-$(HOST_ARCH)/platform/x86/libRScpp_static.a \
  neuralnetworks_common:$(TARGET_ROOT)/product/$(TARGET_DEVICE)/obj$(if $(MULTIARCH),_x86,)/STATIC_LIBRARIES/libneuralnetworks_common_intermediates/libneuralnetworks_common.a \
  BlobCache:$(TARGET_ROOT)/product/$(TARGET_DEVICE)/obj/STATIC_LIBRARIES/libBlobCache_intermediates/libBlobCache.a  \
- nnCache:$(TARGET_ROOT)/product/$(TARGET_DEVICE)/obj/STATIC_LIBRARIES/lib_nnCache_intermediates/lib_nnCache.a
+ nnCache:$(TARGET_ROOT)/product/$(TARGET_DEVICE)/obj/STATIC_LIBRARIES/lib_nnCache_intermediates/lib_nnCache.a \
+ clang_rt:$(NDK_ROOT)/toolchains/llvm/prebuilt/linux-x86_64/lib64/clang/$(__clang_version)/lib/linux/libclang_rt.builtins-i686-android.a
 
 # Unittests dependant on libc++_static
 ifneq (,$(findstring $(THIS_MODULE),$(PVR_UNITTESTS_APK)))
@@ -209,10 +219,14 @@ endif # NDK_ROOT
 
 MODULE_LIB_LDFLAGS := $(MODULE_EXE_LDFLAGS)
 
-MODULE_LDFLAGS += $(MODULE_SYSTEM_LIBRARY_DIR_FLAGS)
+MODULE_LDFLAGS += \
+ $(MODULE_SYSTEM_LIBRARY_DIR_FLAGS) \
+ $(MODULE_VENDOR_LIBRARY_DIR_FLAGS)
 
 MODULE_EXE_CRTBEGIN := $(_obj)/lib/crtbegin_dynamic.o
-MODULE_EXE_CRTEND := $(_obj)/lib/crtend_android.o
+MODULE_EXE_CRTEND := $(call if-exists,\
+                     $(_obj)/lib/crtend_android.o,\
+                     $(_obj)/lib/crtend.o)
 
 MODULE_LIB_CRTBEGIN := $(_obj)/lib/crtbegin_so.o
 MODULE_LIB_CRTEND := $(_obj)/lib/crtend_so.o
@@ -240,17 +254,12 @@ endif
 ifneq ($(BUILD),debug)
 ifeq ($(USE_LTO),1)
 MODULE_LDFLAGS := \
- $(sort $(filter-out -W% -D%,$(ALL_CFLAGS) $(ALL_CXXFLAGS))) \
+ $(sort $(filter-out -W% -D% -isystem /%,$(ALL_CFLAGS) $(ALL_CXXFLAGS))) \
  $(MODULE_LDFLAGS)
 endif
 endif
 
 MODULE_ARCH_BITNESS := 32
-
-# Neutrino qcc requires "-Wc," prefix for compiler flags
-ifeq ($(SUPPORT_NEUTRINO_PLATFORM),1)
-include $(MAKE_TOP)/common/neutrino/modify_moduledefs.mk
-endif
 
 MESON_CROSS_SYSTEM  := linux
 MESON_CROSS_CPU_FAMILY := x86

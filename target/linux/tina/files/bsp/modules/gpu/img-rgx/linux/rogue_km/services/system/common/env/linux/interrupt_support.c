@@ -112,7 +112,7 @@ PVRSRV_ERROR OSInstallSystemLISR(IMG_HANDLE *phLISR,
 		ulIRQFlags |= IRQF_SHARED;
 	}
 
-	psLISRData = OSAllocMem(sizeof *psLISRData);
+	psLISRData = OSAllocMem(sizeof(*psLISRData));
 	if (psLISRData == NULL)
 	{
 		return PVRSRV_ERROR_OUT_OF_MEMORY;

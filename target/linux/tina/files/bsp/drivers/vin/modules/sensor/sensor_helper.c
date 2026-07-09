@@ -67,7 +67,7 @@ void sensor_cfg_req(struct v4l2_subdev *sd, struct sensor_config *cfg)
 	cfg->bin_factor = info->current_wins->bin_factor;
 	cfg->intg_min = info->current_wins->intg_min;
 	cfg->intg_max = info->current_wins->intg_max;
-#if !defined CONFIG_ARCH_SUN50IW10
+#if !IS_ENABLED(CONFIG_ARCH_SUN50IW10) && !IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 	cfg->intg_mid_min = info->current_wins->intg_mid_min;
 	cfg->intg_mid_max = info->current_wins->intg_mid_max;
 	cfg->intg_short_min = info->current_wins->intg_short_min;
@@ -114,13 +114,36 @@ unsigned int sensor_get_exp(struct v4l2_subdev *sd)
 }
 EXPORT_SYMBOL_GPL(sensor_get_exp);
 
-#if IS_ENABLED(CONFIG_ARCH_SUN8IW16P1)
-static unsigned int __sensor_get_parameter(struct v4l2_subdev *sd, struct v4l2_mbus_config *cfg)
+void sensor_check_vblank(struct v4l2_subdev *sd)
+{
+#if IS_ENABLED(CONFIG_TDM_ONE_BUFFER)
+	struct sensor_info *info = to_state(sd);
+
+	if (info->current_wins == NULL)
+		return;
+
+	if (info->current_wins->vts > info->current_wins->height) {
+		if ((info->current_wins->vts - info->current_wins->height) < (info->current_wins->height * 20 / 100))
+			vin_warn("use tdm one buffer must ensure sensor vblank >= 20%%\n");
+	} else
+		vin_warn("use tdm one buffer must ensure sensor vblank > 0\n");
+#endif
+}
+EXPORT_SYMBOL_GPL(sensor_check_vblank);
+
+#if IS_ENABLED(CONFIG_ARCH_SUN60IW2) || IS_ENABLED(CONFIG_ARCH_SUN65IW1)
+__maybe_unused static unsigned int __sensor_get_parameter(struct v4l2_subdev *sd, struct v4l2_mbus_config *cfg)
 {
 	struct sensor_info *info = to_state(sd);
-	unsigned flags = cfg->flags & 0xf;
+	unsigned int flag;
 
-	switch (flags) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	flag = cfg->bus.mipi_csi2.num_data_lanes & 0xf;
+#else
+	flag = cfg->flags & 0xf;
+#endif
+
+	switch (flag) {
 	case V4L2_MBUS_CSI2_1_LANE:
 		info->lane_num = 1;
 		break;
@@ -167,16 +190,17 @@ unsigned int sensor_get_clk(struct v4l2_subdev *sd, struct v4l2_mbus_config *cfg
 				unsigned long *top_clk, unsigned long *isp_clk)
 {
 	struct sensor_info *info = to_state(sd);
-	unsigned long topclk_theory, ispclk_theory;
-	unsigned long topclk_max = 432*1000*1000;
-	unsigned long ispclk_max = 432*1000*1000;
-	unsigned int hblank;
-	unsigned int hblank_cmp = 128;
-	int ret;
+	__maybe_unused unsigned long topclk_theory, ispclk_theory;
+	__maybe_unused unsigned long topclk_max = 432*1000*1000;
+	__maybe_unused unsigned long ispclk_max = 432*1000*1000;
+	__maybe_unused unsigned int hblank;
+	__maybe_unused unsigned int hblank_cmp = 128;
+	__maybe_unused int ret;
 
 	if (info->current_wins->top_clk && info->current_wins->isp_clk) {
 		*top_clk = info->current_wins->top_clk;
 		*isp_clk = info->current_wins->isp_clk;
+#if VIN_FALSE
 	} else if (info->current_wins->mipi_bps && info->current_wins->hts && info->current_wins->pclk) {
 		ret = __sensor_get_parameter(sd, cfg);
 		if (ret) {
@@ -197,10 +221,11 @@ unsigned int sensor_get_clk(struct v4l2_subdev *sd, struct v4l2_mbus_config *cfg
 		*top_clk = min(topclk_max, roundup(topclk_theory + topclk_theory*5/100, 1000000));
 		*isp_clk = min(ispclk_max, roundup(ispclk_theory + ispclk_theory*5/100, 1000000));
 		if (!(*top_clk) || !(*isp_clk)) {
-			vin_warn("%s warning! top_clk = %ld, isp_clk = %ld\n", __func__, *top_clk, *isp_clk);
+			vin_warn("%s warning! theoretical top_clk = %ld, isp_clk = %ld\n", __func__, *top_clk, *isp_clk);
 			return -1;
 		}
-	}  else
+#endif
+	} else
 		return -1;
 
 	return 0;
@@ -415,9 +440,15 @@ static void sensor_fill_mbus_fmt(struct v4l2_subdev *sd,
 	res->res_wdr_mode = ws->wdr_mode;
 	res->res_lp_mode = ws->lp_mode;
 	res->res_time_hs = info->time_hs;
-	res->res_deskew = info->deskew;
 	res->fps = ws->fps_fixed;
 	res->pclk_dly = ws->pclk_dly;
+	if (ws->deskew != 0)
+		res->res_deskew = ws->deskew;
+	else
+		res->res_deskew = info->deskew;
+
+	if (info->isp_wdr_mode == ISP_DOL_WDR_MODE && info->wdr_time_hs)
+		res->res_time_hs = info->wdr_time_hs;
 }
 
 static void sensor_try_format(struct v4l2_subdev *sd,
@@ -735,6 +766,19 @@ int sensor_set_fmt(struct v4l2_subdev *sd,
 EXPORT_SYMBOL_GPL(sensor_set_fmt);
 
 #else /* before linux-5.15 */
+#if IS_ENABLED(CONFIG_VIN_INIT_MELIS)
+static void ir_hold(struct timer_list *timer)
+{
+	struct sensor_info *info = container_of(timer, struct sensor_info, timer_for_ir);
+	struct v4l2_subdev *sd = &info->sd;
+
+	//vin_gpio_set_status(sd, SM_HS, 1); /* ir gpio -cut*/
+	//vin_gpio_set_status(sd, SM_VS, 1); /* ir gpio +cut*/
+
+	vin_gpio_write(sd, SM_HS, CSI_GPIO_HIGH); /*hold ir*/
+	vin_gpio_write(sd, SM_VS, CSI_GPIO_HIGH);
+}
+#endif
 int sensor_set_ir(struct v4l2_subdev *sd, struct ir_switch *ir_switch)
 {
 #if IS_ENABLED(CONFIG_VIN_INIT_MELIS)

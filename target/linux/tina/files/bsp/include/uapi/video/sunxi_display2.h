@@ -703,6 +703,31 @@ enum disp_capture_extend_cmd {
 	DISP_CAPTURE_E_CTRL,
 };
 
+struct disp_video_timings {
+	unsigned int vic;	/* video information code */
+	unsigned int tv_mode;
+	unsigned int pixel_clk;
+	unsigned int pixel_repeat; /* pixel repeat (pixel_repeat+1) times */
+	unsigned int x_res;
+	unsigned int y_res;
+	unsigned int hor_total_time;
+	unsigned int hor_back_porch;
+	unsigned int hor_front_porch;
+	unsigned int hor_sync_time;
+	unsigned int ver_total_time;
+	unsigned int ver_back_porch;
+	unsigned int ver_front_porch;
+	unsigned int ver_sync_time;
+	unsigned int hor_sync_polarity;	/* 0: negative, 1: positive */
+	unsigned int ver_sync_polarity;	/* 0: negative, 1: positive */
+	bool b_interlace;
+	unsigned int vactive_space;
+	unsigned int trd_mode;
+	unsigned long      dclk_rate_set; /* unit: hz */
+	unsigned long long frame_period; /* unit: ns */
+	int                start_delay; /* unit: line */
+};
+
 /* disp_device_config - display deivce config
  *
  * @type: output type
@@ -744,6 +769,7 @@ struct disp_device_config {
 	enum disp_scan_info			scan;
 	enum disp_hdr_type          hdr_type;
 	unsigned int				aspect_ratio;
+	struct disp_video_timings	timing;
 	unsigned int				reserve1;
 };
 
@@ -766,30 +792,6 @@ struct disp_device_dynamic_config {
 	unsigned int             metadata_flag;
 	void *(*vmap)(unsigned long phys_addr, unsigned long size);
 	void (*vunmap)(const void *vaddr);
-};
-struct disp_video_timings {
-	unsigned int vic;	/* video information code */
-	unsigned int tv_mode;
-	unsigned int pixel_clk;
-	unsigned int pixel_repeat; /* pixel repeat (pixel_repeat+1) times */
-	unsigned int x_res;
-	unsigned int y_res;
-	unsigned int hor_total_time;
-	unsigned int hor_back_porch;
-	unsigned int hor_front_porch;
-	unsigned int hor_sync_time;
-	unsigned int ver_total_time;
-	unsigned int ver_back_porch;
-	unsigned int ver_front_porch;
-	unsigned int ver_sync_time;
-	unsigned int hor_sync_polarity;	/* 0: negative, 1: positive */
-	unsigned int ver_sync_polarity;	/* 0: negative, 1: positive */
-	bool b_interlace;
-	unsigned int vactive_space;
-	unsigned int trd_mode;
-	unsigned long      dclk_rate_set; /* unit: hz */
-	unsigned long long frame_period; /* unit: ns */
-	int                start_delay; /* unit: line */
 };
 
 enum disp_init_mode {

@@ -39,8 +39,8 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
-#ifndef __PVR_UACCESS_H__
-#define __PVR_UACCESS_H__
+#ifndef PVR_UACCESS_H
+#define PVR_UACCESS_H
 
 #include <linux/uaccess.h>
 #include <linux/version.h>
@@ -96,4 +96,4 @@ static inline unsigned long pvr_copy_from_user(void *pvTo, const void __user *pv
 }
 #endif /* klocworks */
 
-#endif /* __PVR_UACCESS_H__ */
+#endif /* PVR_UACCESS_H */

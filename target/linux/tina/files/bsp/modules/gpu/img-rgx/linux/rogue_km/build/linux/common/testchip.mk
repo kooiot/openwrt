@@ -38,13 +38,26 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### ###########################################################################
 
-XE_BVNC = $(shell echo $(RGX_BVNC) | grep '^22.*\|^24.*\|^29.*')
+XE_BVNC = $(shell echo $(RGX_BVNC) | grep '^22.*\|^24.*\|^29.*\|^36.*\|^46.*')
 
 ifeq ($(RGX_BVNC),$(XE_BVNC))
  $(eval $(call KernelConfigC,TC_APOLLO_TCF5,))
- $(eval $(call KernelConfigMake,SUPPORT_FPGA_DUT_CLK_INFO,))
- $(eval $(call TunableKernelConfigC,SUPPORT_FPGA_DUT_CLK_INFO,1))
+ SUPPORT_FPGA_DUT_CLK_INFO ?= 1
+ SUPPORT_FPGA_DUT_MULTIPLEX_INFO ?= 1
 endif
+
+ifeq ($(PVR_ARCH),volcanic)
+ SUPPORT_FPGA_DUT_CLK_INFO ?= 1
+ SUPPORT_FPGA_DUT_MULTIPLEX_INFO ?= 1
+endif
+
+ifeq ($(PVR_ARCH_DEFS),oceanic)
+ SUPPORT_FPGA_DUT_CLK_INFO ?= 1
+ SUPPORT_FPGA_DUT_MULTIPLEX_INFO ?= 1
+endif
+
+$(eval $(call TunableKernelConfigC,SUPPORT_FPGA_DUT_CLK_INFO,))
+$(eval $(call TunableKernelConfigC,SUPPORT_FPGA_DUT_MULTIPLEX_INFO,))
 
 ifeq ($(RGX_BVNC),1.82.4.5)
  $(eval $(call KernelConfigC,TC_APOLLO_ES2,))
@@ -54,56 +67,41 @@ else ifeq ($(RGX_BVNC),22.46.54.330)
  $(eval $(call KernelConfigC,TC_APOLLO_TCF5_22_46_54_330,))
 else ifeq ($(RGX_BVNC),22.49.21.16)
  $(eval $(call KernelConfigC,TC_APOLLO_TCF5_22_49_21_16,))
-else ifeq ($(RGX_BVNC),22.50.22.29)
- $(eval $(call KernelConfigC,TC_APOLLO_TCF5_22_50_22_29,))
 else ifeq ($(RGX_BVNC),22.60.22.29)
  $(eval $(call KernelConfigC,TC_APOLLO_TCF5_22_60_22_29,))
-else ifeq ($(RGX_BVNC),22.62.21.16)
- $(eval $(call KernelConfigC,TC_APOLLO_TCF5_22_62_21_16,))
-else ifeq ($(RGX_BVNC),22.63.54.330)
- $(eval $(call KernelConfigC,TC_APOLLO_TCF5_22_63_54_330,))
 else ifeq ($(RGX_BVNC),22.67.54.30)
  $(eval $(call KernelConfigC,TC_APOLLO_TCF5_22_67_54_30,))
-else ifeq ($(RGX_BVNC),22.69.22.25)
- $(eval $(call KernelConfigC,TC_APOLLO_TCF5_22_69_22_25,))
-else ifeq ($(RGX_BVNC),22.70.208.316)
- $(eval $(call KernelConfigC,TC_APOLLO_TCF5_22_70_208_316,))
-else ifeq ($(RGX_BVNC),22.73.104.312)
- $(eval $(call KernelConfigC,TC_APOLLO_TCF5_22_73_104_312,))
 else ifeq ($(RGX_BVNC),22.75.22.25)
  $(eval $(call KernelConfigC,TC_APOLLO_TCF5_22_75_22_25,))
-else ifeq ($(RGX_BVNC),22.76.104.12)
- $(eval $(call KernelConfigC,TC_APOLLO_TCF5_22_76_104_12,))
-else ifeq ($(RGX_BVNC),22.78.104.212)
- $(eval $(call KernelConfigC,TC_APOLLO_TCF5_22_78_104_212,))
-else ifeq ($(RGX_BVNC),22.80.21.19)
- $(eval $(call KernelConfigC,TC_APOLLO_TCF5_22_80_21_19,))
-else ifeq ($(RGX_BVNC),22.81.104.12)
- $(eval $(call KernelConfigC,TC_APOLLO_TCF5_22_81_104_12,))
 else ifeq ($(RGX_BVNC),22.86.104.218)
  $(eval $(call KernelConfigC,TC_APOLLO_TCF5_22_86_104_218,))
 else ifeq ($(RGX_BVNC),22.88.104.318)
  $(eval $(call KernelConfigC,TC_APOLLO_TCF5_22_88_104_318,))
 else ifeq ($(RGX_BVNC),22.89.204.18)
  $(eval $(call KernelConfigC,TC_APOLLO_TCF5_22_89_204_18,))
-else ifeq ($(RGX_BVNC),22.96.104.618)
- $(eval $(call KernelConfigC,TC_APOLLO_TCF5_22_96_104_618,))
-else ifeq ($(RGX_BVNC),22.97.22.225)
- $(eval $(call KernelConfigC,TC_APOLLO_TCF5_22_97_22_225,))
 else ifeq ($(RGX_BVNC),22.98.54.230)
  $(eval $(call KernelConfigC,TC_APOLLO_TCF5_22_98_54_230,))
 else ifeq ($(RGX_BVNC),22.102.54.38)
  $(eval $(call KernelConfigC,TC_APOLLO_TCF5_22_102_54_38,))
-else ifeq ($(RGX_BVNC),24.12.104.2)
- $(eval $(call KernelConfigC,TC_APOLLO_TCF5_24_12_104_2,))
+else ifeq ($(RGX_BVNC),33.8.22.1)
+ $(eval $(call KernelConfigC,TC_APOLLO_TCF5_33_8_22_1,))
+else ifeq ($(RGX_BVNC),29.18.204.508)
+ $(eval $(call KernelConfigC,TC_APOLLO_TCF5_29_18_204_508,))
+else ifeq ($(RGX_BVNC),29.12.52.208)
+ $(eval $(call KernelConfigC,TC_ORION,))
+else ifeq ($(RGX_BVNC),29.19.52.202)
+ $(eval $(call KernelConfigC,TC_APOLLO_TCF5_29_19_52_202,))
+else ifeq ($(RGX_BVNC),27.5.254.2)
+ $(eval $(call KernelConfigC,TC_ODIN_27_5_254_2,))
 else ifeq ($(RGX_BVNC),$(XE_BVNC))
  $(warning WARNING $(RGX_BVNC) is currently not supported on a Linux TCF5 system)
  $(eval $(call KernelConfigC,TC_APOLLO_TCF5_BVNC_NOT_SUPPORTED,))
 endif
 
-ifeq ($(PVR_SYSTEM),rgx_linux_tc)
- # The new rgx_linux_tc system code only supports LMA
- override TC_MEMORY_CONFIG := TC_MEMORY_LOCAL
+ifneq ($(SUPPORT_ANDROID_PLATFORM),)
+ ifneq ($(PVR_SYSTEM),rgx_nohw)
+  override TC_MEMORY_CONFIG := TC_MEMORY_LOCAL
+ endif
 endif
 
 ifneq ($(PVR_SYSTEM),rgx_nohw)
@@ -139,4 +137,5 @@ endif
 $(eval $(call TunableKernelConfigC,SUPPORT_APOLLO_FPGA,))
 
 $(eval $(call TunableKernelConfigC,SUPPORT_FAKE_SECURE_ION_HEAP,))
+$(eval $(call TunableKernelConfigC,SUPPORT_FAKE_SECURE_DMA_HEAP,))
 $(eval $(call TunableKernelConfigC,TC_SECURE_MEM_SIZE,128))

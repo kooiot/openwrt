@@ -19,6 +19,7 @@
 #include <linux/phy/phy.h>
 #include <linux/phy/phy-mipi-dphy.h>
 #include <linux/version.h>
+#include <linux/delay.h>
 #include <drm/drm_panel.h>
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_crtc_helper.h>
@@ -32,16 +33,49 @@
 #include "sunxi_device/sunxi_tcon.h"
 #include "sunxi_drm_intf.h"
 #include "sunxi_drm_crtc.h"
-#include "panel/panels.h"
-#if IS_ENABLED(CONFIG_ARCH_SUN55IW6)
+#include "panel/panel-rgb.h"
+#if IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN65IW1) \
+	|| IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 #define RGB_DISPLL_CLK
 #endif
+
+enum sunxi_tiger_lcd_rgb_param {
+	SUNXI_TIGER_LCD_DISP_SUBSYS = 0,
+	SUNXI_TIGER_LCD_BACKLIGHT,
+	SUNXI_TIGER_LCD_MODE_PIXELCLOCK,
+	SUNXI_TIGER_LCD_MODE_HACTIVE,
+	SUNXI_TIGER_LCD_MODE_HFRONT_PORCH,
+	SUNXI_TIGER_LCD_MODE_HBACK_PORCH,
+	SUNXI_TIGER_LCD_MODE_HSYNC_LEN,
+	SUNXI_TIGER_LCD_MODE_VACTIVE,
+	SUNXI_TIGER_LCD_MODE_VFRONT_PORCH,
+	SUNXI_TIGER_LCD_MODE_VBACK_PORCH,
+	SUNXI_TIGER_LCD_MODE_VSYNC_LEN,
+	SUNXI_TIGER_LCD_RESERVED0,
+	SUNXI_TIGER_LCD_RESERVED1,
+	SUNXI_TIGER_LCD_TIMING_RESET_NUM,
+	SUNXI_TIGER_LCD_TIMING_DELAY_POWER,
+	SUNXI_TIGER_LCD_TIMING_DELAY_ENABLE,
+	SUNXI_TIGER_LCD_TIMING_DELAY_RESET,
+	SUNXI_TIGER_LCD_RESERVED2,
+	SUNXI_TIGER_LCD_RESERVED3,
+	SUNXI_TIGER_LCD_RESERVED4,
+	SUNXI_TIGER_LCD_RESERVED5,
+	SUNXI_TIGER_LCD_RESERVED6,
+	SUNXI_TIGER_LCD_RESERVED7,
+	SUNXI_TIGER_LCD_RESERVED8,
+	SUNXI_TIGER_LCD_RESERVED9,
+	SUNXI_TIGER_LCD_RESERVED10,
+	SUNXI_TIGER_LCD_INTF,
+};
+
 struct rgb_data {
 	int id;
 };
 struct sunxi_drm_rgb {
 	struct sunxi_drm_device sdrm;
 	struct drm_display_mode mode;
+	struct drm_display_mode *adjusted_mode;
 	struct disp_rgb_para rgb_para;
 	bool bound;
 	bool sw_enable;
@@ -53,6 +87,7 @@ struct sunxi_drm_rgb {
 
 	struct clk *pclk;
 	unsigned long mode_flags;
+	unsigned long pclk_clk_rate;
 
 };
 static const struct rgb_data rgb0_data = {
@@ -155,7 +190,25 @@ static int sunxi_lcd_pin_set_state(struct device *dev, char *name)
 exit:
 	return ret;
 }
+static int sunxi_rgb_displl_enable(struct sunxi_drm_rgb *rgb)
+{
+	if (rgb->pclk) {
+		clk_set_rate(rgb->pclk, rgb->pclk_clk_rate);
+		clk_prepare_enable(rgb->pclk);
+	}
 
+	return 0;
+}
+
+static int sunxi_rgb_displl_disable(struct sunxi_drm_rgb *rgb)
+{
+	if (rgb->pclk) {
+		clk_set_rate(rgb->pclk, 24000000);
+		clk_disable_unprepare(rgb->pclk);
+	}
+
+	return 0;
+}
 void sunxi_drm_rgb_encoder_atomic_enable(struct drm_encoder *encoder,
 					struct drm_atomic_state *state)
 {
@@ -166,7 +219,6 @@ void sunxi_drm_rgb_encoder_atomic_enable(struct drm_encoder *encoder,
 	struct sunxi_drm_rgb *rgb = encoder_to_sunxi_drm_rgb(encoder);
 	struct sunxi_crtc_state *scrtc_state = to_sunxi_crtc_state(crtc_state);
 	struct disp_output_config disp_cfg;
-	unsigned long pclk_clk_rate;
 
 	DRM_INFO("[RGB] %s start\n", __FUNCTION__);
 	drm_mode_to_sunxi_video_timings(&rgb->mode, &rgb->rgb_para.timings);
@@ -185,9 +237,11 @@ void sunxi_drm_rgb_encoder_atomic_enable(struct drm_encoder *encoder,
 #else
 	disp_cfg.displl_clk = false;
 #endif
+	if (rgb->rgb_data->id == 1)
+		disp_cfg.displl_clk = false;
 	sunxi_tcon_mode_init(rgb->sdrm.tcon_dev, &disp_cfg);
 
-	pclk_clk_rate = rgb->rgb_para.timings.pixel_clk * disp_cfg.tcon_lcd_div;
+	rgb->pclk_clk_rate = rgb->rgb_para.timings.pixel_clk * disp_cfg.tcon_lcd_div;
 
 	sunxi_lcd_pin_set_state(rgb->dev, "active");
 
@@ -199,14 +253,10 @@ void sunxi_drm_rgb_encoder_atomic_enable(struct drm_encoder *encoder,
 		}
 		panel_rgb_regulator_enable(rgb->sdrm.panel);
 	} else {
-		if (rgb->phy) {
+		if (rgb->phy)
 			phy_power_on(rgb->phy);
-			if (rgb->pclk) {
-				clk_set_rate(rgb->pclk, pclk_clk_rate);
-				clk_prepare_enable(rgb->pclk);
-			}
-		}
 		drm_panel_prepare(rgb->sdrm.panel);
+		sunxi_rgb_displl_enable(rgb);
 		ret = sunxi_rgb_enable_output(rgb->sdrm.tcon_dev);
 		if (ret < 0)
 			DRM_DEV_INFO(rgb->dev, "failed to enable rgb ouput\n");
@@ -223,16 +273,15 @@ void sunxi_drm_rgb_encoder_atomic_disable(struct drm_encoder *encoder,
 	struct sunxi_drm_rgb *rgb = encoder_to_sunxi_drm_rgb(encoder);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
-	rgb->sdrm.panel.prepare_prev_first = false;
+	rgb->sdrm.panel->prepare_prev_first = false;
 #endif
 	drm_panel_disable(rgb->sdrm.panel);
+	sunxi_rgb_displl_disable(rgb);
 	drm_panel_unprepare(rgb->sdrm.panel);
 
 	if (rgb->phy) {
 		phy_power_off(rgb->phy);
 	}
-	if (rgb->pclk)
-		clk_disable_unprepare(rgb->pclk);
 
 	sunxi_lcd_pin_set_state(rgb->dev, "sleep");
 	sunxi_rgb_disable_output(rgb->sdrm.tcon_dev);
@@ -265,6 +314,24 @@ static void sunxi_rgb_enable_vblank(bool enable, void *data)
 	sunxi_tcon_enable_vblank(rgb->sdrm.tcon_dev, enable);
 }
 
+static bool sunxi_rgb_is_support_backlight(void *data)
+{
+	struct sunxi_drm_rgb *rgb = (struct sunxi_drm_rgb *)data;
+	return panel_rgb_is_support_backlight(rgb->sdrm.panel);
+}
+
+static int sunxi_rgb_get_backlight_value(void *data)
+{
+	struct sunxi_drm_rgb *rgb = (struct sunxi_drm_rgb *)data;
+	return panel_rgb_get_backlight_value(rgb->sdrm.panel);
+}
+
+static void sunxi_rgb_set_backlight_value(void *data, int brightness)
+{
+	struct sunxi_drm_rgb *rgb = (struct sunxi_drm_rgb *)data;
+	panel_rgb_set_backlight_value(rgb->sdrm.panel, brightness);
+}
+
 int sunxi_drm_rgb_encoder_atomic_check(struct drm_encoder *encoder,
 				struct drm_crtc_state *crtc_state,
 				struct drm_connector_state *conn_state)
@@ -278,6 +345,9 @@ int sunxi_drm_rgb_encoder_atomic_check(struct drm_encoder *encoder,
 	scrtc_state->tcon_id = rgb->sdrm.tcon_id;
 	scrtc_state->get_cur_line = sunxi_rgb_get_current_line;
 	scrtc_state->is_sync_time_enough = sunxi_rgb_is_sync_time_enough;
+	scrtc_state->is_support_backlight = sunxi_rgb_is_support_backlight;
+	scrtc_state->get_backlight_value = sunxi_rgb_get_backlight_value;
+	scrtc_state->set_backlight_value = sunxi_rgb_set_backlight_value;
 	scrtc_state->enable_vblank = sunxi_rgb_enable_vblank;
 	scrtc_state->check_status = sunxi_rgb_fifo_check;
 	scrtc_state->output_dev_data = rgb;
@@ -285,27 +355,218 @@ int sunxi_drm_rgb_encoder_atomic_check(struct drm_encoder *encoder,
 		rgb->sw_enable = sunxi_drm_check_if_need_sw_enable(conn_state->connector);
 		scrtc_state->sw_enable = rgb->sw_enable;
 	}
+	if (rgb->adjusted_mode)
+		drm_mode_copy(&crtc_state->adjusted_mode, rgb->adjusted_mode);
+
 	DRM_DEBUG_DRIVER("%s finish\n", __FUNCTION__);
 	return 0;
 }
 
-static void sunxi_drm_rgb_encoder_mode_set(struct drm_encoder *encoder,
-					struct drm_display_mode *mode,
-					struct drm_display_mode *adj_mode)
+static void sunxi_drm_rgb_encoder_atomic_mode_set(struct drm_encoder *encoder,
+					struct drm_crtc_state *crtc_state,
+					struct drm_connector_state *conn_state)
 {
 	struct sunxi_drm_rgb *rgb = encoder_to_sunxi_drm_rgb(encoder);
 	DRM_INFO("[RGB]%s start\n", __FUNCTION__);
 
-	drm_mode_copy(&rgb->mode, adj_mode);
+	drm_mode_copy(&rgb->mode,  &crtc_state->adjusted_mode);
 	DRM_INFO("[RGB]%s finish\n", __FUNCTION__);
 
+}
+
+struct sunxi_drm_rgb *drm_device_to_rgb(struct drm_device *dev)
+{
+	struct drm_connector *connector;
+	struct sunxi_drm_rgb *rgb = NULL;
+
+	connector = drm_device_to_connector(dev, DRM_MODE_CONNECTOR_DPI);
+	if (!connector) {
+		DRM_ERROR("No DRM_MODE_CONNECTOR_DSI found!\n");
+		return NULL;
+	}
+
+	rgb = connector_to_sunxi_drm_rgb(connector);
+	if (!rgb)
+		DRM_ERROR("Can't get rgb from connector.\n");
+
+	return rgb;
+}
+
+static int sunxi_set_rgb_timing(struct drm_device *dev, struct lcd_timing *reg)
+{
+	struct sunxi_drm_rgb *rgb;
+	struct panel_rgb *rgb_panel;
+
+	rgb = drm_device_to_rgb(dev);
+
+	rgb_panel = dev_get_drvdata(rgb->sdrm.panel->dev);
+	if (!rgb_panel) {
+		DRM_ERROR("Can't get rgb_panel.\n");
+		return -ENODATA;
+	}
+
+	rgb_panel->delay.power  = reg->value[SUNXI_TIGER_LCD_TIMING_DELAY_POWER];
+	rgb_panel->delay.enable = reg->value[SUNXI_TIGER_LCD_TIMING_DELAY_ENABLE];
+	rgb_panel->delay.reset  = reg->value[SUNXI_TIGER_LCD_TIMING_DELAY_RESET];
+
+	return 0;
+}
+
+static int sunxi_set_rgb_mode(struct drm_device *dev, struct lcd_timing *reg)
+{
+	struct videomode *vm;
+	struct sunxi_drm_rgb *rgb;
+	struct drm_crtc *crtc;
+	struct drm_display_mode *old_mode;
+	struct drm_display_mode *new_mode;
+
+	rgb = drm_device_to_rgb(dev);
+
+	crtc = rgb->sdrm.encoder.crtc;
+	old_mode = &crtc->state->adjusted_mode;
+	if (!old_mode) {
+		DRM_ERROR("old_mode is NULL\n");
+		return -ENODATA;
+	}
+
+	vm = kzalloc(sizeof(struct videomode), GFP_KERNEL);
+	if (!vm) {
+		DRM_ERROR("videomode malloc failed\n");
+		return -ENOMEM;
+	}
+
+	new_mode = drm_mode_duplicate(dev, old_mode);
+	if (!new_mode) {
+		DRM_ERROR("new_mode is NULL\n");
+		return -ENOMEM;
+	}
+
+	vm->pixelclock   = reg->value[SUNXI_TIGER_LCD_MODE_PIXELCLOCK];
+	vm->hactive      = reg->value[SUNXI_TIGER_LCD_MODE_HACTIVE];
+	vm->hfront_porch = reg->value[SUNXI_TIGER_LCD_MODE_HFRONT_PORCH];
+	vm->hback_porch  = reg->value[SUNXI_TIGER_LCD_MODE_HBACK_PORCH];
+	vm->hsync_len    = reg->value[SUNXI_TIGER_LCD_MODE_HSYNC_LEN];
+	vm->vactive      = reg->value[SUNXI_TIGER_LCD_MODE_VACTIVE];
+	vm->vfront_porch = reg->value[SUNXI_TIGER_LCD_MODE_HFRONT_PORCH];
+	vm->vback_porch  = reg->value[SUNXI_TIGER_LCD_MODE_VBACK_PORCH];
+	vm->vsync_len    = reg->value[SUNXI_TIGER_LCD_MODE_VSYNC_LEN];
+
+	drm_display_mode_from_videomode(vm, new_mode);
+	drm_mode_set_name(new_mode);
+	rgb->adjusted_mode = new_mode;
+
+	kfree(vm);
+	return 0;
+}
+
+void sunxi_set_disp_rgb_para(struct drm_device *dev, unsigned long *arg)
+{
+	int i, ret;
+	struct lcd_timing *reg;
+	struct sunxi_drm_rgb *rgb = drm_device_to_rgb(dev);
+
+	reg = kzalloc(sizeof(struct lcd_timing), GFP_KERNEL);
+	if (!reg) {
+		DRM_ERROR("pq get malloc failed\n");
+		return;
+	}
+
+	memcpy(reg, arg, sizeof(struct lcd_timing));
+
+	for (i = 0; i < LCD_REG_COUNT; i++)
+		DRM_ERROR("======= value[%d] = %d =========\n", i, reg->value[i]);
+
+	sunxi_rgb_set_backlight_value(rgb, (int)reg->value[SUNXI_TIGER_LCD_BACKLIGHT]);
+	ret = sunxi_set_rgb_mode(dev, reg);
+	if (ret) {
+		DRM_ERROR("Set new mode failed.\n");
+		return;
+	}
+	sunxi_set_rgb_timing(dev, reg);
+
+	drm_mode_config_helper_suspend(dev);
+	mdelay(10);
+	drm_mode_config_helper_resume(dev);
+
+	kfree(reg);
+}
+
+void sunxi_get_disp_rgb_para(struct drm_device *dev, unsigned long *arg)
+{
+	struct lcd_timing *reg;
+	struct sunxi_drm_rgb *rgb;
+	struct panel_rgb *rgb_panel;
+	struct videomode *vm;
+	int i;
+
+	rgb = drm_device_to_rgb(dev);
+	rgb_panel = dev_get_drvdata(rgb->sdrm.panel->dev);
+	if (!rgb_panel) {
+		DRM_ERROR("Can't get rgb_panel.\n");
+		return;
+	}
+
+	reg = kzalloc(sizeof(struct lcd_timing), GFP_KERNEL);
+	if (!reg) {
+		DRM_ERROR("pq get malloc failed.\n");
+		return;
+	}
+
+	vm = kzalloc(sizeof(struct videomode), GFP_KERNEL);
+	if (!reg) {
+		DRM_ERROR("videomode malloc failed.\n");
+		return;
+	}
+
+	drm_display_mode_to_videomode(&rgb->mode, vm);
+
+	reg->id = 27;
+	reg->lcd_node = 0;
+	reg->value[SUNXI_TIGER_LCD_DISP_SUBSYS]         = 2;
+	reg->value[SUNXI_TIGER_LCD_BACKLIGHT]           = (unsigned long)sunxi_rgb_get_backlight_value(rgb);
+	/* MODE */
+	reg->value[SUNXI_TIGER_LCD_MODE_PIXELCLOCK]     = vm->pixelclock;
+	reg->value[SUNXI_TIGER_LCD_MODE_HACTIVE]        = vm->hactive;
+	reg->value[SUNXI_TIGER_LCD_MODE_HFRONT_PORCH]   = vm->hfront_porch;
+	reg->value[SUNXI_TIGER_LCD_MODE_HBACK_PORCH]    = vm->hback_porch;
+	reg->value[SUNXI_TIGER_LCD_MODE_HSYNC_LEN]      = vm->hsync_len;
+	reg->value[SUNXI_TIGER_LCD_MODE_VACTIVE]        = vm->vactive;
+	reg->value[SUNXI_TIGER_LCD_MODE_VFRONT_PORCH]   = vm->vfront_porch;
+	reg->value[SUNXI_TIGER_LCD_MODE_VBACK_PORCH]    = vm->vback_porch;
+	reg->value[SUNXI_TIGER_LCD_MODE_VSYNC_LEN]      = vm->vsync_len;
+	reg->value[SUNXI_TIGER_LCD_RESERVED0]           = 99999;
+	reg->value[SUNXI_TIGER_LCD_RESERVED1]           = 99999;
+	/* TIMING */
+	reg->value[SUNXI_TIGER_LCD_TIMING_RESET_NUM]    = rgb_panel->reset_num;
+	reg->value[SUNXI_TIGER_LCD_TIMING_DELAY_POWER]  = rgb_panel->delay.power;
+	reg->value[SUNXI_TIGER_LCD_TIMING_DELAY_ENABLE] = rgb_panel->delay.enable;
+	reg->value[SUNXI_TIGER_LCD_TIMING_DELAY_RESET]  = rgb_panel->delay.reset;
+	reg->value[SUNXI_TIGER_LCD_RESERVED2]           = 99999;
+	reg->value[SUNXI_TIGER_LCD_RESERVED3]           = 99999;
+	reg->value[SUNXI_TIGER_LCD_RESERVED4]           = 99999;
+	reg->value[SUNXI_TIGER_LCD_RESERVED5]           = 99999;
+	reg->value[SUNXI_TIGER_LCD_RESERVED6]           = 99999;
+	reg->value[SUNXI_TIGER_LCD_RESERVED7]           = 99999;
+	reg->value[SUNXI_TIGER_LCD_RESERVED8]           = 99999;
+	reg->value[SUNXI_TIGER_LCD_RESERVED9]           = 99999;
+	/* RGB */
+	reg->value[SUNXI_TIGER_LCD_RESERVED10]          = 99999;
+	reg->value[SUNXI_TIGER_LCD_INTF]                = DRM_MODE_CONNECTOR_DPI;
+
+	memcpy(arg, reg, sizeof(struct lcd_timing));
+
+	for (i = 0; i < LCD_REG_COUNT; i++)
+		DRM_ERROR("======= value[%d] = %d =======\n", i, reg->value[i]);
+
+	kfree(reg);
+	kfree(vm);
 }
 
 static const struct drm_encoder_helper_funcs sunxi_rgb_encoder_helper_funcs = {
 	.atomic_enable = sunxi_drm_rgb_encoder_atomic_enable,
 	.atomic_disable = sunxi_drm_rgb_encoder_atomic_disable,
 	.atomic_check = sunxi_drm_rgb_encoder_atomic_check,
-	.mode_set = sunxi_drm_rgb_encoder_mode_set,
+	.atomic_mode_set = sunxi_drm_rgb_encoder_atomic_mode_set,
 //	.loader_protect = sunxi_drm_rgb_encoder_loader_protect,
 };
 
@@ -477,6 +738,9 @@ static int sunxi_drm_rgb_probe(struct platform_device *pdev)
 
 	dev_set_drvdata(dev, rgb);
 	platform_set_drvdata(pdev, rgb);
+
+	rgb->sdrm.get_disp_para = sunxi_get_disp_rgb_para;
+	rgb->sdrm.set_disp_para = sunxi_set_disp_rgb_para;
 
 	DRM_INFO("[RGB]%s ok\n", __FUNCTION__);
 

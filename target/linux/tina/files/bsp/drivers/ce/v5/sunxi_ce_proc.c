@@ -1161,6 +1161,9 @@ u32 ss_hash_start(ss_hash_ctx_t *ctx, ss_aes_req_ctx_t *req_ctx, u32 len, u32 la
 	}
 
 	ss_new_task_desc_init(task, flow);
+#ifdef SS_HASH_SW_PADDING
+	ss_sw_padding_enable();
+#endif
 
 	ss_pending_clear(flow);
 	ss_irq_enable(flow);
@@ -1186,7 +1189,7 @@ u32 ss_hash_start(ss_hash_ctx_t *ctx, ss_aes_req_ctx_t *req_ctx, u32 len, u32 la
 
 #ifdef SS_HMAC_ENABLE
 	if (CE_METHOD_IS_HMAC(req_ctx->type)) {
-		/* hamc_hash set key operation same as rng */
+		/* Hamc_hash set key operation same as rng */
 		ss_rng_key_set(ctx->key, ctx->key_size, task);
 		dma_map_single(&ss_dev->pdev->dev, ctx->key, ctx->key_size, DMA_TO_DEVICE);
 		ctx->comm.flags &= ~SS_FLAG_NEW_KEY;
@@ -1197,7 +1200,12 @@ u32 ss_hash_start(ss_hash_ctx_t *ctx, ss_aes_req_ctx_t *req_ctx, u32 len, u32 la
 
 	if (last == 1) {
 		ss_hmac_sha1_last(task);
-		ss_hash_data_len_set(ctx->tail_len * 8, task);/*bits*/
+#ifdef SS_HASH_SW_PADDING
+		/* In the soft padding, the data processed by each task must be the current data length */
+		ss_hash_data_len_set(len * 8, task);  /* bits */
+#else
+		ss_hash_data_len_set(ctx->tail_len * 8, task);  /* bits */
+#endif
 	} else {
 #ifdef SS_LPKG_KEEP_ON
 		/* Multi-sg mode is enabled, this bit should allways be fixed to 1 in CE V3.x */
@@ -1206,7 +1214,7 @@ u32 ss_hash_start(ss_hash_ctx_t *ctx, ss_aes_req_ctx_t *req_ctx, u32 len, u32 la
 		ss_hash_data_len_set(((len - (len % blk_size)) * 8), task);
 #ifdef SS_TOTAL_DATALEN_ENABLE
 		SS_DBG("ssd cnt is %d\n", ctx->cnt);
-		/* muilt_packets hash should config total_datalen */
+		/* Muilt_packets hash should config total_datalen */
 		total_data_len = ctx->cnt * 8;
 		ss_hash_total_data_len_set(total_data_len, task);
 #endif
@@ -1222,7 +1230,7 @@ u32 ss_hash_start(ss_hash_ctx_t *ctx, ss_aes_req_ctx_t *req_ctx, u32 len, u32 la
 		task->ce_sg[0].src_len = ctx->tail_len; /* byte */
 		SS_DBG("cnt %d, tail_len %d.\n", ctx->cnt, ctx->tail_len);
 #ifdef SS_TOTAL_DATALEN_ENABLE
-		/* muilt_packets hash should config total_datalen */
+		/* Muilt_packets hash should config total_datalen */
 		total_data_len = ctx->cnt * 8;
 		ss_hash_total_data_len_set(total_data_len, task);
 #else
@@ -1236,7 +1244,7 @@ u32 ss_hash_start(ss_hash_ctx_t *ctx, ss_aes_req_ctx_t *req_ctx, u32 len, u32 la
 	task->ce_sg[0].dst_len = ctx->md_size;
 
 	if (last == 1) {
-		ctx->npackets = 0;  /* restart count npackets */
+		ctx->npackets = 0;  /* Restart count npackets */
 		if (req_ctx->type == SS_METHOD_SHA224)
 			task->ce_sg[0].dst_len  = SHA224_DIGEST_SIZE;
 		if (req_ctx->type == SS_METHOD_SHA384)

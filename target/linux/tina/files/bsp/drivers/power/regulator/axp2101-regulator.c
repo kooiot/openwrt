@@ -190,27 +190,16 @@ int regulator_step_enable_regmap(struct regulator_dev *rdev)
 	regmap_read(rdev->regmap, AXP2202_DCDC_CFG0, &val);
 	val = (val | (1 << 3));
 	regmap_write(rdev->regmap, AXP2202_DCDC_CFG0, val);
-	udelay(300);
 	regmap_write(rdev->regmap, AXP2202_DCDC4_CFG, 0x3);
-	udelay(300);
 	regmap_write(rdev->regmap, AXP2202_DCDC4_CFG, 0x6);
-	udelay(300);
 	regmap_write(rdev->regmap, AXP2202_DCDC4_CFG, 0x9);
-	udelay(300);
 	regmap_write(rdev->regmap, AXP2202_DCDC4_CFG, 0xb);
-	udelay(300);
 	regmap_write(rdev->regmap, AXP2202_DCDC4_CFG, 0xd);
-	udelay(300);
 	regmap_write(rdev->regmap, AXP2202_DCDC4_CFG, 0xf);
-	udelay(300);
 	regmap_write(rdev->regmap, AXP2202_DCDC4_CFG, 0x11);
-	udelay(300);
 	regmap_write(rdev->regmap, AXP2202_DCDC4_CFG, 0x13);
-	udelay(300);
 	regmap_write(rdev->regmap, AXP2202_DCDC4_CFG, 0x15);
-	udelay(300);
 	regmap_write(rdev->regmap, AXP2202_DCDC4_CFG, 0x17);
-	udelay(300);
 
 	return 0;
 }

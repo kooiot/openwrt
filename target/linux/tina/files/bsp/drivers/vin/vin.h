@@ -57,8 +57,11 @@ enum {
 enum {
 	VIN_CSI_BUS_CLK = 0,
 	VIN_CSI_MBUS_CLK,
-	VIN_ISP_MBUS_CLK,
+	VIN_CSI_HBUS_CLK,
+	VIN_CSI_SBUS_CLK,
 	VIN_ISP_BUS_CLK,
+	VIN_ISP_MBUS_CLK,
+	VIN_ISP_SBUS_CLK,
 	VIN_AHB_CLK,
 	VIN_MBUS_CLK,
 	VIN_MAX_BUS_CLK,
@@ -258,7 +261,11 @@ struct modules_config {
 
 struct vin_md {
 	struct vin_csi_info csi[VIN_MAX_CSI];
+#if IS_ENABLED(CONFIG_ARCH_SUN20IW1) || IS_ENABLED(CONFIG_ARCH_SUN8IW20)
+	struct vin_mipi_info mipi[VIN_MAX_MIPI + 1];
+#else
 	struct vin_mipi_info mipi[VIN_MAX_MIPI];
+#endif
 	struct vin_cci_info cci[VIN_MAX_CCI];
 	struct vin_isp_info isp[VIN_MAX_ISP];
 	struct vin_tdm_info tdm[VIN_MAX_TDM];
@@ -281,6 +288,7 @@ struct vin_md {
 	unsigned int irq;
 	int use_count;
 	int bridge_en_count;
+	int dfs_handler_count;
 	void __iomem *base;
 	void __iomem *ccu_base;
 	void __iomem *cmb_top_base;
@@ -292,11 +300,12 @@ struct vin_md {
 	struct mutex mclk_pin_lock;
 	unsigned int isp_bd_tatol;
 	unsigned int csi_bd_tatol;
-#if IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN55IW6)
-	struct regulator *vin_pinctrl[VIN_MAX_PINCTRL];
 	unsigned int dram_dfs_time;
+#if defined VIN_MAX_PINCTRL
+	struct regulator *vin_pinctrl[VIN_MAX_PINCTRL];
 #endif
 	struct bk_intpool_cfg bk_intpool;
+	unsigned char mipi_top_stream_count;
 	bool sensor_power_on;
 	bool clk_en;
 };

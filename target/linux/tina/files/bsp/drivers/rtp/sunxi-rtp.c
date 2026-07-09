@@ -42,6 +42,7 @@
 #include <linux/err.h>
 #include <linux/clk.h>
 #include <linux/reset.h>
+#include <linux/pinctrl/consumer.h>
 #if IS_ENABLED(CONFIG_IIO)
 #include <linux/iio/iio.h>
 #include <linux/iio/machine.h>
@@ -156,6 +157,7 @@ struct sunxi_rtp {
 	struct clk *bus_clk;
 	struct clk *mod_clk;
 	struct reset_control *reset;
+	struct pinctrl *pctrl;
 	struct sunxi_rtp_hwdata *hwdata;  /* to distinguish platform own register */
 	struct sunxi_rtp_config rtp_config;
 	u32 regs_backup[ARRAY_SIZE(sunxi_rtp_regs_offset)];
@@ -385,6 +387,12 @@ static int sunxi_rtp_resource_get(struct sunxi_rtp *chip)
 		return err;
 	}
 
+	chip->pctrl = devm_pinctrl_get(chip->dev);
+	if (IS_ERR(chip->pctrl)) {
+		sunxi_warn(chip->dev, "pinctrl_get failed, don't support pinmux\n");
+		chip->pctrl = NULL;
+	}
+
 	return 0;
 }
 
@@ -512,6 +520,27 @@ static void sunxi_rtp_reg_destroy(struct sunxi_rtp *chip)
 	 */
 }
 
+static int sunxi_rtp_select_pin_state(struct sunxi_rtp *chip, char *name)
+{
+	int err = 0;
+	struct pinctrl_state *pctrl_state;
+
+	pctrl_state = pinctrl_lookup_state(chip->pctrl, name);
+	if (IS_ERR(pctrl_state)) {
+		sunxi_err(chip->dev, "pinctrl_lookup_state failed! return %p\n", pctrl_state);
+		return -EINVAL;
+	}
+
+	err = pinctrl_select_state(chip->pctrl, pctrl_state);
+	if (err) {
+		sunxi_err(chip->dev, "pinctrl select state(%s) failed! return %d\n", name, err);
+		return err;
+	}
+
+
+	return err;
+}
+
 static int sunxi_rtp_hw_init(struct sunxi_rtp *chip)
 {
 	int err;
@@ -529,11 +558,26 @@ static int sunxi_rtp_hw_init(struct sunxi_rtp *chip)
 	sunxi_rtp_reg_setup(chip);
 #endif
 
+	if (chip->pctrl) {
+		err = sunxi_rtp_select_pin_state(chip, PINCTRL_STATE_DEFAULT);
+		if (err) {
+			sunxi_err(chip->dev, "request rtp gpio failed!\n");
+			goto err0;
+		}
+	}
+
 	return 0;
+
+err0:
+	sunxi_rtp_select_pin_state(chip, PINCTRL_STATE_SLEEP);
+	return err;
 }
 
 static void sunxi_rtp_hw_exit(struct sunxi_rtp *chip)
 {
+	if (chip->pctrl)
+		sunxi_rtp_select_pin_state(chip, PINCTRL_STATE_SLEEP);
+
 	sunxi_rtp_reg_destroy(chip);
 
 	if (chip->hwdata->has_clock)

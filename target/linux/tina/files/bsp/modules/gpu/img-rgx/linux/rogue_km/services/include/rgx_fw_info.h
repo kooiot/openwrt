@@ -42,7 +42,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#if !defined (RGX_FW_INFO_H)
+#if !defined(RGX_FW_INFO_H)
 #define RGX_FW_INFO_H
 
 #include "img_types.h"
@@ -66,6 +66,11 @@ typedef enum
 	MIPS_PRIVATE_DATA,
 	MIPS_BOOT_DATA,
 	MIPS_STACK,
+	RISCV_UNCACHED_CODE,
+	RISCV_CACHED_CODE,
+	RISCV_PRIVATE_DATA,
+	RISCV_COREMEM_CODE,
+	RISCV_COREMEM_DATA,
 } RGX_FW_SECTION_ID;
 
 typedef enum
@@ -100,16 +105,23 @@ typedef enum
  *                          FILE_SIZE
  */
 
-#define FW_INFO_VERSION  (1)
+#define FW_INFO_VERSION  (2)
 
 typedef struct
 {
+	/* FW_INFO_VERSION 1 */
 	IMG_UINT32 ui32InfoVersion;      /* FW info version */
 	IMG_UINT32 ui32HeaderLen;        /* Header length */
 	IMG_UINT32 ui32LayoutEntryNum;   /* Number of entries in the layout table */
 	IMG_UINT32 ui32LayoutEntrySize;  /* Size of an entry in the layout table */
 	IMG_UINT64 RGXFW_ALIGN ui64BVNC; /* BVNC */
+	IMG_UINT32 ui32FwPageSize;       /* Page size of processor on which firmware executes */
 	IMG_UINT32 ui32Flags;            /* Compatibility flags */
+
+	/* FW_INFO_VERSION 2 */
+	IMG_UINT16 ui16PVRVersionMajor;  /* DDK major version number */
+	IMG_UINT16 ui16PVRVersionMinor;  /* DDK minor version number */
+	IMG_UINT32 ui32PVRVersionBuild;  /* DDK build number */
 } RGX_FW_INFO_HEADER;
 
 typedef struct
@@ -122,7 +134,7 @@ typedef struct
 	IMG_UINT32 ui32AllocOffset;
 } RGX_FW_LAYOUT_ENTRY;
 
-#endif /*  RGX_FW_INFO_H */
+#endif /* RGX_FW_INFO_H */
 
 /******************************************************************************
  End of file (rgx_fw_info.h)

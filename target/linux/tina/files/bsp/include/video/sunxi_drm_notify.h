@@ -29,6 +29,6 @@ struct sunxi_notify_event {
 
 extern int sunxi_disp_register_client(struct notifier_block *nb);
 extern int sunxi_disp_unregister_client(struct notifier_block *nb);
-extern void sunxi_disp_notify_call_chain(int cmd);
+extern void sunxi_disp_notify_call_chain(int cmd, int flag);
 
 #endif /* End of file */

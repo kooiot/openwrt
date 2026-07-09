@@ -30,9 +30,24 @@ THE SOFTWARE.
 #ifndef POWERVR_SYNC_EXT_H
 #define POWERVR_SYNC_EXT_H
 
-#if defined (__cplusplus)
+#if defined(__cplusplus)
 extern "C" {
 #endif
+
+/*!
+ * Number of sync prims still used internally in operations
+ */
+#define PVRSRV_MAX_SYNC_PRIMS 4U
+
+/*!
+ * Maximum number of dev var updates passed in a kick call
+ */
+#define PVRSRV_MAX_DEV_VARS 13U
+
+/*!
+ * Number of UFOs in operations
+ */
+#define	PVRSRV_MAX_SYNCS (PVRSRV_MAX_SYNC_PRIMS + PVRSRV_MAX_DEV_VARS)
 
 /*! Implementation independent types for passing fence/timeline to Services.
  */
@@ -41,7 +56,7 @@ typedef int32_t PVRSRV_TIMELINE;
 
 /*! Maximum length for an annotation name string for fence sync model objects.
  */
-#define PVRSRV_SYNC_NAME_LENGTH 32
+#define PVRSRV_SYNC_NAME_LENGTH 32U
 
 /* Macros for API callers using the fence sync model
  */
@@ -50,7 +65,7 @@ typedef int32_t PVRSRV_TIMELINE;
 #define PVRSRV_NO_FENCE_PTR     NULL
 #define PVRSRV_NO_TIMELINE_PTR  NULL
 
-#if defined (__cplusplus)
+#if defined(__cplusplus)
 }
 #endif
 

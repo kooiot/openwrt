@@ -52,5 +52,6 @@ extern int os_gpio_write(u32 gpio, __u32 out_value, int force_value_flag);
 extern int os_mem_alloc(struct device *dev, struct vin_mm *mem_man);
 extern void os_mem_free(struct device *dev, struct vin_mm *mem_man);
 extern void vin_iommu_en(unsigned int mester_id, bool en);
+extern u64 vin_time_get(void);
 
 #endif	/* __VIN__OS__H__ */

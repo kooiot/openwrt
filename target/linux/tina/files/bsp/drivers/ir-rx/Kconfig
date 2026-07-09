@@ -8,6 +8,7 @@ menu "IR-RX Drivers"
 
 config AW_IR_RX
 	tristate "IR-RX Support for Allwinner SoCs"
+	select INPUT
 	select RC_CORE
 	select RC_DECODERS
 	select IR_NEC_DECODER

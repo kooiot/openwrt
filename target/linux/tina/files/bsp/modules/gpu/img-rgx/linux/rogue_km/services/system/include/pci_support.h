@@ -39,14 +39,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#ifndef __PCI_SUPPORT_H__
-#define __PCI_SUPPORT_H__
+#ifndef PCI_SUPPORT_H
+#define PCI_SUPPORT_H
 
 #include "img_types.h"
 #include "img_defs.h"
 #include "pvrsrv_error.h"
 
-#if defined(LINUX)
+#if defined(__linux__)
 #include <linux/pci.h>
 #define TO_PCI_COOKIE(dev) to_pci_dev((struct device *)(dev))
 #else
@@ -57,7 +57,7 @@ typedef enum _HOST_PCI_INIT_FLAGS_
 {
 	HOST_PCI_INIT_FLAG_BUS_MASTER	= 0x00000001,
 	HOST_PCI_INIT_FLAG_MSI		= 0x00000002,
-	HOST_PCI_INIT_FLAG_FORCE_I32 	= 0x7fffffff
+	HOST_PCI_INIT_FLAG_FORCE_I32	= 0x7fffffff
 } HOST_PCI_INIT_FLAGS;
 
 struct _PVRSRV_PCI_DEV_OPAQUE_STRUCT_;
@@ -96,4 +96,4 @@ static inline void OSPCIReleaseResourceMTRRs(PVRSRV_PCI_DEV_HANDLE hPVRPCI, IMG_
 }
 #endif
 
-#endif /* __PCI_SUPPORT_H__ */
+#endif /* PCI_SUPPORT_H */

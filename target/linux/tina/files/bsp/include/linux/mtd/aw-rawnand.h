@@ -494,6 +494,7 @@ struct nfc_reg {
 	volatile unsigned int *mdma_cur_buf_addr;	/*0x0210 NDFC MBUS DMA Current Buffer Address Register in no.1 version*/
 	volatile unsigned int *dma_cnt;			/*0x0214 NDFC Normal DMA Byte Counter Register*/
 	volatile unsigned int *ver;			/*0x02F0 NDFC Version Number Register*/
+	volatile unsigned int *io_data;			/*0x0300 NDFC IO Data Register*/
 	volatile unsigned int *ram0_base;		/*0x0400 NDFC Control Register*/
 	volatile unsigned int *ram1_base;		/*0x0800 NDFC Control Register*/
 };

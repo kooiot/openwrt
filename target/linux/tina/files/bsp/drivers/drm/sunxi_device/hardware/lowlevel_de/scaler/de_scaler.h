@@ -45,7 +45,11 @@ enum {
 struct de_scaler_handle {
 	struct module_create_info cinfo;
 	unsigned int linebuff_share_ids;
+	unsigned int linebuff_yuv;
+	unsigned int linebuff_rgb;
+	unsigned int linebuff_yuv_ed;
 	bool is_asu;
+	bool vsu_mux;
 	unsigned int block_num;
 	struct de_reg_block **block;
 	struct de_scaler_private *private;
@@ -62,6 +66,7 @@ struct de_scaler_cal_lay_cfg {
 
 struct de_scaler_apply_cfg {
 	unsigned int disp;
+	bool vsu_mux;
 	u8 scale_en;
 	u8 glb_alpha;
 	enum de_format_space px_fmt_space;

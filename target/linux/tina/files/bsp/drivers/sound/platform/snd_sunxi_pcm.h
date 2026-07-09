@@ -14,6 +14,8 @@
 #include <sound/soc.h>
 #include <sound/pcm.h>
 
+#include "snd_sunxi_common.h"
+
 #ifndef __SND_SUNXI_PCM_H
 #define __SND_SUNXI_PCM_H
 
@@ -35,6 +37,26 @@ struct sunxi_dma_params {
 	/* max buffer set (value must be (2^n)Kbyte) */
 	size_t cma_kbytes;
 	size_t fifo_size;
+
+	/* dma_buf_mode = 0: dynamically allocate DMA buffer;
+	 * dma_buf_mode = 1: allocate DMA buffer when start up.
+	 */
+	unsigned int dma_buf_mode;
+
+	/* for hdmi audio */
+	enum HDMI_FORMAT hdmi_fmt;
+
+	/* runtime->buffer_size should *2 when pcm data is raw data */
+	snd_pcm_uframes_t buffer_size;
+	snd_pcm_uframes_t period_size;
+
+	/* when buffer_size and period_size *2 is true */
+	bool change_size_flag;
+
+	/* DMA area */
+	unsigned char *raw_dma_area;
+	dma_addr_t raw_dma_addr;
+	dma_addr_t pcm_dma_addr;
 };
 
 #if IS_ENABLED(CONFIG_SND_SOC_SUNXI_PCM)

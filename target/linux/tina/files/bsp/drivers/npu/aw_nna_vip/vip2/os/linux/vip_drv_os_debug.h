@@ -82,6 +82,10 @@ typedef struct _vipdrv_core_loading_profile_t {
     vip_uint64_t submit_time; /* the network submit time */
 
     vip_uint64_t infer_time; /* the total time for network inference */
+
+    vip_uint64_t last_record_time; /* the last record time */
+    vip_uint64_t last_infer_time; /* the last record infer time */
+    vip_uint64_t latest_sbumit_time; /* the last submit time */
 } vipdrv_core_loading_profile_t;
 
 

@@ -38,8 +38,8 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
-#ifndef _SERVICES_PDUMP_H_
-#define _SERVICES_PDUMP_H_
+#ifndef SERVICES_PDUMP_H
+#define SERVICES_PDUMP_H
 
 #include "img_types.h"
 #include "services_km.h"
@@ -103,10 +103,10 @@ typedef IMG_UINT32 PDUMP_FLAGS_T;
                                                           in Block script stream in addition to Main script stream,
                                                           if capture mode is set to BLOCKED */
 
-#define PDUMP_FLAGS_DEINIT          0x20000000UL   /*<! Output this entry to the de-initialisation section, must
+#define PDUMP_FLAGS_DEINIT          0x20000000U    /*<! Output this entry to the de-initialisation section, must
                                                           only be used by the initialisation code in the Server. */
 
-#define PDUMP_FLAGS_POWER           0x08000000UL   /*<! Output this entry even when a power transition is ongoing,
+#define PDUMP_FLAGS_POWER           0x08000000U    /*<! Output this entry even when a power transition is ongoing,
                                                           as directed by other PDUMP flags. */
 
 #define PDUMP_FLAGS_CONTINUOUS      PDUMP_CONT     /*<! Output this entry always regardless of framed capture range,
@@ -126,6 +126,12 @@ typedef IMG_UINT32 PDUMP_FLAGS_T;
                                                           for the second and subsequent PDump client connections.
                                                           Never combine with the CONTINUOUS flag. */
 
+#define PDUMP_FLAGS_INTERVAL        0x04000000U    /*<! Output this entry even when the capture is on a
+                                                          "no capture interval frame" (see pdump -sr option).
+                                                          Useful for commands that have a resource that was written
+                                                          out in a frame that was captured. For example,
+                                                          used by RGXScheduleCleanupCommand. */
+
 #define PDUMP_FLAGS_DEBUG           0x00010000U    /*<! For internal debugging use */
 
 #define PDUMP_FLAGS_NOHW            0x00000001U    /* For internal use: Skip sending instructions to the hardware
@@ -135,12 +141,12 @@ typedef IMG_UINT32 PDUMP_FLAGS_T;
                                                         flag used in Block mode of PDump */
 
 #define PDUMP_FLAGS_PDUMP_LOCK_HELD 0x00000004U    /* This flags denotes that PDUMP_LOCK is held already so
-						      further calls to PDUMP_LOCK  with this flag set will not
-						      try to take pdump lock. If PDUMP_LOCK is called without
-						      this flag by some other thread then it will try to take
-						      PDUMP_LOCK which would make that thread sleep. This flag
-						      introduced to enforce the order of pdumping after bridge
-						      lock removal */
+                                                        further calls to PDUMP_LOCK  with this flag set will not
+                                                        try to take pdump lock. If PDUMP_LOCK is called without
+                                                        this flag by some other thread then it will try to take
+                                                        PDUMP_LOCK which would make that thread sleep. This flag
+                                                        introduced to enforce the order of pdumping after bridge
+                                                        lock removal */
 
 #define PDUMP_FILEOFFSET_FMTSPEC    "0x%08X"
 typedef IMG_UINT32 PDUMP_FILEOFFSET_T;
@@ -229,4 +235,4 @@ typedef IMG_UINT32 PDUMP_FILEOFFSET_T;
 
 #define PDUMP_IS_CONTINUOUS(flags) ((flags & PDUMP_FLAGS_CONTINUOUS) != 0)
 
-#endif /* _SERVICES_PDUMP_H_ */
+#endif /* SERVICES_PDUMP_H */

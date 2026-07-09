@@ -1,12 +1,12 @@
 /*************************************************************************/ /*!
-@File			htbuffer.c
+@File           htbuffer.c
 @Title          Host Trace Buffer shared API.
 @Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
 @Description    Host Trace Buffer provides a mechanism to log Host events to a
-				buffer in a similar way to the Firmware Trace mechanism.
-				Host Trace Buffer logs data using a Transport Layer buffer.
-				The Transport Layer and pvrtld tool provides the mechanism to
-				retrieve the trace data.
+                buffer in a similar way to the Firmware Trace mechanism.
+                Host Trace Buffer logs data using a Transport Layer buffer.
+                The Transport Layer and pvrtld tool provides the mechanism to
+                retrieve the trace data.
 @License        Dual MIT/GPLv2
 
 The contents of this file are subject to the MIT license as set out below.
@@ -45,7 +45,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#if defined(__linux__)
+#if defined(__linux__) && defined(__KERNEL__)
  #include <linux/version.h>
 
  #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
@@ -56,38 +56,28 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #else
  #include <stdarg.h>
 #endif /* __linux__ */
+
 #include "htbuffer.h"
-//#include "allocmem.h"
 #include "osfunc.h"
 #include "client_htbuffer_bridge.h"
-#if defined(__KERNEL__)
-//#include "osfunc.h"
-#endif
 
-/* the group flags array of ints large enough to store all the group flags
+/* The group flags array of ints large enough to store all the group flags
  * NB: This will only work while all logging is in the kernel
  */
 IMG_INTERNAL HTB_FLAG_EL_T g_auiHTBGroupEnable[HTB_FLAG_NUM_EL] = {0};
 
+
 /*************************************************************************/ /*!
  @Function      HTBControl
  @Description   Update the configuration of the Host Trace Buffer
-
  @Input         hSrvHandle      Server Handle
-
  @Input         ui32NumFlagGroups Number of group enable flags words
-
  @Input         aui32GroupEnable  Flags words controlling groups to be logged
-
  @Input         ui32LogLevel    Log level to record
-
  @Input         ui32EnablePID   PID to enable logging for a specific process
-
  @Input         eLogPidMode     Enable logging for all or specific processes,
-
  @Input         eOpMode         Control what trace data is dropped if the TL
                                 buffer is full
-
  @Return        eError          Internal services call returned eError error
                                 number
 */ /**************************************************************************/
@@ -113,95 +103,4 @@ HTBControl(
 			);
 }
 
-
-/*************************************************************************/ /*!
-*/ /**************************************************************************/
-static PVRSRV_ERROR
-_HTBLog(IMG_HANDLE hSrvHandle, IMG_UINT32 PID, IMG_UINT64 ui64TimeStampus, HTB_LOG_SFids SF, va_list args)
-{
-#if defined(__KERNEL__)
-	IMG_UINT32 i;
-	IMG_UINT32 ui32NumArgs = HTB_SF_PARAMNUM(SF);
-	IMG_UINT32 aui32Args[HTB_LOG_MAX_PARAMS];
-
-	PVR_ASSERT(ui32NumArgs <= HTB_LOG_MAX_PARAMS);
-	ui32NumArgs = (ui32NumArgs>HTB_LOG_MAX_PARAMS)? HTB_LOG_MAX_PARAMS: ui32NumArgs;
-
-	/* unpack var args before sending over bridge */
-	for (i=0; i<ui32NumArgs; i++)
-	{
-		aui32Args[i] = va_arg(args, IMG_UINT32);
-	}
-
-	return BridgeHTBLog(hSrvHandle, PID, ui64TimeStampus, SF, ui32NumArgs, aui32Args);
-#else
-	PVR_UNREFERENCED_PARAMETER(hSrvHandle);
-	PVR_UNREFERENCED_PARAMETER(PID);
-	PVR_UNREFERENCED_PARAMETER(ui64TimeStampus);
-	PVR_UNREFERENCED_PARAMETER(SF);
-	PVR_UNREFERENCED_PARAMETER(args);
-
-	PVR_ASSERT(0=="HTB Logging in UM is not yet supported");
-	return PVRSRV_ERROR_NOT_SUPPORTED;
-#endif
-}
-
-
-/*************************************************************************/ /*!
- @Function      HTBLog
- @Description   Record a Host Trace Buffer log event
-
- @Input         PID			    The PID of the process the event is associated
-								with. This is provided as an argument rather
-								than querying internally so that events associated
-								with a particular process, but performed by
-								another can be logged correctly.
-
- @Input			ui64TimeStampus	The timestamp to be associated with this log event
-
- @Input         SF    			The log event ID
-
- @Input			...				Log parameters
-
- @Return        PVRSRV_OK       Success.
-
-*/ /**************************************************************************/
-IMG_INTERNAL PVRSRV_ERROR
-HTBLog(IMG_HANDLE hSrvHandle, IMG_UINT32 PID, IMG_UINT64 ui64TimeStampns, IMG_UINT32 SF, ...)
-{
-	PVRSRV_ERROR eError;
-	va_list args;
-	va_start(args, SF);
-	eError =_HTBLog(hSrvHandle, PID, ui64TimeStampns, SF, args);
-	va_end(args);
-	return eError;
-}
-
-
-/*************************************************************************/ /*!
- @Function      HTBLogSimple
- @Description   Record a Host Trace Buffer log event with implicit PID and Timestamp
-
- @Input         SF              The log event ID
-
- @Input         ...             Log parameters
-
- @Return        PVRSRV_OK       Success.
-
-*/ /**************************************************************************/
-IMG_INTERNAL PVRSRV_ERROR
-HTBLogSimple(IMG_HANDLE hSrvHandle, IMG_UINT32 SF, ...)
-{
-	PVRSRV_ERROR eError;
-	IMG_UINT64 ui64Timestamp;
-	va_list args;
-	va_start(args, SF);
-	OSClockMonotonicns64(&ui64Timestamp);
-	eError = _HTBLog(hSrvHandle, OSGetCurrentProcessID(), ui64Timestamp, SF, args);
-	va_end(args);
-	return eError;
-}
-
-
 /* EOF */
-

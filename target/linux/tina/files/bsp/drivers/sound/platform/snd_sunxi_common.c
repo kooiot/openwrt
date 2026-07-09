@@ -126,7 +126,7 @@ struct snd_sunxi_rglt *snd_sunxi_regulator_init(struct device *dev)
 			goto err;
 		} else {
 			for (j = 0; j < ARRAY_SIZE(of_mode_table); ++j) {
-				if (strcmp(out_string, of_mode_table[i].name) == 0) {
+				if (strcmp(out_string, of_mode_table[j].name) == 0) {
 					unit->mode = of_mode_table[j].mode;
 					break;
 				}
@@ -962,7 +962,7 @@ int snd_sunxi_extparam_probe(const char *card_name, enum EXTPARAM_ID id)
 		}
 	}
 
-	extparam = kzalloc(sizeof(struct snd_sunxi_extparam), GFP_KERNEL);
+	extparam = kzalloc(sizeof(*extparam), GFP_KERNEL);
 	if (!extparam) {
 		mutex_unlock(&extparam_mutex);
 		return -ENOMEM;
@@ -973,7 +973,7 @@ int snd_sunxi_extparam_probe(const char *card_name, enum EXTPARAM_ID id)
 	list_add_tail(&extparam->list, &extparam_list);
 
 	/* add vir nb save param. */
-	extparam_nb_vir = kzalloc(sizeof(struct snd_notifier_block), GFP_KERNEL);
+	extparam_nb_vir = kzalloc(sizeof(*extparam_nb_vir), GFP_KERNEL);
 	if (!extparam_nb_vir) {
 		mutex_unlock(&extparam_mutex);
 		SND_LOG_ERR("extparam_nb_vir alloc failed\n");
@@ -1055,7 +1055,7 @@ int snd_sunxi_extparam_register_cb(const char *card_name, enum EXTPARAM_ID id,
 	}
 
 	if (!extparam_exist) {
-		extparam = kzalloc(sizeof(struct snd_sunxi_extparam), GFP_KERNEL);
+		extparam = kzalloc(sizeof(*extparam), GFP_KERNEL);
 		if (!extparam) {
 			mutex_unlock(&extparam_mutex);
 			return -ENOMEM;
@@ -1066,7 +1066,7 @@ int snd_sunxi_extparam_register_cb(const char *card_name, enum EXTPARAM_ID id,
 		list_add_tail(&extparam->list, &extparam_list);
 
 		/* add vir nb save param. */
-		extparam_nb_vir = kzalloc(sizeof(struct snd_notifier_block), GFP_KERNEL);
+		extparam_nb_vir = kzalloc(sizeof(*extparam_nb_vir), GFP_KERNEL);
 		if (!extparam_nb_vir) {
 			mutex_unlock(&extparam_mutex);
 			SND_LOG_ERR("extparam_nb_vir alloc failed\n");
@@ -1077,7 +1077,7 @@ int snd_sunxi_extparam_register_cb(const char *card_name, enum EXTPARAM_ID id,
 		list_add_tail(&extparam_nb_vir->list, &extparam->extparam_nbs);
 	}
 
-	extparam_nb = kzalloc(sizeof(struct snd_notifier_block), GFP_KERNEL);
+	extparam_nb = kzalloc(sizeof(*extparam_nb), GFP_KERNEL);
 	if (!extparam_nb) {
 		mutex_unlock(&extparam_mutex);
 		SND_LOG_ERR("extparam_nb alloc failed\n");
@@ -1209,6 +1209,7 @@ struct snd_sunxi_dev {
 	char *snd_class_name;
 };
 
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 static LIST_HEAD(dump_list);
 static struct mutex dump_mutex;
 
@@ -1271,9 +1272,15 @@ void snd_sunxi_dump_unregister(struct snd_sunxi_dump *dump)
 }
 EXPORT_SYMBOL_GPL(snd_sunxi_dump_unregister);
 
-static ssize_t snd_sunxi_version_show(struct class *class, struct class_attribute *attr, char *buf)
+static ssize_t
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0))
+snd_sunxi_version_show(const struct class *class, const struct class_attribute *attr,
+		       char *buf)
+#else
+snd_sunxi_version_show(struct class *class, struct class_attribute *attr, char *buf)
+#endif
 {
-	size_t count = 0, cound_tmp = 0;
+	size_t count = 0, count_tmp = 0;
 	struct snd_sunxi_dump *dump_tmp, *c;
 	struct snd_sunxi_dump *dump = NULL;
 
@@ -1283,8 +1290,8 @@ static ssize_t snd_sunxi_version_show(struct class *class, struct class_attribut
 		dump = dump_tmp;
 		if (dump && dump->dump_version) {
 			count += sprintf(buf + count, "module(%s) version: ", dump->name);
-			dump->dump_version(dump->priv, buf + count, &cound_tmp);
-			count += cound_tmp;
+			dump->dump_version(dump->priv, buf + count, &count_tmp);
+			count += count_tmp;
 		}
 	}
 
@@ -1293,9 +1300,15 @@ static ssize_t snd_sunxi_version_show(struct class *class, struct class_attribut
 	return count;
 }
 
-static ssize_t snd_sunxi_help_show(struct class *class, struct class_attribute *attr, char *buf)
+static ssize_t
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0))
+snd_sunxi_help_show(const struct class *class, const struct class_attribute *attr,
+		    char *buf)
+#else
+snd_sunxi_help_show(struct class *class, struct class_attribute *attr, char *buf)
+#endif
 {
-	size_t count = 0, cound_tmp = 0;
+	size_t count = 0, count_tmp = 0;
 	struct snd_sunxi_dump *dump_tmp, *c;
 	struct snd_sunxi_dump *dump = NULL;
 
@@ -1313,10 +1326,11 @@ static ssize_t snd_sunxi_help_show(struct class *class, struct class_attribute *
 
 	if (dump && dump->dump_help) {
 		count += sprintf(buf + count, "== current module(%s) help ==\n", dump->name);
-		dump->dump_help(dump->priv, buf + count, &cound_tmp);
-		count += cound_tmp;
+		dump->dump_help(dump->priv, buf + count, &count_tmp);
+		count += count_tmp;
 	} else if (dump && !dump->dump_help) {
-		count += sprintf(buf + count, "== current module(%s), but not help ==\n", dump->name);
+		count += sprintf(buf + count, "== current module(%s), but not help ==\n",
+				 dump->name);
 	} else {
 		count += sprintf(buf + count, "== current module(NULL) ==\n");
 	}
@@ -1324,7 +1338,13 @@ static ssize_t snd_sunxi_help_show(struct class *class, struct class_attribute *
 	return count;
 }
 
-static ssize_t snd_sunxi_module_show(struct class *class, struct class_attribute *attr, char *buf)
+static ssize_t
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0))
+snd_sunxi_module_show(const struct class *class, const struct class_attribute *attr,
+		      char *buf)
+#else
+snd_sunxi_module_show(struct class *class, struct class_attribute *attr, char *buf)
+#endif
 {
 	size_t count = 0;
 	struct snd_sunxi_dump *dump_tmp, *c;
@@ -1350,8 +1370,14 @@ static ssize_t snd_sunxi_module_show(struct class *class, struct class_attribute
 	return count;
 }
 
-static ssize_t snd_sunxi_module_store(struct class *class, struct class_attribute *attr,
-				      const char *buf, size_t count)
+static ssize_t
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0))
+snd_sunxi_module_store(const struct class *class, const struct class_attribute *attr,
+		       const char *buf, size_t count)
+#else
+snd_sunxi_module_store(struct class *class, struct class_attribute *attr,
+		       const char *buf, size_t count)
+#endif
 {
 	struct snd_sunxi_dump *dump, *c;
 	int scanf_cnt = 0;
@@ -1375,10 +1401,16 @@ static ssize_t snd_sunxi_module_store(struct class *class, struct class_attribut
 	return count;
 }
 
-static ssize_t snd_sunxi_dump_show(struct class *class, struct class_attribute *attr, char *buf)
+static ssize_t
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0))
+snd_sunxi_dump_show(const struct class *class, const struct class_attribute *attr,
+		    char *buf)
+#else
+snd_sunxi_dump_show(struct class *class, struct class_attribute *attr, char *buf)
+#endif
 {
 	int ret;
-	size_t count = 0, cound_tmp = 0;
+	size_t count = 0, count_tmp = 0;
 	struct snd_sunxi_dump *dump_tmp, *c;
 	struct snd_sunxi_dump *dump = NULL;
 
@@ -1392,10 +1424,10 @@ static ssize_t snd_sunxi_dump_show(struct class *class, struct class_attribute *
 
 	if (dump && dump->dump_show) {
 		count += sprintf(buf + count, "module(%s)\n", dump->name);
-		ret = dump->dump_show(dump->priv, buf + count, &cound_tmp);
+		ret = dump->dump_show(dump->priv, buf + count, &count_tmp);
 		if (ret)
 			pr_err("module(%s) show failed\n", dump->name);
-		count += cound_tmp;
+		count += count_tmp;
 	} else if (dump && !dump->dump_show) {
 		count += sprintf(buf + count, "current module(%s), but not show\n", dump->name);
 	} else {
@@ -1405,8 +1437,14 @@ static ssize_t snd_sunxi_dump_show(struct class *class, struct class_attribute *
 	return count;
 }
 
-static ssize_t snd_sunxi_dump_store(struct class *class, struct class_attribute *attr,
-				    const char *buf, size_t count)
+static ssize_t
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0))
+snd_sunxi_dump_store(const struct class *class, const struct class_attribute *attr,
+		     const char *buf, size_t count)
+#else
+snd_sunxi_dump_store(struct class *class, struct class_attribute *attr,
+		     const char *buf, size_t count)
+#endif
 {
 	int ret;
 	struct snd_sunxi_dump *dump_tmp, *c;
@@ -1438,7 +1476,6 @@ static struct class_attribute snd_class_attrs[] = {
 			   SUNXI_ATTR_STORE_CONVERT(snd_sunxi_dump_store)),
 };
 
-#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 static int snd_sunxi_debug_create(struct snd_sunxi_dev *sunxi_dev)
 {
 	int ret, i;
@@ -1473,8 +1510,6 @@ static void snd_sunxi_debug_remove(struct snd_sunxi_dev *sunxi_dev)
 #else
 static int snd_sunxi_debug_create(struct snd_sunxi_dev *sunxi_dev)
 {
-	(void)snd_class_attrs;
-
 	SND_LOG_DEBUG("unsupport debug\n");
 	(void)sunxi_dev;
 	return 0;
@@ -1523,7 +1558,9 @@ static int _snd_sunxi_dev_init(struct snd_sunxi_dev *sunxi_dev)
 		goto err_class_create_file;
 	}
 
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 	mutex_init(&dump_mutex);
+#endif
 
 	return 0;
 
@@ -1553,7 +1590,9 @@ static void _snd_sunxi_dev_exit(struct snd_sunxi_dev *sunxi_dev)
 	class_destroy(sunxi_dev->snd_class);
 	unregister_chrdev_region(sunxi_dev->snd_dev, 1);
 
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 	mutex_destroy(&dump_mutex);
+#endif
 }
 
 static struct snd_sunxi_dev sunxi_dev = {
@@ -1578,5 +1617,5 @@ module_exit(snd_sunxi_dev_exit);
 
 MODULE_AUTHOR("Dby@allwinnertech.com");
 MODULE_LICENSE("GPL");
-MODULE_VERSION("1.1.6");
+MODULE_VERSION("1.1.7");
 MODULE_DESCRIPTION("sunxi common interface");

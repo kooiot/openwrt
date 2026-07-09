@@ -42,13 +42,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#ifndef _INFO_PAGE_KM_H_
-#define _INFO_PAGE_KM_H_
+#ifndef INFO_PAGE_KM_H
+#define INFO_PAGE_KM_H
 
 #include "pvrsrv_error.h"
 
 #include "pmr.h"
 #include "pvrsrv.h"
+#include "info_page_defs.h"
 
 /**
  * @Function InfoPageCreate
@@ -95,4 +96,4 @@ static INLINE IMG_UINT32 GetInfoPageDebugFlagsKM(void)
 	return (PVRSRVGetPVRSRVData())->pui32InfoPage[DEBUG_FEATURE_FLAGS];
 }
 
-#endif /* _INFO_PAGE_KM_H_ */
+#endif /* INFO_PAGE_KM_H */

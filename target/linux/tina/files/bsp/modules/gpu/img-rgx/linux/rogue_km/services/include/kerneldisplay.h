@@ -42,10 +42,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#if !defined (__KERNELDISPLAY_H__)
-#define __KERNELDISPLAY_H__
+#if !defined(KERNELDISPLAY_H)
+#define KERNELDISPLAY_H
 
-#if defined (__cplusplus)
+#if defined(__cplusplus)
 extern "C" {
 #endif
 
@@ -78,7 +78,7 @@ Please refer to the more comprehensive '3rd Party Display Integration Guide'
 for an architecture overview and an explanation of the data flow between a
 client process, Services and the 3rd party display driver. It also contains
 descriptions about how to make use of the client side interface that is supposed
-to be integrated in some kind of display manager like e.g. the Rogue DDK WSEGL
+to be integrated in some kind of display manager like e.g. PowerVR Graphics DDK WSEGL
 window manager.
 
 The documented functions are split into different parts:
@@ -346,7 +346,7 @@ typedef PVRSRV_ERROR (*ContextConfigureCheck)(IMG_HANDLE hDisplayContext,
                 The arrays should be z-sorted, with the farthest plane first
                 and the nearest plane last.
 
-   Called by client function: #PVRSRVDCContextConfigure(), #PVRSRVDCContextConfigureWithFence()
+   Called by client function: #PVRSRVDCContextConfigureWithFence()
 
    Implementation of this callback is mandatory.
 
@@ -361,7 +361,7 @@ typedef PVRSRV_ERROR (*ContextConfigureCheck)(IMG_HANDLE hDisplayContext,
 @Input          ahBuffers               Array of buffers (one for
                                         each display plane)
 
-@Input          ui32DisplayPeriod		The number of VSync periods this
+@Input          ui32DisplayPeriod       The number of VSync periods this
                                         configuration should be displayed for
 
 @Input          hConfigData             Config handle which gets passed to
@@ -417,10 +417,6 @@ typedef void (*ContextDestroy)(IMG_HANDLE hDisplayContext);
 
 @Output         pui32PageCount          Number of pages in the buffer
 
-@Output         pui32PhysHeapID         Physical heap ID to use. The physical
-                                        heap has been created in the Services
-                                        system layer.
-
 @Output         pui32ByteStride         Stride (in bytes) of allocated buffer
 
 @Output         phBuffer                Handle to allocated buffer
@@ -432,7 +428,6 @@ typedef PVRSRV_ERROR (*BufferAlloc)(IMG_HANDLE hDisplayContext,
                                     DC_BUFFER_CREATE_INFO *psSurfInfo,
                                     IMG_DEVMEM_LOG2ALIGN_T *puiLog2PageSize,
                                     IMG_UINT32 *pui32PageCount,
-                                    IMG_UINT32 *pui32PhysHeapID,
                                     IMG_UINT32 *pui32ByteStride,
                                     IMG_HANDLE *phBuffer);
 
@@ -581,10 +576,7 @@ typedef void (*BufferUnmap)(IMG_HANDLE hBuffer);
                 Acquire the system buffer from the display driver.
                 If the OS should trigger a mode change then it's not allowed to
                 free the previous buffer until Services has released it
-                via BufferSystemRelease. The system buffer has to be associated
-                to a PhysHeapID which can be one of the existing physical heaps
-                if the system buffer is compatible with it or must be a separate
-                heap created for this use.
+                via BufferSystemRelease.
 
    Called by client function: #PVRSRVDCSystemBufferAcquire()
 
@@ -597,9 +589,6 @@ typedef void (*BufferUnmap)(IMG_HANDLE hBuffer);
 
 @Output         pui32PageCount          The number of pages the buffer contains
 
-@Output         pui32PhysHeapID         The ID of the Services PhysHeap that has
-                                        been setup in the system layer
-
 @Output         pui32ByteStride         Byte stride of the buffer
 
 @Output         phSystemBuffer          Handle to the buffer object
@@ -610,7 +599,6 @@ typedef void (*BufferUnmap)(IMG_HANDLE hBuffer);
 typedef PVRSRV_ERROR (*BufferSystemAcquire)(IMG_HANDLE hDeviceData,
                                             IMG_DEVMEM_LOG2ALIGN_T *puiLog2PageSize,
                                             IMG_UINT32 *pui32PageCount,
-                                            IMG_UINT32 *pui32PhysHeapID,
                                             IMG_UINT32 *pui32ByteStride,
                                             IMG_HANDLE *phSystemBuffer);
 
@@ -631,59 +619,71 @@ typedef PVRSRV_ERROR (*BufferSystemAcquire)(IMG_HANDLE hDeviceData,
 */ /**************************************************************************/
 typedef	void (*BufferSystemRelease)(IMG_HANDLE hSystemBuffer);
 
+/*************************************************************************/ /*!
+@Function       ResetDevice
+
+@Description    Reset the device state. This function should perform actions
+                required for getting the device to the working state. This can
+                be for example used during resume operation from a hibernation.
+
+                Implementation of this callback is optional.
+
+@Input          hDeviceData             Device private data
+*/ /**************************************************************************/
+typedef PVRSRV_ERROR (*ResetDevice)(IMG_HANDLE hDeviceData);
+
 #if defined(INTEGRITY_OS)
 typedef PVRSRV_ERROR (*AcquireKernelMappingData)(IMG_HANDLE hBuffer, IMG_HANDLE *phMapping, void **ppPhysAddr);
-typedef PVRSRV_ERROR (*MapMemoryObject)(IMG_HANDLE hBuffer, IMG_HANDLE *phMemObj, void **ppvClientAddr);
-typedef PVRSRV_ERROR (*UnmapMemoryObject)(IMG_HANDLE hBuffer);
 
-#if defined(USING_HYPERVISOR)
+#if (RGX_NUM_DRIVERS_SUPPORTED > 1)
 typedef IMG_HANDLE (*GetPmr)(IMG_HANDLE hBuffer, size_t ulOffset);
 #endif
 #endif
-
 /*!
  * Function table for functions to be implemented by the display controller
  * that will be called from within Services.
  * The table will be provided to Services with the call to DCRegisterDevice.
+ *
+ * Typedef: ::DC_DEVICE_FUNCTIONS
  */
 typedef struct _DC_DEVICE_FUNCTIONS_
 {
 	/* Mandatory query functions */
-	GetInfo                 pfnGetInfo; /*!< See #GetInfo  */
-	PanelQueryCount         pfnPanelQueryCount; /*!< See #PanelQueryCount  */
-	PanelQuery              pfnPanelQuery; /*!< See #PanelQuery  */
-	FormatQuery             pfnFormatQuery; /*!< See #FormatQuery  */
-	DimQuery                pfnDimQuery; /*!< See #DimQuery  */
+	GetInfo                 pfnGetInfo; /*!< See #GetInfo */
+	PanelQueryCount         pfnPanelQueryCount; /*!< See #PanelQueryCount */
+	PanelQuery              pfnPanelQuery; /*!< See #PanelQuery */
+	FormatQuery             pfnFormatQuery; /*!< See #FormatQuery */
+	DimQuery                pfnDimQuery; /*!< See #DimQuery */
 
 	/* Optional blank/vsync functions */
-	SetBlank                pfnSetBlank; /*!< See #SetBlank  */
-	SetVSyncReporting       pfnSetVSyncReporting; /*!< See #SetVSyncReporting  */
-	LastVSyncQuery          pfnLastVSyncQuery; /*!< See #LastVSyncQuery  */
+	SetBlank                pfnSetBlank; /*!< See #SetBlank */
+	SetVSyncReporting       pfnSetVSyncReporting; /*!< See #SetVSyncReporting */
+	LastVSyncQuery          pfnLastVSyncQuery; /*!< See #LastVSyncQuery */
 
 	/* Mandatory configure functions */
-	ContextCreate           pfnContextCreate; /*!< See #ContextCreate  */
-	ContextDestroy          pfnContextDestroy; /*!< See #ContextDestroy  */
-	ContextConfigure        pfnContextConfigure; /*!< See #ContextConfigure  */
+	ContextCreate           pfnContextCreate; /*!< See #ContextCreate */
+	ContextDestroy          pfnContextDestroy; /*!< See #ContextDestroy */
+	ContextConfigure        pfnContextConfigure; /*!< See #ContextConfigure */
 
 	/* Optional context functions */
-	ContextConfigureCheck   pfnContextConfigureCheck; /*!< See #ContextConfigureCheck  */
+	ContextConfigureCheck   pfnContextConfigureCheck; /*!< See #ContextConfigureCheck */
 
 	/* Mandatory buffer functions */
-	BufferAlloc             pfnBufferAlloc; /*!< See #BufferAlloc  */
-	BufferAcquire           pfnBufferAcquire; /*!< See #BufferAcquire  */
-	BufferRelease           pfnBufferRelease; /*!< See #BufferRelease  */
-	BufferFree              pfnBufferFree; /*!< See #BufferFree  */
+	BufferAlloc             pfnBufferAlloc; /*!< See #BufferAlloc */
+	BufferAcquire           pfnBufferAcquire; /*!< See #BufferAcquire */
+	BufferRelease           pfnBufferRelease; /*!< See #BufferRelease */
+	BufferFree              pfnBufferFree; /*!< See #BufferFree */
 
 	/* Optional - Provide this function if your controller can
 	 * scan out arbitrary memory, allocated for another purpose
 	 * by Services. */
-	BufferImport            pfnBufferImport; /*!< See #BufferImport  */
+	BufferImport            pfnBufferImport; /*!< See #BufferImport */
 
 	/* Optional - Provide these functions if your controller
 	 * has an MMU and does not (or cannot) map/unmap buffers at
 	 * alloc/free time */
-	BufferMap               pfnBufferMap; /*!< See #BufferMap  */
-	BufferUnmap             pfnBufferUnmap; /*!< See #BufferUnmap  */
+	BufferMap               pfnBufferMap; /*!< See #BufferMap */
+	BufferUnmap             pfnBufferUnmap; /*!< See #BufferUnmap */
 
 	/* Optional - DEPRICATED */
 	BufferSystemAcquire     pfnBufferSystemAcquire; /*!< See #BufferSystemAcquire */
@@ -694,13 +694,17 @@ typedef struct _DC_DEVICE_FUNCTIONS_
 	 * the respective functions on its PMRs towards the DC module
 	 */
 	AcquireKernelMappingData    pfnAcquireKernelMappingData;
-	MapMemoryObject             pfnMapMemoryObject;
-	UnmapMemoryObject           pfnUnmapMemoryObject;
 
-#if defined(USING_HYPERVISOR)
+#if (RGX_NUM_DRIVERS_SUPPORTED > 1)
 	GetPmr                      pfnGetPmr;
 #endif
 #endif
+
+   /* Optional - Provide this function if your controller should be allowed
+    * to be reset by Services.
+    * This can be used for example during suspend-to-RAM or suspend-to-disk
+    * procedures. */
+	ResetDevice                 pfnResetDevice; /*!< See #ResetDevice */
 } DC_DEVICE_FUNCTIONS;
 
 
@@ -756,7 +760,7 @@ void DCUnregisterDevice(IMG_HANDLE hSrvHandle);
 @Function       DCDisplayConfigurationRetired
 
 @Description    Called when a configuration as been retired due to a new
-                configuration now being active. See #PVRSRVDCContextConfigure().
+                configuration now being active.
 
 @Input          hConfigData             ConfigData that is being retired
 */
@@ -817,11 +821,11 @@ void DCImportBufferRelease(IMG_HANDLE hImport,
 
 
 
-#if defined (__cplusplus)
+#if defined(__cplusplus)
 }
 #endif
 
-#endif/* #if !defined (__KERNELDISPLAY_H__) */
+#endif /* KERNELDISPLAY_H */
 
 /******************************************************************************
  End of file (kerneldisplay.h)

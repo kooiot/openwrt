@@ -38,6 +38,7 @@
 #define PL_BASE			SUNXI_PIN_BASE('L')
 #define PM_BASE			SUNXI_PIN_BASE('M')
 #define PN_BASE			SUNXI_PIN_BASE('N')
+#define PW_BASE			SUNXI_PIN_BASE('W')	/* sun8iw22 PWR_IRQ bank */
 
 #define SUNXI_PINCTRL_PIN(bank, pin)		\
 	PINCTRL_PIN(P ## bank ## _BASE + (pin), "P" #bank #pin)
@@ -144,7 +145,8 @@ enum sunxi_pinctrl_hw_type {
 	SUNXI_PCTL_HW_TYPE_5,  /* Support self-adaption */
 	SUNXI_PCTL_HW_TYPE_6,  /* chips: sun55iw3-prcm */
 	SUNXI_PCTL_HW_TYPE_7,  /* chips: sun55iw6-prcm */
-	SUNXI_PCTL_HW_TYPE_8,  /* chips: sun300iw1-r */
+	SUNXI_PCTL_HW_TYPE_8,  /* chips: sun300iw1-r, sun8iw22-rtc */
+	SUNXI_PCTL_HW_TYPE_9,  /* chips: sun8iw20 */
 	/* Add new types here ... */
 	SUNXI_PCTL_HW_TYPE_CNT,
 };
@@ -180,7 +182,6 @@ struct sunxi_pinctrl_hw_info {
 	bool power_mode_reverse;  /* true: GPIO_POW_VAL and GPIO_POW_MID_SEL bit reverse, A523 SOC, for example */
 	bool power_mode_detect;  /* true: Config voltage withstand by reading power_mode_val_reg */
 	bool data_reg_irregular;
-	bool data_set_mode_select; /* true: change the value of pin by data_set and data_cle reg */
 	u32 data_mem_size;
 };
 
@@ -216,6 +217,7 @@ struct sunxi_pinctrl_desc {
 	enum sunxi_desc_bias_voltage	io_bias_cfg_variant;
 	bool				pf_power_source_switch;
 	bool				auto_power_source_switch;
+	bool				is_data_reg_atomic_access;
 	enum sunxi_pinctrl_hw_type	hw_type;
 };
 

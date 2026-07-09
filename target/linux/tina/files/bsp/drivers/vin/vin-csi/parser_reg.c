@@ -142,6 +142,11 @@ void csic_prs_ncsi_if_cfg(unsigned int sel, struct prs_ncsi_if_cfg *if_cfg)
 		if_cfg->ddr_sample << PRS_NCSIC_IF_DDR_SAMPLE_MODE);
 }
 
+unsigned int csic_prs_ncsi_cfg_get(unsigned int sel)
+{
+	return vin_reg_readl(csic_prs_base[sel] + PRS_NCSIC_IF_CFG_REG_OFF);
+}
+
 void csic_prs_mcsi_if_cfg(unsigned int sel, struct prs_mcsi_if_cfg *if_cfg)
 {
 	vin_reg_clr_set(csic_prs_base[sel] + PRS_MCSIC_IF_CFG_REG_OFF,
@@ -297,6 +302,11 @@ void csic_prs_set_pclk_dly(unsigned int sel, unsigned int pclk_dly)
 {
 	vin_reg_clr_set(csic_prs_base[sel] + PRS_NCSIC_RX_SIGNAL0_DLY_ADJ_REG_OFF,
 		PRS_PCLK_DLY_MASK, pclk_dly << PRS_PCLK_DLY);
+}
+
+int csic_prs_get_pclk_dly(unsigned int sel)
+{
+	return vin_reg_readl(csic_prs_base[sel] + PRS_NCSIC_RX_SIGNAL0_DLY_ADJ_REG_OFF) & 0x1f;
 }
 
 void csic_prs_sync_en_cfg(unsigned int sel, struct csi_sync_ctrl *sync)

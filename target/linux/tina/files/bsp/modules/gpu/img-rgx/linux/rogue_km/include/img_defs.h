@@ -45,12 +45,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IMG_DEFS_H
 #define IMG_DEFS_H
 
-#if defined(LINUX) && defined(__KERNEL__)
+#if defined(__linux__) && defined(__KERNEL__)
 #include <linux/types.h>
 #else
 #include <stddef.h>
 #endif
-#if !(defined(LINUX) && defined(__KERNEL__))
+#if !(defined(__linux__) && defined(__KERNEL__))
 #include <assert.h>
 #endif
 
@@ -80,9 +80,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /* True if the GCC version is at least the given version. False for older
  * versions of GCC, or other compilers.
  */
+#if defined(__GNUC__)
 #define GCC_VERSION_AT_LEAST(major, minor) \
 	(__GNUC__ > (major) || \
 	(__GNUC__ == (major) && __GNUC_MINOR__ >= (minor)))
+#else
+#define GCC_VERSION_AT_LEAST(major, minor) 0
+#endif
+
+#if defined(__clang__)
+#define CLANG_VERSION_AT_LEAST(major) \
+	(__clang_major__ >= (major))
+#else
+#define CLANG_VERSION_AT_LEAST(major) 0
+#endif
 
 /* Use Clang's __has_extension and __has_builtin macros if available. */
 #if defined(__has_extension)
@@ -126,12 +137,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 		#define static_assert(expr, message) \
 			extern int static_assert_failed[(expr) ? 1 : -1] __attribute__((unused))
 	#endif
-#else
-#if defined(CONFIG_L4)
-	/* Defined but not compatible with DDK usage, so undefine and ignore */
-	#undef static_assert
-	#define static_assert(expr, message)
-#endif
 #endif
 
 /*
@@ -145,26 +150,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * Note: there is no need to add a 'return' or any error handling after
  * calling unreachable(), as this call will never return.
  */
-#if defined(LINUX) && defined(__KERNEL__)
+#if defined(__linux__) && defined(__KERNEL__)
 /* Kernel has its own unreachable(), which is a simple infinite loop */
 #elif GCC_VERSION_AT_LEAST(4, 5) || has_clang_builtin(__builtin_unreachable)
 	#define unreachable(msg) \
 		do { \
-			assert(!msg); \
+			assert(!(msg)); \
 			__builtin_unreachable(); \
-		} while (0)
+		} while (false)
 #elif defined(_MSC_VER)
 	#define unreachable(msg) \
 		do { \
-			assert(!msg); \
+			assert(!(msg)); \
 			__assume(0); \
-		} while (0)
+		} while (false)
 #else
 	#define unreachable(msg) \
 		do { \
-			assert(!msg); \
+			assert(!(msg)); \
 			while (1); \
-		} while (0)
+		} while (false)
 #endif
 
 /*
@@ -177,21 +182,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 		do { \
 			assert(expr); \
 			__builtin_assume(expr); \
-		} while (0)
+		} while (false)
 #elif defined(_MSC_VER)
 	#define assume(expr) \
 		do { \
 			assert(expr); \
 			__assume(expr); \
-		} while (0)
-#elif defined(LINUX) && defined(__KERNEL__)
+		} while (false)
+#elif defined(__linux__) && defined(__KERNEL__)
 	#define assume(expr) ((void)(expr))
 #elif GCC_VERSION_AT_LEAST(4, 5) || has_clang_builtin(__builtin_unreachable)
 	#define assume(expr) \
 		do { \
 			if (unlikely(!(expr))) \
 				unreachable("Assumption isn't true: " # expr); \
-		} while (0)
+		} while (false)
 #else
 	#define assume(expr) assert(expr)
 #endif
@@ -259,18 +264,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 		#if defined(__mips)
 			/* do nothing */
 		#elif defined(UNDER_MSBUILD)
-			_CRTIMP __declspec(noreturn) void __cdecl abort(void);
+			/* do nothing */
 		#else
 			_CRTIMP void __cdecl abort(void);
 		#endif
 	#endif
 #endif /* UNDER_WDDM */
 #else
-	#if (defined(LINUX) || defined(__QNXNTO__)) && defined(__KERNEL__)
+	#if (defined(__linux__) || defined(__QNXNTO__)) && defined(__KERNEL__)
 		#define IMG_INTERNAL
 		#define IMG_EXPORT
 		#define IMG_CALLCONV
-	#elif defined(LINUX) || defined(__METAG) || defined(__mips) || defined(__QNXNTO__)
+	#elif defined(__linux__) || defined(__METAG) || defined(__mips) || defined(__QNXNTO__) || defined(__riscv) || defined(__APPLE__)
 		#define IMG_CALLCONV
 		#define C_CALLCONV
 
@@ -318,11 +323,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /* Kernel macros for compiler attributes */
 /* Note: param positions start at 1 */
-#if defined(LINUX) && defined(__KERNEL__)
+#if defined(__linux__) && defined(__KERNEL__)
 	#include <linux/compiler.h>
 
 	#if !defined(__fallthrough)
-		#if defined(__GNUC__) && GCC_VERSION_AT_LEAST(7, 0)
+		#if GCC_VERSION_AT_LEAST(7, 0) || CLANG_VERSION_AT_LEAST(10)
 			#define __fallthrough __attribute__((__fallthrough__))
 		#else
 			#define __fallthrough
@@ -348,14 +353,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 	/* That one compiler that supports attributes but doesn't support
 	 * the printf attribute... */
 	#if defined(__GNUC__)
-		#define __printf(fmt, va)  __attribute__((format(printf, fmt, va)))
+		#define __printf(fmt, va)  __attribute__((format(printf, (fmt), (va))))
 	#else
 		#define __printf(fmt, va)
 	#endif /* defined(__GNUC__) */
 
 	#if defined(__cplusplus) && (__cplusplus >= 201703L)
 		#define __fallthrough [[fallthrough]]
-	#elif defined(__GNUC__) && GCC_VERSION_AT_LEAST(7, 0)
+	#elif GCC_VERSION_AT_LEAST(7, 0) || CLANG_VERSION_AT_LEAST(10)
 		#define __fallthrough __attribute__((__fallthrough__))
 	#else
 		#define __fallthrough
@@ -399,13 +404,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 /* GCC builtins */
-#if defined(LINUX) && defined(__KERNEL__)
+#if defined(__linux__) && defined(__KERNEL__)
 	#include <linux/compiler.h>
-#elif defined(__GNUC__)
+#elif defined(__GNUC__) || defined(INTEGRITY_OS)
 
 /* Klocwork does not support __builtin_expect, which makes the actual condition
  * expressions hidden during analysis, affecting it negatively. */
-#if !defined(__KLOCWORK__) && !defined(DEBUG)
+#if !defined(__KLOCWORK__) && !defined(INTEGRITY_OS) && !defined(DEBUG)
 	#define likely(x)   __builtin_expect(!!(x), 1)
 	#define unlikely(x) __builtin_expect(!!(x), 0)
 #endif
@@ -413,7 +418,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 	/* Compiler memory barrier to prevent reordering */
 	#define barrier() __asm__ __volatile__("": : :"memory")
 #else
-	#define barrier() do { static_assert(0, "barrier() isn't supported by your compiler"); } while(0)
+	#define barrier() static_assert(0, "barrier() isn't supported by your compiler");
 #endif
 
 /* That one OS that defines one but not the other... */
@@ -424,6 +429,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 	#define unlikely(x) (x)
 #endif
 
+#if !defined(BITS_PER_BYTE)
+#define BITS_PER_BYTE (8)
+#endif /* BITS_PER_BYTE */
+
 /* These two macros are also provided by the kernel */
 #ifndef BIT
 #define BIT(b) (1UL << (b))
@@ -433,15 +442,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define BIT_ULL(b) (1ULL << (b))
 #endif
 
-#define BIT_SET(f, b)     BITMASK_SET((f),    BIT_ULL(b))
-#define BIT_UNSET(f, b)   BITMASK_UNSET((f),  BIT_ULL(b))
-#define BIT_TOGGLE(f, b)  BITMASK_TOGGLE((f), BIT_ULL(b))
-#define BIT_ISSET(f, b)   BITMASK_HAS((f),    BIT_ULL(b))
+#define BIT_SET(f, b)     BITMASK_SET((f),    BIT(b))
+#define BIT_UNSET(f, b)   BITMASK_UNSET((f),  BIT(b))
+#define BIT_TOGGLE(f, b)  BITMASK_TOGGLE((f), BIT(b))
+#define BIT_ISSET(f, b)   BITMASK_HAS((f),    BIT(b))
 
-#define BITMASK_SET(f, m)     (void) ((f) |= (m))
-#define BITMASK_UNSET(f, m)   (void) ((f) &= ~(m))
-#define BITMASK_TOGGLE(f, m)  (void) ((f) ^= (m))
+#define BITMASK_SET(f, m)     do { ((f) |= (m)); } while (false)
+#define BITMASK_UNSET(f, m)   do { ((f) &= ~(m)); } while (false)
+#define BITMASK_TOGGLE(f, m)  do { ((f) ^= (m)); } while (false)
 #define BITMASK_HAS(f, m)     (((f) & (m)) == (m)) /* the bits from the mask are all set */
+#define BITMASK_ANY(f, m)     (((f) & (m)) != 0U)  /* any bit from the mask is set */
 
 #ifndef MAX
 #define MAX(a ,b)	(((a) > (b)) ? (a) : (b))
@@ -455,8 +465,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define CLAMP(min, max, n)  ((n) < (min) ? (min) : ((n) > (max) ? (max) : (n)))
 #endif
 
+#define SWAP(X, Y) (X) ^= (Y); (Y) ^= (X); (X) ^= (Y);
 
-#if defined(LINUX) && defined(__KERNEL__)
+#if defined(__linux__) && defined(__KERNEL__)
 	#include <linux/kernel.h>
 	#include <linux/bug.h>
 #endif
@@ -464,6 +475,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /* Get a structure's address from the address of a member */
 #define IMG_CONTAINER_OF(ptr, type, member) \
 	(type *) ((uintptr_t) (ptr) - offsetof(type, member))
+
+/* Get a new pointer with an offset (in bytes) from a base address, useful
+ * when traversing byte buffers and accessing data in buffers through struct
+ * pointers.
+ * Note, this macro is not equivalent to or replacing offsetof() */
+#define IMG_OFFSET_ADDR(addr, offset_in_bytes) \
+	(void*)&(((IMG_UINT8*)(void*)(addr))[offset_in_bytes])
+
+/* Get a new pointer with an offset (in bytes) from a base address, version
+ * for volatile memory.
+ */
+#define IMG_OFFSET_ADDR_VOLATILE(addr, offset_in_bytes) \
+	(volatile void*)&(((volatile IMG_UINT8*)(volatile void*)(addr))[offset_in_bytes])
+
+/* Get a new pointer with an offset (in dwords) from a base address, useful
+ * when traversing byte buffers and accessing data in buffers through struct
+ * pointers.
+ * Note, this macro is not equivalent to or replacing offsetof() */
+#define IMG_OFFSET_ADDR_DW(addr, offset_in_dwords) \
+	(void*)(((IMG_UINT32*)(void*)(addr)) + (offset_in_dwords))
 
 /* The number of elements in a fixed-sized array */
 #ifndef ARRAY_SIZE
@@ -485,12 +516,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 	void operator=(const C&)
 #endif
 
-#if defined(SUPPORT_PVR_VALGRIND) && !defined(__METAG) && !defined(__mips)
+#if defined(SUPPORT_PVR_VALGRIND) && !defined(__METAG) && !defined(__mips) && !defined(__riscv)
 	#include "/usr/include/valgrind/memcheck.h"
 
-	#define VG_MARK_INITIALIZED(pvData,ui32Size)  VALGRIND_MAKE_MEM_DEFINED(pvData,ui32Size)
+	#define VG_MARK_INITIALIZED(pvData,ui32Size) VALGRIND_MAKE_MEM_DEFINED(pvData,ui32Size)
 	#define VG_MARK_NOACCESS(pvData,ui32Size) VALGRIND_MAKE_MEM_NOACCESS(pvData,ui32Size)
 	#define VG_MARK_ACCESS(pvData,ui32Size) VALGRIND_MAKE_MEM_UNDEFINED(pvData,ui32Size)
+	#define VG_ASSERT_DEFINED(pvData,ui32Size) VALGRIND_CHECK_MEM_IS_DEFINED(pvData,ui32Size)
 #else
 	#if defined(_MSC_VER)
 	#	define PVR_MSC_SUPPRESS_4127 __pragma(warning(suppress:4127))
@@ -498,9 +530,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 	#	define PVR_MSC_SUPPRESS_4127
 	#endif
 
-	#define VG_MARK_INITIALIZED(pvData,ui32Size) PVR_MSC_SUPPRESS_4127 do { } while(0)
-	#define VG_MARK_NOACCESS(pvData,ui32Size) PVR_MSC_SUPPRESS_4127 do { } while(0)
-	#define VG_MARK_ACCESS(pvData,ui32Size) PVR_MSC_SUPPRESS_4127 do { } while(0)
+	#define VG_MARK_INITIALIZED(pvData,ui32Size) PVR_MSC_SUPPRESS_4127 do { } while (false)
+	#define VG_MARK_NOACCESS(pvData,ui32Size) PVR_MSC_SUPPRESS_4127 do { } while (false)
+	#define VG_MARK_ACCESS(pvData,ui32Size) PVR_MSC_SUPPRESS_4127 do { } while (false)
+	#define VG_ASSERT_DEFINED(pvData,ui32Size) PVR_MSC_SUPPRESS_4127 do { } while (false)
 #endif
 
 #define IMG_STRINGIFY_IMPL(x) # x
@@ -542,6 +575,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #else
 #define NOLDSTOPT
 #define NOLDSTOPT_VOID
+#endif
+
+#if defined(SERVICES_SC) && !defined(DEBUG)
+#define PVR_PRE_DPF(...)
+#else
+#define PVR_PRE_DPF (void) printf
 #endif
 
 #endif /* IMG_DEFS_H */

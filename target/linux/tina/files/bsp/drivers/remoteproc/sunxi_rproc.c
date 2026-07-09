@@ -63,6 +63,10 @@
 #define AW_MEM_FW_REGION_PROPERTY_NAME "fw-region"
 #define USING_KERNEL_FW_PROPERTY_NAME "using-kernel-fw"
 
+#define RPROC_NMI_AVAILABLE_PROPERTY_NAME "nmi-available"
+#define RPROC_WAIT_NMI_COMPLETE_TIMEOUT_PROPERTY_NAME "wait-nmi-complete-timeout"
+#define RPROC_DEFAULT_WAIT_NMI_COMPLETE_TIMEOUT 50 /* unit: ms */
+
 static LIST_HEAD(sunxi_rproc_list);
 
 #include "sunxi_rproc_internal.h"
@@ -352,6 +356,7 @@ static __maybe_unused int sunxi_request_firmware(struct rproc *rproc, const stru
 
 	ret = request_firmware(fw, rproc->firmware, dev);
 	if (!ret) {
+		sunxi_firmware_unpack((struct firmware *)*fw, dev);
 		dev_info(dev, "load fw from filesystem, filename: %s\n", rproc->firmware);
 		return 0;
 	}
@@ -437,12 +442,6 @@ static int sunxi_rproc_stop(struct rproc *rproc)
 	sunxi_arch_interrupt_restore(rproc_priv->share_irq);
 #endif
 
-	ret = sunxi_rproc_priv_stop(rproc_priv);
-	if (ret) {
-		dev_err(rproc_priv->dev, "stop remoteproc error\n");
-		return ret;
-	}
-
 #ifdef CONFIG_AW_RPROC_ENHANCED_TRACE
 	if (rproc->state == RPROC_CRASHED) {
 		struct rproc_debug_trace *tmp, *trace;
@@ -475,6 +474,45 @@ static int sunxi_rproc_stop(struct rproc *rproc)
 		}
 	}
 #endif
+
+	if (chip->is_nmi_available) {
+		dev_info(rproc_priv->dev, "trigger remoteproc NMI!\n");
+		ret = sunxi_rproc_priv_trigger_nmi(rproc_priv);
+		if (!ret) {
+			unsigned long timeout_jiffies;
+			/* Wait remoteproc NMI complete */
+			timeout_jiffies = jiffies + msecs_to_jiffies(chip->wait_nmi_complete_timeout);
+			while (1) {
+				ret = sunxi_rproc_priv_is_nmi_complete(rproc_priv);
+				if (ret) {
+					if (ret < 0)
+						msleep(chip->wait_nmi_complete_timeout);
+					break;
+				}
+
+				if (time_is_before_jiffies(timeout_jiffies)) {
+					dev_warn(rproc_priv->dev, "wait remoteproc NMI complete timeout(%ums)!",
+						chip->wait_nmi_complete_timeout);
+					break;
+				}
+				msleep(1);
+			}
+		} else {
+			if (ret < 0)
+				dev_warn(rproc_priv->dev, "trigger remoteproc NMI failed, ret: %d\n", ret);
+			else
+				dev_warn(rproc_priv->dev, "this remoteproc don't implement NMI trigger ops, "
+					"please remove '%s' property in dts\n", RPROC_NMI_AVAILABLE_PROPERTY_NAME);
+		}
+	}
+
+	ret = sunxi_rproc_priv_stop(rproc_priv);
+	if (ret) {
+		dev_err(rproc_priv->dev, "stop remoteproc error\n");
+		return ret;
+	}
+
+	chip->is_booted = 0;
 
 #if IS_ENABLED(CONFIG_PM_SLEEP)
 	ret = sunxi_rproc_standby_stop(chip->rproc_standby);
@@ -689,6 +727,10 @@ static int sunxi_rproc_parse_fw(struct rproc *rproc, const struct firmware *fw)
 	}
 
 	chip->rproc_priv->pc_entry = ehdr->e_entry;
+
+	/* if amp os only boot, skip load rsc table */
+	if (chip->only_boot)
+		return 0;
 
 	/* check segment name, such as .resource_table */
 	ret = rproc_elf_load_rsc_table(rproc, fw);
@@ -1123,8 +1165,8 @@ static const struct of_device_id sunxi_rproc_match[] = {
 	{ .compatible = "allwinner,hifi4-rproc", .data = "hifi4" },
 	{ .compatible = "allwinner,e906-rproc", .data = "e906" },
 	{ .compatible = "allwinner,e907-rproc", .data = "e907" },
-	{ .compatible = "allwinner,arm64-rtos-rproc", .data = "arm64_rtos" },
-	{ .compatible = "allwinner,arm64-barematal-rproc", .data = "arm64_baremetal" },
+	{ .compatible = "allwinner,arm-rtos-rproc", .data = "arm_rtos" },
+	{ .compatible = "allwinner,arm-barematal-rproc", .data = "arm_baremetal" },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, sunxi_rproc_match);
@@ -1178,15 +1220,62 @@ static void sunxi_rproc_resource_put(struct rproc *rproc, struct platform_device
 	sunxi_rproc_standby_exit(chip->rproc_standby, pdev);
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0)
+static int rproc_reset_rsc_table_on_stop(struct rproc *rproc)
+{
+	/* A resource table was never retrieved, nothing to do here */
+	if (!rproc->table_ptr)
+		return 0;
+
+	/*
+	 * If a cache table exists the remote processor was started by
+	 * the remoteproc core.  That cache table should be used for
+	 * the rest of the shutdown process.
+	 */
+	if (rproc->cached_table)
+		goto out;
+
+	/*
+	 * If we made it here the remote processor was started by another
+	 * entity and a cache table doesn't exist.  As such make a copy of
+	 * the resource table currently used by the remote processor and
+	 * use that for the rest of the shutdown process.  The memory
+	 * allocated here is free'd in rproc_shutdown().
+	 */
+	rproc->cached_table = kmemdup(rproc->table_ptr,
+				      rproc->table_sz, GFP_KERNEL);
+	if (!rproc->cached_table)
+		return -ENOMEM;
+
+out:
+	/*
+	 * Use a copy of the resource table for the remainder of the
+	 * shutdown process.
+	 */
+	rproc->table_ptr = rproc->cached_table;
+	return 0;
+}
+#endif
+
 int sunxi_rproc_report_crash(const char *name, enum rproc_crash_type type)
 {
 	struct sunxi_rproc *chip, *tmp;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0)
+	int ret;
+#endif
 
 	list_for_each_entry_safe(chip, tmp, &sunxi_rproc_list, list) {
 		/* report is noneed, set state detached by master */
 		if (chip->rproc->state == RPROC_DETACHED)
 			continue;
 		if (!strcmp(chip->rproc->name, name)) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0)
+			ret = rproc_reset_rsc_table_on_stop(chip->rproc);
+			if (ret) {
+				dev_err(&chip->rproc->dev, "can't reset resource table: %d\n", ret);
+				return ret;
+			}
+#endif
 			rproc_report_crash(chip->rproc, type);
 			return 0;
 		}
@@ -1235,6 +1324,8 @@ static int sunxi_rproc_probe(struct platform_device *pdev)
 	rproc->auto_boot = of_property_read_bool(np, "auto-boot");
 	if (of_property_read_bool(np, "coredump"))
 		rproc->dump_conf = RPROC_COREDUMP_ENABLED;
+	if (of_property_read_bool(np, "recovery_disabled"))
+		rproc->recovery_disabled = true;
 
 	chip = rproc->priv;
 	chip->rproc = rproc;
@@ -1247,6 +1338,12 @@ static int sunxi_rproc_probe(struct platform_device *pdev)
 		rproc_coredump_set_elf_info(rproc, ELFCLASS64, EM_NONE);
 	} else {
 		rproc_coredump_set_elf_info(rproc, ELFCLASS32, EM_NONE);
+	}
+
+	chip->is_nmi_available = of_property_read_bool(np, RPROC_NMI_AVAILABLE_PROPERTY_NAME);
+	if (chip->is_nmi_available) {
+		chip->wait_nmi_complete_timeout = RPROC_DEFAULT_WAIT_NMI_COMPLETE_TIMEOUT;
+		of_property_read_u32(np, RPROC_WAIT_NMI_COMPLETE_TIMEOUT_PROPERTY_NAME, &chip->wait_nmi_complete_timeout);
 	}
 
 	ret = sunxi_rproc_resource_get(rproc, pdev);
@@ -1290,8 +1387,8 @@ static int sunxi_rproc_probe(struct platform_device *pdev)
 			if (!ret) {
 				len = resource_size(&r);
 
-				dev_info(dev, "register memory firmware('%s') for '%s', addr: 0x%llx, size: %llu\n",
-					rproc->firmware, chip->name, r.start, len);
+				dev_info(dev, "register memory firmware('%s') for '%s', addr: 0x%llx, size: %lu\n",
+					rproc->firmware, chip->name, (long long)r.start, (long)len);
 				ret = sunxi_register_memory_fw(rproc->firmware, r.start, len);
 				if (ret < 0) {
 					dev_err(dev, "register memory firmware('%s') failed. ret: %d\n", rproc->firmware, ret);
@@ -1302,22 +1399,22 @@ static int sunxi_rproc_probe(struct platform_device *pdev)
 				dev_err(dev, "parse dt node '%s' failed, ret: %d\n", fw_np->full_name, ret);
 			}
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0)
-		if (!chip->only_boot) {
-			ret = sunxi_rproc_prepare(rproc);
-			if (ret)
-				dev_err(dev, "prepare firmware%s fail ret: %d\n", fw_np->full_name, ret);
+			if (!chip->only_boot) {
+				ret = sunxi_rproc_prepare(rproc);
+				if (ret)
+					dev_err(dev, "prepare firmware%s fail ret: %d\n", fw_np->full_name, ret);
 
-			sunxi_rproc_parse_fw(rproc, chip->fw);
-			if (ret)
-				dev_err(dev, "parse firmware%s fail ret: %d\n", fw_np->full_name, ret);
+				sunxi_rproc_parse_fw(rproc, chip->fw);
+				if (ret)
+					dev_err(dev, "parse firmware%s fail ret: %d\n", fw_np->full_name, ret);
 
-			loaded_table = suxni_rproc_elf_find_loaded_rsc_table(rproc, chip->fw);
-			if (loaded_table) {
-				memcpy(loaded_table, rproc->cached_table, rproc->table_sz);
-				rproc->table_ptr = loaded_table;
+				loaded_table = suxni_rproc_elf_find_loaded_rsc_table(rproc, chip->fw);
+				if (loaded_table) {
+					memcpy(loaded_table, rproc->cached_table, rproc->table_sz);
+					rproc->table_ptr = loaded_table;
+				}
+				rproc->cached_table = NULL;
 			}
-			rproc->cached_table = NULL;
-		}
 #endif
 		} else {
 			dev_warn(dev, "property '%s' for memory firmware not exist when remoteproc has been booted up by bootloader!\n",
@@ -1343,6 +1440,8 @@ static int sunxi_rproc_probe(struct platform_device *pdev)
 	}
 
 	dev_info(dev, "is_using_kernel_fw: %d", chip->is_using_kernel_fw);
+	if (chip->is_nmi_available)
+		dev_info(dev, "wait_nmi_complete_timeout: %ums", chip->wait_nmi_complete_timeout);
 
 #ifdef CONFIG_AW_RPROC_TRACE_EVENT_PARSER
 	aw_trace_event_parser_init(&chip->trace_event_parser, parser_addr_map_on_linux_kernel, rproc);

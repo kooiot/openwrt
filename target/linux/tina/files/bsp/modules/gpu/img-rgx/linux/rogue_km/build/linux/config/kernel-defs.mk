@@ -52,13 +52,6 @@ $$(shell echo "override $(1) $(if $(2),:= $(strip $(2)),:=)" >>$(CONFIG_KERNEL_M
 $(if $(filter config,$(D)),$(info KernelConfigMake $(1) := $(2)	# $(if $($(1)),$(origin $(1)),default)))
 endef
 
-# Undefine a kernel GNU make option
-#
-define KernelConfigUndefineMake
-$$(shell echo "override undefine $(1)" >>$(CONFIG_KERNEL_MK).new)
-$(if $(filter config,$(D)),$(info KernelConfigUndefineMake   undefine $(1) 	# $(if $($(1)),$(origin $(1)),default)))
-endef
-
 # Conditionally write out a kernel GNU make option
 #
 define _TunableKernelConfigMake
@@ -66,11 +59,13 @@ ifneq ($$($(1)),)
 ifneq ($$($(1)),0)
 $$(eval $$(call KernelConfigMake,$(1),$$($(1))))
 else
-$$(eval $$(call KernelConfigUndefineMake,$(1)))
+unexport $(1)
 endif
 else
 ifneq ($(2),)
 $$(eval $$(call KernelConfigMake,$(1),$(2)))
+else
+unexport $(1)
 endif
 endif
 endef

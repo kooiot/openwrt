@@ -29,6 +29,7 @@ struct rpmsg_heartbeat {
 	uint32_t tick;
 	char master[32];
 	u8 sleep;
+	struct timer_list rpmsg_heartbeat_timer;
 };
 
 struct hearbeat_packet {
@@ -36,14 +37,11 @@ struct hearbeat_packet {
 	uint32_t tick;
 };
 
-char rproc_name[32];  /* global rproc name to report crash */
-
-static void time_out_handler(struct timer_list *unused)
+static void time_out_handler(struct timer_list *timer)
 {
-	sunxi_rproc_report_crash(rproc_name, RPROC_WATCHDOG);
+	struct rpmsg_heartbeat *chip = from_timer(chip, timer, rpmsg_heartbeat_timer);
+	sunxi_rproc_report_crash(chip->master, RPROC_WATCHDOG);
 }
-
-static DEFINE_TIMER(rpmsg_heartbeat_timer, time_out_handler);
 
 static int rpmsg_heartbeat_cb(struct rpmsg_device *rpdev, void *data, int len,
 						void *priv, u32 src)
@@ -56,7 +54,6 @@ static int rpmsg_heartbeat_cb(struct rpmsg_device *rpdev, void *data, int len,
 	if (chip->master[0] == '\0') {
 		memcpy(chip->master, pack->name, 32);
 		chip->master[31] = '\0';
-		memcpy(rproc_name, chip->master, 32);
 	}
 
 	if (chip->sleep) {
@@ -69,7 +66,7 @@ static int rpmsg_heartbeat_cb(struct rpmsg_device *rpdev, void *data, int len,
 
 	chip->tick++;
 	chip->tick %= TICK_INTERVAL;
-	mod_timer(&rpmsg_heartbeat_timer, jiffies + HEART_RATE);
+	mod_timer(&chip->rpmsg_heartbeat_timer, jiffies + HEART_RATE);
 
 	return 0;
 }
@@ -88,12 +85,15 @@ static int rpmsg_heartbeat_probe(struct rpmsg_device *rpdev)
 	dev_set_drvdata(&rpdev->dev, chip);
 	/* wo need to announce the new ept to remote */
 	rpdev->announce = rpdev->src != RPMSG_ADDR_ANY;
+	timer_setup(&chip->rpmsg_heartbeat_timer, time_out_handler, 0);
 
 	return 0;
 }
 
 static void rpmsg_heartbeat_remove(struct rpmsg_device *rpdev)
 {
+	struct rpmsg_heartbeat *chip = dev_get_drvdata(&rpdev->dev);
+	del_timer_sync(&chip->rpmsg_heartbeat_timer);
 	dev_info(&rpdev->dev, "%s is removed\n", dev_name(&rpdev->dev));
 }
 
@@ -104,7 +104,7 @@ static int sunxi_rpmsg_hearbeat_suspend(struct device *dev)
 	chip = dev_get_drvdata(dev);
 
 	chip->sleep = 1;
-	del_timer_sync(&rpmsg_heartbeat_timer);
+	del_timer_sync(&chip->rpmsg_heartbeat_timer);
 
 	return 0;
 }
@@ -115,7 +115,7 @@ static void sunxi_rpmsg_hearbeat_resume(struct device *dev)
 	chip = dev_get_drvdata(dev);
 
 	chip->sleep = 0;
-	mod_timer(&rpmsg_heartbeat_timer, jiffies + HEART_RATE);
+	mod_timer(&chip->rpmsg_heartbeat_timer, jiffies + HEART_RATE);
 }
 
 static struct dev_pm_ops sunxi_rpmsg_hearbeat_pm_ops = {
@@ -125,7 +125,8 @@ static struct dev_pm_ops sunxi_rpmsg_hearbeat_pm_ops = {
 #endif
 
 static struct rpmsg_device_id rpmsg_driver_hearbeat_id_table[] = {
-	{ .name	= "sunxi,rpmsg_heartbeat" },
+	{ .name	= "sunxi,rpmsg_heartbeat_arm" },
+	{ .name	= "sunxi,rpmsg_heartbeat_rv" },
 	{ },
 };
 MODULE_DEVICE_TABLE(rpmsg, rpmsg_driver_hearbeat_id_table);

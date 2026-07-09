@@ -27,11 +27,11 @@
 
 #include <linux/pm_wakeirq.h>
 #include <linux/regulator/consumer.h>
+#include <linux/phy/phy.h>
 
-#include "../sunxi_usb/include/sunxi_usb_debug.h"
+#include <../sunxi_usb/include/sunxi_usb_debug.h>
 
 extern int usb_disabled(void);
-extern atomic_t hci_thread_suspend_flag;
 extern struct atomic_notifier_head usb_pm_notifier_list;
 
 
@@ -122,7 +122,8 @@ extern struct atomic_notifier_head usb_pm_notifier_list;
 	|| IS_ENABLED(CONFIG_ARCH_SUN20IW1) || IS_ENABLED(CONFIG_ARCH_SUN50IW12) \
 	|| IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN60IW2) \
 	|| IS_ENABLED(CONFIG_ARCH_SUN8IW21) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) \
-	|| IS_ENABLED(CONFIG_ARCH_SUN300IW1)
+	|| IS_ENABLED(CONFIG_ARCH_SUN300IW1) || IS_ENABLED(CONFIG_ARCH_SUN65IW1) \
+	|| IS_ENABLED(CONFIG_ARCH_SUN251IW1) || IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 #define SUNXI_HCI_PHY_CTRL_SIDDQ                3
 #else
 #define SUNXI_HCI_PHY_CTRL_SIDDQ                1
@@ -199,7 +200,6 @@ extern struct atomic_notifier_head usb_pm_notifier_list;
 
 #define  SUNXI_USB_HCI_DEBUG
 
-#define  KEY_USB_ID_GPIO                "usb_id_gpio"
 #define  KEY_USB_GMA340_OE_GPIO         "usb_gma340_oe_gpio"
 #define  KEY_USB_DRVVBUS_EN_GPIO        "usb_drvvbus_en_gpio"
 #define  KEY_USB_WAKEUP_SUSPEND         "usb_wakeup_suspend"
@@ -294,7 +294,7 @@ extern struct atomic_notifier_head usb_pm_notifier_list;
 #define PHY_RANGE_MODE_MASK			0x1000		/* bit12, mod_type */
 #define PHY_RANGE_COMM_MASK			0xE00		/* bit11:9, common_data */
 #if IS_ENABLED(CONFIG_ARCH_SUN8IW21) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) \
-	|| IS_ENABLED(CONFIG_ARCH_SUN300IW1)
+	|| IS_ENABLED(CONFIG_ARCH_SUN300IW1) || IS_ENABLED(CONFIG_ARCH_SUN251IW1)
 #define PHY_RANGE_TRAN_MASK			0x3C0		/* bit9:6, trancevie_data */
 #else
 #define PHY_RANGE_TRAN_MASK			0x1C0		/* bit8:6, trancevie_data */
@@ -368,12 +368,6 @@ enum usb_wakeup_source_type {
 	NORMAL_STANDBY,
 };
 
-typedef enum usb_id_state {
-	USB_ID_CONNECT = 0, /* low */
-	USB_ID_DISCONNECT,  /* high */
-	USB_ID_UNKNOWN,
-} id_state_t;
-
 struct sunxi_hci_hcd {
 	__u32 usbc_no;                          /* usb controller number */
 	__u32 irq_no;                           /* interrupt number */
@@ -430,6 +424,7 @@ struct sunxi_hci_hcd {
 
 	struct platform_device *pdev;
 	struct usb_hcd *hcd;
+	struct phy *usb2_generic_phy;           /* pointer to USB2 PHY */
 
 	struct clk 	*clk_msi_lite;		/* msi-lite */
 	struct clk 	*clk_usb_sys_ahb;	/* usb-sys-ahb */
@@ -457,7 +452,6 @@ struct sunxi_hci_hcd {
 	struct reset_control	*reset_hci;
 	struct reset_control	*reset_phy;
 	struct reset_control	*reset_usb;
-	struct gpio_desc	*reset_gpio;		/* GPIO reset control */
 
 	int phy_range;
 	int rate_clk;
@@ -469,7 +463,6 @@ struct sunxi_hci_hcd {
 	struct gpio_config drv_vbus_gpio_set;
 	struct gpio_config drvvbus_en_gpio_set;
 	struct gpio_config gma340_oe_gpio_set;
-	struct gpio_config id_gpio_set;         /* e.g, kd-eint pin */
 
 	const char  *regulator_io;
 	const char  *used_status;
@@ -480,20 +473,13 @@ struct sunxi_hci_hcd {
 	enum usb_drvvbus_en_type drvvbus_en_type;
 	const char *drvvbus_en_name;
 	const char *gma340_oe_name;
-	const char *id_name;
 	const char *det_vbus_name;
 	u32 drvvbus_en_gpio_valid;
 	u32 gma340_oe_gpio_valid;
-	u32 id_gpio_valid;
 	u32 usb_restrict_valid;
 	__u8 power_flag;                        /* flag. power on or not */
 	struct regulator *supply;
 	struct regulator *hci_regulator;        /* hci regulator: VCC_USB */
-	struct regulator *vbusin;
-	int vbusin_on;
-	int thread_scan_flag;
-	int thread_active_flag;
-	id_state_t old_id_state;                /* last id state */
 
 	int used;                               /* flag. in use or not */
 	__u8 probe;                             /* hc initialize */
@@ -551,7 +537,6 @@ int exit_sunxi_hci(struct sunxi_hci_hcd *sunxi_hci);
 int sunxi_get_hci_num(struct platform_device *pdev);
 void sunxi_set_host_hisc_rdy(struct sunxi_hci_hcd *sunxi_hci, int is_on);
 void sunxi_set_host_vbus(struct sunxi_hci_hcd *sunxi_hci, int is_on);
-void sunxi_hci_set_vbus(struct sunxi_hci_hcd *sunxi_hci, int is_on);
 int usb_phyx_tp_write(struct sunxi_hci_hcd *sunxi_hci,
 		int addr, int data, int len);
 int usb_phyx_write(struct sunxi_hci_hcd *sunxi_hci, int data);

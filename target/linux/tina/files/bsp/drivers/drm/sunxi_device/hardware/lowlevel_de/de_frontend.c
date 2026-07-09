@@ -100,6 +100,8 @@ struct de_frontend_private {
 	struct de_sharp_handle *sharp;
 	struct de_cdc_handle *cdc;
 	struct de_dci_handle *dci;
+	struct de_dlc_handle *dlc;
+	struct de_gamma_handle *gamma;
 	struct de_fcm_handle *fcm;
 	struct de_csc_handle *csc1;
 	struct de_csc_handle *csc2;
@@ -145,6 +147,7 @@ static int de_frontend_check_and_reconfig(struct de_frontend_handle *hdl, struct
 	new_inner_info->ocsc.color_space = frontend_cfg->de_out_cfg.color_space;
 	new_inner_info->ocsc.color_range = frontend_cfg->de_out_cfg.color_range;
 	new_inner_info->ocsc.eotf = frontend_cfg->de_out_cfg.eotf;
+	new_inner_info->range = frontend_cfg->color_range;
 
 	/* use out last config to decide if enable  */
 	set_mask(new_inner_info->enable, hdl->private->default_enable);
@@ -162,8 +165,29 @@ static int de_frontend_check_and_reconfig(struct de_frontend_handle *hdl, struct
 			clear_mask(new_inner_info->enable, DCI_DIRTY);
 		}
 
+		if (hdl->private->dlc) {
+			clear_mask(new_inner_info->enable, DLC_DIRTY);
+		}
+
 		if (hdl->private->sharp) {
 			clear_mask(new_inner_info->enable, SHARP_DIRTY);
+		}
+	}
+
+	if (new_inner_info->format != DE_FORMAT_YUV422_SP_UVUV &&
+	    new_inner_info->format != DE_FORMAT_YUV422_SP_VUVU &&
+	    new_inner_info->format != DE_FORMAT_YUV420_SP_UVUV &&
+	    new_inner_info->format != DE_FORMAT_YUV420_SP_VUVU &&
+	    new_inner_info->format != DE_FORMAT_YUV422_P &&
+	    new_inner_info->format != DE_FORMAT_YVU422_P &&
+	    new_inner_info->format != DE_FORMAT_YUV420_P &&
+	    new_inner_info->format != DE_FORMAT_YVU420_P &&
+	    new_inner_info->format != DE_FORMAT_YUV422_SP_UVUV_10BIT &&
+	    new_inner_info->format != DE_FORMAT_YUV422_SP_VUVU_10BIT &&
+	    new_inner_info->format != DE_FORMAT_YUV420_SP_UVUV_10BIT &&
+	    new_inner_info->format != DE_FORMAT_YUV420_SP_VUVU_10BIT) {
+		if (hdl->private->snr) {
+			clear_mask(new_inner_info->enable, SNR_DIRTY);
 		}
 	}
 	/*do not touch new_inner_info module_dirty flag end*/
@@ -178,7 +202,9 @@ static int de_frontend_check_and_reconfig(struct de_frontend_handle *hdl, struct
 	/* module which concerned about scaler output size */
 	if (new_inner_info->bld_width != inner_info->bld_width ||
 		  new_inner_info->bld_height != inner_info->bld_height) {
+		set_mask(new_inner_info->module_dirty, SNR_DIRTY);
 		set_mask(new_inner_info->module_dirty, DCI_DIRTY);
+		set_mask(new_inner_info->module_dirty, DLC_DIRTY);
 		set_mask(new_inner_info->module_dirty, FCM_DIRTY);
 		set_mask(new_inner_info->module_dirty, SHARP_DIRTY);
 		set_mask(new_inner_info->module_dirty, CDC_DIRTY);
@@ -203,6 +229,7 @@ static int de_frontend_check_and_reconfig(struct de_frontend_handle *hdl, struct
 
 	if (new_inner_info->range != inner_info->range) {
 		set_mask(new_inner_info->module_dirty, DCI_DIRTY);
+		set_mask(new_inner_info->module_dirty, DLC_DIRTY);
 	}
 
 	/* module which concerned about ovl output size */
@@ -329,6 +356,58 @@ static s32 de_frontend_apply_dci(struct de_frontend_handle *hdl, struct display_
 			de_dci_set_color_range(hdl->private->dci, info->range);
 			de_dci_set_size(hdl->private->dci, w, h);
 			de_dci_enable(hdl->private->dci, info->enable & DCI_DIRTY);
+		}
+	}
+	return 0;
+}
+
+static s32 de_frontend_apply_dlc(struct de_frontend_handle *hdl, struct display_channel_state *state)
+{
+	struct de_frontend_data *frontend_data;
+	struct de_frontend_inner_info *info = hdl->private->inner_info;
+	int w = info->bld_width, h = info->bld_height;
+
+	if (hdl->private->dlc) {
+		if (state->frontend_blob) {
+			frontend_data = (struct de_frontend_data *)state->frontend_blob->data;
+			if (frontend_data->dirty & DLC_DIRTY &&
+			    frontend_data->dlc_para.dirty & PQD_DIRTY_MASK) {
+				DRM_DEBUG_DRIVER("%s dirty%x\n", __func__, frontend_data->dlc_para.dirty);
+				de_dlc_pq_proc(hdl->private->dlc, &frontend_data->dlc_para.pqd);
+				frontend_data->dirty &= ~DLC_DIRTY;
+				frontend_data->dlc_para.dirty &= ~PQD_DIRTY_MASK;
+
+				if (frontend_data->dlc_para.pqd.cmd != PQ_READ) {
+					/* request base config update  */
+					set_mask(info->module_dirty, DLC_DIRTY);
+					if (de_dlc_is_enabled(hdl->private->dlc)) {
+						DRM_DEBUG_DRIVER("pqd %s set enable\n", __func__);
+						set_mask(hdl->private->default_enable, DLC_DIRTY);
+						set_mask(info->enable, DLC_DIRTY);
+					} else {
+						DRM_DEBUG_DRIVER("pqd %s set disable\n", __func__);
+						clear_mask(hdl->private->default_enable, DLC_DIRTY);
+						clear_mask(info->enable, DLC_DIRTY);
+					}
+				}
+
+			}
+
+			if (hdl->private->dlc && frontend_data->dlc_para.dirty & COMMIT_DIRTY_MASK) {
+				if (frontend_data->dlc_para.commit.dirty & PQ_ENABLE_DIRTY) {
+					frontend_data->dlc_para.commit.dirty &= ~PQ_ENABLE_DIRTY;
+					set_mask(hdl->private->default_enable, DLC_DIRTY);
+					de_dlc_enable(hdl->private->dlc, frontend_data->dci_para.commit.enable);
+				}
+				frontend_data->dlc_para.dirty &= ~COMMIT_DIRTY_MASK;
+			}
+
+		}
+		if (info->module_dirty & DLC_DIRTY) {
+			de_dlc_set_color_range(hdl->private->dlc, info->range);
+			de_dlc_set_size(hdl->private->dlc, w, h);
+			de_gamma_set_size(hdl->private->gamma, w, h);
+			de_dlc_enable(hdl->private->dlc, info->enable & DLC_DIRTY);
 		}
 	}
 	return 0;
@@ -483,53 +562,11 @@ static s32 de_frontend_apply_sharp(struct de_frontend_handle *hdl, struct displa
 	return 0;
 }
 
-static inline bool de_frontend_is_need_update_work(struct de_frontend_handle *hdl)
+static s32 de_frontend_apply_snr(struct de_frontend_handle *hdl, struct display_channel_state *state)
 {
-	return (hdl->private->dci || (hdl->private->cdc && hdl->private->cdc->support_gtm));
-}
-
-void de_frontend_process_late(struct de_frontend_handle *hdl)
-{
-	/* don't forget de_frontend_is_need_update_work when new work add */
-	if (hdl->private->dci)
-		de_dci_update_local_param(hdl->private->dci);
-
-	if (hdl->private->cdc)
-		de_cdc_update_local_param(hdl->private->cdc);
-}
-
-s32 de_frontend_dump_state(struct drm_printer *p, struct de_frontend_handle *hdl)
-{
-	if (hdl->private->dci)
-		de_dci_dump_state(p, hdl->private->dci);
-
-	if (hdl->private->cdc)
-		de_cdc_dump_state(p, hdl->private->cdc);
-
-	if (hdl->private->fcm)
-		de_fcm_dump_state(p, hdl->private->fcm);
-
-	if (hdl->private->sharp)
-		de_sharp_dump_state(p, hdl->private->sharp);
-
-	if (hdl->private->snr)
-		de_snr_dump_state(p, hdl->private->snr);
-
-	if (hdl->private->csc1)
-		de_csc_dump_state(p, hdl->private->csc1);
-
-//TODO
-//	if (hdl->private->csc2)
-//		de_csc_dump_state(hdl->private->csc2);
-
-	return 0;
-}
-
-bool de_frontend_apply_snr(struct de_frontend_handle *hdl, struct display_channel_state *state, unsigned int ovl_w, unsigned int ovl_h)
-{
-	bool enable;
 	struct de_frontend_data *frontend_data;
-	int w = ovl_w, h = ovl_h;
+	struct de_frontend_inner_info *info = hdl->private->inner_info;
+	int w = info->ovl_width, h = info->ovl_height;
 
 	if (!hdl->private->snr)
 		return false;
@@ -564,13 +601,80 @@ bool de_frontend_apply_snr(struct de_frontend_handle *hdl, struct display_channe
 
 	}
 
-	/* we enable snr only use default_enable instead of enable, because scaler need if snr is enable */
-	enable = hdl->private->default_enable & SNR_DIRTY;
-	if (enable) {
+	if (info->module_dirty & SNR_DIRTY) {
 		de_snr_set_size(hdl->private->snr, w, h);
-		de_snr_enable(hdl->private->snr, 1);
+		de_snr_enable(hdl->private->snr, info->enable & SNR_DIRTY);
 	}
-	return enable;
+	return 0;
+}
+
+static inline bool de_frontend_is_need_update_work(struct de_frontend_handle *hdl)
+{
+	return (hdl->private->dci || hdl->private->dlc
+		|| (hdl->private->cdc && hdl->private->cdc->support_gtm));
+}
+
+void de_frontend_process_late(struct de_frontend_handle *hdl)
+{
+	struct de_gamma_cfg gamma_cfg = {0};
+	int ret;
+
+	/* don't forget de_frontend_is_need_update_work when new work add */
+	if (hdl->private->dci)
+		de_dci_update_local_param(hdl->private->dci);
+
+	if (hdl->private->dlc) {
+		gamma_cfg.gamma_tbl = kmalloc(sizeof(int) * 1024, GFP_KERNEL | __GFP_ZERO);
+		ret = de_dlc_update_local_param(hdl->private->dlc, gamma_cfg.gamma_tbl);
+
+		if (ret >= 0) {
+			gamma_cfg.enable = true;
+			de_gamma_config(hdl->private->gamma, &gamma_cfg);
+		} else {
+			gamma_cfg.enable = false;
+			de_gamma_config(hdl->private->gamma, &gamma_cfg);
+		}
+		kfree(gamma_cfg.gamma_tbl);
+	}
+
+	if (hdl->private->cdc)
+		de_cdc_update_local_param(hdl->private->cdc);
+}
+
+s32 de_frontend_dump_state(struct drm_printer *p, struct de_frontend_handle *hdl)
+{
+	/* dump in de35x pq hardware pipe order:
+	 * snr -> (scaler) -> (csc) -> sharp -> cdc -> dci/dlc -> gamma -> fcm -> csc.
+	 */
+
+	if (hdl->private->snr)
+		de_snr_dump_state(p, hdl->private->snr);
+
+	if (hdl->private->sharp)
+		de_sharp_dump_state(p, hdl->private->sharp);
+
+	if (hdl->private->cdc)
+		de_cdc_dump_state(p, hdl->private->cdc);
+
+	if (hdl->private->dci)
+		de_dci_dump_state(p, hdl->private->dci);
+
+	if (hdl->private->dlc)
+		de_dlc_dump_state(p, hdl->private->dlc);
+	if (hdl->private->gamma)
+		de_gamma_dump_state(p, hdl->private->gamma);
+
+	if (hdl->private->fcm)
+		de_fcm_dump_state(p, hdl->private->fcm);
+
+	if (hdl->private->csc1)
+		de_csc_dump_state(p, hdl->private->csc1);
+
+//TODO
+//	if (hdl->private->csc2)
+//		de_csc_dump_state(hdl->private->csc2);
+
+	return 0;
 }
 
 s32 de_frontend_disable(struct de_frontend_handle *hdl)
@@ -588,12 +692,27 @@ s32 de_frontend_disable(struct de_frontend_handle *hdl)
 //TODO
 //	if (hdl->private->csc2)
 //		de_csc_enable(hdl->private->csc2, en);
+//
+	if (hdl->private->sharp)
+		de_sharp_enable(hdl->private->sharp, 0);
+
+	if (hdl->private->asu)
+		de_scaler_asu_pq_enable(hdl->private->asu, 0);
 
 	if (hdl->private->fcm)
 		de_fcm_enable(hdl->private->fcm, 0);
 
 	if (hdl->private->dci)
 		de_dci_enable(hdl->private->dci, 0);
+
+	if (hdl->private->dlc) {
+		de_dlc_enable(hdl->private->dlc, 0);
+		if (hdl->private->gamma) {
+			struct de_gamma_cfg gamma_cfg = {0};
+			gamma_cfg.enable = false;
+			de_gamma_config(hdl->private->gamma, &gamma_cfg);
+		}
+	}
 
 	if (hdl->private->snr)
 		de_snr_enable(hdl->private->snr, 0);
@@ -614,83 +733,128 @@ int de_frontend_get_pqd_config(struct de_frontend_handle *hdl, struct display_ch
 		return -EINVAL;
 	}
 
-	/* no sense for not enable channel */
-	if (cstate->base.fb) {
-		/* pqd actually only needs single config as read result, but we have several frontend, which has no diference between them.
-		 * it's ok to read multiple times.
-		 */
-		if (hdl->private->fcm && frontend_data->dirty & FCM_DIRTY) {
-			if ((frontend_data->fcm_para.dirty & ~PQD_DIRTY_MASK) ||
-				  (!(frontend_data->fcm_para.dirty & PQD_DIRTY_MASK)) ||
-				  (frontend_data->fcm_para.pqd.cmd != PQ_READ)) {
-				DRM_ERROR("%s fcm invalid dirty flag, only support pqd read\n", __func__);
-				return -EINVAL;
-			}
-			de_fcm_lut_proc(hdl->private->fcm, &frontend_data->fcm_para.pqd);
-			frontend_data->fcm_para.dirty &= ~PQD_DIRTY_MASK;
-			frontend_data->dirty &= ~FCM_DIRTY;
+	/* pqd actually only needs single config as read result, but we have several frontend, which has no diference between them.
+	 * it's ok to read multiple times.
+	 */
+	if (hdl->private->fcm && frontend_data->dirty & FCM_DIRTY) {
+		if ((frontend_data->fcm_para.dirty & ~PQD_DIRTY_MASK) ||
+			  (!(frontend_data->fcm_para.dirty & PQD_DIRTY_MASK)) ||
+			  (frontend_data->fcm_para.pqd.cmd != PQ_READ)) {
+			DRM_ERROR("%s fcm invalid dirty flag, only support pqd read\n", __func__);
+			return -EINVAL;
 		}
-
-		if (hdl->private->sharp && frontend_data->dirty & SHARP_DIRTY) {
-			if ((frontend_data->sharp_para.dirty & ~PQD_DIRTY_MASK) ||
-				  (!(frontend_data->sharp_para.dirty & PQD_DIRTY_MASK)) ||
-				  (frontend_data->sharp_para.pqd.cmd != PQ_READ)) {
-				DRM_ERROR("%s sharp invalid dirty flag, only support pqd read\n", __func__);
-				return -EINVAL;
-			}
-			de_sharp_pq_proc(hdl->private->sharp, &frontend_data->sharp_para.pqd);
-			frontend_data->sharp_para.dirty &= ~PQD_DIRTY_MASK;
-			frontend_data->dirty &= ~SHARP_DIRTY;
-		}
-
-		if (hdl->private->dci && frontend_data->dirty & DCI_DIRTY) {
-			if ((frontend_data->dci_para.dirty & ~PQD_DIRTY_MASK) ||
-				  (!(frontend_data->dci_para.dirty & PQD_DIRTY_MASK)) ||
-				  (frontend_data->dci_para.pqd.cmd != PQ_READ)) {
-				DRM_ERROR("%s dci invalid dirty flag, only support pqd read\n", __func__);
-				return -EINVAL;
-			}
-			de_dci_pq_proc(hdl->private->dci, &frontend_data->dci_para.pqd);
-			frontend_data->dci_para.dirty &= ~PQD_DIRTY_MASK;
-			frontend_data->dirty &= ~DCI_DIRTY;
-		}
-
-		if (hdl->private->cdc && hdl->private->cdc->support_gtm && frontend_data->dirty & CDC_DIRTY) {
-			if ((frontend_data->cdc_para.dirty & ~PQD_DIRTY_MASK) ||
-				  (!(frontend_data->cdc_para.dirty & PQD_DIRTY_MASK)) ||
-				  (frontend_data->cdc_para.pqd.cmd != PQ_READ)) {
-				DRM_ERROR("%s cdc invalid dirty flag, only support pqd read\n", __func__);
-				return -EINVAL;
-			}
-			de_gtm_pq_proc(hdl->private->cdc, &frontend_data->cdc_para.pqd);
-			frontend_data->cdc_para.dirty &= ~PQD_DIRTY_MASK;
-			frontend_data->dirty &= ~CDC_DIRTY;
-		}
-
-		if (hdl->private->asu && frontend_data->dirty & ASU_DIRTY) {
-			if ((frontend_data->asu_para.dirty & ~PQD_DIRTY_MASK) ||
-				  (!(frontend_data->asu_para.dirty & PQD_DIRTY_MASK)) ||
-				  (frontend_data->asu_para.pqd.cmd != PQ_READ)) {
-				DRM_ERROR("%s asu invalid dirty flag, only support pqd read\n", __func__);
-				return -EINVAL;
-			}
-			de_scaler_apply_asu_pq_config(hdl->private->asu, &frontend_data->asu_para.pqd);
-			frontend_data->asu_para.dirty &= ~PQD_DIRTY_MASK;
-			frontend_data->dirty &= ~ASU_DIRTY;
-		}
-
-		if (hdl->private->snr && frontend_data->dirty & SNR_DIRTY) {
-			if ((frontend_data->snr_para.dirty & ~PQD_DIRTY_MASK) ||
-				  (!(frontend_data->snr_para.dirty & PQD_DIRTY_MASK)) ||
-				  (frontend_data->snr_para.pqd.cmd != PQ_READ)) {
-				DRM_ERROR("%s snr invalid dirty flag, only support pqd read\n", __func__);
-				return -EINVAL;
-			}
-			de_snr_set_para(hdl->private->snr, cstate, &frontend_data->snr_para);
-			frontend_data->snr_para.dirty &= ~PQD_DIRTY_MASK;
-			frontend_data->dirty &= ~SNR_DIRTY;
-		}
+		de_fcm_lut_proc(hdl->private->fcm, &frontend_data->fcm_para.pqd);
+		frontend_data->fcm_para.dirty &= ~PQD_DIRTY_MASK;
+		frontend_data->dirty &= ~FCM_DIRTY;
 	}
+
+	if (hdl->private->sharp && frontend_data->dirty & SHARP_DIRTY) {
+		if ((frontend_data->sharp_para.dirty & ~PQD_DIRTY_MASK) ||
+			  (!(frontend_data->sharp_para.dirty & PQD_DIRTY_MASK)) ||
+			  (frontend_data->sharp_para.pqd.cmd != PQ_READ)) {
+			DRM_ERROR("%s sharp invalid dirty flag, only support pqd read\n", __func__);
+			return -EINVAL;
+		}
+		de_sharp_pq_proc(hdl->private->sharp, &frontend_data->sharp_para.pqd);
+		frontend_data->sharp_para.dirty &= ~PQD_DIRTY_MASK;
+		frontend_data->dirty &= ~SHARP_DIRTY;
+	}
+
+	if (hdl->private->dci && frontend_data->dirty & DCI_DIRTY) {
+		if ((frontend_data->dci_para.dirty & ~PQD_DIRTY_MASK) ||
+			  (!(frontend_data->dci_para.dirty & PQD_DIRTY_MASK)) ||
+			  (frontend_data->dci_para.pqd.cmd != PQ_READ)) {
+			DRM_ERROR("%s dci invalid dirty flag, only support pqd read\n", __func__);
+			return -EINVAL;
+		}
+		de_dci_pq_proc(hdl->private->dci, &frontend_data->dci_para.pqd);
+		frontend_data->dci_para.dirty &= ~PQD_DIRTY_MASK;
+		frontend_data->dirty &= ~DCI_DIRTY;
+	}
+
+	if (hdl->private->dlc && frontend_data->dirty & DLC_DIRTY) {
+		if ((frontend_data->dlc_para.dirty & ~PQD_DIRTY_MASK) ||
+			  (!(frontend_data->dlc_para.dirty & PQD_DIRTY_MASK)) ||
+			  (frontend_data->dlc_para.pqd.cmd != PQ_READ)) {
+			DRM_ERROR("%s dlc invalid dirty flag, only support pqd read\n", __func__);
+			return -EINVAL;
+		}
+		de_dlc_pq_proc(hdl->private->dlc, &frontend_data->dlc_para.pqd);
+		frontend_data->dlc_para.dirty &= ~PQD_DIRTY_MASK;
+		frontend_data->dirty &= ~DLC_DIRTY;
+	}
+
+	if (hdl->private->cdc && hdl->private->cdc->support_gtm && frontend_data->dirty & CDC_DIRTY) {
+		if ((frontend_data->cdc_para.dirty & ~PQD_DIRTY_MASK) ||
+			  (!(frontend_data->cdc_para.dirty & PQD_DIRTY_MASK)) ||
+			  (frontend_data->cdc_para.pqd.cmd != PQ_READ)) {
+			DRM_ERROR("%s cdc invalid dirty flag, only support pqd read\n", __func__);
+			return -EINVAL;
+		}
+		de_gtm_pq_proc(hdl->private->cdc, &frontend_data->cdc_para.pqd);
+		frontend_data->cdc_para.dirty &= ~PQD_DIRTY_MASK;
+		frontend_data->dirty &= ~CDC_DIRTY;
+	}
+
+	if (hdl->private->asu && frontend_data->dirty & ASU_DIRTY) {
+		if ((frontend_data->asu_para.dirty & ~PQD_DIRTY_MASK) ||
+			  (!(frontend_data->asu_para.dirty & PQD_DIRTY_MASK)) ||
+			  (frontend_data->asu_para.pqd.cmd != PQ_READ)) {
+			DRM_ERROR("%s asu invalid dirty flag, only support pqd read\n", __func__);
+			return -EINVAL;
+		}
+		de_scaler_apply_asu_pq_config(hdl->private->asu, &frontend_data->asu_para.pqd);
+		frontend_data->asu_para.dirty &= ~PQD_DIRTY_MASK;
+		frontend_data->dirty &= ~ASU_DIRTY;
+	}
+
+	if (hdl->private->snr && frontend_data->dirty & SNR_DIRTY) {
+		if ((frontend_data->snr_para.dirty & ~PQD_DIRTY_MASK) ||
+			  (!(frontend_data->snr_para.dirty & PQD_DIRTY_MASK)) ||
+			  (frontend_data->snr_para.pqd.cmd != PQ_READ)) {
+			DRM_ERROR("%s snr invalid dirty flag, only support pqd read\n", __func__);
+			return -EINVAL;
+		}
+		de_snr_set_para(hdl->private->snr, cstate, &frontend_data->snr_para);
+		frontend_data->snr_para.dirty &= ~PQD_DIRTY_MASK;
+		frontend_data->dirty &= ~SNR_DIRTY;
+	}
+
+	return 0;
+}
+
+s32 de_frontend_get_after_check_config(struct de_frontend_handle *hdl,
+				       struct display_channel_state *cstate,
+				       struct de_frontend_feedback *feedback_data)
+{
+	struct drm_framebuffer *fb = cstate->base.fb;
+	u32 format = drm_to_de_format(fb->format->format);
+	bool snr_en;
+
+	snr_en = hdl->private->default_enable & SNR_DIRTY;
+	if (hdl->private->snr) {
+		if (format != DE_FORMAT_YUV422_SP_UVUV &&
+		    format != DE_FORMAT_YUV422_SP_VUVU &&
+		    format != DE_FORMAT_YUV420_SP_UVUV &&
+		    format != DE_FORMAT_YUV420_SP_VUVU &&
+		    format != DE_FORMAT_YUV422_P &&
+		    format != DE_FORMAT_YVU422_P &&
+		    format != DE_FORMAT_YUV420_P &&
+		    format != DE_FORMAT_YVU420_P &&
+		    format != DE_FORMAT_YUV422_SP_UVUV_10BIT &&
+		    format != DE_FORMAT_YUV422_SP_VUVU_10BIT &&
+		    format != DE_FORMAT_YUV420_SP_UVUV_10BIT &&
+		    format != DE_FORMAT_YUV420_SP_VUVU_10BIT) {
+			snr_en = false;
+		}
+
+		snr_en = snr_en && de_snr_is_enabled(hdl->private->snr);
+	}
+
+	if (!feedback_data) {
+		feedback_data->snr_en = snr_en;
+	}
+
 	return 0;
 }
 
@@ -705,10 +869,11 @@ s32 de_frontend_apply(struct de_frontend_handle *hdl, struct display_channel_sta
 
 	de_frontend_apply_asu(hdl, cstate);
 
-//	scaler need snr info, de_frontend_apply is called after scaler, so separate snr apply
-//	de_frontend_apply_snr(hdl, cstate);
+	de_frontend_apply_snr(hdl, cstate);
 
 	de_frontend_apply_dci(hdl, cstate);
+
+	de_frontend_apply_dlc(hdl, cstate);
 
 	de_frontend_apply_cdc_and_csc(hdl, cstate, frontend_cfg->rgb_out);
 
@@ -719,6 +884,9 @@ void de_frontend_update_regs(struct de_frontend_handle *hdl)
 {
 	if (hdl->private->dci)
 		de_dci_update_regs(hdl->private->dci);
+
+	if (hdl->private->dlc)
+		de_dlc_update_regs(hdl->private->dlc);
 
 	if (hdl->private->cdc)
 		de_cdc_update_regs(hdl->private->cdc);
@@ -739,6 +907,8 @@ struct de_frontend_handle *de_frontend_create(struct module_create_info *cinfo)
 	struct de_frontend_handle *hdl;
 	struct module_create_info info;
 	struct csc_extra_create_info csc_info;
+	struct cdc_extra_create_info cdc_info;
+	struct gamma_extra_create_info gamma_info;
 	unsigned int block_num = 0;
 	int cur_block = 0;
 
@@ -746,16 +916,23 @@ struct de_frontend_handle *de_frontend_create(struct module_create_info *cinfo)
 	hdl = kmalloc(sizeof(*hdl), GFP_KERNEL | __GFP_ZERO);
 	hdl->private = kmalloc(sizeof(*hdl->private), GFP_KERNEL | __GFP_ZERO);
 	hdl->private->inner_info = kmalloc(sizeof(*hdl->private->inner_info), GFP_KERNEL | __GFP_ZERO);
-	set_mask(hdl->private->default_enable, PQ_ALL_DIRTY);
+	set_mask(hdl->private->default_enable, PQ_ALL_DIRTY & ~DLC_DIRTY);
 	memcpy(&hdl->cinfo, cinfo, sizeof(*cinfo));
 
 	hdl->private->asu = cinfo->extra;
 	info.extra = NULL;
 	hdl->private->snr = de_snr_create(&info);
 	hdl->private->sharp = de_sharp_create(&info);
-	hdl->private->cdc = de_cdc_create(&info);
 	hdl->private->dci = de_dci_create(&info);
+	hdl->private->dlc = de_dlc_create(&info);
 	hdl->private->fcm = de_fcm_create(&info);
+	info.extra = &cdc_info;
+	cdc_info.type = CHANNEL_CDC;
+	hdl->private->cdc = de_cdc_create(&info);
+
+	info.extra = &gamma_info;
+	gamma_info.type = CHANNEL_DLC_GAMMA;
+	hdl->private->gamma = de_gamma_create(&info);
 
 	info.extra = &csc_info;
 	csc_info.type = CHANNEL_CSC;
@@ -778,6 +955,12 @@ struct de_frontend_handle *de_frontend_create(struct module_create_info *cinfo)
 
 	if (hdl->private->dci)
 		block_num += hdl->private->dci->block_num;
+
+	if (hdl->private->dlc)
+		block_num += hdl->private->dlc->block_num;
+
+	if (hdl->private->gamma)
+		block_num += hdl->private->gamma->block_num;
 
 	if (hdl->private->fcm)
 		block_num += hdl->private->fcm->block_num;
@@ -816,6 +999,20 @@ struct de_frontend_handle *de_frontend_create(struct module_create_info *cinfo)
 		hdl->mod.module.dci = 1;
 		for (i = 0; i < hdl->private->dci->block_num; i++, cur_block++) {
 			hdl->block[cur_block] = hdl->private->dci->block[i];
+		}
+	}
+
+	if (hdl->private->dlc) {
+		hdl->mod.module.dlc = 1;
+		for (i = 0; i < hdl->private->dlc->block_num; i++, cur_block++) {
+			hdl->block[cur_block] = hdl->private->dlc->block[i];
+		}
+	}
+
+	if (hdl->private->gamma) {
+		hdl->mod.module.gamma = 1;
+		for (i = 0; i < hdl->private->gamma->block_num; i++, cur_block++) {
+			hdl->block[cur_block] = hdl->private->gamma->block[i];
 		}
 	}
 

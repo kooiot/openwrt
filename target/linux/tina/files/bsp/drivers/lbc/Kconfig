@@ -1,11 +1,36 @@
 # SPDX-License-Identifier: GPL-2.0-only
-menu "Bus Drivers"
+menu "Localbus Drivers"
 	depends on AW_BSP
 
 config AW_LBC
-	tristate "Local Bus Ctrl Support for Allwinner SoCs"
-	depends on AW_BSP
+	bool "support localbus drivers"
+
+if AW_LBC
+
+choice
+	prompt "select lbc driver version"
+	default AW_LBC_V1
+
+config AW_LBC_V1
+	bool "Local Bus Ctrl Support for sun55iw6 Allwinner SoCs"
 	help
-	  Support the Local Bus Ctrl driver for Allwinner platforms.
+		Support the Local Bus Ctrl driver for sun55iw6 Allwinner platforms.
+
+config AW_LBC_V2
+	bool "Local Bus Ctrl Support for sun8iw22 Allwinner SoCs"
+	help
+		Support the Local Bus Ctrl driver for sun8iw22 Allwinner platforms.
+
+endchoice
+
+config AW_SPI_LBC_TEST
+	tristate "Sun8iw22 Controlling localbus registers with spi"
+	depends on AW_BSP && AW_SPI_NG && AW_LBC_V2
+	help
+		Support Controlling localbus registers with spi in sun8iw22
+
+endif
 
 endmenu
+
+

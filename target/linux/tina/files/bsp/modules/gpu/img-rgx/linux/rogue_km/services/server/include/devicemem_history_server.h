@@ -1,8 +1,8 @@
 /*************************************************************************/ /*!
-@File			devicemem_history_server.h
+@File           devicemem_history_server.h
 @Title          Resource Information abstraction
 @Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
-@Description	Devicemem History functions
+@Description    Devicemem History functions
 @License        Dual MIT/GPLv2
 
 The contents of this file are subject to the MIT license as set out below.
@@ -41,19 +41,22 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#ifndef _DEVICEMEM_HISTORY_SERVER_H_
-#define _DEVICEMEM_HISTORY_SERVER_H_
+#ifndef DEVICEMEM_HISTORY_SERVER_H
+#define DEVICEMEM_HISTORY_SERVER_H
 
 #include "img_defs.h"
 #include "pvrsrv_error.h"
 #include "rgxmem.h"
 #include "devicemem_utils.h"
+#include "connection_server.h"
 
-extern PVRSRV_ERROR
-DevicememHistoryInitKM(void);
+PVRSRV_ERROR DevicememHistoryInitKM(void);
 
-extern void
-DevicememHistoryDeInitKM(void);
+void DevicememHistoryDeInitKM(void);
+
+PVRSRV_ERROR DevicememHistoryDeviceInit(PVRSRV_DEVICE_NODE *psDevNode);
+PVRSRV_ERROR DevicememHistoryDeviceCreate(PVRSRV_DEVICE_NODE *psDevNode);
+void DevicememHistoryDeviceDestroy(PVRSRV_DEVICE_NODE *psDevNode);
 
 PVRSRV_ERROR DevicememHistoryMapKM(PMR *psPMR,
 							IMG_UINT32 ui32Offset,
@@ -73,7 +76,9 @@ PVRSRV_ERROR DevicememHistoryUnmapKM(PMR *psPMR,
 							IMG_UINT32 ui32AllocationIndex,
 							IMG_UINT32 *pui32AllocationIndexOut);
 
-PVRSRV_ERROR DevicememHistoryMapVRangeKM(IMG_DEV_VIRTADDR sBaseDevVAddr,
+PVRSRV_ERROR DevicememHistoryMapVRangeKM(CONNECTION_DATA *psConnection,
+							PVRSRV_DEVICE_NODE *psDeviceNode,
+							IMG_DEV_VIRTADDR sBaseDevVAddr,
 							IMG_UINT32 ui32StartPage,
 							IMG_UINT32 ui32NumPages,
 							IMG_DEVMEM_SIZE_T uiAllocSize,
@@ -82,7 +87,9 @@ PVRSRV_ERROR DevicememHistoryMapVRangeKM(IMG_DEV_VIRTADDR sBaseDevVAddr,
 							IMG_UINT32 ui32AllocationIndex,
 							IMG_UINT32 *ui32AllocationIndexOut);
 
-PVRSRV_ERROR DevicememHistoryUnmapVRangeKM(IMG_DEV_VIRTADDR sBaseDevVAddr,
+PVRSRV_ERROR DevicememHistoryUnmapVRangeKM(CONNECTION_DATA *psConnection,
+							PVRSRV_DEVICE_NODE *psDeviceNode,
+							IMG_DEV_VIRTADDR sBaseDevVAddr,
 							IMG_UINT32 ui32StartPage,
 							IMG_UINT32 ui32NumPages,
 							IMG_DEVMEM_SIZE_T uiAllocSize,
@@ -111,6 +118,7 @@ typedef struct _DEVICEMEM_HISTORY_QUERY_IN_
 {
 	IMG_PID uiPID;
 	IMG_DEV_VIRTADDR sDevVAddr;
+	PVRSRV_DEVICE_NODE *psDevNode;
 } DEVICEMEM_HISTORY_QUERY_IN;
 
 /* Store up to 4 results for a lookup. In the case of the faulting page being
@@ -141,11 +149,16 @@ typedef struct _DEVICEMEM_HISTORY_QUERY_OUT_RESULT_
 typedef struct _DEVICEMEM_HISTORY_QUERY_OUT_
 {
 	IMG_UINT32 ui32NumResults;
+	IMG_UINT64 ui64SearchCount;
 	/* result 0 is the newest */
 	DEVICEMEM_HISTORY_QUERY_OUT_RESULT sResults[DEVICEMEM_HISTORY_QUERY_OUT_MAX_RESULTS];
 } DEVICEMEM_HISTORY_QUERY_OUT;
 
-extern IMG_BOOL
+void DevicememHistoryDumpRecordStats(PVRSRV_DEVICE_NODE *psDevNode,
+                                    DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
+                                    void *pvDumpDebugFile);
+
+IMG_BOOL
 DevicememHistoryQuery(DEVICEMEM_HISTORY_QUERY_IN *psQueryIn,
                       DEVICEMEM_HISTORY_QUERY_OUT *psQueryOut,
                       IMG_UINT32 ui32PageSizeBytes,

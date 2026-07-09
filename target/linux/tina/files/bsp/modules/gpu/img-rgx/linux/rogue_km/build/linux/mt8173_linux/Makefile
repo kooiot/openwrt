@@ -38,6 +38,8 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### ###########################################################################
 
+RGX_BVNC ?= 4.40.2.51
+
 include ../config/preconfig.mk
 include ../config/window_system.mk
 
@@ -46,11 +48,10 @@ $(error This platform only supports window systems that use the standard Linux d
 endif
 
 PVR_SYSTEM := mt8173
-RGX_BVNC ?= 4.40.2.51
 NO_HARDWARE := 0
 
 PVR_LDM_PLATFORM_PRE_REGISTERED := 1
-PVR_DVFS ?= 1
+SUPPORT_LINUX_DVFS ?= 1
 
 KERNEL_COMPONENTS := srvkm
 

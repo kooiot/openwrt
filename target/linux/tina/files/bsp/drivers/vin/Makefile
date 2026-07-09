@@ -47,6 +47,8 @@ else ifneq ($(strip $(CONFIG_ARCH_SUN60IW2)),)
 vin_v4l2-y					+= vin-mipi/combo_csi/combo_csi_reg.o
 else ifneq ($(strip $(CONFIG_ARCH_SUN300IW1)),)
 vin_v4l2-y					+= vin-mipi/combo_csi/combo_csi_reg.o
+else ifneq ($(strip $(CONFIG_ARCH_SUN8IW22)),)
+vin_v4l2-y					+= vin-mipi/combo_csi/combo_csi_reg.o
 else
 vin_v4l2-y					+= vin-mipi/bsp_mipi_csi_null.o \
 							vin-mipi/combo_rx/combo_rx_reg_null.o
@@ -58,6 +60,8 @@ vin_v4l2-y					+= vin-isp/isp520/isp520_reg_cfg.o
 else ifneq ($(strip $(CONFIG_ARCH_SUN8IW19P1)),)
 vin_v4l2-y					+= vin-isp/isp521/isp521_reg_cfg.o
 else ifneq ($(strip $(CONFIG_ARCH_SUN50IW10)),)
+vin_v4l2-y					+= vin-isp/isp522/isp522_reg_cfg.o
+else ifneq ($(strip $(CONFIG_ARCH_SUN8IW22)),)
 vin_v4l2-y					+= vin-isp/isp522/isp522_reg_cfg.o
 else ifneq ($(strip $(CONFIG_ARCH_SUN55IW3)),)
 vin_v4l2-y					+= vin-isp/isp600/isp600_reg_cfg.o
@@ -93,6 +97,10 @@ else ifneq ($(strip $(CONFIG_ARCH_SUN300IW1)),)
 vin_v4l2-$(CONFIG_SUPPORT_ISP_TDM)		+= vin-tdm/tdm200/tdm200_reg.o
 vin_v4l2-y					+= vin-vipp/vipp200/vipp200_reg.o
 vin_v4l2-y					+= vin-video/dma140/dma140_reg.o
+else ifneq ($(strip $(CONFIG_ARCH_SUN8IW22)),)
+vin_v4l2-$(CONFIG_SUPPORT_ISP_TDM)		+= vin-tdm/tdm100/tdm_reg.o
+vin_v4l2-y					+= vin-vipp/vipp213/vipp213_reg.o
+vin_v4l2-y					+= vin-video/dma150/dma150_reg.o
 else
 vin_v4l2-$(CONFIG_SUPPORT_ISP_TDM)		+= vin-tdm/tdm100/tdm_reg.o
 vin_v4l2-y					+= vin-vipp/vipp100/vipp_reg.o

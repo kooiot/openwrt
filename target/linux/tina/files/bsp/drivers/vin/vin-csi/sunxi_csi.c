@@ -23,7 +23,7 @@
 #include <media/v4l2-mediabus.h>
 #include <media/v4l2-subdev.h>
 #include <uapi/media/sunxi_camera_v2.h>
-
+#include <linux/debugfs.h>
 #include "parser_reg.h"
 #include "sunxi_csi.h"
 #include "../vin-video/vin_core.h"
@@ -35,6 +35,16 @@
 #define IS_FLAG(x, y) (((x)&(y)) == y)
 
 struct csi_dev *glb_parser[VIN_MAX_CSI];
+
+#define DVP_DEBUGFS_BUF_SIZE 768
+struct dvp_debugfs_buffer {
+	size_t count;
+	char data[DVP_DEBUGFS_BUF_SIZE * VIN_MAX_DEV];
+};
+
+struct dentry *dvp_debugfs_root, *dvp_node;
+size_t dvp_status_size[VIN_MAX_DEV];
+size_t dvp_status_size_sum;
 
 static struct csi_format sunxi_csi_formats[] = {
 	{
@@ -364,6 +374,15 @@ static int __csi_set_fmt_hw(struct csi_dev *csi)
 			csi->ncsi_if.intf = PRS_IF_INTLV_16BIT;
 		else
 			csi->ncsi_if.intf = PRS_IF_INTLV;
+		if (res->pclk_dly > 0x00 && res->pclk_dly <= 0x1F) {
+			csic_prs_set_pclk_dly(csi->id, res->pclk_dly);
+		} else {
+			if (csi->ncsi_if.ddr_sample == 1) {
+				csic_prs_set_pclk_dly(csi->id, 0xb);
+			} else {
+				csic_prs_set_pclk_dly(csi->id, 0x9);
+			}
+		}
 		csic_prs_mode(csi->id, PRS_NCSI);
 		csic_prs_ncsi_if_cfg(csi->id, &csi->ncsi_if);
 		csic_prs_ncsi_en(csi->id, 1);
@@ -470,7 +489,8 @@ static int __csi_set_fmt_hw(struct csi_dev *csi)
 	return 0;
 }
 
-#if defined SUPPORT_ISP_TDM && !defined TDM_V200
+#if defined SUPPORT_ISP_TDM && !defined TDM_V200 && !defined TDM_V230
+#if !IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 static int __sunxi_csi_tdm_off(struct csi_dev *csi)
 {
 	struct vin_md *vind = dev_get_drvdata(csi->subdev.v4l2_dev->dev);
@@ -491,6 +511,45 @@ static int __sunxi_csi_tdm_off(struct csi_dev *csi)
 	return 0;
 }
 #endif
+#endif
+
+__maybe_unused static void __csi_wait_mipi_frame_done(struct v4l2_subdev *sd)
+{
+	struct csi_dev *csi = v4l2_get_subdevdata(sd);
+	int i;
+	struct prs_signal_status prs_sig_status;
+	struct vin_md *vind = dev_get_drvdata(csi->subdev.v4l2_dev->dev);
+	struct vin_core *vinc = NULL;
+
+	if (csi->bus_info.bus_if == V4L2_MBUS_CSI2_DPHY) {
+		for (i = 0; i < VIN_MAX_DEV; i++) {
+			if (vind->vinc[i] == NULL)
+				continue;
+			if (vind->vinc[i]->csi_sel == csi->id)
+				vinc = vind->vinc[i];
+		}
+		cmb_port_clr_ch0_int_status(vinc->mipi_sel);
+		for (i = 0; i < 200; i++) {
+			if (cmb_port_check_ch0_int_status(vinc->mipi_sel, CMB_MIPI_FRAME_END_SYNC_MASK))
+				break;
+			usleep_range(500, 510);
+
+			if (i >= 199)
+				vin_warn("parser%d wait:%d/2 ms to close!\n", csi->id, i);
+		}
+	} else {
+		for (i = 0; i < 200; i++) {
+			memset(&prs_sig_status, 0, sizeof(struct prs_signal_status));
+			csic_prs_signal_status(csi->id, &prs_sig_status);
+			if (prs_sig_status.vsync_sta)
+				break;
+			usleep_range(500, 510);
+
+			if (i >= 199)
+				vin_warn("parser%d wait:%d/2 ms to close!\n", csi->id, i);
+		}
+	}
+}
 
 static int sunxi_csi_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 {
@@ -523,44 +582,22 @@ static int sunxi_csi_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 		}
 #endif
 		csic_prs_capture_stop(csi->id);
-#if !defined SUPPORT_ISP_TDM || defined TDM_V200
+#if !defined SUPPORT_ISP_TDM || (defined TDM_V200 || defined TDM_V230)
 #if IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN60IW1)
-		if (csi->bus_info.bus_if == V4L2_MBUS_CSI2_DPHY) {
-			for (i = 0; i < VIN_MAX_DEV; i++) {
-				if (vind->vinc[i] == NULL)
-					continue;
-				if (vind->vinc[i]->csi_sel == csi->id)
-					vinc = vind->vinc[i];
-			}
-			cmb_port_clr_ch0_int_status(vinc->mipi_sel);
-			for (i = 0; i < 200; i++) {
-				if (cmb_port_check_ch0_int_status(vinc->mipi_sel, CMB_MIPI_FRAME_END_SYNC_MASK))
-					break;
-				usleep_range(500, 510);
-
-				if (i >= 199)
-					vin_warn("parser%d wait:%d/2 ms to close!\n", csi->id, i);
-			}
-		} else {
-			for (i = 0; i < 200; i++) {
-				memset(&prs_sig_status, 0, sizeof(struct prs_signal_status));
-				csic_prs_signal_status(csi->id, &prs_sig_status);
-				if (prs_sig_status.vsync_sta)
-					break;
-				usleep_range(500, 510);
-
-				if (i >= 199)
-					vin_warn("parser%d wait:%d/2 ms to close!\n", csi->id, i);
-			}
-		}
+		__csi_wait_mipi_frame_done(sd);
 #endif
 		csic_prs_disable(csi->id);
 #else
-		if (__sunxi_csi_tdm_off(csi) == 0) {
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW22)
+		__csi_wait_mipi_frame_done(sd);
+		csic_prs_disable(csi->id);
+#else	/* sun50iw10 */
+	if (__sunxi_csi_tdm_off(csi) == 0) {
 			for (i = 0; i < VIN_MAX_CSI; i++)
 				csic_prs_disable(i);
 		} else
 			vin_warn("ISP is used in TDM mode, PARSER%d cannot be closing when other isp is used!\n", csi->id);
+#endif
 #endif
 	}
 
@@ -738,6 +775,19 @@ static int sunxi_csi_g_mbus_config(struct v4l2_subdev *sd, unsigned int pad,
 		if (csi->large_image == 3) {
 			csi->bus_info.ch_total_num = 2;
 		}
+
+		if (csi->prs_ch_mode.mode_en) {
+			if (csi->bus_info.ch_total_num == 1)
+				csi->prs_ch_mode.mode_sel = 1;
+			else if (csi->bus_info.ch_total_num == 2)
+				//csi->prs_ch_mode.mode_sel = 2;
+				vin_warn("2 channel sensor does not support this function\n");
+			else {
+				vin_err("twice the number of sensor channels is:%d, more than csi total channel\n", csi->bus_info.ch_total_num * 2);
+				return -1;
+			}
+			csi->bus_info.ch_total_num = csi->prs_ch_mode.channel_num;
+		}
 	} else if (cfg->type == V4L2_MBUS_PARALLEL) {
 		csi->bus_info.bus_if = V4L2_MBUS_PARALLEL;
 		csi->bus_info.ch_total_num = 1;
@@ -775,9 +825,26 @@ static int sunxi_csi_g_mbus_config(struct v4l2_subdev *sd, unsigned int pad,
 				csi->bus_info.bus_tmg.field_even_pol = ACTIVE_LOW;
 				csi->ncsi_if.field = FIELD_NEG;
 			}
+
+			if (csi->large_image == 3) {
+				csi->bus_info.ch_total_num = 2;
+			}
 		} else {
 			vin_err("Do not support V4L2_MBUS_SLAVE!\n");
 			return -1;
+		}
+
+		if (csi->prs_ch_mode.mode_en) {
+			if (csi->bus_info.ch_total_num == 1)
+				csi->prs_ch_mode.mode_sel = 1;
+			else if (csi->bus_info.ch_total_num == 2)
+				//csi->prs_ch_mode.mode_sel = 2;
+				vin_warn("2 channel sensor does not support this function\n");
+			else {
+				vin_err("twice the number of sensor channels is:%d, more than csi total channel\n", csi->bus_info.ch_total_num * 2);
+				return -1;
+			}
+			csi->bus_info.ch_total_num = csi->prs_ch_mode.channel_num;
 		}
 	} else if (cfg->type == V4L2_MBUS_BT656) {
 		csi->bus_info.bus_if = V4L2_MBUS_BT656;
@@ -888,9 +955,26 @@ static int sunxi_csi_s_mbus_config(struct v4l2_subdev *sd, unsigned int pad,
 				csi->bus_info.bus_tmg.field_even_pol = ACTIVE_LOW;
 				csi->ncsi_if.field = FIELD_NEG;
 			}
+
+			if (csi->large_image == 3) {
+				csi->bus_info.ch_total_num = 2;
+			}
 		} else {
 			vin_err("Do not support V4L2_MBUS_SLAVE!\n");
 			return -1;
+		}
+
+		if (csi->prs_ch_mode.mode_en) {
+			if (csi->bus_info.ch_total_num == 1)
+				csi->prs_ch_mode.mode_sel = 1;
+			else if (csi->bus_info.ch_total_num == 2)
+				//csi->prs_ch_mode.mode_sel = 2;
+				vin_warn("2 channel sensor does not support this function\n");
+			else {
+				vin_err("twice the number of sensor channels is:%d, more than csi total channel\n", csi->bus_info.ch_total_num * 2);
+				return -1;
+			}
+			csi->bus_info.ch_total_num = csi->prs_ch_mode.channel_num;
 		}
 	} else if (cfg->type == V4L2_MBUS_BT656) {
 		csi->bus_info.bus_if = V4L2_MBUS_BT656;
@@ -949,6 +1033,21 @@ static int sunxi_csi_s_mbus_config(struct v4l2_subdev *sd,
 			csi->bus_info.ch_total_num++;
 		if (IS_FLAG(cfg->flags, V4L2_MBUS_CSI2_CHANNEL_3))
 			csi->bus_info.ch_total_num++;
+		if (csi->large_image == 3) {
+			csi->bus_info.ch_total_num = 2;
+		}
+		if (csi->prs_ch_mode.mode_en) {
+			if (csi->bus_info.ch_total_num == 1)
+				csi->prs_ch_mode.mode_sel = 1;
+			else if (csi->bus_info.ch_total_num == 2)
+				//csi->prs_ch_mode.mode_sel = 2;
+				vin_warn("2 channel sensor does not support this function\n");
+			else {
+				vin_err("twice the number of sensor channels is:%d, more than csi total channel\n", csi->bus_info.ch_total_num * 2);
+				return -1;
+			}
+			csi->bus_info.ch_total_num = csi->prs_ch_mode.channel_num;
+		}
 	} else if (cfg->type == V4L2_MBUS_PARALLEL) {
 		csi->bus_info.bus_if = V4L2_MBUS_PARALLEL;
 		csi->bus_info.ch_total_num = 1;
@@ -986,9 +1085,26 @@ static int sunxi_csi_s_mbus_config(struct v4l2_subdev *sd,
 				csi->bus_info.bus_tmg.field_even_pol = ACTIVE_LOW;
 				csi->ncsi_if.field = FIELD_NEG;
 			}
+
+			if (csi->large_image == 3) {
+				csi->bus_info.ch_total_num = 2;
+			}
 		} else {
 			vin_err("Do not support V4L2_MBUS_SLAVE!\n");
 			return -1;
+		}
+
+		if (csi->prs_ch_mode.mode_en) {
+			if (csi->bus_info.ch_total_num == 1)
+				csi->prs_ch_mode.mode_sel = 1;
+			else if (csi->bus_info.ch_total_num == 2)
+				//csi->prs_ch_mode.mode_sel = 2;
+				vin_warn("2 channel sensor does not support this function\n");
+			else {
+				vin_err("twice the number of sensor channels is:%d, more than csi total channel\n", csi->bus_info.ch_total_num * 2);
+				return -1;
+			}
+			csi->bus_info.ch_total_num = csi->prs_ch_mode.channel_num;
 		}
 	} else if (cfg->type == V4L2_MBUS_BT656) {
 		csi->bus_info.bus_if = V4L2_MBUS_BT656;
@@ -1202,6 +1318,163 @@ static int csi_remove(struct platform_device *pdev)
 	kfree(csi);
 	return 0;
 }
+
+static int dvp_debugfs_open(struct inode *inode, struct file *file)
+{
+	struct dvp_debugfs_buffer *buf;
+	struct csi_dev *csi;
+	int i = 0;
+	unsigned int reg_val;
+
+	buf = kmalloc(sizeof(*buf), GFP_KERNEL);
+	if (buf == NULL)
+		return -ENOMEM;
+
+	dvp_status_size_sum = 0;
+
+	dvp_status_size_sum += scnprintf(buf->data + dvp_status_size_sum,
+					sizeof(buf->data) - dvp_status_size_sum,
+					"*************** PARSER REGISTER LIST **************\n");
+	for (i = 0; i < VIN_MAX_CSI; i++) {
+		csi = glb_parser[i];
+		if (csi != NULL) {
+			dvp_status_size_sum += scnprintf(buf->data + dvp_status_size_sum,
+						sizeof(buf->data) - dvp_status_size_sum,
+						"[parser:%d]\n", csi->id);
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+			dvp_status_size_sum += scnprintf(buf->data + dvp_status_size_sum,
+						sizeof(buf->data) - dvp_status_size_sum,
+						"status:\t\t %s\n", csi->stream_count > 0 ? "enabled" : "disabled");
+			if (!csi->stream_count)
+				continue;
+#else
+			dvp_status_size_sum += scnprintf(buf->data + dvp_status_size_sum,
+						sizeof(buf->data) - dvp_status_size_sum,
+						"status:\t\t %s\n", csi->subdev.entity.stream_count > 0 ? "enabled" : "disabled");
+			if (!csi->subdev.entity.stream_count)
+				continue;
+#endif
+
+			dvp_status_size_sum += scnprintf(buf->data + dvp_status_size_sum,
+							sizeof(buf->data) - dvp_status_size_sum,
+							"ch_num:\t\t %d\n", csi->bus_info.ch_total_num);
+
+			if (csi->bus_info.bus_if == V4L2_MBUS_CSI2_DPHY ||
+				csi->bus_info.bus_if == V4L2_MBUS_CSI2_CPHY ||
+				csi->bus_info.bus_if == V4L2_MBUS_CSI1) {
+				dvp_status_size_sum += scnprintf(buf->data + dvp_status_size_sum,
+							sizeof(buf->data) - dvp_status_size_sum,
+							"mode\t\t %s\n", "MCSI");
+				continue;
+			}
+
+			dvp_status_size_sum += scnprintf(buf->data + dvp_status_size_sum,
+						sizeof(buf->data) - dvp_status_size_sum,
+						"mode\t\t %s\n", "NCSI");
+
+			reg_val = csic_prs_get_pclk_dly(csi->id);
+
+			if ((reg_val >> 13) & 0x1)
+				dvp_status_size_sum += scnprintf(buf->data + dvp_status_size_sum,
+							sizeof(buf->data) - dvp_status_size_sum,
+							"Signal polarity\t\t %s\n", "V4L2_MBUS_PCLK_SAMPLE_FALLING / V4L2_MBUS_PCLK_SAMPLE_RISING");
+			else if ((reg_val >> 16) & 0x1)
+				dvp_status_size_sum += scnprintf(buf->data + dvp_status_size_sum,
+							sizeof(buf->data) - dvp_status_size_sum,
+							"Signal polarity\t\t %s\n", "V4L2_MBUS_PCLK_SAMPLE_FALLING");
+			else
+				dvp_status_size_sum += scnprintf(buf->data + dvp_status_size_sum,
+							sizeof(buf->data) - dvp_status_size_sum,
+							"Signal polarity\t\t %s\n", "V4L2_MBUS_PCLK_SAMPLE_RISING");
+
+			dvp_status_size_sum += scnprintf(buf->data + dvp_status_size_sum,
+						sizeof(buf->data) - dvp_status_size_sum,
+						"pclk_dly\t\t %d\n", csic_prs_get_pclk_dly(csi->id));
+		}
+	}
+
+	buf->count = dvp_status_size_sum;
+	file->private_data = buf;
+
+	return 0;
+}
+
+static ssize_t dvp_debugfs_read(struct file *file, char __user *user_buf,
+				      size_t nbytes, loff_t *ppos)
+{
+	struct dvp_debugfs_buffer *buf = file->private_data;
+
+	return simple_read_from_buffer(user_buf, nbytes, ppos, buf->data,
+				       buf->count);
+}
+
+static int dvp_debugfs_release(struct inode *inode, struct file *file)
+{
+	kfree(file->private_data);
+	file->private_data = NULL;
+
+	return 0;
+}
+
+static const struct file_operations dvp_debugfs_fops = {
+	.owner = THIS_MODULE,
+	.open = dvp_debugfs_open,
+	.llseek = no_llseek,
+	.read = dvp_debugfs_read,
+	.release = dvp_debugfs_release,
+};
+
+#if IS_ENABLED(CONFIG_DEBUG_FS)
+int sunxi_dvp_debug_register_driver(void)
+{
+#if IS_ENABLED(CONFIG_SUNXI_MPP)
+	dvp_debugfs_root = debugfs_mpp_root;
+#else
+	dvp_debugfs_root = debugfs_lookup("mpp", NULL);
+	if (NULL == dvp_debugfs_root)
+		dvp_debugfs_root = debugfs_create_dir("mpp", NULL);
+#endif
+	if (NULL == dvp_debugfs_root) {
+		vin_err("Unable to lookup or create dvp debugfs root dir.\n");
+		return -ENOENT;
+	}
+
+	dvp_node = debugfs_create_file("dvp", 0444, dvp_debugfs_root,
+				   NULL, &dvp_debugfs_fops);
+	if (IS_ERR_OR_NULL(dvp_node)) {
+		vin_err("Unable to create dvp debugfs status file.\n");
+		dvp_debugfs_root = NULL;
+		return -ENODEV;
+	}
+
+	return 0;
+}
+#else
+int sunxi_dvp_debug_register_driver(void)
+{
+	return 0;
+}
+#endif
+
+#if IS_ENABLED(CONFIG_DEBUG_FS)
+void sunxi_dvp_debug_unregister_driver(void)
+{
+	if (dvp_debugfs_root == NULL)
+		return;
+#if IS_ENABLED(CONFIG_SUNXI_MPP)
+	debugfs_remove_recursive(dvp_node);
+#else
+	debugfs_remove_recursive(dvp_debugfs_root);
+	dvp_debugfs_root = NULL;
+#endif
+}
+#else
+void sunxi_dvp_debug_unregister_driver(void)
+{
+	return;
+}
+#endif
 
 static const struct of_device_id sunxi_csi_match[] = {
 	{.compatible = "allwinner,sunxi-csi",},

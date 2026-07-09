@@ -116,7 +116,7 @@ static vip_status_e npu_regulator_enable(struct device_node *node)
 
 	if (aw_driver.vol) {
 		if (aw_driver.set_vol != 0)
-			regulator_set_voltage(aw_driver.regulator, aw_driver.vol, aw_driver.vol);
+			regulator_set_voltage(aw_driver.regulator, aw_driver.vol, INT_MAX);
 	}
 
 	if (regulator_enable(aw_driver.regulator)) {
@@ -669,7 +669,7 @@ vip_int32_t vipdrv_drv_update_clk_freq(const u32 freq)
 
 #if IS_ENABLED(CONFIG_AW_PM_DOMAINS)
 	if (aw_driver.vol && !IS_ERR_OR_NULL(aw_driver.regulator) && aw_driver.set_vol != 0) {
-		regulator_set_voltage(aw_driver.regulator, aw_driver.vol, aw_driver.vol);
+		regulator_set_voltage(aw_driver.regulator, aw_driver.vol, INT_MAX);
 		PRINTK("set vol to %u\n", regulator_get_voltage(aw_driver.regulator));
 	}
 
@@ -686,7 +686,7 @@ vip_int32_t vipdrv_drv_update_clk_freq(const u32 freq)
 	}
 
 	if (aw_driver.vol && !IS_ERR_OR_NULL(aw_driver.regulator) && aw_driver.set_vol != 0) {
-		regulator_set_voltage(aw_driver.regulator, aw_driver.vol, aw_driver.vol);
+		regulator_set_voltage(aw_driver.regulator, aw_driver.vol, INT_MAX);
 		PRINTK("set vol to %u\n", regulator_get_voltage(aw_driver.regulator));
 	}
 

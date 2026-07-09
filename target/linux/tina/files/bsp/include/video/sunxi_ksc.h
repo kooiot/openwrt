@@ -161,6 +161,17 @@ struct lut_para {
 
 };
 
+struct sunxi_ksc_online_para {
+	bool enable;
+	enum ksc_pix_fmt in_fmt;
+	int w;
+	int h;
+	int bit_depth;
+	int fps;
+	int clk_freq;
+};
+
+
 struct sunxi_ksc_para {
 	bool ksc_en;
 	bool scaler_en;
@@ -248,5 +259,6 @@ struct sunxi_ksc_para {
 
 #define KSC_SET_PARA    _IOW(KSC_IOC_MAGIC, 0x0, struct sunxi_ksc_para)
 #define KSC_GET_PARA    _IOW(KSC_IOC_MAGIC, 0x1, struct sunxi_ksc_para)
+#define KSC_ONLINE_ENABLE    _IOW(KSC_IOC_MAGIC, 0x2, struct sunxi_ksc_online_para)
 
 #endif /*End of file*/

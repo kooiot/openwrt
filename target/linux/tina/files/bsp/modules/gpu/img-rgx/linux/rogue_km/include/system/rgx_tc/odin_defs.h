@@ -46,6 +46,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define PCI_VENDOR_ID_ODIN                  (0x1AEE)
 #define DEVICE_ID_ODIN                      (0x1010)
+#define DEVICE_ID_TBA                       (0x1CF2)
 
 /* PCI BAR 0 contains the PDP regs and the Odin system regs */
 #define ODN_SYS_BAR                         0
@@ -57,6 +58,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define ODN_PDP_REGS_OFFSET                 0x000440000
 #define ODN_PDP_REGS_SIZE                   0x000040000 /* 256k */
 
+#define ODN_PDP2_REGS_OFFSET                0x000480000
+#define ODN_PDP2_REGS_SIZE                  0x000040000 /* 256k */
+
+#define ODN_PDP2_PFIM_OFFSET                0x000500000
+#define ODN_PDP2_PFIM_SIZE                  0x000040000 /* 256k */
+
+#define ODIN_DMA_REGS_OFFSET                0x0004C0000
+#define ODIN_DMA_REGS_SIZE                  0x000040000 /* 256k */
+
+#define ODIN_DMA_CHAN_REGS_SIZE             0x000001000 /*   4k */
 
 /* PCI BAR 2 contains the Device Under Test SOCIF 64MB region */
 #define ODN_DUT_SOCIF_BAR                   2
@@ -74,6 +85,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define ODN_REG_BANK_ODN_CLK_BLK            0x0A000
 #define ODN_REG_BANK_ODN_MCU_COMMUNICATOR   0x0C000
 #define ODN_REG_BANK_DB_TYPE_ID             0x0C200
+#define ODN_REG_BANK_DB_TYPE_ID_TYPE_TCFVUOCTA   0x000000C6U
 #define ODN_REG_BANK_DB_TYPE_ID_TYPE_MASK   0x000000C0U
 #define ODN_REG_BANK_DB_TYPE_ID_TYPE_SHIFT  0x6
 #define ODN_REG_BANK_ODN_I2C                0x0E000
@@ -95,8 +107,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /*
    Odin CLK regs - the odn_clk_blk module defs are not auto generated
-   because it is licenced 3rd party IP from Xilinx.
-   These defs are taken from the Odin TRM.
  */
 #define ODN_PDP_P_CLK_OUT_DIVIDER_REG1           0x620
 #define ODN_PDP_PCLK_ODIV1_LO_TIME_MASK          0x0000003FU
@@ -261,11 +271,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     Odin interrupt flags
 */
 #define ODN_INTERRUPT_ENABLE_PDP1           (1 << ODN_INTERRUPT_ENABLE_PDP1_SHIFT)
+#define ODN_INTERRUPT_ENABLE_PDP2           (1 << ODN_INTERRUPT_ENABLE_PDP2_SHIFT)
 #define ODN_INTERRUPT_ENABLE_DUT            (1 << ODN_INTERRUPT_ENABLE_DUT_SHIFT)
 #define ODN_INTERRUPT_STATUS_PDP1           (1 << ODN_INTERRUPT_STATUS_PDP1_SHIFT)
+#define ODN_INTERRUPT_STATUS_PDP2           (1 << ODN_INTERRUPT_STATUS_PDP2_SHIFT)
 #define ODN_INTERRUPT_STATUS_DUT            (1 << ODN_INTERRUPT_STATUS_DUT_SHIFT)
 #define ODN_INTERRUPT_CLEAR_PDP1            (1 << ODN_INTERRUPT_CLR_PDP1_SHIFT)
+#define ODN_INTERRUPT_CLEAR_PDP2            (1 << ODN_INTERRUPT_CLR_PDP2_SHIFT)
 #define ODN_INTERRUPT_CLEAR_DUT             (1 << ODN_INTERRUPT_CLR_DUT_SHIFT)
+
+#define ODN_INTERRUPT_ENABLE_CDMA           (1 << ODN_INTERRUPT_ENABLE_CDMA_SHIFT)
+#define ODN_INTERRUPT_STATUS_CDMA           (1 << ODN_INTERRUPT_STATUS_CDMA_SHIFT)
+#define ODN_INTERRUPT_CLEAR_CDMA            (1 << ODN_INTERRUPT_CLR_CDMA_SHIFT)
+
+#define ODN_INTERRUPT_ENABLE_CDMA2          (1 << (ODN_INTERRUPT_ENABLE_CDMA_SHIFT + 1))
+#define ODN_INTERRUPT_STATUS_CDMA2          (1 << (ODN_INTERRUPT_STATUS_CDMA_SHIFT + 1))
+#define ODN_INTERRUPT_CLEAR_CDMA2           (1 << (ODN_INTERRUPT_CLR_CDMA_SHIFT + 1))
 
 /*
    Other defines
@@ -281,6 +302,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define ODN_PDP_INTCLR_ALL                  0x000FFFFFU
 #define	ODN_PDP_INTSTAT_ALL_OURUN_MASK      0x000FFFF0U
+
+/*
+   DMA defs
+*/
+#define ODN_CDMA_ADDR_WIDTH                35
+#define ODN_DMA_HW_DESC_HEAP_SIZE          0x100000
+#define ODN_DMA_CHAN_RX                    0
+#define ODN_DMA_CHAN_TX                    1
+
+#define ODIN_DMA_TX_CHAN_NAME              "tx"
+#define ODIN_DMA_RX_CHAN_NAME              "rx"
+
+/*
+   FBC defs
+*/
+#define ODIN_PFIM_RELNUM                   (005U)
 
 #endif /* _ODIN_DEFS_H_ */
 

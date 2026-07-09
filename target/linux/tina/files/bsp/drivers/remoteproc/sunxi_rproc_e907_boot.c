@@ -58,6 +58,7 @@
 #define RV_CFG_WAKEUP_MASK3_REG		(0x0230) /* RV_CFG WakeUp Mask3 Register */
 #define RV_CFG_WAKEUP_MASK4_REG		(0x0234) /* RV_CFG WakeUp Mask4 Register */
 #define RV_CFG_WORK_MODE_REG		(0x0248) /* RV_CFG Worke Mode Register */
+#define RV_CFG_E907_NMI_TRIGGER_REG (0x0500) /* E907 PAD CPU NMI Controll Register */
 
 /*
  * RV_CFG Version Register
@@ -92,6 +93,7 @@ static int sunxi_rproc_e907_attach_pd(struct device *dev, const char *values_of_
 
 #define RV_CORE_GATE_CLK_NAME "core-gate"
 #define RV_IO_RES_NAME "rv-cfg"
+#define AXI_MONITOR_RES_NAME "axi-monitor-cfg"
 
 extern struct rproc_common_boot common_boot;
 
@@ -174,6 +176,17 @@ static int sunxi_rproc_e907_resource_get(struct sunxi_rproc_priv *rproc_priv, st
 	cfg->rv_cfg_reg_base = res->reg;
 	cfg->com->base_addr = cfg->rv_cfg_reg_base;
 	rproc_priv->io_base = cfg->rv_cfg_reg_base;
+
+#if IS_ENABLED(CONFIG_AW_REMOTEPROC_E907_AXI_MONITOR)
+	res = rproc_common_find_res(cfg->com, AXI_MONITOR_RES_NAME);
+	if (!res) {
+		dev_err(dev, "fail to find ' " AXI_MONITOR_RES_NAME "' res\n");
+		return -ENXIO;
+	} else {
+		cfg->axi_monitor_reg_base = res->reg;
+		cfg->com->axi_monitor_base_addr = cfg->axi_monitor_reg_base;
+	}
+#endif
 
 	count = of_property_count_strings(np, "power-domain-names");
 	if (count > 0) {
@@ -330,9 +343,7 @@ static int sunxi_rproc_e907_stop(struct sunxi_rproc_priv *rproc_priv)
 	while (readl(cfg->rv_cfg_reg_base + RV_CFG_WORK_MODE_REG) == E907_NORMAL_MODE) {
 		if (time_is_before_jiffies(timeout_jiffies)) {
 			dev_err(rproc_priv->dev, "riscv wait into wfi mode timeout!");
-#ifndef CONFIG_ALLOW_DEV_COREDUMP
 			return -ENXIO;
-#endif
 		}
 		mdelay(1);
 	}
@@ -409,6 +420,30 @@ static bool sunxi_rproc_e907_is_booted(struct sunxi_rproc_priv *rproc_priv)
 	return __clk_is_enabled(clk_res->clk);
 }
 
+static int sunxi_rproc_e907_trigger_nmi(struct sunxi_rproc_priv *rproc_priv)
+{
+	struct sunxi_rproc_e907_cfg *cfg = rproc_priv->rproc_cfg;
+
+	writel(0x0, cfg->rv_cfg_reg_base + RV_CFG_E907_NMI_TRIGGER_REG);
+	writel(0x1, cfg->rv_cfg_reg_base + RV_CFG_E907_NMI_TRIGGER_REG);
+	return 0;
+}
+
+#define E907_NMI_COMPLETE_MARK_VALUE 0xE907CCCC
+static int sunxi_rproc_e907_is_nmi_complete(struct sunxi_rproc_priv *rproc_priv)
+{
+	struct sunxi_rproc_e907_cfg *cfg = rproc_priv->rproc_cfg;
+	uint32_t reg_data;
+
+	reg_data = readl(cfg->rv_cfg_reg_base + RV_CFG_STA_ADD_REG);
+	dev_dbg(rproc_priv->dev, "E90x mark reg: 0x%08x\n", reg_data);
+
+	if (reg_data != E907_NMI_COMPLETE_MARK_VALUE)
+		return 0;
+
+	return 1;
+}
+
 static struct sunxi_rproc_ops sunxi_rproc_e907_ops = {
 	.resource_get = sunxi_rproc_e907_resource_get,
 	.resource_put = sunxi_rproc_e907_resource_put,
@@ -419,6 +454,8 @@ static struct sunxi_rproc_ops sunxi_rproc_e907_ops = {
 	.set_localram = sunxi_rproc_e907_enable_sram,
 	.set_runstall = sunxi_rproc_e907_set_runstall,
 	.is_booted = sunxi_rproc_e907_is_booted,
+	.trigger_nmi = sunxi_rproc_e907_trigger_nmi,
+	.is_nmi_complete = sunxi_rproc_e907_is_nmi_complete,
 };
 
 static int sunxi_rproc_e907_attach_pd(struct device *dev, const char *values_of_power_domain_names[], int count)

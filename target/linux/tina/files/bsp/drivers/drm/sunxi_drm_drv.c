@@ -17,20 +17,25 @@
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_drv.h>
 #include <drm/drm_fb_helper.h>
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(6, 1, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
 #include <drm/drm_gem_cma_helper.h>
 #else
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
 #include <drm/drm_fbdev_dma.h>
+#endif
 #include <drm/drm_gem_dma_helper.h>
 #endif
 #include <drm/drm_gem_framebuffer_helper.h>
 #include <drm/drm_print.h>
 #include <drm/drm_probe_helper.h>
 #include <drm/drm_vblank.h>
+#include <drm/drm_file.h>
+#include <linux/proc_fs.h>
 #include <linux/component.h>
 #include <linux/platform_device.h>
 #include "sunxi_drm_drv.h"
 #include "sunxi_drm_crtc.h"
+#include "sunxi_drm_gem.h"
 #include "sunxi_drm_debug.h"
 
 #define DRIVER_NAME "sunxi-drm"
@@ -87,9 +92,13 @@ extern struct platform_driver sunxi_lvds_platform_driver;
 extern struct platform_driver sunxi_rgb_platform_driver;
 extern struct platform_driver sunxi_dsi_combo_phy_platform_driver;
 
-void sunxi_disp_notify_init(void);
 int sunxi_fbdev_init(struct drm_device *drm, struct display_channel_state *out_state);
 int sunxi_drm_plane_property_create(struct sunxi_drm_private *private);
+
+static inline struct sunxi_drm_device *connector_to_sunxi_drm_device(struct drm_connector *connector)
+{
+	return container_of(connector, struct sunxi_drm_device, connector);
+}
 
 static void sunxi_drm_gem_fb_destroy(struct drm_framebuffer *fb)
 {
@@ -110,9 +119,66 @@ sunxi_drm_gem_fb_create(struct drm_device *dev, struct drm_file *file,
 					    &sunxi_drm_gem_fb_funcs);
 }
 
+static int sunxi_drm_atomic_helper_commit(struct drm_device *dev,
+			     struct drm_atomic_state *state,
+			     bool nonblock)
+{
+	struct drm_connector *conn;
+	struct drm_connector_state *old_conn_state, *new_conn_state;
+	struct drm_plane *plane;
+	struct drm_plane_state *old_plane_state, *new_plane_state;
+	int i;
+
+	/*
+	 * Copy from drm_atomic_helper_setup_commit(linux-6.6.46)
+	 *
+	 * Avoid memory leak in such case:
+	 * drm framework would miss a drm_crtc_commit_put which has get from
+	 * "new_crtc_state->event->base.completion = &commit->flip_done", and
+	 * should be put when crtc_send_vblank_event. But it is misiing because
+	 * of check in "drm_atomic_helper_setup_commit" that lead commit abort,
+	 * so we would never call crtc_send_vblank_event to release it.
+	 *
+	 * So we just copy the judgement code which would lead commit abort to
+	 * here, to do judge earlier to avoid memory alloc if this commit would
+	 * abort later, to avoid memory leak issue.
+	 */
+	for_each_oldnew_connector_in_state(state, conn, old_conn_state, new_conn_state, i) {
+		/*
+		 * Userspace is not allowed to get ahead of the previous
+		 * commit with nonblocking ones.
+		 */
+		if (nonblock && old_conn_state->commit &&
+		    !try_wait_for_completion(&old_conn_state->commit->flip_done)) {
+			drm_dbg_dp(conn->dev,
+				       "[CONNECTOR:%d:%s] busy because of previous commit\n",
+				       conn->base.id, conn->name);
+
+			return -EBUSY;
+		}
+	}
+
+	for_each_oldnew_plane_in_state(state, plane, old_plane_state, new_plane_state, i) {
+		/*
+		 * Userspace is not allowed to get ahead of the previous
+		 * commit with nonblocking ones.
+		 */
+		if (nonblock && old_plane_state->commit &&
+		    !try_wait_for_completion(&old_plane_state->commit->flip_done)) {
+			drm_dbg_dp(plane->dev,
+				       "[PLANE:%d:%s] busy because of previous commit\n",
+				       plane->base.id, plane->name);
+
+			return -EBUSY;
+		}
+	}
+
+	return drm_atomic_helper_commit(dev, state, nonblock);
+}
+
 static const struct drm_mode_config_funcs sunxi_drm_mode_config_funcs = {
 	.atomic_check = drm_atomic_helper_check,
-	.atomic_commit = drm_atomic_helper_commit,
+	.atomic_commit = sunxi_drm_atomic_helper_commit,
 //	.output_poll_changed = drm_fb_helper_output_poll_changed,
 	.fb_create = sunxi_drm_gem_fb_create,
 };
@@ -161,9 +227,27 @@ void sunxi_drm_unload(struct drm_device *dev)
 	drm_mode_config_cleanup(dev);
 }
 
+struct drm_connector *drm_get_disp_connector(struct drm_device *dev, int index)
+{
+	struct drm_connector_list_iter iter;
+	struct drm_connector *connector;
+
+	index++;
+	drm_connector_list_iter_begin(dev, &iter);
+	drm_client_for_each_connector_iter(connector, &iter) {
+		if (connector->index == index)
+			break;
+	}
+	drm_connector_list_iter_end(&iter);
+
+	return (connector && connector->index == index) ? connector : NULL;
+}
+
 static int sunxi_de_pq_ioctl(struct drm_device *dev, void *data, struct drm_file *file)
 {
 	unsigned long *ubuffer = data;
+	struct drm_connector *conn = NULL;
+	struct sunxi_drm_device *sdrm;
 	u32 gamma_size = 0;
 	struct gamma_para *gamma_tmp = NULL;
 	u32 *k_lut = NULL;
@@ -180,10 +264,63 @@ static int sunxi_de_pq_ioctl(struct drm_device *dev, void *data, struct drm_file
 	 */
 	switch (pq_type) {
 	case PQ_SET_REG:
-		DRM_ERROR("not support PQ_SET_REG yet\n");
+		DRM_ERROR("==========disp = %d ===========\n", disp);
+		if (disp > 2 || disp < 0) {
+			DRM_ERROR("There're a great number of disp.\n");
+			goto OUT;
+		}
+
+		para = kzalloc(para_size, GFP_KERNEL);
+		if (!para) {
+			DRM_ERROR("lcd para alloc failed\n");
+			ret = -ENOMEM;
+			goto OUT;
+		}
+
+		if (copy_from_user(para, (void __user *)user_para, para_size)) {
+			DRM_ERROR("regs copy from user failed\n");
+			ret = -EINVAL;
+			goto OUT;
+		}
+
+		conn = drm_get_disp_connector(dev, disp);
+		if (!conn) {
+			DRM_ERROR("Can not get disp:%d\n", disp);
+			goto OUT;
+		}
+		sdrm = connector_to_sunxi_drm_device(conn);
+		if (sdrm->set_disp_para)
+			sdrm->set_disp_para(dev, para);
 		break;
 	case PQ_GET_REG:
-		DRM_ERROR("not support PQ_GET_REG yet\n");
+		DRM_ERROR("==========disp = %d ===========\n", disp);
+		if (disp > 2 || disp < 0) {
+			DRM_ERROR("There're a great number of disp.\n");
+			goto OUT;
+		}
+
+		para = kzalloc(para_size, GFP_KERNEL);
+		if (!para) {
+			DRM_ERROR("lcd para alloc failed\n");
+			ret = -ENOMEM;
+			goto OUT;
+		}
+
+		conn = drm_get_disp_connector(dev, disp);
+		if (!conn) {
+			DRM_ERROR("Can not get disp:%d\n", disp);
+			goto OUT;
+		}
+
+		sdrm = connector_to_sunxi_drm_device(conn);
+		if (sdrm->get_disp_para)
+			sdrm->get_disp_para(dev, para);
+
+		if (copy_to_user((void __user *)user_para, para, para_size)) {
+			DRM_ERROR("regs copy from user failed\n");
+			ret = -EINVAL;
+			goto OUT;
+		}
 		break;
 	case PQ_ENABLE:
 		//noting to do
@@ -192,6 +329,7 @@ static int sunxi_de_pq_ioctl(struct drm_device *dev, void *data, struct drm_file
 	case PQ_GAMMA:
 	case PQ_FCM:
 	case PQ_DCI:
+	case PQ_DLC:
 	case PQ_DEBAND:
 	case PQ_SHARP35X:
 	case PQ_SNR:
@@ -259,7 +397,7 @@ static int sunxi_de_pq_ioctl(struct drm_device *dev, void *data, struct drm_file
 		}
 		break;
 	default:
-		DRM_ERROR("pq cmd not found\n");
+		DRM_ERROR("pq cmd not found %d\n", pq_type);
 		ret = -EINVAL;
 		break;
 	}
@@ -292,6 +430,7 @@ static struct drm_driver sunxi_drm_driver = {
 	.date = DRIVER_DATE,
 	.major = DRIVER_MAJOR,
 	.minor = DRIVER_MINOR,
+	.gem_create_object = sunxi_gem_create_object,
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(6, 1, 0)
 	DRM_GEM_CMA_DRIVER_OPS_VMAP,
 #else
@@ -333,6 +472,7 @@ static struct component_match *sunxi_drm_match_add(struct device *dev)
 
 		while ((d = platform_find_device_by_driver(p, &drv->driver))) {
 			put_device(p);
+			device_link_add(dev, d, DL_FLAG_STATELESS);
 			component_match_add(dev, &match, compare_dev, d);
 			p = d;
 		}
@@ -409,6 +549,22 @@ static int sunxi_drm_property_create(struct sunxi_drm_private *private)
 		return -ENOMEM;
 	private->prop_frame_rate_change = prop;
 
+	/*
+	 * create image crop for afbc compressed buffer, top_crop and left_crop,
+	 *  top_crop : 0 ~ 15
+	 *  left_crop: 0 ~ 63
+	 *  value = (top_crop << 16) | left_crop
+	 */
+	prop = drm_property_create_range(dev, 0, "compressed_image_crop", 0, 0x000F003F);
+	if (!prop)
+		return -ENOMEM;
+	private->prop_compressed_image_crop = prop;
+
+	prop = drm_property_create_range(dev, 0, "SMC_MASTER_ENABLED", 0, 1);
+	if (!prop)
+		return -ENOMEM;
+	private->prop_smc_master_enabled = prop;
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0)
 	ret = drm_mode_create_tv_properties(dev, 0, NULL);
 #else
@@ -417,26 +573,6 @@ static int sunxi_drm_property_create(struct sunxi_drm_private *private)
 	if (ret)
 		return ret;
 	return sunxi_drm_plane_property_create(private);
-}
-
-struct print_info {
-	char *buf;
-	int write_size;
-	int max_size;
-};
-
-static void __drm_printfn_buf(struct drm_printer *p, struct va_format *vaf)
-{
-	struct print_info *info = p->arg;
-	int tmp;
-	if (!IS_ERR_OR_NULL(p->arg)) {
-		tmp = snprintf(info->buf + info->write_size,
-					    info->max_size - info->write_size, "%pV", vaf);
-		if (tmp <= info->max_size - info->write_size)
-			info->write_size += tmp;
-		else
-			info->write_size = info->max_size;
-	}
 }
 
 static void sunxi_drm_atomic_plane_print_state(struct drm_printer *p,
@@ -451,59 +587,24 @@ static void sunxi_drm_atomic_plane_print_state(struct drm_printer *p,
 	sunxi_plane_print_state(p, state, false);
 }
 
-static ssize_t sunxi_crtc_status_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
+static int sunxi_drm_offline_mode_pre_init(struct drm_device *drm)
 {
-	struct drm_device *drm_dev = dev_get_drvdata(dev);
-	struct drm_mode_config *config = &drm_dev->mode_config;
+	struct sunxi_drm_private *pri = to_sunxi_drm_private(drm);
+	struct sunxi_init_connecting *c;
 	struct drm_crtc *crtc;
-	struct drm_plane *plane;
-	ssize_t n = 0;
-	bool take_locks = true;
-	struct print_info info = {
-		.buf = buf,
-		.write_size = 0,
-		.max_size = PAGE_SIZE,
-	};
-	struct drm_printer p = {
-		.printfn = __drm_printfn_buf,
-		.arg = &info,
-	};
+	unsigned int scn_w, scn_h;
 
-	list_for_each_entry(plane, &config->plane_list, head) {
-		if (take_locks)
-			drm_modeset_lock(&plane->mutex, NULL);
-		sunxi_drm_atomic_plane_print_state(&p, plane->state);
-		if (take_locks)
-			drm_modeset_unlock(&plane->mutex);
+	c = list_first_entry_or_null(&pri->priv->connecting_head, struct sunxi_init_connecting, list);
+	if (!c) {
+		DRM_ERROR("offline mode: init connecting not found %s\n", __func__);
+		return -1;
 	}
+	scn_w = c->mode->hdisplay;
+	scn_h = c->mode->vdisplay;
+	crtc = c->crtc;
 
-	list_for_each_entry(crtc, &config->crtc_list, head) {
-		drm_printf(&p, "crtc[%u]: %s\n", crtc->base.id, crtc->name);
-		if (take_locks)
-			drm_modeset_lock(&crtc->mutex, NULL);
-		if (crtc->funcs->atomic_print_state)
-			crtc->funcs->atomic_print_state(&p, crtc->state);
-		if (take_locks)
-			drm_modeset_unlock(&crtc->mutex);
-	}
-
-	n = strlen(buf);
-	return n;
+	return sunxi_drm_crtc_offline_mode_pre_init(crtc, scn_w, scn_h);
 }
-
-static DEVICE_ATTR(status, 0444,
-	sunxi_crtc_status_show, NULL);
-
-static struct attribute *_sunxi_crtc_attrs[] = {
-	&dev_attr_status.attr,
-	NULL
-};
-
-static struct attribute_group sunxi_crtc_group = {
-	.name = "crtc",
-	.attrs = _sunxi_crtc_attrs,
-};
 
 static int __maybe_unused commit_init_connecting(struct drm_device *drm)
 {
@@ -521,11 +622,8 @@ static int __maybe_unused commit_init_connecting(struct drm_device *drm)
 	int ret;
 
 	memset(c_ref, 0, sizeof(*c_ref));
-#if IS_ENABLED (CONFIG_FB)
+	sunxi_drm_offline_mode_pre_init(drm);
 	sunxi_fbdev_init(drm, &channel);
-#else
-	sunxi_disp_notify_init();
-#endif
 	drm_modeset_acquire_init(&ctx, 0);
 	state = drm_atomic_state_alloc(drm);
 	if (!state) {
@@ -671,9 +769,12 @@ static int get_boot_display_info(struct drm_device *drm)
 		of_mode_read("flags", mode->flags);
 		of_mode_read("hskew", mode->hskew);
 		of_mode_read("type",  mode->type);
+		of_mode_read("width-mm", mode->width_mm);
+		of_mode_read("height-mm",  mode->height_mm);
 #undef of_mode_read
 
 		drm_mode_set_name(mode);
+		drm_mode_set_crtcinfo(mode, CRTC_INTERLACE_HALVE_V);
 
 		DRM_DEBUG_DRIVER("boot mode: " DRM_MODE_FMT "\n", DRM_MODE_ARG(mode));
 
@@ -728,8 +829,10 @@ static int init_connecting(struct drm_device *drm, struct drm_crtc **crtcs, unsi
 				  info->hw_id == sdrm->hw_id) {
 				mutex_lock(&drm->mode_config.mutex);
 				modes_count = connectors[i]->funcs->fill_modes(connectors[i], 8192, 8192);
-				if (!modes_count)
+				if (!modes_count) {
+					mutex_unlock(&drm->mode_config.mutex);
 					break;
+				}
 
 				list_for_each_entry(mode, &connectors[i]->modes, head) {
 					if (mode && drm_mode_equal(&info->mode, mode)) {
@@ -741,10 +844,12 @@ static int init_connecting(struct drm_device *drm, struct drm_crtc **crtcs, unsi
 					mode = &info->mode;
 				else
 					mode = list_first_entry_or_null(&connectors[i]->modes, struct drm_display_mode, head);
-				DRM_DEBUG_DRIVER("%s use mode %dx%d\n", __FUNCTION__, mode->hdisplay, mode->vdisplay);
+
 				mutex_unlock(&drm->mode_config.mutex);
 
 				if (mode) {
+					DRM_DEBUG_DRIVER("%s use mode %dx%d\n", __FUNCTION__,
+							 mode->hdisplay, mode->vdisplay);
 					drm_connector_get(connectors[i]);
 					connector_ = connectors[i];
 					break;
@@ -789,6 +894,9 @@ int sunxi_drm_get_logo_info(struct drm_device *dev, struct sunxi_logo_info *logo
 	struct sunxi_drm_private *pri = to_sunxi_drm_private(dev);
 	struct display_boot_info *info;
 	struct sunxi_init_connecting *c;
+	/* offline mode add */
+	struct drm_crtc *crtc;
+	struct sunxi_de_offline_buf_info offline_buf;
 
 	info = list_first_entry_or_null(&pri->priv->boot_info_head, struct display_boot_info, list);
 	if (info)
@@ -802,6 +910,19 @@ int sunxi_drm_get_logo_info(struct drm_device *dev, struct sunxi_logo_info *logo
 	*scn_w = c->mode->hdisplay;
 	*scn_h = c->mode->vdisplay;
 
+	crtc = c->crtc;
+	if (!sunxi_drm_crtc_get_offline_mode_info(crtc, &offline_buf)) {
+		logo->is_safebuf = offline_buf.is_safebuf;
+		logo->offline_vaddr = offline_buf.vir_addr;
+		logo->offline_paddr = offline_buf.phy_addr;
+		logo->buf_size = offline_buf.buf_size;
+	} else {
+		logo->is_safebuf = 0;
+		logo->offline_vaddr = NULL;
+		logo->offline_paddr = 0;
+		logo->buf_size = 0;
+	}
+
 	if (!info) {
 		logo->phy_addr = 0;
 		logo->width = c->mode->hdisplay;
@@ -810,6 +931,40 @@ int sunxi_drm_get_logo_info(struct drm_device *dev, struct sunxi_logo_info *logo
 
 	return 0;
 }
+
+int sunxi_drm_get_device_max_fps(struct drm_device *drm)
+{
+	struct sunxi_drm_private *pri = to_sunxi_drm_private(drm);
+	struct sunxi_init_connecting *c;
+	struct drm_display_mode *mode;
+	int max_vrefrsh = 0;
+
+	list_for_each_entry(c, &pri->priv->connecting_head, list) {
+		list_for_each_entry(mode, &c->connector->modes, head) {
+			max_vrefrsh = max_vrefrsh > drm_mode_vrefresh(mode) ?
+				      max_vrefrsh : drm_mode_vrefresh(mode);
+		};
+	}
+
+	return max_vrefrsh == 0 ? 60 : max_vrefrsh;
+}
+
+unsigned int sunxi_drm_get_de_max_freq(struct drm_device *drm)
+{
+	struct drm_mode_config *config = &drm->mode_config;
+	struct drm_crtc *crtc;
+	unsigned int de_max_freq = 300000000;
+	unsigned tmp_freq = 0;
+
+	/* get max freq from exist de, and limit minimum to 300M */
+	list_for_each_entry(crtc, &config->crtc_list, head) {
+		tmp_freq = sunxi_drm_crtc_get_clk_freq(crtc);
+		de_max_freq = (de_max_freq > tmp_freq) ? de_max_freq : tmp_freq;
+	}
+
+	return de_max_freq;
+}
+
 
 bool sunxi_drm_check_if_need_sw_enable(struct drm_connector *connector)
 {
@@ -927,8 +1082,81 @@ free_connectors:
 	for (i = 0; i < connector_count; i++)
 		drm_connector_put(connectors[i]);
 	kfree(connectors);
+	kfree(crtcs);
 	return ret;
 }
+
+#if IS_ENABLED(CONFIG_PROC_FS)
+static struct proc_dir_entry *proc_entry;
+
+static int sunxi_drm_procfs_status_show(struct seq_file *m, void *data)
+{
+	struct drm_device *drm_dev = (struct drm_device *)m->private;
+	struct drm_mode_config *config = &drm_dev->mode_config;
+	struct drm_crtc *crtc;
+	struct drm_plane *plane;
+	bool take_locks = true;
+	struct drm_printer p = drm_seq_file_printer(m);
+
+	list_for_each_entry(plane, &config->plane_list, head) {
+		if (take_locks)
+			drm_modeset_lock(&plane->mutex, NULL);
+		sunxi_drm_atomic_plane_print_state(&p, plane->state);
+		if (take_locks)
+			drm_modeset_unlock(&plane->mutex);
+	}
+
+	list_for_each_entry(crtc, &config->crtc_list, head) {
+		drm_printf(&p, "crtc[%u]: %s\n", crtc->base.id, crtc->name);
+		if (take_locks)
+			drm_modeset_lock(&crtc->mutex, NULL);
+		if (crtc->funcs->atomic_print_state)
+			crtc->funcs->atomic_print_state(&p, crtc->state);
+		if (take_locks)
+			drm_modeset_unlock(&crtc->mutex);
+	}
+
+	return 0;
+}
+static int sunxi_drm_procfs_create(void)
+{
+	proc_entry = proc_mkdir("sunxi-drm", NULL);
+	if (IS_ERR_OR_NULL(proc_entry)) {
+		pr_err("Couldn't create sunxi-drm procfs directory !\n");
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
+static int sunxi_drm_procfs_init(struct drm_device *drm)
+{
+	proc_create_single_data("debug", 444, proc_entry, sunxidrm_debug_show, NULL);
+
+	proc_create_single_data("status", 444, proc_entry,
+				sunxi_drm_procfs_status_show, drm);
+
+	return 0;
+}
+
+static void sunxi_drm_procfs_term(void)
+{
+	remove_proc_subtree("sunxi-drm", NULL);
+	proc_entry = NULL;
+}
+
+struct proc_dir_entry *sunxi_drm_get_procfs_dir(void)
+{
+	return proc_entry;
+}
+
+#else
+struct proc_dir_entry *sunxi_drm_get_procfs_dir(void)
+{
+	return NULL;
+}
+
+#endif
 
 static int sunxi_drm_bind(struct device *dev)
 {
@@ -964,19 +1192,22 @@ static int sunxi_drm_bind(struct device *dev)
 
 	dev_set_drvdata(dev, drm);
 	drm_mode_config_reset(drm);
-	ret = drm_vblank_init(drm, drm->mode_config.num_crtc);
-	if (ret) {
-		DRM_ERROR("failed to init vblank.\n");
-		return ret;
-	}
 
 	/* Enable connectors polling * */
 	drm_kms_helper_poll_init(drm);
-	setup_bootloader_connecting_state(drm);
+	ret = setup_bootloader_connecting_state(drm);
+	if (ret < 0) {
+		DRM_ERROR("setup bootloader connecting failed.Skip commit_init_connecting.\n");
+		goto dev_register;
+	}
 	commit_init_connecting(drm);
 
+dev_register:
 	ret = drm_dev_register(drm, 0);
-	ret = sysfs_create_group(&dev->kobj, &sunxi_crtc_group);
+
+#if IS_ENABLED(CONFIG_PROC_FS)
+	ret = sunxi_drm_procfs_init(drm);
+#endif
 
 	DRM_INFO("%s ok\n", __FUNCTION__);
 	return 0;
@@ -991,6 +1222,9 @@ static void sunxi_drm_unbind(struct device *dev)
 {
 	struct drm_device *drm_dev = dev_get_drvdata(dev);
 
+#if IS_ENABLED(CONFIG_PROC_FS)
+	sunxi_drm_procfs_term();
+#endif
 	dev_set_drvdata(dev, NULL);
 	drm_dev_unregister(drm_dev);
 	drm_kms_helper_poll_fini(drm_dev);
@@ -1013,6 +1247,10 @@ static int sunxi_drm_platform_probe(struct platform_device *pdev)
 		DRM_INFO("sunxi_drm_match_add fail\n");
 		return PTR_ERR(match);
 	}
+
+#if IS_ENABLED(CONFIG_PROC_FS)
+	sunxi_drm_procfs_create();
+#endif
 
 	return component_master_add_with_match(&pdev->dev, &sunxi_drm_ops,
 					       match);
@@ -1086,7 +1324,7 @@ static int sunxi_drm_register_drivers(void)
 
 		ret = platform_driver_register(drv);
 		if (ret) {
-			DRM_ERROR("driver register fail %d %ld\n", i,
+			DRM_ERROR("driver register fail %d %zu\n", i,
 				  ARRAY_SIZE(sunxi_drm_sub_drivers));
 			break;
 		}
@@ -1118,5 +1356,5 @@ module_exit(sunxi_drm_drv_exit);
 MODULE_IMPORT_NS(DMA_BUF);
 MODULE_DESCRIPTION("Allwinnertech SoC DRM Driver");
 MODULE_LICENSE("GPL");
-MODULE_VERSION("V1.0.0");
+MODULE_VERSION("V1.0.1");
 MODULE_AUTHOR("chenqingjia <chenqingjia@allwinnertech.com>");

@@ -33,7 +33,7 @@ struct v4l2_subdev *gl_sd;
 MODULE_AUTHOR("zzq");
 MODULE_DESCRIPTION("A low-level driver for bt1120 sensors");
 MODULE_LICENSE("GPL");
-MODULE_VERSION("1.0.0");
+MODULE_VERSION("1.0.1");
 
 #define MCLK (27 * 1000 * 1000)
 #define CLK_POL V4L2_MBUS_PCLK_SAMPLE_FALLING
@@ -90,7 +90,7 @@ static int sensor_power(struct v4l2_subdev *sd, int on)
 		vin_gpio_write(sd, RESET, CSI_GPIO_HIGH);
 		usleep_range(1000, 1200);
 		vin_gpio_write(sd, PWDN, CSI_GPIO_HIGH);
-		usleep_range(1000, 1200);
+		usleep_range(10000, 10200);
 		cci_unlock(sd);
 		break;
 	case PWR_OFF:
@@ -167,13 +167,19 @@ static int sensor_tvin_init(struct v4l2_subdev *sd,
 	struct sensor_info *info = to_state(sd);
 	__u32 *sensor_fmt = info->tvin.tvin_info.input_fmt;
 	__u32 ch_id = tvin_info->ch_id;
+	__maybe_unused unsigned int stream_count;
 
 	sensor_print("set ch%d fmt as %d\n",
 			ch_id, tvin_info->input_fmt[ch_id]);
 	sensor_fmt[ch_id] = tvin_info->input_fmt[ch_id];
 	info->tvin.tvin_info.ch_id = ch_id;
 
-	if (sd->entity.stream_count != 0) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	stream_count = info->stream_count;
+#else
+	stream_count = sd->entity.stream_count;
+#endif
+	if (stream_count != 0) {
 		nvp6158_init_ch_hardware(&info->tvin.tvin_info);
 		sensor_print("sensor_tvin_init nvp6158_init_ch_hardware\n");
 	}
@@ -295,6 +301,7 @@ int nvp6158c_sensor_set_fmt(struct v4l2_subdev *sd,
 {
 	struct sensor_info *info = to_state(sd);
 	int ret;
+	__maybe_unused unsigned int stream_count;
 
 	sensor_print("fmt->format.width = %d\n", fmt->format.width);
 
@@ -306,9 +313,14 @@ int nvp6158c_sensor_set_fmt(struct v4l2_subdev *sd,
 	if (!info->tvin.flag)
 		return sensor_set_fmt(sd, state, fmt);
 
-	sensor_print("[%s]sd->entity.stream_count == %d\n", __func__, sd->entity.stream_count);
 
-	if (sd->entity.stream_count == 0) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	stream_count = info->stream_count;
+#else
+	sensor_print("[%s]sd->entity.stream_count == %d\n", __func__, sd->entity.stream_count);
+	stream_count = sd->entity.stream_count;
+#endif
+	if (stream_count == 0) {
 		nvp6158c_set_input_size(info, fmt, fmt->reserved[0]);
 		ret = sensor_set_fmt(sd, state, fmt);
 		sensor_print("%s befor ch%d %d*%d \n", __func__,
@@ -363,10 +375,10 @@ int nvp6158c_sensor_set_fmt(struct v4l2_subdev *sd,
 static struct sensor_format_struct sensor_formats[] = {
 	{
 	.desc = "BT656 4CH",
-#if 1 /* BT1120 */
+#if IS_ENABLED(CONFIG_BT1120) /* BT1120 */
 	.mbus_code = MEDIA_BUS_FMT_YUYV8_1X16,
 #else /* BT656 */
-	.mbus_code = MEDIA_BUS_FMT_YUYV8_2X8,
+	.mbus_code = MEDIA_BUS_FMT_UYVY8_2X8,
 #endif
 	.regs = NULL,
 	.regs_size = 0,
@@ -388,7 +400,7 @@ static struct sensor_win_size sensor_win_sizes[] = {
 	.fps_fixed = 25,
 	.regs = sensor_regs,
 	.regs_size = ARRAY_SIZE(sensor_regs),
-	.pclk_dly = 0x06, // should not larger than 0x1f
+	.pclk_dly = 0x0a, // should not larger than 0x1f
 	.set_size = NULL,
 	},
 	{
@@ -479,12 +491,19 @@ static int sensor_g_mbus_config(struct v4l2_subdev *sd, unsigned int pad,
 	struct sensor_info *info = to_state(sd);
 
 	cfg->type = V4L2_MBUS_BT656;
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	if (info->current_wins->width_input == 1920 && info->current_wins->height_input == 1080)
+		cfg->bus.parallel.flags = DOUBLE_CLK_POL | CSI_CH_0 | CSI_CH_1 | CSI_CH_2 | CSI_CH_3;
+	else
+		cfg->bus.parallel.flags = CLK_POL | CSI_CH_0 | CSI_CH_1 | CSI_CH_2 | CSI_CH_3;
+		/* cfg->flags = CLK_POL | CSI_CH_0; */
+#else
 	if (info->current_wins->width_input == 1920 && info->current_wins->height_input == 1080)
 		cfg->flags = DOUBLE_CLK_POL | CSI_CH_0 | CSI_CH_1 | CSI_CH_2 | CSI_CH_3;
 	else
-		cfg->flags = CLK_POL | CSI_CH_0 | CSI_CH_1 | CSI_CH_2 | CSI_CH_3;
-		/* cfg->flags = CLK_POL | CSI_CH_0; */
+		//cfg->flags = CLK_POL | CSI_CH_0 | CSI_CH_1 | CSI_CH_2 | CSI_CH_3;
+		cfg->flags = CLK_POL | CSI_CH_0 | CSI_CH_1;
+#endif
 
 	return 0;
 }
@@ -515,7 +534,11 @@ static int sensor_reg_init(struct sensor_info *info)
 		}
 	} else if (info->width == 1280 && info->height == 720) {
 		if (wsize->fps_fixed == 25) {
+#if IS_ENABLED(CONFIG_NVP6158C_ONE_TIME_SETTING)
+			sensor_720p25_2ch_reg_setting();
+#else
 			nvp6158_init_hardware(AHD20_720P_25P);
+#endif
 		} else {
 			nvp6158_init_hardware(AHD20_720P_30P);
 		}
@@ -582,8 +605,12 @@ static struct cci_driver cci_drv = {
 	.data_width = CCI_BITS_8,
 };
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
+static int sensor_probe(struct i2c_client *client)
+#else
 static int sensor_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
+#endif
 {
 
 	struct sensor_info *info;
@@ -604,13 +631,19 @@ static int sensor_probe(struct i2c_client *client,
 	return 0;
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)
 static int sensor_remove(struct i2c_client *client)
+#else
+static void sensor_remove(struct i2c_client *client)
+#endif
 {
 	struct v4l2_subdev *sd;
 
 	sd = cci_dev_remove_helper(client, &cci_drv);
 	kfree(to_state(sd));
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)
 	return 0;
+#endif
 }
 
 static const struct i2c_device_id sensor_id[] = {

@@ -63,7 +63,7 @@ static int sunxi_tcon_top_bind(struct device *dev, struct device *master,
 		return -EINVAL;
 	}
 
-	top->clk_dpss = devm_clk_get(dev, "clk_bus_dpss_top");
+	top->clk_dpss = devm_clk_get_optional(dev, "clk_bus_dpss_top");
 
 	if (IS_ERR(top->clk_dpss)) {
 		DRM_ERROR("fail to get clk dpss_top\n");
@@ -85,7 +85,7 @@ static int sunxi_tcon_top_bind(struct device *dev, struct device *master,
 	}
 
 	top->rst_bus_dpss =
-		devm_reset_control_get_shared(dev, "rst_bus_dpss_top");
+		devm_reset_control_get_optional_shared(dev, "rst_bus_dpss_top");
 	if (IS_ERR(top->rst_bus_dpss)) {
 		DRM_ERROR("fail to get reset rst_bus_dpss_top\n");
 		return -EINVAL;

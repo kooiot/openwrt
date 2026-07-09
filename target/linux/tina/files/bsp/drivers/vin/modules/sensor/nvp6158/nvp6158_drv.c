@@ -806,11 +806,11 @@ int nvp6158_init_hardware(int video_mode)
 			nvp6158_set_portmode(chip, 2, NVP6158_OUTMODE_2MUX_FHD, 1); */
 			if (video_mode == AHD20_720P_25P
 				|| video_mode == AHD20_SD_H1440_PAL || video_mode == AHD20_SD_H1440_NT) {
-#if 1 /* BT1120 */
+#if IS_ENABLED(CONFIG_BT1120) /* BT1120 */
 				nvp6158_set_portmode(chip, 1, NVP6158_OUTMODE_4MUX_BT1120S, 0);
 				nvp6158_set_portmode(chip, 2, NVP6158_OUTMODE_4MUX_BT1120S, 1);
 #else /* BT656--NVP6158_OUTMODE_1MUX_HD / NVP6158_OUTMODE_2MUX_HD / NVP6158_OUTMODE_4MUX_HD */
-				nvp6158_set_portmode(chip, 0, NVP6158_OUTMODE_1MUX_HD, 0)
+				nvp6158_set_portmode(chip, 0, NVP6158_OUTMODE_1MUX_HD, 0);
 #endif
 			} else if (video_mode == AHD20_1080P_25P) {
 				nvp6158_set_portmode(chip, 0, NVP6158_OUTMODE_4MUX_MIX, 0);
@@ -974,6 +974,171 @@ int nvp6158_init_ch_hardware(struct tvin_init_info *tvin_info)
 #endif
 	return 0;
 }
+
+#if IS_ENABLED(CONFIG_NVP6158C_ONE_TIME_SETTING)
+int sensor_720p25_2ch_reg_setting(void)
+{
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xff, 0x00);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x80, 0x00); //config all
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x00, 0x10);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x01, 0x10);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x02, 0x10);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x03, 0x10);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x18, 0x1f);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x19, 0x1f);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x1a, 0x1f);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x1b, 0x1f);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x22, 0x0b);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x23, 0x41);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x26, 0x0b);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x27, 0x41);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x2a, 0x0b);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x2b, 0x41);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x2e, 0x0b);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x2f, 0x41);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x64, 0x21);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x65, 0x21);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x66, 0x21);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x67, 0x21);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x81, 0x07);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x82, 0x07);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x83, 0x07);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x84, 0x07);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x8e, 0x03);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x8f, 0x03);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x90, 0x03);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x91, 0x03);
+
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xff, 0x01);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x7A, 0x0f);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x84, 0x02);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x85, 0x02);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x86, 0x02);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x87, 0x02);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x8c, 0x40);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x8d, 0x40);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x8e, 0x40);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x8f, 0x40);
+
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xff, 0x05);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x00, 0xf0);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x01, 0x22);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x25, 0xdc);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x28, 0x80);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x47, 0x04);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x50, 0x84);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x58, 0x77);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x5c, 0x78);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x5f, 0x00);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x6c, 0x12);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x6d, 0xee);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x6e, 0x10);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x6f, 0x1e);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x76, 0x00);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x78, 0x00);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x7a, 0x00);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xa9, 0x00);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xb8, 0xb9);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xb9, 0x72);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xd5, 0x80);
+
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xff, 0x09);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x50, 0x30);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x51, 0x6f);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x52, 0x67);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x53, 0x48);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x54, 0x30);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x55, 0x6f);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x56, 0x67);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x57, 0x48);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x58, 0x30);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x59, 0x6f);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x5a, 0x67);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x5b, 0x48);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x5c, 0x30);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x5d, 0x6f);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x5e, 0x67);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x5f, 0x48);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x96, 0x00);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x9e, 0x00);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xb6, 0x00);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xbe, 0x00);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xd6, 0x00);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xde, 0x00);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xf6, 0x00);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xfe, 0x00);
+
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xff, 0x0a);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x25, 0x10);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x27, 0x1e);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x30, 0xac);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x31, 0x78);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x32, 0x17);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x33, 0xc1);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x34, 0x40);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x36, 0xc3);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x37, 0x0a);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x39, 0x02);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x3b, 0xb2);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xa5, 0x10);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xa7, 0x1e);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xb0, 0xac);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xb1, 0x78);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xb2, 0x17);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xb3, 0xc1);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xb4, 0x40);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xb6, 0xc3);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xb7, 0x0a);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xb9, 0x02);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xbb, 0xb2);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xff, 0x0b);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x25, 0x10);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x27, 0x1e);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x30, 0xac);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x31, 0x78);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x32, 0x17);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x33, 0xc1);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x34, 0x40);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x36, 0xc3);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x37, 0x0a);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x39, 0x02);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x3b, 0xb2);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xa5, 0x10);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xa7, 0x1e);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xb0, 0xac);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xb1, 0x78);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xb2, 0x17);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xb3, 0xc1);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xb4, 0x40);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xb6, 0xc3);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xb7, 0x0a);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xb9, 0x02);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xbb, 0xb2);
+
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xff, 0x00);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x54, 0x01);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x56, 0x10);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xff, 0x01);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x97, 0x00);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0x97, 0x0f); //ch reset
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xa1, 0x20);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xa2, 0x20);
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xc2, 0x10); //port1
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xc4, 0x32); //port2
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xc8, 0x20); //2mux
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xc9, 0x02);
+//	#ifdef _SDR_MODE_
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xcd, 0x58); //148.5m
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xce, 0x58); //148.5m
+//	#else
+//	0xcd, 0x08, //74.25m
+//	0xce, 0x08, //74.25m
+//	#endif
+	gpio_i2c_write(nvp6158_iic_addr[0], 0xca, 0x66); //port1/2_enable
+
+	return 0;
+}
+#endif
 
 /*******************************************************************************
 *	End of file

@@ -47,14 +47,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "uniq_key_splay_tree.h"
 
 /**
- * This function performs a simple top down splay
+ * PVRSRVSplay - perform a simple top down splay
+ * @ui32Flags: flags that must splayed to the root (if possible)
+ * @psTree:    psTree The tree to splay.
  *
- * @param ui32Flags the flags that must splayed to the root (if possible).
- * @param psTree The tree to splay.
- * @return the resulting tree after the splay operation.
+ * Return the resulting tree after the splay operation.
  */
 IMG_INTERNAL
-IMG_PSPLAY_TREE PVRSRVSplay (IMG_UINT32 ui32Flags, IMG_PSPLAY_TREE psTree)
+IMG_PSPLAY_TREE PVRSRVSplay (IMG_PSPLAY_FLAGS_T uiFlags, IMG_PSPLAY_TREE psTree)
 {
 	IMG_SPLAY_TREE sTmp1;
 	IMG_PSPLAY_TREE psLeft;
@@ -74,14 +74,14 @@ IMG_PSPLAY_TREE PVRSRVSplay (IMG_UINT32 ui32Flags, IMG_PSPLAY_TREE psTree)
 
 	for (;;)
 	{
-		if (ui32Flags < psTree->ui32Flags)
+		if (uiFlags < psTree->uiFlags)
 		{
 			if (psTree->psLeft == NULL)
 			{
 				break;
 			}
 
-			if (ui32Flags < psTree->psLeft->ui32Flags)
+			if (uiFlags < psTree->psLeft->uiFlags)
 			{
 				/* if we get to this point, we need to rotate right the tree */
 				psTmp2 = psTree->psLeft;
@@ -101,14 +101,14 @@ IMG_PSPLAY_TREE PVRSRVSplay (IMG_UINT32 ui32Flags, IMG_PSPLAY_TREE psTree)
 		}
 		else
 		{
-			if (ui32Flags > psTree->ui32Flags)
+			if (uiFlags > psTree->uiFlags)
 			{
 				if (psTree->psRight == NULL)
 				{
 					break;
 				}
 
-				if (ui32Flags > psTree->psRight->ui32Flags)
+				if (uiFlags > psTree->psRight->uiFlags)
 				{
 					/* if we get to this point, we need to rotate left the tree */
 					psTmp2 = psTree->psRight;
@@ -143,22 +143,22 @@ IMG_PSPLAY_TREE PVRSRVSplay (IMG_UINT32 ui32Flags, IMG_PSPLAY_TREE psTree)
 
 
 /**
- * This function inserts a node into the Tree (unless it is already present, in
+ * PVRSRVInsert - insert a node into the Tree (unless it is already present, in
  * which case it is equivalent to performing only a splay operation
+ * @ui32Flags: the key of the new node
+ * @psTree:    tree into which one wants to add a new node
  *
- * @param ui32Flags the key of the new node
- * @param psTree The tree into which one wants to add a new node
- * @return The resulting with the node in it
+ * Return the resulting tree after the splay operation.
  */
 IMG_INTERNAL
-IMG_PSPLAY_TREE PVRSRVInsert(IMG_UINT32 ui32Flags, IMG_PSPLAY_TREE psTree)
+IMG_PSPLAY_TREE PVRSRVInsert(IMG_PSPLAY_FLAGS_T uiFlags, IMG_PSPLAY_TREE psTree)
 {
 	IMG_PSPLAY_TREE psNew;
 
 	if (psTree != NULL)
 	{
-		psTree = PVRSRVSplay(ui32Flags, psTree);
-		if (psTree->ui32Flags == ui32Flags)
+		psTree = PVRSRVSplay(uiFlags, psTree);
+		if (psTree->uiFlags == uiFlags)
 		{
 			return psTree;
 		}
@@ -171,7 +171,7 @@ IMG_PSPLAY_TREE PVRSRVInsert(IMG_UINT32 ui32Flags, IMG_PSPLAY_TREE psTree)
 		return NULL;
 	}
 
-	psNew->ui32Flags = ui32Flags;
+	psNew->uiFlags = uiFlags;
 	OSCachedMemSet(&(psNew->buckets[0]), 0, sizeof(psNew->buckets));
 
 #if defined(PVR_CTZLL)
@@ -185,7 +185,7 @@ IMG_PSPLAY_TREE PVRSRVInsert(IMG_UINT32 ui32Flags, IMG_PSPLAY_TREE psTree)
 		return psNew;
 	}
 
-	if (ui32Flags < psTree->ui32Flags)
+	if (uiFlags < psTree->uiFlags)
 	{
 		psNew->psLeft  = psTree->psLeft;
 		psNew->psRight = psTree;
@@ -203,15 +203,15 @@ IMG_PSPLAY_TREE PVRSRVInsert(IMG_UINT32 ui32Flags, IMG_PSPLAY_TREE psTree)
 
 
 /**
- * Deletes a node from the tree (unless it is not there, in which case it is
- * equivalent to a splay operation)
+ * PVRSRVDelete - delete a node from the tree (unless it is not there, in which
+ * case it is equivalent to a splay operation)
+ * @ui32Flags: value of the node to remove
+ * @psTree:    tree into which the node must be removed
  *
- * @param ui32Flags the value of the node to remove
- * @param psTree the tree into which the node must be removed
- * @return the resulting tree
+ * Return the resulting tree.
  */
 IMG_INTERNAL
-IMG_PSPLAY_TREE PVRSRVDelete(IMG_UINT32 ui32Flags, IMG_PSPLAY_TREE psTree)
+IMG_PSPLAY_TREE PVRSRVDelete(IMG_PSPLAY_FLAGS_T uiFlags, IMG_PSPLAY_TREE psTree)
 {
 	IMG_PSPLAY_TREE psTmp;
 	if (psTree == NULL)
@@ -219,8 +219,8 @@ IMG_PSPLAY_TREE PVRSRVDelete(IMG_UINT32 ui32Flags, IMG_PSPLAY_TREE psTree)
 		return NULL;
 	}
 
-	psTree = PVRSRVSplay(ui32Flags, psTree);
-	if (ui32Flags == psTree->ui32Flags)
+	psTree = PVRSRVSplay(uiFlags, psTree);
+	if (uiFlags == psTree->uiFlags)
 	{
 		/* The value was present in the tree */
 		if (psTree->psLeft == NULL)
@@ -229,16 +229,52 @@ IMG_PSPLAY_TREE PVRSRVDelete(IMG_UINT32 ui32Flags, IMG_PSPLAY_TREE psTree)
 		}
 		else
 		{
-			psTmp = PVRSRVSplay(ui32Flags, psTree->psLeft);
+			psTmp = PVRSRVSplay(uiFlags, psTree->psLeft);
 			psTmp->psRight = psTree->psRight;
 		}
 		OSFreeMem(psTree);
 		return psTmp;
 	}
 
-	/* the value was not present in the tree, so just return it as is (after the
-	 * splay) */
+	/* The value was not present in the tree, so just return it as is
+	 * (after the splay) */
 	return psTree;
 }
 
+/**
+ * PVRSRVFindNode - pick up the appropriate node for the given flags
+ * @ui32Flags: flags that must associated with the node
+ * @psTree:    current splay tree node
+ *
+ * Return the resulting tree node after the search operation.
+ */
+IMG_INTERNAL
+IMG_PSPLAY_TREE PVRSRVFindNode(IMG_PSPLAY_FLAGS_T uiFlags, IMG_PSPLAY_TREE psTree)
+{
+	if (psTree == NULL)
+	{
+		return NULL;
+	}
 
+	while (psTree)
+	{
+		if (uiFlags == psTree->uiFlags)
+		{
+			return psTree;
+		}
+
+		if (uiFlags < psTree->uiFlags)
+		{
+			psTree = psTree->psLeft;
+			continue;
+		}
+
+		if (uiFlags > psTree->uiFlags)
+		{
+			psTree = psTree->psRight;
+			continue;
+		}
+	}
+
+	return NULL;
+}

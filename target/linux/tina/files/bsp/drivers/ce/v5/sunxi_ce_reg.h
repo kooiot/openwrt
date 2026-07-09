@@ -35,9 +35,18 @@
 #define CE_REG_XCSA			0x54
 #define CE_REG_XCDA			0x58
 #define CE_REG_VER			0x90
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW22)
+#define CE_REG_LPC			0x08
+#define CE_LOW_POWER_EN		BIT(30)
+#else
+#define CE_REG_LPC			0xD0
+#define CE_LOW_POWER_EN		BIT(0)
+#endif
 
 #define CE_CHAN_INT_ENABLE		1
 
+#define CE_SW_PADDING_OFFEST		5
+#define CE_SW_PADDING_ENABLED		BIT(CE_SW_PADDING_OFFEST)
 
 #define CE_REG_TLR_METHOD_TYPE_SHIFT	8
 
@@ -56,7 +65,7 @@
 
 #define CE_CHAN_PENDING			0x3
 
-#if IS_ENABLED(CONFIG_ARCH_SUN55IW6)
+#if IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 #define CE_REG_TRNG_ENT			CE_REG_ICR
 #define CE_DBL_ENT_SRC_EN		BIT(31)
 #elif IS_ENABLED(CONFIG_ARCH_SUN65IW1) || IS_ENABLED(CONFIG_ARCH_SUN60IW2)
@@ -141,6 +150,11 @@
 
 #define CE_COMM_CTL_METHOD_SHIFT	0
 #define CE_COMM_CTL_METHOD_MASK		0x7F
+
+/* CBC-MAC */
+#define SS_AES_CBC_MAC_LEN		128  /* 128 bits */
+#define SS_DES_CBC_MAC_LEN		64  /* 64 bits */
+#define SS_CBC_MAC_LEN_OFFSET		17
 
 #define CE_METHOD_IS_HASH(type) ((type == SS_METHOD_MD5) \
 				|| (type == SS_METHOD_SHA1) \
@@ -260,6 +274,7 @@ u32 ss_reg_rd(u32 offset);
 void ss_reg_wr(u32 offset, u32 val);
 
 void ss_key_set(char *key, int size, ce_task_desc_t *task);
+void ss_sw_padding_enable(void);
 
 int ss_pending_get(void);
 void ss_pending_clear(int flow);
@@ -300,6 +315,8 @@ void ss_gcm_iv_mode(ce_task_desc_t *task, int iv_mode);
 
 void ss_cfb_bitwidth_set(int bitwidth, ce_task_desc_t *task);
 void ss_ctr_bitwidth_set(int bitwidth, ce_task_desc_t *task);
+
+void ss_cbc_mac_len_set(ce_task_desc_t *task, u32 i);
 
 void ss_wait_idle(void);
 void ss_ctrl_start(ce_task_desc_t *task, int type, int mode);

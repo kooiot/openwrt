@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+menu "L3 Cache Drivers"
+	depends on AW_BSP && ARM64
+
+config AW_L3_CACHE_PARTITION
+	tristate "Allwinner aarch64 DSU L3 Cache Partition Driver"
+	default n
+	help
+	  if say Y here, you can use aarch64 DSU L3 Cache Partition Driver.
+
+endmenu
+

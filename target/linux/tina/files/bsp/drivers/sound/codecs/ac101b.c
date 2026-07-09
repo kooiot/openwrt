@@ -2208,14 +2208,21 @@ static void ac101b_set_params_from_of(struct i2c_client *i2c, struct ac101b_data
 	}
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
+static int ac101b_i2c_probe(struct i2c_client *i2c)
+#else
 static int ac101b_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
+#endif
 {
 	struct ac101b_data *pdata = dev_get_platdata(&i2c->dev);
 	struct ac101b_priv *ac101b;
 	int ret;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0)
+	(void)id;
+#endif
+
 	SND_LOG_DEBUG("\n");
-	printk("\033[31m ---6--- \033[0m\n");
 
 	ac101b = devm_kzalloc(&i2c->dev, sizeof(*ac101b), GFP_KERNEL);
 	if (IS_ERR_OR_NULL(ac101b)) {

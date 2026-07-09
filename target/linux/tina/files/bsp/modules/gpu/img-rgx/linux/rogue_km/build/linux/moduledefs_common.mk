@@ -65,7 +65,7 @@ MODULE_ARCH_BITNESS :=
 # types should not be affected by complex code generation flags w/ LTO.
 # Set MODULE_CHECK_CFLAGS in the module makefile to enable this check.
 MODULE_CHECK_CFLAGS :=
-MODULE_ALLOWED_CFLAGS := -W% -D% -std=% -frtti -fPIC -fPIE -pie -m32 -fvisibility=hidden -fexceptions
+MODULE_ALLOWED_CFLAGS := -W% -D% -std=% -frtti -fPIC -fPIE -pie -m32 -fvisibility=hidden -fexceptions -fgnu89-inline
 
 # -L flags for library search dirs: these are relative to $(TOP), unless
 # they're absolute paths
@@ -109,7 +109,7 @@ _SOURCES_WITHOUT_SLASH := \
 _SOURCES_WITH_SLASH := \
  $(strip $(foreach _s,$($(THIS_MODULE)_src),$(if $(findstring /,$(_s)),$(_s),)))
 MODULE_SOURCES := $(addprefix $(THIS_DIR)/,$(_SOURCES_WITHOUT_SLASH))
-MODULE_SOURCES += $(call relative-to-top,$(filter /%,$(_SOURCES_WITH_SLASH)))
+MODULE_SOURCES += $(call relative-to-top,$(abspath $(filter /%,$(_SOURCES_WITH_SLASH))))
 
 _RELATIVE_SOURCES_WITH_SLASH := \
  $(filter-out /%,$(_SOURCES_WITH_SLASH))
@@ -117,11 +117,11 @@ _OUTDIR_RELATIVE_SOURCES_WITH_SLASH := \
  $(filter $(RELATIVE_OUT)/%,$(_RELATIVE_SOURCES_WITH_SLASH))
 _THISDIR_RELATIVE_SOURCES_WITH_SLASH := \
  $(filter-out $(RELATIVE_OUT)/%,$(_RELATIVE_SOURCES_WITH_SLASH))
-MODULE_SOURCES += $(_OUTDIR_RELATIVE_SOURCES_WITH_SLASH)
-MODULE_SOURCES += $(addprefix $(THIS_DIR)/,$(_THISDIR_RELATIVE_SOURCES_WITH_SLASH))
+MODULE_SOURCES += $(call relative-to-top,$(abspath $(_OUTDIR_RELATIVE_SOURCES_WITH_SLASH)))
+MODULE_SOURCES += $(call relative-to-top,$(abspath $(addprefix $(THIS_DIR)/,$(_THISDIR_RELATIVE_SOURCES_WITH_SLASH))))
 
 # Add generated sources
-MODULE_SOURCES += $(addprefix $(MODULE_OUT)/,$($(THIS_MODULE)_src_relative))
+MODULE_SOURCES += $(call relative-to-top,$(abspath $(addprefix $(MODULE_OUT)/,$($(THIS_MODULE)_src_relative))))
 
 # We want to do this only for pure Android, in which case only
 # SUPPORT_ANDROID_PLATFORM will be set to 1.

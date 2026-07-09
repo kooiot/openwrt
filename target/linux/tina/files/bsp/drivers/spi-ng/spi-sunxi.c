@@ -312,18 +312,6 @@ static void sunxi_spi_config_tc(struct sunxi_spi *sspi, u32 config)
 		writel(reg_new, sspi->base_addr + SUNXI_SPI_TC_REG);
 }
 
-/* liuruixuan add wait_clk for esam sc1161 20250829 */	
-static void spi_config_wait_clock(struct sunxi_spi *sspi)
-{
-	u32 reg_val;
-	u32 wait_clk = sspi->wait_clk;
-
-	reg_val = readl(sspi->base_addr + SUNXI_SPI_WAIT_CNT_REG);
-	reg_val |= wait_clk;
-	writel(reg_val, sspi->base_addr + SUNXI_SPI_WAIT_CNT_REG);
-}
-/* liuruixuan add wait_clk for esam sc1161 20250829 */	
-
 static void sunxi_spi_enable_irq(struct sunxi_spi *sspi, u32 bitmap)
 {
 	u32 reg_val = readl(sspi->base_addr + SUNXI_SPI_INT_CTL_REG);
@@ -681,13 +669,6 @@ static int sunxi_spi_resource_get(struct sunxi_spi *sspi)
 		sunxi_warn(sspi->dev, "frequency no in range, use default value %d\n", sspi->bus_freq);
 	}
 
-	/* liuruixuan add wait_clk for esam sc1161 20250829 */
-        ret = of_property_read_u32(np, "wait_clk", &sspi->wait_clk);
-	if (!ret) {
-        	sunxi_info(sspi->dev, "wait_clk = %u\n", sspi->wait_clk);
-	}
-	/* liuruixuan add wait_clk for esam sc1161 20250829 */
-
 	ret = of_property_read_u32(np, "sunxi,spi-num-cs", &sspi->cs_num);
 	if (ret) {
 		sspi->cs_num = SUNXI_SPI_CS_MAX;
@@ -904,11 +885,6 @@ static int sunxi_spi_xfer_setup(struct spi_device *spi, struct spi_transfer *t)
 	}
 
 	ret = sunxi_spi_bus_setup(spi, t);
-	/* liuruixuan add wait_clk for esam sc1161 20250829 */	
-	if (sspi->wait_clk > 0) {
-		spi_config_wait_clock(sspi);
-	}
-	/* liuruixuan add wait_clk for esam sc1161 20250829 */	
 
 	switch (sspi->bus_mode) {
 	case SUNXI_SPI_BUS_DBI:
@@ -2708,7 +2684,7 @@ static int sunxi_spi_probe(struct platform_device *pdev)
 	case SUNXI_SPI_BUS_NOR:
 	case SUNXI_SPI_BUS_NAND:
 	case SUNXI_SPI_BUS_DBI:
-		sspi->ctlr->bits_per_word_mask = SPI_BPW_MASK(16) |  SPI_BPW_MASK(8); //Modfiy By CFT
+		sspi->ctlr->bits_per_word_mask = SPI_BPW_MASK(8);
 		sspi->ctlr->mode_bits = SPI_CPOL | SPI_CPHA | SPI_CS_HIGH | SPI_LSB_FIRST | sspi->data->master_mode_extra;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0))
 		sspi->ctlr->flags = SPI_CONTROLLER_GPIO_SS;

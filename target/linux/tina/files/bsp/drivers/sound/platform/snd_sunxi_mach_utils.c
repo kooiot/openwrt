@@ -528,12 +528,6 @@ int asoc_simple_parse_tdm_clk(struct device_node *cpu,
 	else
 		dai_props->cpu_pll_fs = val;
 
-	ret = of_property_read_u32(codec, prop, &val);
-	if (ret)
-		dai_props->codec_pll_fs = 1;	/* default sysclk 24.576 or 22.5792MHz * 1 */
-	else
-		dai_props->codec_pll_fs = val;
-
 	snprintf(prop, sizeof(prop), "%smclk-fs", prefix);
 	ret = of_property_read_u32(cpu, prop, &val);
 	if (ret)
@@ -550,16 +544,16 @@ int asoc_simple_parse_tdm_clk(struct device_node *cpu,
 	} else {
 		ret = of_property_read_u32_index(cpu, prop, 0, &val);
 		if (ret < 0) {
-			SND_LOG_DEBUG("mclk-fp(44.1k fp) and mclk-fp(48k fp) loss,"
-				      "default 11289600 and 12288000\n");
+			SND_LOG_WARN("mclk-fp(44.1k fp) and mclk-fp(48k fp) loss,"
+				     "default 11289600 and 12288000\n");
 			dai_props->mclk_fp[0] = 11289600;
 			dai_props->mclk_fp[1] = 12288000;
 		} else {
 			dai_props->mclk_fp[0] = val;
 			ret = of_property_read_u32_index(cpu, prop, 1, &val);
 			if (ret < 0) {
-				SND_LOG_DEBUG("mclk-fp miss a value,"
-					      "default 11289600 and 12288000\n");
+				SND_LOG_WARN("mclk-fp miss a value,"
+					     "default 11289600 and 12288000\n");
 				dai_props->mclk_fp[0] = 11289600;
 				dai_props->mclk_fp[1] = 12288000;
 			} else {
@@ -567,6 +561,71 @@ int asoc_simple_parse_tdm_clk(struct device_node *cpu,
 			}
 		}
 	}
+
+	snprintf(prop, sizeof(prop), "%spll-fp", prefix);
+	ret = of_property_read_bool(codec, prop);
+	if (!ret) {
+		SND_LOG_DEBUG("pll-fp not value\n");
+		dai_props->codec_pll_fp[0] = 22579200;
+		dai_props->codec_pll_fp[1] = 24576000;
+	} else {
+		ret = of_property_read_u32_index(codec, prop, 0, &val);
+		if (ret < 0) {
+			SND_LOG_DEBUG("pll_fp invalid, default 22579200 and 24576000\n");
+			dai_props->codec_pll_fp[0] = 22579200;
+			dai_props->codec_pll_fp[1] = 24576000;
+		} else {
+			dai_props->codec_pll_fp[0] = val;
+			ret = of_property_read_u32_index(codec, prop, 1, &val);
+			if (ret < 0) {
+				SND_LOG_DEBUG("pll_fp invalid, default 22579200 and 24576000\n");
+				dai_props->codec_pll_fp[0] = 22579200;
+				dai_props->codec_pll_fp[1] = 24576000;
+			} else {
+				dai_props->codec_pll_fp[1] = val;
+			}
+		}
+	}
+
+	snprintf(prop, sizeof(prop), "%spllin-mode", prefix);
+	ret = of_property_read_u32(codec, prop, &val);
+	if (ret) {
+		dai_props->codec_pllin_mode = 0;
+	} else {
+		if (val < 3) {
+			dai_props->codec_pllin_mode = val;
+		} else {
+			dai_props->codec_pllin_mode = 0;
+			SND_LOG_DEBUG("invalid pllin-mode value, default 0\n");
+		}
+	}
+
+	snprintf(prop, sizeof(prop), "%spllin-fs", prefix);
+	ret = of_property_read_u32(codec, prop, &val);
+	if (ret)
+		dai_props->codec_pllin_fs = 1;
+	else
+		dai_props->codec_pllin_fs = val;
+
+	snprintf(prop, sizeof(prop), "%spllout-mode", prefix);
+	ret = of_property_read_u32(codec, prop, &val);
+	if (ret) {
+		dai_props->codec_pllout_mode = 0;
+	} else {
+		if (val < 3) {
+			dai_props->codec_pllout_mode = val;
+		} else {
+			dai_props->codec_pllout_mode = 0;
+			SND_LOG_DEBUG("invalid pllout-mode value, default 0\n");
+		}
+	}
+
+	snprintf(prop, sizeof(prop), "%spllout-fs", prefix);
+	ret = of_property_read_u32(codec, prop, &val);
+	if (ret)
+		dai_props->codec_pllout_fs = 1;
+	else
+		dai_props->codec_pllout_fs = val;
 
 	return 0;
 }

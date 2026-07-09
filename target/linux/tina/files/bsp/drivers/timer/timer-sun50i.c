@@ -27,13 +27,17 @@
 #include <linux/irqreturn.h>
 #include <linux/sched_clock.h>
 #include <linux/of.h>
+#include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
-
 #include "timer-of.h"
 
-#define SUN50I_TIMER_MODULE_VERSION	"1.1.3"
+#ifdef CONFIG_AW_AMP_SYS_RSC_MANAGER
+#include <linux/sunxi_amp_rsc.h>
+#endif
+
+#define SUN50I_TIMER_MODULE_VERSION	"1.1.4"
 
 #define TIMER_IRQ_REG		0x00
 #define TIMER_IRQ_EN(val)		BIT(val)
@@ -116,7 +120,7 @@ static int timer_sun50i_clk_init(struct sun50i_timer *chip)
 	if (ret)
 		return ret;
 
-	return ret;
+	return 0;
 }
 
 /*
@@ -145,7 +149,7 @@ static void sun50i_clkevt_time_stop(void __iomem *base, u8 timer)
 }
 
 static void sun50i_clkevt_time_setup(void __iomem *base, u8 timer,
-				    unsigned long delay)
+				    u64 delay)
 {
 	u32 value;
 
@@ -338,12 +342,43 @@ static int sun50i_timer_resource_get(struct sun50i_timer *chip, struct device_no
 	return 0;
 }
 
+#ifdef CONFIG_AW_AMP_SYS_RSC_MANAGER
+static int sunxi_timer_amp_rsc_request(struct device_node *node)
+{
+	int ret;
+	sunxi_amp_rsc_req_info_t rsc_info;
+	sunxi_amp_rsc_t amp_rsc;
+	int index = 0;
+	struct resource res;
+
+	ret = of_address_to_resource(node, index, &res);
+	if (ret) {
+		sunxi_err(NULL, "Failed to reg reosure information\n");
+		return ret;
+	}
+
+	rsc_info.rsc_type = SUNXI_AMP_RSC_HW_PERI;
+	rsc_info.peri.start_addr = res.start;
+	rsc_info.peri.len =  resource_size(&res);
+	rsc_info.sw_module_id_str = "timer_dev";
+
+	ret = sunxi_amp_rsc_request(&rsc_info, &amp_rsc);
+	if (ret) {
+		sunxi_err(NULL, "request AMP system peri resource for timer failed, ret: %d\n", ret);
+		return ret;
+	}
+
+	return 0;
+}
+#endif
+
 static int sunxi_timer_init(struct device_node *node)
 {
 	int ret;
 	u32 val;
 	struct sun50i_timer *chip;
 	struct of_timer_clk *of_clk;
+	unsigned long timer1_rate;
 
 	chip = kzalloc(sizeof(*chip), GFP_KERNEL);
 	if (IS_ERR_OR_NULL(chip))
@@ -357,6 +392,14 @@ static int sunxi_timer_init(struct device_node *node)
 		sunxi_err(NULL, "sun50i timer of init failed\n");
 		return ret;
 	}
+
+#ifdef CONFIG_AW_AMP_SYS_RSC_MANAGER
+	ret = sunxi_timer_amp_rsc_request(node);
+	if (ret) {
+		sunxi_err(NULL, "sunxi timer amp rscoure request failed\n");
+		return ret;
+	}
+#endif
 
 	ret = sun50i_timer_resource_get(chip, node);
 	if (ret) {
@@ -375,19 +418,25 @@ static int sunxi_timer_init(struct device_node *node)
 	of_clk->rate = clk_get_rate(of_clk->clk);
 	if (!of_clk->rate) {
 		sunxi_err(NULL, "Failed to get clock rate\n");
-		return ret;
+		return -EINVAL;
 	}
 	of_clk->period = DIV_ROUND_UP(of_clk->rate, HZ);
+
+	timer1_rate = clk_get_rate(chip->timer1_clk);
+	if (!timer1_rate) {
+		sunxi_err(NULL, "Failed to get timer1 rate\n");
+		return -EINVAL;
+	}
 
 	sun50i_clkevt_time_setup(timer_of_base(&to), 1, ~0);
 	sun50i_clkevt_time_start(timer_of_base(&to), 1, true);
 
 	sunxi_info(NULL, "sun50i timer init:0x%llx, driver version: %s\n", sun50i_timer_sched_read(), SUN50I_TIMER_MODULE_VERSION);
 
-	sched_clock_register(sun50i_timer_sched_read, 56, timer_of_rate(&to));
+	sched_clock_register(sun50i_timer_sched_read, 56, timer1_rate);
 
 	ret = clocksource_mmio_init(timer_of_base(&to) + TIMER_CVL_REG(1),
-				    node->name, timer_of_rate(&to), 350, 56,
+				    node->name, timer1_rate, 350, 56,
 				    sun50i_timer_readl_down);
 	if (ret) {
 		sunxi_err(NULL, "Failed to register clocksource\n");
@@ -401,7 +450,7 @@ static int sunxi_timer_init(struct device_node *node)
 	sun50i_timer_clear_interrupt(timer_of_base(&to));
 
 	clockevents_config_and_register(&to.clkevt, timer_of_rate(&to),
-					TIMER_SYNC_TICKS, 0xffffffffffffff);
+					TIMER_SYNC_TICKS, ULONG_MAX);
 
 	/* Enable timer0 interrupt */
 	val = readl(timer_of_base(&to) + TIMER_IRQ_REG);

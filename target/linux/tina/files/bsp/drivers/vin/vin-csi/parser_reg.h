@@ -278,6 +278,7 @@ void csic_prs_ch_en(unsigned int sel, unsigned int en);
 void csic_prs_ncsi_field_cfg(unsigned int sel, unsigned int ch, unsigned int field);
 void csic_prs_ncsi_if_cfg(unsigned int sel, struct prs_ncsi_if_cfg *if_cfg);
 void csic_prs_mcsi_if_cfg(unsigned int sel, struct prs_mcsi_if_cfg *if_cfg);
+unsigned int csic_prs_ncsi_cfg_get(unsigned int sel);
 void csic_prs_capture_start(unsigned int sel, unsigned int ch_total_num,
 				struct prs_cap_mode *mode);
 void csic_prs_capture_stop(unsigned int sel);
@@ -291,6 +292,7 @@ void csic_prs_input_fmt_cfg(unsigned int sel, unsigned int ch,
 void csic_prs_output_size_cfg(unsigned int sel, unsigned int ch,
 				struct prs_output_size *size);
 void csic_prs_set_pclk_dly(unsigned int sel, unsigned int pclk_dly);
+int csic_prs_get_pclk_dly(unsigned int sel);
 /* for csic sync */
 void csic_prs_sync_en_cfg(unsigned int sel, struct csi_sync_ctrl *sync);
 void csic_prs_sync_en(unsigned int sel, struct csi_sync_ctrl *sync);

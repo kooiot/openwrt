@@ -115,6 +115,15 @@ enum phy_link_mode {
 #if IS_ENABLED(CONFIG_ARCH_SUN300IW1)
 	TWO_1LANE = 0x0, /* 2x1lane, default */
 	ONE_2LANE = 0x1, /* 1x2lane */
+#elif IS_ENABLED(CONFIG_ARCH_SUN60IW2)
+	TWO_4LANE_ONE_2LANE = 0x0, /*2x4-lane(phya+phyb) + 1x2-lane)*/
+#elif IS_ENABLED(CONFIG_ARCH_SUN65IW1)
+	ONE_4LANE_PHYA = 0x0, /*4lane(phya)+2lane(phyb)+2lane(phyc)*/
+	TWO_4LANE = 0x1, /*4lane(phya)+4lane(phyb)*/
+#elif IS_ENABLED(CONFIG_ARCH_SUN8IW22)
+	TWO_2LANE = 0x0,
+	ONE_4LANE = 0x1,
+	THREE_1LANE = 0x2,
 #else /* CONFIG_ARCH_SUN55IW3 CONFIG_ARCH_SUN55IW6 */
 	FOUR_2LANE = 0x0, /*4x2lane, 4x1lane, default*/
 	ONE_4LANE_PHYA = 0x1, /*2x2lane+1x4lane(phya+phyb)*/
@@ -209,10 +218,11 @@ unsigned int cmb_phy_lanedt_en_status_get(unsigned int sel);
 unsigned int cmb_phy_laneck_en_status_get(unsigned int sel);
 void cmb_phy_lane_num_en(unsigned int sel, struct phy_lane_cfg phy_lane_cfg);
 void cmb_phy0_work_mode(unsigned int sel, unsigned int mode);
+void cmb_phy0_multiplex_en(unsigned int sel, unsigned int mode);
 void cmb_phy0_ofscal_cfg(unsigned int sel);
 void cmb_phy_deskew_en(unsigned int sel, struct phy_lane_cfg phy_lane_cfg);
 void cmb_term_ctl(unsigned int sel, struct phy_lane_cfg phy_lane_cfg);
-void cmb_phy_deskew1_cfg(unsigned int sel, unsigned int deskew);
+void cmb_phy_deskew1_cfg(unsigned int sel, unsigned int deskew, bool deskew_lane_cfg);
 unsigned int cmb_phy_deskew1_cfg_get(unsigned int sel);
 void cmb_hs_ctl(unsigned int sel, struct phy_lane_cfg phy_lane_cfg);
 void cmb_s2p_ctl(unsigned int sel, unsigned int dly, struct phy_lane_cfg phy_lane_cfg);
@@ -224,6 +234,8 @@ unsigned int cmb_phy_freq_cnt_get(unsigned int sel);
 unsigned int cmb_phy_sta_d0_get(unsigned int sel);
 unsigned int cmb_phy_sta_d1_get(unsigned int sel);
 unsigned int cmb_phy_sta_ck0_get(unsigned int sel);
+void cmb_phy_set_deskew_laneck0(unsigned int sel, unsigned int delay);
+unsigned int cmb_phy_deskew_laneck0_get(unsigned int sel);
 
 /*
  * Detail function information of registers----PORT0/1
@@ -255,6 +267,11 @@ void cmb_port_mipi_set_ch_field(unsigned int sel, unsigned int ch,
 unsigned int cmb_port_mipi_ch_field_get(unsigned int sel, unsigned int ch);
 void cmb_port_mipi_raw_extend_en(unsigned int sel, unsigned int ch, unsigned int en);
 void cmb_port_set_mipi_wdr(unsigned int sel, unsigned int mode, unsigned int ch);
+void cmb_port_int_enable(unsigned int sel, unsigned int ch, enum mipi_int_sel interrupt);
+void cmb_port_int_disable(unsigned int sel, unsigned int ch, enum mipi_int_sel interrupt);
+unsigned int cmb_port_int_status_get(unsigned int sel, unsigned int ch, struct mipi_int_status *status);
+void cmb_port_int_clear_status(unsigned int sel, unsigned int ch, enum mipi_int_sel interrupt);
+
 unsigned int cmb_port_wdr_mode_get(unsigned int sel);
 unsigned int cmb_port_mipi_ch_cur_dt_get(unsigned int sel, unsigned int ch);
 unsigned int cmb_port_mipi_ch_cur_vc_get(unsigned int sel, unsigned int ch);

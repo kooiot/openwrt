@@ -18,6 +18,10 @@
 #include <linux/platform_device.h>
 #include <linux/remoteproc.h>
 
+#if IS_ENABLED(CONFIG_AW_RPROC_SUBDEV_BOOT_REASON)
+#include "subdev/sunxi_rproc_boot_reason_dev.h"
+#endif
+
 #if IS_ENABLED(CONFIG_AW_RPROC_SUBDEV_WDT)
 #include "subdev/sunxi_rproc_wdt_dev.h"
 #endif
@@ -37,6 +41,9 @@
 struct sunxi_rproc_subdev {
 	struct rproc *rproc;
 	void __iomem *io_base;
+#if IS_ENABLED(CONFIG_AW_RPROC_SUBDEV_BOOT_REASON)
+	struct sunxi_rproc_boot_reason_dev *boot_reason_dev;
+#endif
 #if IS_ENABLED(CONFIG_AW_RPROC_SUBDEV_WDT)
 	struct sunxi_rproc_wdt_dev *wdt_dev;
 #endif

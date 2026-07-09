@@ -20,10 +20,12 @@
 #include <linux/videodev2.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-subdev.h>
-#if !defined VIPP_200
-#include "vipp100/vipp_reg.h"
-#else
+#if defined VIPP_200
 #include "vipp200/vipp200_reg.h"
+#elif defined VIPP_213
+#include "vipp213/vipp213_reg.h"
+#else
+#include "vipp100/vipp_reg.h"
 #endif
 
 #define VIPP_ONLY_SHRINK 1
@@ -45,6 +47,18 @@ struct scaler_para {
 	u32 w_shift;
 	u32 width;
 	u32 height;
+	u32 ratio_precision;
+	bool sc_en;
+	bool nearest_en;
+	bool bilinear_en;
+};
+
+struct ds_para {
+	u32 ds_phase;
+	u32 w_num;
+	u32 h_num;
+	u32 width;
+	u32 height;
 };
 
 struct scaler_dev {
@@ -61,6 +75,7 @@ struct scaler_dev {
 		struct v4l2_rect active;
 	} crop;
 	struct scaler_para para;
+	struct ds_para ds_para;
 	void __iomem *base;
 	unsigned char is_empty;
 	unsigned char noneed_register;
@@ -69,19 +84,28 @@ struct scaler_dev {
 	u8 large_image;
 	unsigned int delay_init;
 	unsigned int delay_para_ready;
-#if defined VIPP_200
+	unsigned char yuv422to420;
+	enum vipp_format out_fmt;
+	enum vipp_format in_fmt;
+#if defined VIPP_200 || defined VIPP_213
 	struct vin_mm load_para[2];
 	bool load_select; /*load_select = 0 select load_para[0], load_select = 1 select load_para[1]*/
 	int irq;
 	unsigned char is_irq_empty;
 	unsigned int logic_top_stream_count;
 	unsigned int work_mode;
+#ifdef OUTPUT_EMBED_DATA
+	bool time_embed_en;
+	bool ispbe_info_embed_en;
+#endif
 #endif
 	unsigned int stream_count;
+	const char *rpmsg_ser_name;
 };
 
 int sunxi_scaler_subdev_s_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *param);
 struct v4l2_subdev *sunxi_scaler_get_subdev(int id);
+int sunxi_vipp_get_cascade_cfg(int id, int cascade_id, unsigned int *width, unsigned int *height);
 int sunxi_vipp_get_osd_stat(int id, unsigned int *stat);
 int sunxi_scaler_platform_register(void);
 void sunxi_scaler_platform_unregister(void);

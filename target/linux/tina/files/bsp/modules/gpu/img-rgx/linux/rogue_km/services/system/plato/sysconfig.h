@@ -41,15 +41,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#if !defined(__SYSCONFIG_H__)
-#define __SYSCONFIG_H__
+#if !defined(SYSCONFIG_H)
+#define SYSCONFIG_H
 
 #include "pvrsrv_device.h"
 #include "rgxdevice.h"
 #include "interrupt_support.h"
-#if defined(SUPPORT_PLATO_DMA)
-#include "plato_dma.h"
-#endif
 
 #define SYS_RGX_ACTIVE_POWER_LATENCY_MS (10)
 #define MAX_SYSTEMS 32
@@ -83,10 +80,6 @@ struct _SYS_DATA_
 
 	/* Rogue, PDP and HDMI */
 	SYS_INTERRUPT_DATA			sInterruptData[PLATO_IRQ_MAX];
-
-#if defined(SUPPORT_PLATO_DMA)
-	PLATO_DMA_CONTEXT			sDmaCtx;
-#endif
 };
 
 /* Helpers for getting DDR/GPU/PLL clock speed */
@@ -104,9 +97,6 @@ void PlatoLocalDevPAddrToCpuPAddr(IMG_HANDLE hPrivData,
 					  IMG_UINT32 ui32NumOfAddr,
 					  IMG_CPU_PHYADDR *psCpuPAddr,
 					  IMG_DEV_PHYADDR *psDevPAddr);
-
-IMG_UINT32 PlatoLocalGetRegionId(IMG_HANDLE hPrivData,
-					  PVRSRV_MEMALLOCFLAGS_T uiAllocationFlags);
 #endif
 #if (PLATO_MEMORY_CONFIG == PLATO_MEMORY_HOST) || (PLATO_MEMORY_CONFIG == PLATO_MEMORY_HYBRID)
 void PlatoSystemCpuPAddrToDevPAddr(IMG_HANDLE hPrivData,
@@ -118,10 +108,6 @@ void PlatoSystemDevPAddrToCpuPAddr(IMG_HANDLE hPrivData,
 					   IMG_UINT32 ui32NumOfAddr,
 					   IMG_CPU_PHYADDR *psCpuPAddr,
 					   IMG_DEV_PHYADDR *psDevPAddr);
-
-IMG_UINT32 PlatoSystemGetRegionId(IMG_HANDLE hPrivData,
-						PVRSRV_MEMALLOCFLAGS_T uiAllocationFlags);
-
 #endif /* (PLATO_MEMORY_CONFIG == PLATO_MEMORY_HOST) || (PLATO_MEMORY_CONFIG == PLATO_MEMORY_HYBRID) */
 
 PVRSRV_ERROR PlatoMapRegisters(SYS_DATA *psDevData,
@@ -146,4 +132,4 @@ void PlatoUnmapRegisters(SYS_DATA *psDevData,
  * system specific data structures
  *****************************************************************************/
 
-#endif /* !defined(__SYSCONFIG_H__) */
+#endif /* !defined(SYSCONFIG_H) */

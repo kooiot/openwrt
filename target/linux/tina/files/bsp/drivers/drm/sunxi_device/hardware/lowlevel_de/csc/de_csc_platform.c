@@ -171,6 +171,7 @@ static struct de_csc_desc de355_cscs[] = {
 		.cid.channel_id = 0,
 		.did.device_id = 0,
 		.csc_bit_width = 10,
+		.hue_default_value = 0,
 		.type = DEVICE_CSC,
 		.reg_offset = CSC_OFFSET_V2,
 	},
@@ -180,6 +181,7 @@ static struct de_csc_desc de355_cscs[] = {
 		.cid.channel_id = 0,
 		.did.device_id = 1,
 		.csc_bit_width = 10,
+		.hue_default_value = 0,
 		.type = DEVICE_CSC,
 		.reg_offset = CSC_OFFSET_V2,
 	},
@@ -224,6 +226,7 @@ static struct de_csc_desc de210_cscs[] = {
 		.cid.channel_id = 0,
 		.did.device_id = 0,
 		.csc_bit_width = 8,
+		.hue_default_value = 50,
 		.type = GAMMA_CSC,
 	},
 };
@@ -257,6 +260,7 @@ static struct de_csc_desc de201_cscs[] = {
 		.name = "drc_csc",
 		.version = 1,
 		.csc_bit_width = 8,
+		.hue_default_value = 50,
 		.type = SMBL_CSC,//FIXME
 	},
 };
@@ -369,6 +373,7 @@ static struct de_csc_desc de352_cscs[] = {
 		.cid.channel_id = 0,
 		.did.device_id = 0,
 		.csc_bit_width = 10,
+		.hue_default_value = 50,
 		.type = GAMMA_CSC,
 	},
 	{
@@ -376,6 +381,7 @@ static struct de_csc_desc de352_cscs[] = {
 		.cid.channel_id = 0,
 		.did.device_id = 1,
 		.csc_bit_width = 10,
+		.hue_default_value = 50,
 		.type = GAMMA_CSC,
 	},
 };
@@ -386,8 +392,35 @@ static struct de_version_csc de352 = {
 	.csc = de352_cscs,
 };
 
+static struct de_csc_desc de212_cscs[] = {
+	{
+		.name = "vch0_csc",
+		.version = 2,
+		.cid.channel_id = 0,
+		.cid.csc_id = 1,
+		.csc_bit_width = 10,
+		.type = CHANNEL_CSC,
+		.reg_offset = CSC_OFFSET_V2,
+	},
+	{
+		.name = "dep0_csc",
+		.version = 2,
+		.cid.channel_id = 0,
+		.did.device_id = 0,
+		.csc_bit_width = 10,
+		.type = DEVICE_CSC,
+		.reg_offset = CSC_OFFSET_V2,
+	},
+};
+
+static struct de_version_csc de212 = {
+	.version = 0x212,
+	.csc_cnt = ARRAY_SIZE(de212_cscs),
+	.csc = de212_cscs,
+};
+
 static struct de_version_csc *de_version[] = {
-	&de350, &de355, &de210, &de201, &de352,
+	&de350, &de355, &de210, &de201, &de352, &de212,
 };
 
 const struct de_csc_desc *get_csc_desc(struct module_create_info *info)

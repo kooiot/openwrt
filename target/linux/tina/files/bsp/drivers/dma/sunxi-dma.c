@@ -8,10 +8,12 @@
  * Maxime Ripard <maxime.ripard@free-electrons.com>
  */
 
+#define SUNXI_MODNAME "dma"
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/dmaengine.h>
 #include <linux/dmapool.h>
+#include <linux/dma-mapping.h>
 #include <linux/interrupt.h>
 #include <linux/module.h>
 #include <linux/of_dma.h>
@@ -21,9 +23,13 @@
 #include <linux/slab.h>
 #include <linux/types.h>
 #include <virt-dma.h>
+#include <sunxi-log.h>
+#ifdef CONFIG_AW_AMP_SYS_RSC_MANAGER
+#include <linux/sunxi_amp_rsc.h>
+#endif
 #include "sunxi-dma.h"
 
-#define SUNXI_DMA_MODULE_VERSION	"1.2.8"
+#define SUNXI_DMA_MODULE_VERSION	"1.2.14"
 /*
  * Common registers
  */
@@ -189,6 +195,7 @@ struct sun6i_dma_config {
 	u32 src_addr_widths;
 	u32 dst_addr_widths;
 	bool has_mbus_clk;
+	bool has_mbus_en_clk;
 	bool has_mcu_mbus_clk;
 	u32 channum_per_reg;
 	void (*irq_enable)(struct sun6i_dma_dev *sdev, u32 chan_num, u32 irq_val);
@@ -202,6 +209,8 @@ struct sun6i_dma_config {
 	bool has_irq_shared; /* Shared interrupt control with RV cpuX domain. */
 	bool has_support_32G;
 	bool has_ecc;
+	bool has_andes_cache;
+	bool has_no_rst;
 };
 
 /*
@@ -245,6 +254,10 @@ struct sun6i_pchan {
 	struct sun6i_vchan	*vchan;
 	struct sun6i_desc	*desc;
 	struct sun6i_desc	*done;
+#ifdef CONFIG_AW_AMP_SYS_RSC_MANAGER
+	sunxi_amp_rsc_req_info_t rsc_info;
+	sunxi_amp_rsc_t amp_rsc;
+#endif
 };
 
 struct sun6i_vchan {
@@ -266,6 +279,7 @@ struct sun6i_dma_dev {
 	void __iomem		*base;
 	struct clk		*clk;
 	struct clk		*clk_mbus;
+	struct clk		*clk_mbus_en;
 	struct clk		*clk_mcu_mbus;
 	int			irq;
 	int			ecc_irq;
@@ -683,6 +697,12 @@ static void sun6i_dma_tasklet(unsigned long data)
 		if (pchan->vchan || list_empty(&sdev->pending))
 			continue;
 
+#ifdef CONFIG_AW_AMP_SYS_RSC_MANAGER
+		/* not allow use by this master */
+		if (!sunxi_amp_rsc_has_permission(pchan->amp_rsc))
+			continue;
+#endif
+
 		vchan = list_first_entry(&sdev->pending,
 					 struct sun6i_vchan, node);
 
@@ -902,7 +922,8 @@ static struct dma_async_tx_descriptor *sun6i_dma_prep_dma_memcpy(
 
 	v_lli = dma_pool_alloc(sdev->pool, GFP_NOWAIT, &p_lli);
 	if (!v_lli) {
-		dev_err(sdev->slave.dev, "Failed to alloc lli memory\n");
+		sunxi_err_std(sdev->slave.dev, E_DMA_SW_DEP_MEM,
+				"Failed to alloc lli memory\n");
 		goto err_txd_free;
 	}
 	v_lli->this_phy = p_lli;
@@ -980,6 +1001,11 @@ static struct dma_async_tx_descriptor *sun6i_dma_prep_slave_sg(
 	txd = kzalloc(sizeof(*txd), GFP_NOWAIT);
 	if (!txd)
 		return NULL;
+
+	if (dir == DMA_DEV_TO_MEM) {
+		if (sdev->cfg->has_andes_cache)
+			dma_sync_sg_for_device(chan2dev(chan), sgl, sg_len, DMA_TO_DEVICE);
+	}
 
 	for_each_sg(sgl, sg, sg_len, i) {
 		v_lli = dma_pool_alloc(sdev->pool, GFP_NOWAIT, &p_lli);
@@ -1725,7 +1751,6 @@ static __maybe_unused struct sun6i_dma_config sunxi_dma_v104 = {
 			     BIT(DMA_SLAVE_BUSWIDTH_4_BYTES) |
 			     BIT(DMA_SLAVE_BUSWIDTH_8_BYTES),
 	.has_mbus_clk = true,
-	.has_io_speedup = true,
 	.has_mcu_mbus_clk = true,
 	.channum_per_reg  = DMA_IRQ_CHAN_NR,
 };
@@ -1815,6 +1840,123 @@ static struct sun6i_dma_config sunxi_dma_v107 = {
 	.has_ecc = true,
 };
 
+/*
+ * The dma IP V3.2, like sun300iw1 sys dma etc., uses the number of dma channels from the
+ * device tree node.
+ */
+static __maybe_unused struct sun6i_dma_config sunxi_dma_v108 = {
+	.clock_autogate_enable = sun6i_enable_clock_autogate_h3,
+	.set_burst_length = sun6i_set_burst_length_h3,
+	.set_drq          = sun6i_set_drq_h6,
+	.set_mode         = sun6i_set_mode_h6,
+	.irq_enable 	  = sunxi_irq_enable,
+	.get_irq_status   = sunxi_get_irq_status,
+	.read_irq_enable  = sunxi_read_irq_enable,
+	.clear_irq_status  = sunxi_clear_irq_status,
+	.src_burst_lengths = BIT(1) | BIT(4) | BIT(8) | BIT(16),
+	.dst_burst_lengths = BIT(1) | BIT(4) | BIT(8) | BIT(16),
+	.src_addr_widths   = BIT(DMA_SLAVE_BUSWIDTH_1_BYTE) |
+			     BIT(DMA_SLAVE_BUSWIDTH_2_BYTES) |
+			     BIT(DMA_SLAVE_BUSWIDTH_4_BYTES) |
+			     BIT(DMA_SLAVE_BUSWIDTH_8_BYTES),
+	.dst_addr_widths   = BIT(DMA_SLAVE_BUSWIDTH_1_BYTE) |
+			     BIT(DMA_SLAVE_BUSWIDTH_2_BYTES) |
+			     BIT(DMA_SLAVE_BUSWIDTH_4_BYTES) |
+			     BIT(DMA_SLAVE_BUSWIDTH_8_BYTES),
+	.has_mbus_clk = true,
+	.has_mbus_en_clk = true,
+	.channum_per_reg = DMA_IRQ_CHAN_NR,
+	.has_io_speedup = true,
+	.has_timeout = true,
+	.has_multicore_shared = true,
+	.has_andes_cache = true,
+};
+
+/*
+ * The dma IP V3.2, like sun252iw1 sys dma etc., uses the number of dma channels from the
+ * device tree node.
+ */
+static __maybe_unused struct sun6i_dma_config sunxi_dma_v109 = {
+	.clock_autogate_enable = sun6i_enable_clock_autogate_h3,
+	.set_burst_length = sun6i_set_burst_length_h3,
+	.set_drq          = sun6i_set_drq_h6,
+	.set_mode         = sun6i_set_mode_h6,
+	.irq_enable 	  = sunxi_irq_enable,
+	.get_irq_status   = sunxi_get_irq_status,
+	.read_irq_enable  = sunxi_read_irq_enable,
+	.clear_irq_status  = sunxi_clear_irq_status,
+	.src_burst_lengths = BIT(1) | BIT(4) | BIT(8) | BIT(16),
+	.dst_burst_lengths = BIT(1) | BIT(4) | BIT(8) | BIT(16),
+	.src_addr_widths   = BIT(DMA_SLAVE_BUSWIDTH_1_BYTE) |
+			     BIT(DMA_SLAVE_BUSWIDTH_2_BYTES) |
+			     BIT(DMA_SLAVE_BUSWIDTH_4_BYTES) |
+			     BIT(DMA_SLAVE_BUSWIDTH_8_BYTES),
+	.dst_addr_widths   = BIT(DMA_SLAVE_BUSWIDTH_1_BYTE) |
+			     BIT(DMA_SLAVE_BUSWIDTH_2_BYTES) |
+			     BIT(DMA_SLAVE_BUSWIDTH_4_BYTES) |
+			     BIT(DMA_SLAVE_BUSWIDTH_8_BYTES),
+	.has_mbus_clk = true,
+	.has_mbus_en_clk = true,
+	.channum_per_reg = DMA_IRQ_CHAN_NR,
+	.has_io_speedup = true,
+	.has_timeout = true,
+	.has_multicore_shared = true,
+};
+
+/*
+ * The dma IP V3.0, like sun8iw17 etc., uses the number of dma channels from the
+ * device tree node.
+ */
+static __maybe_unused struct sun6i_dma_config sunxi_dma_v110 = {
+	.clock_autogate_enable = sun6i_enable_clock_autogate_h3,
+	.set_burst_length = sun6i_set_burst_length_h3,
+	.set_drq          = sun6i_set_drq_h6,
+	.set_mode         = sun6i_set_mode_h6,
+	.irq_enable 	  = sunxi_irq_enable,
+	.get_irq_status   = sunxi_get_irq_status,
+	.read_irq_enable  = sunxi_read_irq_enable,
+	.clear_irq_status  = sunxi_clear_irq_status,
+	.src_burst_lengths = BIT(1) | BIT(4) | BIT(8) | BIT(16),
+	.dst_burst_lengths = BIT(1) | BIT(4) | BIT(8) | BIT(16),
+	.src_addr_widths   = BIT(DMA_SLAVE_BUSWIDTH_1_BYTE) |
+			     BIT(DMA_SLAVE_BUSWIDTH_2_BYTES) |
+			     BIT(DMA_SLAVE_BUSWIDTH_4_BYTES) |
+			     BIT(DMA_SLAVE_BUSWIDTH_8_BYTES),
+	.dst_addr_widths   = BIT(DMA_SLAVE_BUSWIDTH_1_BYTE) |
+			     BIT(DMA_SLAVE_BUSWIDTH_2_BYTES) |
+			     BIT(DMA_SLAVE_BUSWIDTH_4_BYTES) |
+			     BIT(DMA_SLAVE_BUSWIDTH_8_BYTES),
+	.has_mbus_clk = false,
+	.has_no_rst = true,
+	.channum_per_reg  = DMA_IRQ_CHAN_NR,
+};
+
+static struct sun6i_dma_config sunxi_dma_v111 = {
+	.clock_autogate_enable = sun6i_enable_clock_autogate_h3,
+	.set_burst_length = sun6i_set_burst_length_h3,
+	.set_drq          = sun6i_set_drq_h6,
+	.set_mode         = sun6i_set_mode_h6,
+	.irq_enable 	  = sunxi_irq_enable_v102,
+	.get_irq_status   = sunxi_get_irq_status_v102,
+	.read_irq_enable  = sunxi_read_irq_enable_v102,
+	.clear_irq_status  = sunxi_clear_irq_status_v102,
+	.src_burst_lengths = BIT(1) | BIT(4) | BIT(8) | BIT(16),
+	.dst_burst_lengths = BIT(1) | BIT(4) | BIT(8) | BIT(16),
+	.src_addr_widths   = BIT(DMA_SLAVE_BUSWIDTH_1_BYTE) |
+			     BIT(DMA_SLAVE_BUSWIDTH_2_BYTES) |
+			     BIT(DMA_SLAVE_BUSWIDTH_4_BYTES),
+	.dst_addr_widths   = BIT(DMA_SLAVE_BUSWIDTH_1_BYTE) |
+			     BIT(DMA_SLAVE_BUSWIDTH_2_BYTES) |
+			     BIT(DMA_SLAVE_BUSWIDTH_4_BYTES),
+	.has_mbus_clk = true,
+	.has_mbus_en_clk = true,
+	.channum_per_reg  = DMA_IRQ_CHAN_NR_V102,
+	.has_io_speedup = true,
+	.has_timeout = true,
+	.has_support_32G = true,
+	.cannot_reset = true,
+};
+
 static const struct of_device_id sun6i_dma_match[] = {
 	{ .compatible = "allwinner,dma-v100", .data = &sunxi_dma_v100 },
 	{ .compatible = "allwinner,dma-v101", .data = &sunxi_dma_v101 },
@@ -1824,6 +1966,10 @@ static const struct of_device_id sun6i_dma_match[] = {
 	{ .compatible = "allwinner,dma-v105", .data = &sunxi_dma_v105 },
 	{ .compatible = "allwinner,dma-v106", .data = &sunxi_dma_v106 },
 	{ .compatible = "allwinner,dma-v107", .data = &sunxi_dma_v107 },
+	{ .compatible = "allwinner,dma-v108", .data = &sunxi_dma_v108 },
+	{ .compatible = "allwinner,dma-v109", .data = &sunxi_dma_v109 },
+	{ .compatible = "allwinner,dma-v110", .data = &sunxi_dma_v110 },
+	{ .compatible = "allwinner,dma-v111", .data = &sunxi_dma_v111 },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, sun6i_dma_match);
@@ -1906,8 +2052,10 @@ static int sun6i_dma_probe(struct platform_device *pdev)
 		return PTR_ERR(sdc->base);
 
 	sdc->irq = platform_get_irq(pdev, 0);
-	if (sdc->irq < 0)
+	if (sdc->irq < 0) {
+		sunxi_err_std(&pdev->dev, E_DMA_SYS_IRQ_GET, "fail to get irq\n");
 		return sdc->irq;
+	}
 
 	if (sdc->cfg->has_ecc) {
 		sdc->ecc_irq = platform_get_irq(pdev, 1);
@@ -1917,8 +2065,16 @@ static int sun6i_dma_probe(struct platform_device *pdev)
 
 	sdc->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(sdc->clk)) {
-		dev_err(&pdev->dev, "No clock specified\n");
+		sunxi_err_std(&pdev->dev, E_DMA_ARG_CLK, "No clock specified\n");
 		return PTR_ERR(sdc->clk);
+	}
+
+	if (sdc->cfg->has_mbus_en_clk) {
+		sdc->clk_mbus_en = devm_clk_get(&pdev->dev, "mbus-en");
+		if (IS_ERR(sdc->clk_mbus_en)) {
+			dev_err(&pdev->dev, "No mbus-en clock specified\n");
+			return PTR_ERR(sdc->clk_mbus_en);
+		}
 	}
 
 	if (sdc->cfg->has_mbus_clk) {
@@ -1937,16 +2093,18 @@ static int sun6i_dma_probe(struct platform_device *pdev)
 		}
 	}
 
-	sdc->rstc = devm_reset_control_get(&pdev->dev, NULL);
-	if (IS_ERR(sdc->rstc)) {
-		dev_err(&pdev->dev, "No reset controller specified\n");
-		return PTR_ERR(sdc->rstc);
+	if (!sdc->cfg->has_no_rst) {
+		sdc->rstc = devm_reset_control_get(&pdev->dev, NULL);
+		if (IS_ERR(sdc->rstc)) {
+			dev_err(&pdev->dev, "No reset controller specified\n");
+			return PTR_ERR(sdc->rstc);
+		}
 	}
 
 	sdc->pool = dmam_pool_create(dev_name(&pdev->dev), &pdev->dev,
 				     sizeof(struct sun6i_dma_lli), 4, 0);
 	if (!sdc->pool) {
-		dev_err(&pdev->dev, "No memory for descriptors dma pool\n");
+		sunxi_err_std(&pdev->dev, E_DMA_SYS_POOL_GET, "No memory for descriptors dma pool\n");
 		return -ENOMEM;
 	}
 
@@ -1986,7 +2144,7 @@ static int sun6i_dma_probe(struct platform_device *pdev)
 
 	ret = of_property_read_u32(np, "dma-channels", &sdc->num_pchans);
 	if (ret && !sdc->num_pchans) {
-		dev_err(&pdev->dev, "Can't get dma-channels.\n");
+		sunxi_err_std(&pdev->dev, E_DMA_ARG_CHANNEL, "Can't get dma-channels.\n");
 		return ret;
 	}
 
@@ -2021,6 +2179,21 @@ static int sun6i_dma_probe(struct platform_device *pdev)
 
 		pchan->idx = i;
 		pchan->base = sdc->base + 0x100 + i * 0x40;
+
+#ifdef CONFIG_AW_AMP_SYS_RSC_MANAGER
+		pchan->rsc_info.sw_module_id_str = "dma";
+		pchan->rsc_info.rsc_type = SUNXI_AMP_RSC_HW_DMA_CHANNEL;
+		pchan->rsc_info.dma.channel_id = pchan->idx;
+		pchan->rsc_info.dma.peri.start_addr = res->start;
+		pchan->rsc_info.dma.peri.len = res->end - res->start + 1;
+
+		ret = sunxi_amp_rsc_request(&pchan->rsc_info, &pchan->amp_rsc);
+		if (ret)
+			dev_info(&pdev->dev, "pchan:%d can not use in linux\n", pchan->idx);
+		else
+			dev_info(&pdev->dev, "pchan:%d can use in linux\n", pchan->idx);
+
+#endif
 	}
 
 	for (i = 0; i < sdc->num_vchans; i++) {
@@ -2031,19 +2204,21 @@ static int sun6i_dma_probe(struct platform_device *pdev)
 		vchan_init(&vchan->vc, &sdc->slave);
 	}
 
-	if (!sdc->cfg->cannot_reset) {
-		ret = reset_control_assert(sdc->rstc);
+	if (!sdc->cfg->has_no_rst) {
+		if (!sdc->cfg->cannot_reset) {
+			ret = reset_control_assert(sdc->rstc);
+			if (ret) {
+				dev_err(&pdev->dev, "Couldn't assert the device from reset\n");
+				goto err_chan_free;
+			}
+			usleep_range(20, 25); /* ensure dma controller is reset */
+		}
+
+		ret = reset_control_deassert(sdc->rstc);
 		if (ret) {
-			dev_err(&pdev->dev, "Couldn't assert the device from reset\n");
+			dev_err(&pdev->dev, "Couldn't deassert the device from reset\n");
 			goto err_chan_free;
 		}
-		usleep_range(20, 25); /* ensure dma controller is reset */
-	}
-
-	ret = reset_control_deassert(sdc->rstc);
-	if (ret) {
-		dev_err(&pdev->dev, "Couldn't deassert the device from reset\n");
-		goto err_chan_free;
 	}
 
 	ret = clk_prepare_enable(sdc->clk);
@@ -2052,11 +2227,19 @@ static int sun6i_dma_probe(struct platform_device *pdev)
 		goto err_reset_assert;
 	}
 
+	if (sdc->cfg->has_mbus_en_clk) {
+		ret = clk_prepare_enable(sdc->clk_mbus_en);
+		if (ret) {
+			dev_err(&pdev->dev, "Couldn't enable mbus-en clock\n");
+			goto err_clk_disable;
+		}
+	}
+
 	if (sdc->cfg->has_mbus_clk) {
 		ret = clk_prepare_enable(sdc->clk_mbus);
 		if (ret) {
 			dev_err(&pdev->dev, "Couldn't enable mbus clock\n");
-			goto err_clk_disable;
+			goto err_mbus_en_clk_disable;
 		}
 	}
 
@@ -2139,10 +2322,14 @@ err_mcu_mbus_clk_disable:
 err_mbus_clk_disable:
 	if (sdc->cfg->has_mbus_clk)
 		clk_disable_unprepare(sdc->clk_mbus);
+err_mbus_en_clk_disable:
+	if (sdc->cfg->has_mbus_en_clk)
+		clk_disable_unprepare(sdc->clk_mbus_en);
 err_clk_disable:
 	clk_disable_unprepare(sdc->clk);
 err_reset_assert:
-	reset_control_assert(sdc->rstc);
+	if (!sdc->cfg->has_no_rst)
+		reset_control_assert(sdc->rstc);
 err_chan_free:
 	sun6i_dma_free(sdc);
 	return ret;
@@ -2151,10 +2338,21 @@ err_chan_free:
 static int sun6i_dma_remove(struct platform_device *pdev)
 {
 	struct sun6i_dma_dev *sdc = platform_get_drvdata(pdev);
+#ifdef CONFIG_AW_AMP_SYS_RSC_MANAGER
+	int i;
+#endif
 
 	sun6i_dma_sysfs_exit(&pdev->dev);
 	of_dma_controller_free(pdev->dev.of_node);
 	dma_async_device_unregister(&sdc->slave);
+
+#ifdef CONFIG_AW_AMP_SYS_RSC_MANAGER
+	for (i = 0; i < sdc->num_pchans; i++) {
+		struct sun6i_pchan *pchan = &sdc->pchans[i];
+
+		sunxi_amp_rsc_free(pchan->amp_rsc);
+	}
+#endif
 
 	sun6i_kill_tasklet(sdc);
 
@@ -2162,8 +2360,11 @@ static int sun6i_dma_remove(struct platform_device *pdev)
 		clk_disable_unprepare(sdc->clk_mcu_mbus);
 	if (sdc->cfg->has_mbus_clk)
 		clk_disable_unprepare(sdc->clk_mbus);
+	if (sdc->cfg->has_mbus_en_clk)
+		clk_disable_unprepare(sdc->clk_mbus_en);
 	clk_disable_unprepare(sdc->clk);
-	reset_control_assert(sdc->rstc);
+	if (!sdc->cfg->has_no_rst)
+		reset_control_assert(sdc->rstc);
 
 	sun6i_dma_free(sdc);
 

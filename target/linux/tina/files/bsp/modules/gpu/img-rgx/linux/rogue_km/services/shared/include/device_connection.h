@@ -41,8 +41,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#if !defined(__DEVICE_CONNECTION_H__)
-#define __DEVICE_CONNECTION_H__
+#if !defined(DEVICE_CONNECTION_H)
+#define DEVICE_CONNECTION_H
 
 #include "img_types.h"
 #include "img_defs.h"
@@ -51,7 +51,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 typedef struct _PVRSRV_DEVICE_NODE_ *SHARED_DEV_CONNECTION;
 #else
 #include "connection.h"
-typedef const struct _PVRSRV_DEV_CONNECTION_ *SHARED_DEV_CONNECTION;
+typedef const struct PVRSRV_DEV_CONNECTION_TAG *SHARED_DEV_CONNECTION;
 #endif
 
 /******************************************************************************
@@ -75,6 +75,10 @@ typedef const struct _PVRSRV_DEV_CONNECTION_ *SHARED_DEV_CONNECTION;
  *                      x..........  PVRSRV_DEVMEM_SVM_ALLOC_CANFAIL
  *                     *........... FBCDC_V3_1             [0x800]
  *                     x...........  FBCDC_V3_1_USED
+ *                    *............ PVRSRV_SYSTEM_DMA
+ *                    x............  PVRSRV_SYSTEM_DMA_USED
+ *                   *............. TFBC_LOSSY_GROUP
+ *                   x.............  TFBC_LOSSY_GROUP_1
  * |...|...|...|...|...|...|...|...
  *****************************************************************************/
 
@@ -89,18 +93,29 @@ typedef const struct _PVRSRV_DEV_CONNECTION_ *SHARED_DEV_CONNECTION;
 #define PVRSRV_NONMAPPABLE_MEMORY_PRESENT_SHIFT (7)
 #define PVRSRV_NONMAPPABLE_MEMORY_PRESENT_FLAG (1U << PVRSRV_NONMAPPABLE_MEMORY_PRESENT_SHIFT)
 
+/* Flag to be passed over the bridge to indicate PDump activity */
+#define PVRSRV_PDUMP_IS_RECORDING_SHIFT (4)
+#define PVRSRV_PDUMP_IS_RECORDING (1U << PVRSRV_PDUMP_IS_RECORDING_SHIFT)
+
 /* Flag to be passed over the bridge during connection stating SVM allocation availability */
 #define PVRSRV_DEVMEM_SVM_ALLOC_SHIFT (8)
 #define PVRSRV_DEVMEM_SVM_ALLOC_UNSUPPORTED (1U << PVRSRV_DEVMEM_SVM_ALLOC_SHIFT)
 #define PVRSRV_DEVMEM_SVM_ALLOC_SUPPORTED (2U << PVRSRV_DEVMEM_SVM_ALLOC_SHIFT)
 #define PVRSRV_DEVMEM_SVM_ALLOC_CANFAIL (4U << PVRSRV_DEVMEM_SVM_ALLOC_SHIFT)
 
-#define PVRSRV_PDUMP_IS_RECORDING_SHIFT (4)
-#define PVRSRV_PDUMP_IS_RECORDING (1U << PVRSRV_PDUMP_IS_RECORDING_SHIFT)
-
 /* Flag to be passed over the bridge during connection stating whether GPU uses FBCDC v3.1 */
 #define PVRSRV_FBCDC_V3_1_USED_SHIFT (11)
 #define PVRSRV_FBCDC_V3_1_USED (1U << PVRSRV_FBCDC_V3_1_USED_SHIFT)
+
+/* Flag to be passed over the bridge during connection stating whether System has
+   DMA transfer capability to and from device memory */
+#define PVRSRV_SYSTEM_DMA_SHIFT (12)
+#define PVRSRV_SYSTEM_DMA_USED (1U << PVRSRV_SYSTEM_DMA_SHIFT)
+
+/* Flag to be passed over the bridge during connection stating whether GPU supports TFBC and is
+   configured to use lossy compression control group 1 (25% / 37.5% / 50%) */
+#define PVRSRV_TFBC_LOSSY_GROUP_SHIFT (13)
+#define PVRSRV_TFBC_LOSSY_GROUP_1 (1U << PVRSRV_TFBC_LOSSY_GROUP_SHIFT)
 
 static INLINE IMG_HANDLE GetBridgeHandle(SHARED_DEV_CONNECTION hDevConnection)
 {
@@ -112,4 +127,4 @@ static INLINE IMG_HANDLE GetBridgeHandle(SHARED_DEV_CONNECTION hDevConnection)
 }
 
 
-#endif /* !defined(__DEVICE_CONNECTION_H__) */
+#endif /* !defined(DEVICE_CONNECTION_H) */

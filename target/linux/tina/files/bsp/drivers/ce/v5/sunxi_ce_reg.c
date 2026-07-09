@@ -195,6 +195,14 @@ void ss_irq_disable(int flow)
 	ss_writel(CE_REG_ICR, val);
 }
 
+void ss_sw_padding_enable(void)
+{
+	int val = ss_readl(CE_REG_ICR);
+
+	val |= CE_SW_PADDING_ENABLED;
+	ss_writel(CE_REG_ICR, val);
+}
+
 void ss_md_get(char *dst, char *src, int size)
 {
 	memcpy(dst, src, size);
@@ -335,6 +343,17 @@ void ss_ctr_bitwidth_set(int bitwidth, ce_task_desc_t *task)
 	}
 
 	task->sym_ctl |= val << CE_SYM_CTL_CTR_SIZE_SHIFT;
+}
+
+void ss_cbc_mac_len_set(ce_task_desc_t *task, u32 i)
+{
+	if ((task->comm_ctl & CE_COMM_CTL_METHOD_MASK) == SS_METHOD_DES) {
+		task->comm_ctl |= SS_DES_CBC_MAC_LEN << SS_CBC_MAC_LEN_OFFSET;
+		task->ce_sg[i].dst_len = SS_DES_CBC_MAC_LEN / 8;	/* length by byte */
+	} else {
+		task->comm_ctl |= SS_AES_CBC_MAC_LEN << SS_CBC_MAC_LEN_OFFSET;
+		task->ce_sg[i].dst_len = SS_AES_CBC_MAC_LEN / 8;	/* length by byte */
+	}
 }
 
 void ss_sha_final(void)

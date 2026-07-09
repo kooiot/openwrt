@@ -43,13 +43,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#if !defined(__LINKAGE_H__)
-#define __LINKAGE_H__
+#if !defined(LINKAGE_H)
+#define LINKAGE_H
 
 PVRSRV_ERROR PVROSFuncInit(void);
 void PVROSFuncDeInit(void);
 
-int PVRDebugCreateDebugFSEntries(void);
-void PVRDebugRemoveDebugFSEntries(void);
-
-#endif /* !defined(__LINKAGE_H__) */
+#endif /* !defined(LINKAGE_H) */

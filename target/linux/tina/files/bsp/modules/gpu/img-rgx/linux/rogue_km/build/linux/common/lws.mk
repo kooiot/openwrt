@@ -48,17 +48,10 @@ ifeq ($(SUPPORT_KMS),1)
 
  # Common tunable config options
 
- ifeq ($(LWS_DIST),tarballs-ubuntu-next)
-  SUPPORT_LWS_MESON := 1
- endif
-
  # Xorg specific config options
  ifeq ($(WINDOW_SYSTEM),xorg)
-  ifeq ($(PVR_XORG_USE_MODESETTING_DRIVER),1)
-  else
-  endif
+ endif
 
-
-
+ ifeq ($(WINDOW_SYSTEM),wayland)
  endif
 endif

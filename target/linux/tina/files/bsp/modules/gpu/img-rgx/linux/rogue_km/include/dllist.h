@@ -50,22 +50,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /*!
 	Pointer to a linked list node
 */
-typedef struct DLLIST_NODE_	*PDLLIST_NODE;
+typedef struct DLLIST_NODE_TAG	*PDLLIST_NODE;
 
 
 /*!
 	Node in a linked list
 */
 /*
- * Note: the following structure's size is architecture-dependent and
- * clients may need to create a mirror the structure definition if it needs
- * to be used in a structure shared between host and device. Consider such
- * clients if any changes are made to this structure.
+ * Note: the following structure's size is architecture-dependent and clients
+ * may need to create a mirror of the structure definition if it needs to be
+ * used in a structure shared between host and device.
+ * Consider such clients if any changes are made to this structure.
  */
-typedef struct DLLIST_NODE_
+typedef struct DLLIST_NODE_TAG
 {
-	struct DLLIST_NODE_	*psPrevNode;
-	struct DLLIST_NODE_	*psNextNode;
+	struct DLLIST_NODE_TAG	*psPrevNode;
+	struct DLLIST_NODE_TAG	*psNextNode;
 } DLLIST_NODE;
 
 
@@ -73,15 +73,62 @@ typedef struct DLLIST_NODE_
 	Static initialiser
 */
 #define DECLARE_DLLIST(n) \
-DLLIST_NODE n = {&n, &n}
+DLLIST_NODE (n) = {&(n), &(n)}
 
+/*************************************************************************/ /*!
+@Function       dllist_foreach_node
+
+@Description    Walk through all the nodes on the list.
+                Safe against removal of (node).
+
+@Input          list_head              List node to start the operation
+@Input          node                   Current list node
+@Input          next                   Node after the current one
+
+*/
+/*****************************************************************************/
+#define dllist_foreach_node(list_head, node, next)						\
+	for ((node) = (list_head)->psNextNode, (next) = (node)->psNextNode;		\
+		 (node) != (list_head);											\
+		 (node) = (next), (next) = (node)->psNextNode)
+
+#define dllist_foreach_node_backwards(list_head, node, prev)			\
+	for ((node) = (list_head)->psPrevNode, (prev) = (node)->psPrevNode;		\
+		 (node) != (list_head);											\
+		 (node) = (prev), (prev) = (node)->psPrevNode)
+
+
+/*************************************************************************/ /*!
+@Function       dllist_foreach
+
+@Description    Simplification of dllist_foreach_node.
+                Walk through all the nodes on the list.
+                Safe against removal of currently-iterated node.
+
+                Adds utility-macro dllist_cur() to typecast the current node.
+
+@Input          list_head              List node to start the operation
+
+*/
+/*****************************************************************************/
+#define dllist_foreach(list_head)	\
+	for (DLLIST_NODE *DllCurNode = (list_head).psNextNode, *DllNextNode = DllCurNode->psNextNode;		\
+		 DllCurNode != &(list_head);																\
+		 DllCurNode = DllNextNode, DllNextNode = DllCurNode->psNextNode)
+
+#define dllist_foreach_backwards(list_head)	\
+	for (DLLIST_NODE *DllCurNode = (list_head).psPrevNode, *DllPrevNode = DllCurNode->psPrevNode;		\
+		 DllCurNode != &(list_head);																\
+		 DllCurNode = DllPrevNode, DllPrevNode = DllCurNode->psPrevNode)
+
+#define dllist_cur(type, member)	IMG_CONTAINER_OF(DllCurNode, type, member)
 
 /*************************************************************************/ /*!
 @Function       dllist_init
 
 @Description    Initialize a new double linked list
 
-@Input          psListHead              List head Node
+@Input          psListHead             List head Node
 
 */
 /*****************************************************************************/
@@ -97,15 +144,15 @@ void dllist_init(PDLLIST_NODE psListHead)
 
 @Description    Returns whether the list is empty
 
-@Input          psListHead              List head Node
+@Input          psListHead             List head Node
 
 */
 /*****************************************************************************/
 static INLINE
-IMG_BOOL dllist_is_empty(PDLLIST_NODE psListHead)
+bool dllist_is_empty(PDLLIST_NODE psListHead)
 {
-	return (IMG_BOOL) ((psListHead->psPrevNode == psListHead)
-	                   && (psListHead->psNextNode == psListHead));
+	return ((psListHead->psPrevNode == psListHead)
+			&& (psListHead->psNextNode == psListHead));
 }
 
 /*************************************************************************/ /*!
@@ -160,23 +207,23 @@ void dllist_add_to_tail(PDLLIST_NODE psListHead, PDLLIST_NODE psNewNode)
 /*************************************************************************/ /*!
 @Function       dllist_node_is_in_list
 
-@Description    Returns IMG_TRUE if psNode is in a list
+@Description    Returns true if psNode is in a list
 
-@Input          psNode             List node
+@Input          psNode                 List node
 
 */
 /*****************************************************************************/
 static INLINE
-IMG_BOOL dllist_node_is_in_list(PDLLIST_NODE psNode)
+bool dllist_node_is_in_list(PDLLIST_NODE psNode)
 {
-	return (IMG_BOOL) (psNode->psNextNode != NULL);
+	return (psNode->psNextNode != NULL);
 }
 
 /*************************************************************************/ /*!
 @Function       dllist_get_next_node
 
-@Description    Returns the list node after psListHead or NULL psListHead
-				is the only element in the list.
+@Description    Returns the list node after psListHead or NULL psListHead is
+                the only element in the list.
 
 @Input          psListHead             List node to start the operation
 
@@ -195,6 +242,28 @@ PDLLIST_NODE dllist_get_next_node(PDLLIST_NODE psListHead)
 	}
 }
 
+/*************************************************************************/ /*!
+@Function       dllist_get_prev_node
+
+@Description    Returns the list node preceding psListHead or NULL if
+                psListHead is the only element in the list.
+
+@Input          psListHead             List node to start the operation
+
+*/
+/*****************************************************************************/
+static INLINE
+PDLLIST_NODE dllist_get_prev_node(PDLLIST_NODE psListHead)
+{
+	if (psListHead->psPrevNode == psListHead)
+	{
+		return NULL;
+	}
+	else
+	{
+		return psListHead->psPrevNode;
+	}
+}
 
 /*************************************************************************/ /*!
 @Function       dllist_remove_node
@@ -211,7 +280,7 @@ void dllist_remove_node(PDLLIST_NODE psListNode)
 	psListNode->psNextNode->psPrevNode = psListNode->psPrevNode;
 	psListNode->psPrevNode->psNextNode = psListNode->psNextNode;
 
-	/* Clear the node to show it's not on a list */
+	/* Clear the node to show it's not in a list */
 	psListNode->psPrevNode = NULL;
 	psListNode->psNextNode = NULL;
 }
@@ -221,10 +290,10 @@ void dllist_remove_node(PDLLIST_NODE psListNode)
 
 @Description    Moves the list from psOldHead to psNewHead
 
-@Input          psOldHead       List node to be replaced. Will become a head
-                                node of an empty list.
-@Input          psNewHead       List node to be inserted. Must be an empty list
-                                head.
+@Input          psOldHead              List node to be replaced. Will become a
+                                       head node of an empty list.
+@Input          psNewHead              List node to be inserted. Must be an
+                                       empty list head.
 
 */
 /*****************************************************************************/
@@ -250,56 +319,90 @@ void dllist_replace_head(PDLLIST_NODE psOldHead, PDLLIST_NODE psNewHead)
 		psOldHead->psNextNode = psOldHead;
 		psOldHead->psPrevNode = psOldHead;
 	}
-
-
 }
 
+/**************************************************************************/ /*!
+@Function       dllist_insert_list_at_head
+
+@Description    Inserts psInHead list into the head of the psOutHead list.
+                After this operation psOutHead will contain psInHead at the
+                head of the list and the remaining elements that were
+                already in psOutHead will be places after the psInList (so
+                at a tail of the original list).
+
+@Input          psOutHead       List node psInHead will be inserted to.
+@Input          psInHead        List node to be inserted to psOutHead.
+                                After this operation this becomes an empty list.
+*/ /***************************************************************************/
+static INLINE
+void dllist_insert_list_at_head(PDLLIST_NODE psOutHead, PDLLIST_NODE psInHead)
+{
+	PDLLIST_NODE psInHeadNextNode = psInHead->psNextNode;
+	PDLLIST_NODE psOutHeadNextNode = psOutHead->psNextNode;
+
+	if (!dllist_is_empty(psInHead))
+	{
+		psOutHead->psNextNode = psInHeadNextNode;
+		psInHeadNextNode->psPrevNode = psOutHead;
+
+		psInHead->psPrevNode->psNextNode = psOutHeadNextNode;
+		psOutHeadNextNode->psPrevNode = psInHead->psPrevNode;
+
+		dllist_init(psInHead);
+	}
+ }
+
 /*************************************************************************/ /*!
-@Function       dllist_foreach_node
+@Description    Pointer to a dllist comparison callback function.
+@Input          psNode  Pointer to a node in a dllist.
+@Input          psNext  Pointer to psNode's next neighbour.
+*/ /**************************************************************************/
+typedef bool (*DLLIST_CMP_CB)(const DLLIST_NODE *psNode, const DLLIST_NODE *psNext);
 
-@Description    Walk through all the nodes on the list.
-				Safe against removal of (node).
+/*************************************************************************/ /*!
+@Function       dllist_sort
 
-@Input          list_head			List node to start the operation
-@Input			node				Current list node
-@Input			next				Node after the current one
+@Description    Insert-sorts the List in place
+                The cmpr function passes the current and next node,
+                From which the user writes the function responsible
+                for choosing to swap order or not.
+                The function returns true if a swap is required
+
+@Input          psListHead              List Head to be sorted.
+
+@Input          cmpr                    Function pointer to use for sorting
 
 */
 /*****************************************************************************/
-#define dllist_foreach_node(list_head, node, next)						\
-	for (node = (list_head)->psNextNode, next = (node)->psNextNode;		\
-		 node != (list_head);											\
-		 node = next, next = (node)->psNextNode)
+static INLINE void dllist_sort(PDLLIST_NODE psListHead,
+                        DLLIST_CMP_CB cmpr)
+{
+	DLLIST_NODE *node, *next;
+	DLLIST_NODE sTempHead;
 
-#define dllist_foreach_node_backwards(list_head, node, prev)			\
-	for (node = (list_head)->psPrevNode, prev = (node)->psPrevNode;		\
-		 node != (list_head);											\
-		 node = prev, prev = (node)->psPrevNode)
+	dllist_init(&sTempHead);
 
+	dllist_foreach_node(psListHead, node, next)
+	{
+		dllist_remove_node(node);
+		dllist_add_to_head(&sTempHead, node);
+	}
 
-/*************************************************************************/ /*!
-@Function       dllist_foreach
+	while (!dllist_is_empty(&sTempHead))
+	{
+		DLLIST_NODE *psSmallestNode = NULL;
 
-@Description    Simplification of dllist_foreach_node.
-				Walk through all the nodes on the list.
-				Safe against removal of currently-iterated node.
+		dllist_foreach_node(&sTempHead, node, next)
+		{
+			if (!psSmallestNode || cmpr(psSmallestNode, node))
+			{
+				psSmallestNode = node;
+			}
+		}
 
-				Adds utility-macro dllist_cur() to typecast the current node.
+		dllist_remove_node(psSmallestNode);
+		dllist_add_to_tail(psListHead, psSmallestNode);
+	}
+}
 
-@Input          list_head			List node to start the operation
-
-*/
-/*****************************************************************************/
-#define dllist_foreach(list_head)	\
-	for (DLLIST_NODE *_DllNode = (list_head).psNextNode, *_DllNext = _DllNode->psNextNode;		\
-		 _DllNode != &(list_head);																\
-		 _DllNode = _DllNext, _DllNext = _DllNode->psNextNode)
-
-#define dllist_foreach_backwards(list_head)	\
-	for (DLLIST_NODE *_DllNode = (list_head).psPrevNode, *_DllPrev = _DllNode->psPrevNode;		\
-		 _DllNode != &(list_head);																\
-		 _DllNode = _DllPrev, _DllPrev = _DllNode->psPrevNode)
-
-#define dllist_cur(type, member)	IMG_CONTAINER_OF(_DllNode, type, member)
-
-#endif	/* DLLIST_H */
+#endif /* DLLIST_H */

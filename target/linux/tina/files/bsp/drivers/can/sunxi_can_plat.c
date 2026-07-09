@@ -5,9 +5,15 @@
 #include <linux/ptrace.h>
 
 #define DRV_NAME "sunxi-can"
-#define DRV_VER	 "V1.5"
+#define DRV_VER	 "V1.6"
 
 #define CAN_CLK_FREQ 80000000
+
+#if defined(CONFIG_ARCH_SUN8IW22)
+static int can_dev_count;
+static struct reset_control *can_sys_reset;
+static DEFINE_MUTEX(sys_reset_mutex);
+#endif
 
 inline struct sunxi_can_priv *cdev_to_priv(struct sunxi_can_classdev *cdev)
 {
@@ -123,10 +129,53 @@ static struct sunxi_can_ops sunxi_can_plat_ops = {
 
 static const struct of_device_id sunxi_can_of_match[] = {
 	{ .compatible = "allwinner,sun55i-t536-can", .data = NULL },
+	{ .compatible = "allwinner,sun8i-t153-can", .data = NULL },
 	{ /* sentinel */ },
 };
 
 MODULE_DEVICE_TABLE(of, sunxi_can_of_match);
+
+#if defined(CONFIG_ARCH_SUN8IW22)
+static int sunxi_can_deassert_sys_reset(struct device *dev)
+{
+	int ret = 0;
+	mutex_lock(&sys_reset_mutex);
+	can_dev_count++;
+
+	printk("****** dev probe counts: %d\n", can_dev_count);
+	if (IS_ERR_OR_NULL(can_sys_reset)) {
+		can_sys_reset = devm_reset_control_get(dev, "can_sys_rst");
+		if (IS_ERR(can_sys_reset)) {
+			dev_err(dev, "Error: Get can sys rst failed\n");
+			ret = -EINVAL;
+		} else {
+			ret = reset_control_deassert(can_sys_reset);
+			if (ret)
+				dev_err(dev, "Error: deassert can sys failed\n");
+			else
+				dev_err(dev, "can sys reset deasserted\n");
+		}
+	}
+
+	mutex_unlock(&sys_reset_mutex);
+	return ret;
+}
+
+static void sunxi_can_assert_sys_reset(struct device *dev)
+{
+	mutex_lock(&sys_reset_mutex);
+	printk("****** dev probe counts: %d\n", can_dev_count);
+	if (can_dev_count > 1) {
+		can_dev_count--;
+	} else {
+		if (!IS_ERR_OR_NULL(can_sys_reset)) {
+			reset_control_assert(can_sys_reset);
+			dev_err(dev, "can sys reset asserted\n");
+		}
+	}
+	mutex_unlock(&sys_reset_mutex);
+}
+#endif
 
 static int sunxi_can_probe(struct platform_device *pdev)
 {
@@ -148,6 +197,12 @@ static int sunxi_can_probe(struct platform_device *pdev)
 	sunxi_can_class = sunxi_can_class_allocate_dev(&pdev->dev, sizeof(struct sunxi_can_priv));
 	if (!sunxi_can_class)
 		return -ENOMEM;
+
+#if defined(CONFIG_ARCH_SUN8IW22)
+	ret = sunxi_can_deassert_sys_reset(sunxi_can_class->dev);
+	if (ret)
+		goto probe_fail;
+#endif
 
 	priv = cdev_to_priv(sunxi_can_class);
 	ret = sunxi_can_class_get_clocks(sunxi_can_class);
@@ -239,6 +294,10 @@ static int sunxi_can_remove(struct platform_device *pdev)
 	sunxi_can_class_free_dev(can_class->net);
 	//free_irq(can_class->net->irq, can_class->net);
 	sunxi_can_class_clk_deinit(can_class);
+
+#if defined(CONFIG_ARCH_SUN8IW22)
+	sunxi_can_assert_sys_reset(can_class->dev);
+#endif
 
 	return 0;
 }

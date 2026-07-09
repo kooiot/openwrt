@@ -60,7 +60,7 @@ kbuild_check:
 # the kbuild Makefile, we need to make kbuild also depend on each bridge
 # module (including direct bridges), so that 'make kbuild' in a clean tree
 # works.
-kbuild: kbuild_check $(TARGET_PRIMARY_OUT)/kbuild/Makefile $(BRIDGES)
+kbuild: kbuild_check $(TARGET_PRIMARY_OUT)/kbuild/Makefile bridges
 	$(if $(V),,@)$(MAKE) -Rr --no-print-directory -C $(KERNELDIR) \
 		M=$(abspath $(TARGET_PRIMARY_OUT)/kbuild) \
 		INTERNAL_KBUILD_MAKEFILES="$(INTERNAL_KBUILD_MAKEFILES)" \
@@ -68,15 +68,35 @@ kbuild: kbuild_check $(TARGET_PRIMARY_OUT)/kbuild/Makefile $(BRIDGES)
 		INTERNAL_EXTRA_KBUILD_OBJECTS="$(INTERNAL_EXTRA_KBUILD_OBJECTS)" \
 		BRIDGE_SOURCE_ROOT=$(abspath $(BRIDGE_SOURCE_ROOT)) \
 		TARGET_PRIMARY_ARCH=$(TARGET_PRIMARY_ARCH) \
-		CLANG_TRIPLE=$(patsubst %-android,%-gnu,$(CROSS_TRIPLE))- \
+		PVR_ARCH=$(PVR_ARCH) \
+		HWDEFS_DIR=$(HWDEFS_DIR) \
+		CLANG_TRIPLE=$(if $(filter %-androideabi,$(CROSS_TRIPLE)),$(patsubst \
+		%-androideabi,%-gnueabi,$(CROSS_TRIPLE)),$(patsubst \
+		%-android,%-gnu,$(CROSS_TRIPLE)))- \
 		CROSS_COMPILE="$(CCACHE) $(KERNEL_CROSS_COMPILE)" \
 		EXTRA_CFLAGS="$(ALL_KBUILD_CFLAGS)" \
 		CC=$(if $(KERNEL_CC),$(KERNEL_CC),$(KERNEL_CROSS_COMPILE)gcc) \
+		AR=$(if $(KERNEL_AR),$(KERNEL_AR),$(KERNEL_CROSS_COMPILE)ar) \
+		LD=$(if $(KERNEL_LD),$(KERNEL_LD),$(KERNEL_CROSS_COMPILE)ld) \
+		NM=$(if $(KERNEL_NM),$(KERNEL_NM),$(KERNEL_CROSS_COMPILE)nm) \
+		OBJCOPY=$(if $(KERNEL_OBJCOPY),$(KERNEL_OBJCOPY),$(KERNEL_CROSS_COMPILE)objcopy) \
+		OBJDUMP=$(if $(KERNEL_OBJDUMP),$(KERNEL_OBJDUMP),$(KERNEL_CROSS_COMPILE)objdump) \
 		CHECK="$(patsubst @%,%,$(CHECK))" $(if $(CHECK),C=1,) \
+		$(if $(KBUILD_CLANG_VERSION),$(shell echo CONFIG_CLANG_VERSION=$(KBUILD_CLANG_VERSION)),) \
+		$(if $(KBUILD_LLD_VERSION),$(shell echo CONFIG_LLD_VERSION=$(KBUILD_LLD_VERSION)),) \
 		V=$(V) W=$(W) TOP=$(TOP)
 	@for kernel_module in $(addprefix $(TARGET_PRIMARY_OUT)/kbuild/,$(INTERNAL_KBUILD_OBJECTS:.o=.ko)); do \
 		cp $$kernel_module $(TARGET_PRIMARY_OUT); \
 	done
+ifeq ($(KERNEL_DEBUGLINK),1)
+	@for kernel_module in $(addprefix $(TARGET_PRIMARY_OUT)/,$(INTERNAL_KBUILD_OBJECTS:.o=.ko)); do \
+		$(CROSS_COMPILE)objcopy --only-keep-debug $$kernel_module $(basename $$kernel_module).dbg; \
+		$(CROSS_COMPILE)strip --strip-debug $$kernel_module; \
+		$(if $(V),,echo "  DBGLINK " $(call relative-to-top,$(basename $$kernel_module).dbg)); \
+		$(CROSS_COMPILE)objcopy --add-gnu-debuglink=$(basename $$kernel_module).dbg $$kernel_module; \
+	done
+endif
+
 
 kbuild_clean: kbuild_check $(TARGET_PRIMARY_OUT)/kbuild/Makefile
 	$(if $(V),,@)$(MAKE) -Rr --no-print-directory -C $(KERNELDIR) \
@@ -86,11 +106,48 @@ kbuild_clean: kbuild_check $(TARGET_PRIMARY_OUT)/kbuild/Makefile
 		INTERNAL_EXTRA_KBUILD_OBJECTS="$(INTERNAL_EXTRA_KBUILD_OBJECTS)" \
 		BRIDGE_SOURCE_ROOT=$(abspath $(BRIDGE_SOURCE_ROOT)) \
 		TARGET_PRIMARY_ARCH=$(TARGET_PRIMARY_ARCH) \
-		CLANG_TRIPLE=$(patsubst %-android,%-gnu,$(CROSS_TRIPLE))- \
+		CLANG_TRIPLE=$(if $(filter %-androideabi,$(CROSS_TRIPLE)),$(patsubst \
+		%-androideabi,%-gnueabi,$(CROSS_TRIPLE)),$(patsubst \
+		%-android,%-gnu,$(CROSS_TRIPLE)))- \
 		CROSS_COMPILE="$(CCACHE) $(KERNEL_CROSS_COMPILE)" \
 		EXTRA_CFLAGS="$(ALL_KBUILD_CFLAGS)" \
 		CC=$(if $(KERNEL_CC),$(KERNEL_CC),$(KERNEL_CROSS_COMPILE)gcc) \
+		LD=$(if $(KERNEL_LD),$(KERNEL_LD),$(KERNEL_CROSS_COMPILE)ld) \
+		NM=$(if $(KERNEL_NM),$(KERNEL_NM),$(KERNEL_CROSS_COMPILE)nm) \
+		OBJCOPY=$(if $(KERNEL_OBJCOPY),$(KERNEL_OBJCOPY),$(KERNEL_CROSS_COMPILE)objcopy) \
+		$(if $(KBUILD_CLANG_VERSION),$(shell echo CONFIG_CLANG_VERSION=$(KBUILD_CLANG_VERSION)),) \
+		$(if $(KBUILD_LLD_VERSION),$(shell echo CONFIG_LLD_VERSION=$(KBUILD_LLD_VERSION)),) \
 		V=$(V) W=$(W) TOP=$(TOP) clean
+
+ifeq ($(PVR_SUPPORT_KBUILD_MODULES_INSTALL),1)
+
+.PHONY: kbuild_modules_install
+
+kbuild_modules_install: kbuild_check $(TARGET_PRIMARY_OUT)/kbuild/Makefile
+	$(if $(V),,@)$(MAKE) -Rr --no-print-directory -C $(KERNELDIR) \
+		M=$(abspath $(TARGET_PRIMARY_OUT)/kbuild) \
+		$(if $(MODLIB),MODLIB=$(MODLIB)) \
+		$(if $(DEPMOD),DEPMOD=$(DEPMOD)) \
+		INTERNAL_KBUILD_MAKEFILES="$(INTERNAL_KBUILD_MAKEFILES)" \
+		INTERNAL_KBUILD_OBJECTS="$(INTERNAL_KBUILD_OBJECTS)" \
+		INTERNAL_EXTRA_KBUILD_OBJECTS="$(INTERNAL_EXTRA_KBUILD_OBJECTS)" \
+		BRIDGE_SOURCE_ROOT=$(abspath $(BRIDGE_SOURCE_ROOT)) \
+		TARGET_PRIMARY_ARCH=$(TARGET_PRIMARY_ARCH) \
+		CLANG_TRIPLE=$(if $(filter %-androideabi,$(CROSS_TRIPLE)),$(patsubst \
+		%-androideabi,%-gnueabi,$(CROSS_TRIPLE)),$(patsubst \
+		%-android,%-gnu,$(CROSS_TRIPLE)))- \
+		CROSS_COMPILE="$(CCACHE) $(KERNEL_CROSS_COMPILE)" \
+		EXTRA_CFLAGS="$(ALL_KBUILD_CFLAGS)" \
+		CC=$(if $(KERNEL_CC),$(KERNEL_CC),$(KERNEL_CROSS_COMPILE)gcc) \
+		LD=$(if $(KERNEL_LD),$(KERNEL_LD),$(KERNEL_CROSS_COMPILE)ld) \
+		NM=$(if $(KERNEL_NM),$(KERNEL_NM),$(KERNEL_CROSS_COMPILE)nm) \
+		OBJCOPY=$(if $(KERNEL_OBJCOPY),$(KERNEL_OBJCOPY),$(KERNEL_CROSS_COMPILE)objcopy) \
+		V=$(V) W=$(W) TOP=$(TOP) modules_install
+endif
 
 kbuild_install: installkm
 kbuild: install_script_km
+
+ifeq ($(PVR_ANDROID_SUPPORT_KBUILD_OVERLAY),1)
+include $(MAKE_TOP)/kbuild/android_kbuild.mk
+endif

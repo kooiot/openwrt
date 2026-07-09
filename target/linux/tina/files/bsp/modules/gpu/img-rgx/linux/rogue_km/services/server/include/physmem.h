@@ -41,8 +41,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#ifndef _SRVSRV_PHYSMEM_H_
-#define _SRVSRV_PHYSMEM_H_
+#ifndef SRVSRV_PHYSMEM_H
+#define SRVSRV_PHYSMEM_H
 
 /* include/ */
 #include "img_types.h"
@@ -66,54 +66,52 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /*************************************************************************/ /*!
 @Function       DevPhysMemAlloc
-
 @Description    Allocate memory from device specific heaps directly.
-
-@Input          psDevNode               device node to operate on
-@Input          ui32MemSize             Size of the memory to be allocated
-@Input          u8Value                 Value to be initialised to.
-@Input          bInitPage               Flag to control initialisation
-@Input          pszDevSpace             PDUMP memory space in which the
-                                          allocation is to be done
-@Input          pszSymbolicAddress      Symbolic name of the allocation
-@Input          phHandlePtr             PDUMP handle to the allocation
-@Output         psMemHandle             Handle to the allocated memory
-@Output         psDevPhysAddr           Device Physical address of allocated
-                                          page
-
+@Input          psDevNode             device node to operate on
+@Input          ui32MemSize           Size of the memory to be allocated
+@Input          u8Value               Value to be initialised to.
+@Input          bInitPage             Flag to control initialisation
+@Input          pszDevSpace           PDUMP memory space in which the
+                                        allocation is to be done
+@Input          pszSymbolicAddress    Symbolic name of the allocation
+@Input          phHandlePtr           PDUMP handle to the allocation
+@Input          uiPid                 PID of the process owning the allocation
+                                        (or PVR_SYS_ALLOC_PID if the allocation
+                                        belongs to the driver)
+@Output         hMemHandle            Handle to the allocated memory
+@Output         psDevPhysAddr         Device Physical address of allocated
+                                        page
 @Return         PVRSRV_OK if the allocation is successful
-*/
-/*****************************************************************************/
-extern PVRSRV_ERROR DevPhysMemAlloc(PVRSRV_DEVICE_NODE *psDevNode,
-                                    IMG_UINT32 ui32MemSize,
-                                    IMG_UINT32 ui32Log2Align,
-                                    const IMG_UINT8 u8Value,
-                                    IMG_BOOL bInitPage,
+*/ /**************************************************************************/
+PVRSRV_ERROR
+DevPhysMemAlloc(PVRSRV_DEVICE_NODE *psDevNode,
+                IMG_UINT32 ui32MemSize,
+                IMG_UINT32 ui32Log2Align,
+                const IMG_UINT8 u8Value,
+                IMG_BOOL bInitPage,
 #if defined(PDUMP)
-                                    const IMG_CHAR *pszDevSpace,
-                                    const IMG_CHAR *pszSymbolicAddress,
-                                    IMG_HANDLE *phHandlePtr,
+                const IMG_CHAR *pszDevSpace,
+                const IMG_CHAR *pszSymbolicAddress,
+                IMG_HANDLE *phHandlePtr,
 #endif
-                                    IMG_HANDLE hMemHandle,
-                                    IMG_DEV_PHYADDR *psDevPhysAddr);
+                IMG_PID uiPid,
+                IMG_HANDLE hMemHandle,
+                IMG_DEV_PHYADDR *psDevPhysAddr);
 
 /*************************************************************************/ /*!
 @Function       DevPhysMemFree
-
 @Description    Free memory to device specific heaps directly.
-
-@Input          	psDevNode            	device node to operate on
-@Input 				hPDUMPMemHandle			Pdump handle to allocated memory
-@Input 				hMemHandle				Devmem handle to allocated memory
-
-@Return
-*/
-/*****************************************************************************/
-extern void DevPhysMemFree(PVRSRV_DEVICE_NODE *psDevNode,
+@Input          psDevNode             device node to operate on
+@Input          hPDUMPMemHandle       Pdump handle to allocated memory
+@Input          hMemHandle            Devmem handle to allocated memory
+@Return         None
+*/ /**************************************************************************/
+void
+DevPhysMemFree(PVRSRV_DEVICE_NODE *psDevNode,
 #if defined(PDUMP)
-		IMG_HANDLE	hPDUMPMemHandle,
+               IMG_HANDLE hPDUMPMemHandle,
 #endif
-		IMG_HANDLE	hMemHandle);
+               IMG_HANDLE hMemHandle);
 
 /*
  * PhysmemNewRamBackedPMR
@@ -122,41 +120,39 @@ extern void DevPhysMemFree(PVRSRV_DEVICE_NODE *psDevNode,
  * callback, this allows control at a per-devicenode level to select the
  * memory source thus supporting mixed UMA/LMA systems.
  *
- * The size must be a multiple of page size.  The page size is
- * specified in log2.  It should be regarded as a minimum contiguity
- * of which the that the resulting memory must be a multiple.  It may
- * be that this should be a fixed number.  It may be that the
- * allocation size needs to be a multiple of some coarser "page size"
- * than that specified in the page size argument.  For example, take
- * an OS whose page granularity is a fixed 16kB, but the caller
- * requests memory in page sizes of 4kB.  The request can be satisfied
- * if and only if the SIZE requested is a multiple of 16kB.  If the
- * arguments supplied are such that this OS cannot grant the request,
+ * The size must be a multiple of page size. The page size is specified in
+ * log2. It should be regarded as a minimum contiguity of which the
+ * resulting memory must be a multiple. It may be that this should be a fixed
+ * number. It may be that the allocation size needs to be a multiple of some
+ * coarser "page size" than that specified in the page size argument.
+ * For example, take an OS whose page granularity is a fixed 16kB, but the
+ * caller requests memory in page sizes of 4kB. The request can be satisfied
+ * if and only if the SIZE requested is a multiple of 16kB. If the arguments
+ * supplied are such that this OS cannot grant the request,
  * PVRSRV_ERROR_INVALID_PARAMS will be returned.
  *
- * The caller should supply storage of a pointer.  Upon successful
- * return a PMR object will have been created and a pointer to it
- * returned in the PMROut argument.
+ * The caller should supply storage of a pointer. Upon successful return a
+ * PMR object will have been created and a pointer to it returned in the
+ * PMROut argument.
  *
- * A PMR thusly created should be destroyed with PhysmemUnrefPMR.
+ * A PMR successfully created should be destroyed with PhysmemUnrefPMR.
  *
- * Note that this function may cause memory allocations and on some
- * OSes this may cause scheduling events, so it is important that this
+ * Note that this function may cause memory allocations and on some operating
+ * systems this may cause scheduling events, so it is important that this
  * function be called with interrupts enabled and in a context where
  * scheduling events and memory allocations are permitted.
  *
- * The flags may be used by the implementation to change its behaviour
- * if required.  The flags will also be stored in the PMR as immutable
- * metadata and returned to mmu_common when it asks for it.
+ * The flags may be used by the implementation to change its behaviour if
+ * required. The flags will also be stored in the PMR as immutable metadata
+ * and returned to mmu_common when it asks for it.
  *
  * The PID specified is used to tie this allocation to the process context
  * that the allocation is made on behalf of.
  */
-extern PVRSRV_ERROR
+PVRSRV_ERROR
 PhysmemNewRamBackedPMR(CONNECTION_DATA * psConnection,
                        PVRSRV_DEVICE_NODE *psDevNode,
                        IMG_DEVMEM_SIZE_T uiSize,
-                       IMG_DEVMEM_SIZE_T uiChunkSize,
                        IMG_UINT32 ui32NumPhysChunks,
                        IMG_UINT32 ui32NumVirtChunks,
                        IMG_UINT32 *pui32MappingTable,
@@ -165,40 +161,27 @@ PhysmemNewRamBackedPMR(CONNECTION_DATA * psConnection,
                        IMG_UINT32 uiAnnotationLength,
                        const IMG_CHAR *pszAnnotation,
                        IMG_PID uiPid,
-                       PMR **ppsPMROut);
+                       PMR **ppsPMROut,
+                       IMG_UINT32 ui32PDumpFlags,
+                       PVRSRV_MEMALLOCFLAGS_T *puiPMRFlags);
 
+PVRSRV_ERROR
+PhysmemNewRamBackedPMR_direct(CONNECTION_DATA * psConnection,
+							  PVRSRV_DEVICE_NODE *psDevNode,
+							  IMG_DEVMEM_SIZE_T uiSize,
+							  IMG_UINT32 ui32NumPhysChunks,
+							  IMG_UINT32 ui32NumVirtChunks,
+							  IMG_UINT32 *pui32MappingTable,
+							  IMG_UINT32 uiLog2PageSize,
+							  PVRSRV_MEMALLOCFLAGS_T uiFlags,
+							  IMG_UINT32 uiAnnotationLength,
+							  const IMG_CHAR *pszAnnotation,
+							  IMG_PID uiPid,
+							  PMR **ppsPMROut,
+							  IMG_UINT32 ui32PDumpFlags,
+							  PVRSRV_MEMALLOCFLAGS_T *puiPMRFlags);
 
-/*
- * PhysmemNewRamBackedLockedPMR
- *
- * Same as function above but is additionally locking down the PMR.
- *
- * Get the physical memory and lock down the PMR directly, we do not want to
- * defer the actual allocation to mapping time.
- *
- * In general the concept of on-demand allocations is not useful for allocations
- * where we give the users the freedom to map and unmap memory at will. The user
- * is not expecting his memory contents to suddenly vanish just because he unmapped
- * the buffer.
- * Even if he would know and be ok with it, we do not want to check for every page
- * we unmap whether we have to unlock the underlying PMR.
-*/
-extern PVRSRV_ERROR
-PhysmemNewRamBackedLockedPMR(CONNECTION_DATA * psConnection,
-                             PVRSRV_DEVICE_NODE *psDevNode,
-                             IMG_DEVMEM_SIZE_T uiSize,
-                             PMR_SIZE_T uiChunkSize,
-                             IMG_UINT32 ui32NumPhysChunks,
-                             IMG_UINT32 ui32NumVirtChunks,
-                             IMG_UINT32 *pui32MappingTable,
-                             IMG_UINT32 uiLog2PageSize,
-                             PVRSRV_MEMALLOCFLAGS_T uiFlags,
-                             IMG_UINT32 uiAnnotationLength,
-                             const IMG_CHAR *pszAnnotation,
-                             IMG_PID uiPid,
-                             PMR **ppsPMRPtr);
-
-/**************************************************************************/ /*!
+/*************************************************************************/ /*!
 @Function       PhysmemImportPMR
 @Description    Import PMR a previously exported PMR
 @Input          psPMRExport           The exported PMR token
@@ -213,8 +196,8 @@ PhysmemNewRamBackedLockedPMR(CONNECTION_DATA * psConnection,
                 PVRSRV_ERROR_PMR_WRONG_PASSWORD_OR_STALE_PMR if password incorrect
                 PVRSRV_ERROR_PMR_MISMATCHED_ATTRIBUTES if size or contiguity incorrect
                 PVRSRV_OK if successful
-*/ /***************************************************************************/
-extern PVRSRV_ERROR
+*/ /**************************************************************************/
+PVRSRV_ERROR
 PhysmemImportPMR(CONNECTION_DATA *psConnection,
                  PVRSRV_DEVICE_NODE *psDevNode,
                  PMR_EXPORT *psPMRExport,
@@ -223,17 +206,32 @@ PhysmemImportPMR(CONNECTION_DATA *psConnection,
                  PMR_LOG2ALIGN_T uiLog2Contig,
                  PMR **ppsPMR);
 
-/**************************************************************************/ /*!
-@Function       PVRSRVGetMaxDevMemSizeKM
-@Description    Get the amount of device memory on current platform
-@Output         uiLMASize             LMA memory size
-@Output         uiUMASize             UMA memory size
-@Return         None
-*/ /***************************************************************************/
-extern PVRSRV_ERROR
-PVRSRVGetMaxDevMemSizeKM( CONNECTION_DATA * psConnection,
-		                   PVRSRV_DEVICE_NODE *psDevNode,
-		                   IMG_DEVMEM_SIZE_T *puiLMASize,
-		                   IMG_DEVMEM_SIZE_T *puiUMASize);
+/*************************************************************************/ /*!
+@Function       PVRSRVGetDefaultPhysicalHeapKM
+@Description    For the specified device, get the physical heap used for
+                allocations when the PVRSRV_PHYS_HEAP_DEFAULT
+                physical heap hint is set in memalloc flags.
+@Output         peHeap                 Default Heap return value
+@Return         PVRSRV_OK if successful
+*/ /**************************************************************************/
+PVRSRV_ERROR
+PVRSRVGetDefaultPhysicalHeapKM(CONNECTION_DATA *psConnection,
+                               PVRSRV_DEVICE_NODE *psDevNode,
+                               PVRSRV_PHYS_HEAP *peHeap);
 
-#endif /* _SRVSRV_PHYSMEM_H_ */
+/*************************************************************************/ /*!
+@Function       PVRSRVPhysHeapGetMemInfoKM
+@Description    Get the memory usage statistics for a given physical heap ID
+@Input          ui32PhysHeapCount      Physical Heap count
+@Input          paePhysHeapID          Array of Physical Heap ID's
+@Output         paPhysHeapMemStats     Buffer to hold the memory statistics
+@Return         PVRSRV_OK if successful
+*/ /**************************************************************************/
+PVRSRV_ERROR
+PVRSRVPhysHeapGetMemInfoKM(CONNECTION_DATA *psConnection,
+                           PVRSRV_DEVICE_NODE *psDevNode,
+                           IMG_UINT32 ui32PhysHeapCount,
+                           PVRSRV_PHYS_HEAP *paePhysHeapID,
+                           PHYS_HEAP_MEM_STATS *paPhysHeapMemStats);
+
+#endif /* SRVSRV_PHYSMEM_H */

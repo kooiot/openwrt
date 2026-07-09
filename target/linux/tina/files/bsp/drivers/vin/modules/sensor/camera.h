@@ -85,6 +85,7 @@ struct sensor_tvin {
 
 struct sensor_indetect {
 	struct gpio_config hotplug_det_gpio;
+	struct gpio_config hdmi5v_gpio;
 	int hotplug_det_irq;
 	struct delayed_work sensor_work;
 	struct mutex detect_lock;
@@ -100,10 +101,35 @@ struct sensor_indetect {
 	struct v4l2_ctrl *ctrl_hotplug;
 };
 
+struct sensor_switch_cfg_t {
+	bool sensor_is_detected;
+	bool sensor_with_switch_en;
+	unsigned int switch_status;
+	unsigned int i2c_addr_container[2];
+	unsigned int frame_length_save[2];
+	unsigned int exp_val_save[2];
+	unsigned int gain_val_save[2];
+	bool set_expgain_flags[2];
+	unsigned int vsync_cnt;
+};
+
+struct sensor_vysnc_config {
+	int gpio;
+	int gpio_irq;
+	struct work_struct s_sensor_switch_change_task;
+};
+
+enum stby_stat_s {
+	STBY_NONE = 0,
+	STBY_ISON,
+	STBY_ISOFF,
+};
+
 struct sensor_info {
 	struct v4l2_subdev sd;
 	struct media_pad sensor_pads[SENSOR_PAD_NUM];
 	struct mutex lock;
+	spinlock_t slock;
 	struct sensor_format_struct *fmt;	/* Current format */
 	struct sensor_win_size *current_wins;
 	struct sensor_format_struct *fmt_pt;	/* format start */
@@ -114,6 +140,7 @@ struct sensor_info {
 	unsigned int capture_mode;	/* V4L2_MODE_VIDEO/V4L2_MODE_IMAGE */
 	unsigned int af_first_flag;
 	unsigned int preview_first_flag;
+	unsigned int vsync_flag;
 	unsigned int auto_focus;	/* 0:not in contin_focus 1: contin_focus */
 	unsigned int focus_status;	/* 0:idle 1:busy */
 	unsigned int low_speed;		/* 0:high speed 1:low speed */
@@ -126,6 +153,9 @@ struct sensor_info {
 	unsigned int gain;
 	unsigned int autogain;
 	unsigned int exp;
+	unsigned int gain_save;
+	unsigned int exp_save;
+	bool set_expgain_flags;
 	int exp_bias;
 	enum v4l2_exposure_auto_type autoexp;
 	unsigned int autowb;
@@ -142,12 +172,14 @@ struct sensor_info {
 	unsigned int combo_mode;
 	unsigned int time_hs;
 	unsigned int deskew;
+	unsigned int wdr_time_hs;
 	unsigned int isp_wdr_mode;
 	unsigned int magic_num;
 	unsigned int lane_num;
 	unsigned int bit_width;
 	unsigned int stream_count;
 	struct v4l2_ctrl_handler handler;
+	struct sensor_vysnc_config sensor_vysnc_cfg;
 	unsigned int stable_frame_cnt;
 	unsigned int sdram_dfs_flag;
 	enum ir_state_t ir_state;
@@ -162,6 +194,10 @@ struct sensor_info {
 #endif
 	struct sensor_tvin tvin;
 	struct sensor_indetect sensor_indet;
+	unsigned int act_fps;
+	bool lowpw_en;
+	enum sensor_mode_t frame_mode;
+	enum stby_stat_s stby_flags;
 	void (*sensor_fps_change_callback)(int act_fps);
 };
 

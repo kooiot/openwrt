@@ -41,6 +41,7 @@ struct de_csc_private {
 	bool reg_update;
 	struct bcsh_info bcsh;
 	struct ctm_info ctm;
+	int *enhance_matrix;
 	const struct de_csc_desc *desc;
 	u32 reg_blk_num;
 	struct de_reg_block reg_blks[CSC_REG_BLK_NUM];
@@ -112,6 +113,7 @@ s32 de35x_csc_enable(struct de_csc_handle *hdl, u32 en)
 
 	reg  = de35x_get_csc_reg(priv);
 
+	priv->debug.enable = en;
 	reg->ctl.dwval = en;
 	csc_set_block_dirty(priv, CSC_REG_BLK_CTL, 1);
 	return 0;
@@ -219,6 +221,8 @@ void de35x_csc_dump_state(struct drm_printer *p, struct de_csc_handle *hdl)
 	unsigned long base = (unsigned long)hdl->private->reg_blks[0].reg_addr;
 	unsigned long de_base = (unsigned long)hdl->cinfo.de_reg_base;
 
+	if (hdl->private->reg_update)
+		drm_printf(p, "\n");
 	drm_printf(p, "\t%s@%8x: %sable\n", hdl->private->desc->name,
 			    hdl->private->reg_update ? (unsigned int)(base - de_base) : 0,
 			    debug->enable ? "en" : "dis");
@@ -340,6 +344,10 @@ struct de_csc_handle *de35x_csc_create(struct module_create_info *info)
 	memcpy(&hdl->cinfo, info, sizeof(*info));
 	hdl->private->desc = desc;
 	hdl->private->reg_update = desc->type == CHANNEL_CSC || desc->type == DEVICE_CSC;
+	hdl->hue_default_value = desc->hue_default_value;
+
+	if (desc->type == DEVICE_CSC)
+		hdl->private->enhance_matrix = kmalloc_array(16, sizeof(int), GFP_KERNEL | __GFP_ZERO);
 
 	if (hdl->private->reg_update) {
 		reg_base = info->de_reg_base + info->reg_offset + desc->reg_offset;
@@ -373,7 +381,7 @@ struct de_csc_handle *de35x_csc_create(struct module_create_info *info)
 	hdl->private->bcsh.brightness = 50;
 	hdl->private->bcsh.contrast = 50;
 	hdl->private->bcsh.saturation = 50;
-	hdl->private->bcsh.hue = 50;
+	hdl->private->bcsh.hue = desc->hue_default_value;
 	hdl->private->ctm.enable = 0;
 
 	hdl->private->de_csc_enable = de35x_csc_enable;
@@ -439,8 +447,9 @@ static const int rgb2yuv_17bit_fp[12][16] = {
 		0x0000e0df, 0xffff3135, 0xffffedea, 0x00000200,
 		0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	},
-	/* input : Limit RGB 2020 */
-	/* output : Full YCbCr 2020 */
+	// --- add by us, complete the missing matrix, generally limit rgb is rarely used ---
+	/* input : Limit RGB 601 */
+	/* output : Full YCbCr 601 */
 	{
 		0x0000b241, 0x00015df2, 0x000043f6, 0x00000000,
 		0xffff9b6d, 0xffff3a7e, 0x00012a15, 0x00000200,
@@ -463,6 +472,7 @@ static const int rgb2yuv_17bit_fp[12][16] = {
 		0x00012a15, 0xfffeede4, 0xffffe807, 0x00000200,
 		0x00000040, 0x00000040, 0x00000040, 0x00000000,
 	},
+	// --- add by us, complete the missing matrix, generally limit rgb is rarely used ---
 	/* input : Limit RGB 601 */
 	/* output : Limit YCbCr 601 */
 	{
@@ -501,7 +511,7 @@ static const int yuv2rgb_17bit_fp[12][16] = {
 	/* input : Full YCbCr 709 */
 	/* output : Full RGB 709*/
 	{
-		0x00000000, 0x00000000, 0x0003264c, 0x00000000,
+		0x00020000, 0x00000000, 0x0003264c, 0x00000000,
 		0x00020000, 0xffffa017, 0xffff1052, 0x00000000,
 		0x00020000, 0x0003b611, 0x00000000, 0x00000000,
 		0x00000000, 0x00000200, 0x00000200, 0x00000000,
@@ -514,6 +524,7 @@ static const int yuv2rgb_17bit_fp[12][16] = {
 		0x00020000, 0x0003c347, 0x00000000, 0x00000000,
 		0x00000000, 0x00000200, 0x00000200, 0x00000000,
 	},
+	// --- add by us, complete the missing matrix, generally limit rgb is rarely used ---
 	/* input : Full YCbCr 601 */
 	/* output : Limit RGB 601 */
 	{
@@ -525,7 +536,7 @@ static const int yuv2rgb_17bit_fp[12][16] = {
 	/* input : Full YCbCr 709 */
 	/* output : Limit RGB 709*/
 	{
-		0x00000000, 0x00000000, 0x0003264c, 0x00000000,
+		0x00020000, 0x00000000, 0x0003264c, 0x00000000,
 		0x00020000, 0xffffa017, 0xffff1052, 0x00000000,
 		0x00020000, 0x0003b611, 0x00000000, 0x00000000,
 		0x00000000, 0x00000200, 0x00000200, 0x00000000,
@@ -538,6 +549,7 @@ static const int yuv2rgb_17bit_fp[12][16] = {
 		0x00020000, 0x0003c347, 0x00000000, 0x00000000,
 		0x00000000, 0x00000200, 0x00000200, 0x00000000,
 	},
+	// --- add by us, complete the missing matrix, generally limit rgb is rarely used ---
 	/* input : Limit YCbCr 601 */
 	/* output : Full RGB 601 */
 	{
@@ -723,7 +735,6 @@ static u32 get_csc2_mod_idx(enum de_color_space color_space)
 	return idx;
 }
 
-
 static int de_csc2_coeff_calc(const struct de_csc_info *in_info, const struct de_csc_info *out_info, u32 *mat_sum, const int *mat[])
 {
 	u32 cs_index; /* index for r2r color_space matrix */
@@ -790,8 +801,140 @@ static int de_csc2_coeff_calc(const struct de_csc_info *in_info, const struct de
 		}
 	}
 
+	DRM_DEBUG_DRIVER("[SUNXI-DE] csc2 cal in_r %d in_m %d out_r %d out_m %d cs_index %d mat_sum %d\n",
+			 in_r, in_m, out_r, out_m, cs_index, mat_num);
+
 	*mat_sum = mat_num;
 	return 0;
+}
+
+static int de_csc2_enhance_coeff_calc(struct de_csc_handle *hdl,
+				      const struct de_csc_info *in_info,
+				      const struct de_csc_info *out_info,
+				      const struct bcsh_info *bcsh,
+				      u32 *mat_sum, const int *mat[])
+{
+	u32 bright, contrast, sat, hue;
+	int sinv = 0, cosv = 0, B, C, S;
+	u32 out_m, out_r, mat_num = 0;
+	s32 *hsbc_coef;
+	struct de_csc_private *priv = hdl->private;
+
+	hsbc_coef = priv->enhance_matrix;
+	bright = bcsh->brightness > 100 ? 100 : bcsh->brightness;
+	contrast = bcsh->contrast > 100 ? 100 : bcsh->contrast;
+	sat = bcsh->saturation > 100 ? 100 : bcsh->saturation;
+	hue = bcsh->hue > 100 ? 100 : bcsh->hue;
+	if (bright == 50 && contrast == 50 && sat == 50 && hue == 0) {
+		*mat_sum = 0;
+		return 0;
+	}
+
+	/*
+	 * bright:0~60
+	 * contrast:0~300
+	 * sat:0~300
+	 * hue:0~360
+	 * and median is 30 128 128 0
+	 */
+	bright = bright * 60 / 100;
+	contrast = contrast * 256 / 100;
+	sat = sat * 256 / 100;
+	hue = hue * 360 / 100;
+
+	B = bright * 20 - 600;
+	/* int C;    *///10~300
+	if (contrast < 10) {
+		//C = 10;
+		C = contrast;
+	} else {
+		C = contrast;
+	}
+	S = sat;    //0~300
+	if (hue <= 90) {
+		sinv = table_sin[hue];
+		cosv = table_sin[90 - hue];
+	} else if (hue <= 180) {
+		sinv = table_sin[180-hue];
+		cosv = -table_sin[hue-90];
+	} else if (hue <= 270) {
+		sinv = -table_sin[hue-180];
+		cosv = -table_sin[270-hue];
+	} else if (hue <= 360) {
+		sinv = -table_sin[360 - hue];
+		cosv = table_sin[hue - 270];
+	}
+
+	hsbc_coef[0] = C<<10;
+	hsbc_coef[1] = 0;
+	hsbc_coef[2] = 0;
+	hsbc_coef[4] = 0;
+	hsbc_coef[5] = (C * S * cosv) >> 4;
+	hsbc_coef[6] = (C * S * sinv) >> 4;
+	hsbc_coef[8] = 0;
+	hsbc_coef[9] = -(C * S * sinv) >> 4;
+	hsbc_coef[10] = (C * S * cosv) >> 4;
+	hsbc_coef[3] = B + 64;
+	hsbc_coef[7] = 512;
+	hsbc_coef[11] = 512;
+	hsbc_coef[12] = 64;
+	hsbc_coef[13] = 512;
+	hsbc_coef[14] = 512;
+	hsbc_coef[15] = 0;
+
+	out_r = out_info->color_range == DE_COLOR_RANGE_16_235 ? 1 : 0;
+	out_m = get_csc2_mod_idx(out_info->color_space);
+	if (in_info->px_fmt_space == DE_FORMAT_SPACE_RGB &&
+	    out_info->px_fmt_space == DE_FORMAT_SPACE_RGB) { /* r2yf + hsbc + yf2r */
+		/* maybe is use limit yuv to convert */
+		mat[mat_num] = rgb2yuv_17bit_fp[out_r * 6 + out_m + 3];
+		/* mat[mat_num] = rgb2yuv_17bit_fp[out_r * 6 + out_m]; */
+		mat_num++;
+
+		mat[mat_num] = hsbc_coef;
+		mat_num++;
+
+		/* maybe is use limit yuv to convert */
+		mat[mat_num] = yuv2rgb_17bit_fp[out_r * 3 + out_m + 6];
+		/* mat[mat_num] = yuv2rgb_17bit_fp[out_r * 3 + out_m]; */
+		mat_num++;
+	} else {
+		mat[mat_num] = hsbc_coef;
+		mat_num++;
+	}
+
+	*mat_sum = mat_num;
+	return 0;
+}
+
+static void de_dcsc2_set_regs(struct de_csc_handle *hdl, int *csc_coeff, bool en)
+{
+	struct de_csc_private *priv = hdl->private;
+	struct csc2_reg *regs = de35x_get_csc_reg(priv);
+
+	if (!en || !csc_coeff) {
+		regs->ctl.bits.en = 0;
+		csc_set_block_dirty(priv, CSC_REG_BLK_CTL, 1);
+		return;
+	}
+
+	regs->ctl.bits.en = 1;
+	regs->d0.dwval = *(csc_coeff + 12);
+	regs->d1.dwval = *(csc_coeff + 13);
+	regs->d2.dwval = *(csc_coeff + 14);
+	regs->c00.dwval = *(csc_coeff);
+	regs->c01.dwval = *(csc_coeff + 1);
+	regs->c02.dwval = *(csc_coeff + 2);
+	regs->c03.dwval = *(csc_coeff + 3);
+	regs->c10.dwval = *(csc_coeff + 4);
+	regs->c11.dwval = *(csc_coeff + 5);
+	regs->c12.dwval = *(csc_coeff + 6);
+	regs->c13.dwval = *(csc_coeff + 7);
+	regs->c20.dwval = *(csc_coeff + 8);
+	regs->c21.dwval = *(csc_coeff + 9);
+	regs->c22.dwval = *(csc_coeff + 10);
+	regs->c23.dwval = *(csc_coeff + 11);
+	csc_set_block_dirty(priv, CSC_REG_BLK_CTL, 1);
 }
 
 static inline __s64 IntRightShift64(__s64 datain, unsigned int shiftbit)
@@ -887,6 +1030,17 @@ static s32 de_csc2_apply(struct de_csc_handle *hdl,
 	for (i = 0; i < cscm_num; i++)
 		matrix[oper++] = csc_matrix[i];
 
+	for (i = 0; i < cscm_num; i++) {
+		DRM_DEBUG_DRIVER("[SUNXI-DE] csc matrix%d:\n", i);
+		for (j = 0; j < 4; j++) {
+			DRM_DEBUG_DRIVER("[SUNXI-DE] %08x %08x %08x %08x\n",
+					 csc_matrix[i][j * 4 + 0],
+					 csc_matrix[i][j * 4 + 1],
+					 csc_matrix[i][j * 4 + 2],
+					 csc_matrix[i][j * 4 + 3]);
+		}
+	}
+
 	/* mat mul */
 	if (oper == 0) {
 		memcpy(csc_coeff, bypass, sizeof(bypass));
@@ -898,7 +1052,7 @@ static s32 de_csc2_apply(struct de_csc_handle *hdl,
 				IDE_SCAL_MATRIC_MUL(matrix[i + 1], matrix[i], in1coeff);
 			else {
 				memcpy(in0coeff, in1coeff, sizeof(in1coeff));
-				IDE_SCAL_MATRIC_MUL(matrix[i], in0coeff, in1coeff);
+				IDE_SCAL_MATRIC_MUL(matrix[i + 1], in0coeff, in1coeff);
 			}
 		}
 		memcpy(csc_coeff, in1coeff, sizeof(in1coeff));
@@ -935,6 +1089,83 @@ static s32 de_csc2_apply(struct de_csc_handle *hdl,
 
 		csc_set_block_dirty(priv, CSC_REG_BLK_CTL, 1);
 	}
+	return 0;
+}
+
+static int de_dcsc2_coeff_calc_inner(struct de_csc_handle *hdl,
+			  const struct de_csc_info *in_info,
+			  const struct de_csc_info *out_info,
+			  const struct bcsh_info *bcsh,
+			  const struct ctm_info *ctm)
+{
+	int csc_coeff[16], in0coeff[16], in1coeff[16];
+	const int *matrix[5], *enhance_matrix[3];
+	int32_t *color_matrix;
+	unsigned int oper = 0, enhancem_num = 0;
+	int i, j;
+
+	if (!bcsh->enable && !ctm->enable) {
+		de_dcsc2_set_regs(hdl, NULL, false);
+		return 0;
+	}
+
+	color_matrix = kmalloc_array(16, sizeof(int), GFP_KERNEL | __GFP_ZERO);
+
+	if (in_info->px_fmt_space == out_info->px_fmt_space &&
+		    in_info->color_space == out_info->color_space &&
+		    in_info->color_range == out_info->color_range &&
+		    in_info->eotf == out_info->eotf &&
+		    ((bcsh->brightness == 50 && bcsh->contrast == 50 &&
+		     bcsh->saturation == 50 && bcsh->hue == 0) || !bcsh->enable) &&
+		    !ctm->enable) {
+		memcpy(csc_coeff, bypass, sizeof(bypass));
+		goto set_regs_exit;
+	}
+
+	/* dcsc's infmt=DE_RGB, use_user_matrix is used by dcsc, it's ok to do so */
+	if (ctm->enable) {
+		int64_t *ctm_matrix = (int64_t *)ctm->ctm.matrix;
+		for (i = 0; i < 12; i++)
+			color_matrix[i] = (int32_t)ctm_matrix[i];
+	}
+
+	if (bcsh->enable) {
+		de_csc2_enhance_coeff_calc(hdl, in_info, out_info, bcsh, &enhancem_num, enhance_matrix);
+	}
+
+	if (ctm->enable)
+		matrix[oper++] = color_matrix;
+	if (bcsh->enable)
+		for (i = 0; i < enhancem_num; i++)
+			matrix[oper++] = enhance_matrix[i];
+
+	/* mat mul */
+	if (oper == 0) {
+		memcpy(csc_coeff, bypass, sizeof(bypass));
+	} else if (oper == 1) {
+		memcpy(csc_coeff, matrix[0], sizeof(csc_coeff));
+	} else {
+		for (i = 0; i < oper - 1; i++) {
+			if (i == 0)
+				IDE_SCAL_MATRIC_MUL(matrix[i + 1], matrix[i], in1coeff);
+			else {
+				memcpy(in0coeff, in1coeff, sizeof(in1coeff));
+				IDE_SCAL_MATRIC_MUL(matrix[i + 1], in0coeff, in1coeff);
+			}
+		}
+		memcpy(csc_coeff, in1coeff, sizeof(in1coeff));
+	}
+
+ set_regs_exit:
+	/* The 3x3 conversion coefficient is 17bit fixed-point --->10bit fixed-point */
+	for (i = 0; i < 3; ++i) {
+		for (j = 0; j < 3; ++j) {
+			csc_coeff[i * 4 + j] = IntRightShift64((csc_coeff[i * 4 + j] + 64), 7);
+		}
+	}
+	de_dcsc2_set_regs(hdl, csc_coeff, 1);
+
+	kfree(color_matrix);
 	return 0;
 }
 
@@ -1493,6 +1724,11 @@ int de_dcsc_apply(struct de_csc_handle *hdl, const struct de_csc_info *in_info,
 
 	memset(debug, 0, sizeof(*debug));
 
+	if ((!in_info || !out_info || !bcsh || !ctm) && apply) {
+		de_dcsc2_set_regs(hdl, NULL, 0);
+		return 0;
+	}
+
 	if (bcsh->dirty) {
 		mbcsh.brightness = bcsh->brightness;
 		mbcsh.contrast = bcsh->contrast;
@@ -1500,12 +1736,9 @@ int de_dcsc_apply(struct de_csc_handle *hdl, const struct de_csc_info *in_info,
 		mbcsh.hue = bcsh->hue;
 		mbcsh.enable = true;
 
-		/* map from 0~100 to 25~75 to avoid invisible & overexposed */
-		mbcsh.brightness = mbcsh.brightness / 2 + 25;
-		/* map from 0~100 to 25~100 to avoid invisible */
-		if (mbcsh.contrast < 50)
-			mbcsh.contrast = mbcsh.contrast / 2 + 25;
-
+		/* map from 0~100 to 30~70 to avoid invisible & overexposed */
+		mbcsh.brightness = (mbcsh.brightness * 4 + 5) / 10 + 30;
+		mbcsh.contrast = (mbcsh.contrast * 4 + 5) / 10 + 30;
 		memcpy(&priv->bcsh, &mbcsh, sizeof(mbcsh));
 	} else {
 		memcpy(&mbcsh, &priv->bcsh, sizeof(mbcsh));
@@ -1524,13 +1757,20 @@ int de_dcsc_apply(struct de_csc_handle *hdl, const struct de_csc_info *in_info,
 	}
 
 	DRM_DEBUG_DRIVER("[SUNXI-DE] bcsh dirty %d enable %d brightness %d constants %d"
-			"saturation %d hue %d ctm dirty %d ctm enable %d\n",
+			"saturation %d hue %d ctm dirty %d ctm enable %d apply %d\n",
 			bcsh->dirty, mbcsh.enable, mbcsh.brightness, mbcsh.contrast,
-			mbcsh.saturation, mbcsh.hue, ctm->dirty, mctm.enable);
+			mbcsh.saturation, mbcsh.hue, ctm->dirty, mctm.enable, apply);
 
 	debug->enable = true;
 	memcpy(&debug->in_info, in_info, sizeof(*in_info));
 	memcpy(&debug->out_info, out_info, sizeof(*out_info));
+
+	if (apply) {
+		if (priv->desc->type == DEVICE_CSC) {
+			return de_dcsc2_coeff_calc_inner(hdl, in_info, out_info, &mbcsh, &mctm);
+		}
+		return 0;
+	}
 
 	if (priv->desc->csc_bit_width == 10) {
 		de_csc_coeff_calc_inner10bit(
@@ -1546,10 +1786,6 @@ int de_dcsc_apply(struct de_csc_handle *hdl, const struct de_csc_info *in_info,
 		    csc_coeff);
 	}
 
-	if (apply) {
-		/* TODO: only for device csc */
-	}
-
 	return 0;
 }
 
@@ -1562,7 +1798,7 @@ static s32 de_ccsc_de2_apply(struct de_csc_handle *hdl,
 	struct csc_de2_reg *reg = de35x_get_csc_reg(priv);
 	const u32 default_bcsh_val = 50;
 	struct ctm_info mctm = {0};
-	int csc_coeff[12];
+	int csc_coeff[16] = {0};
 
 	if (!en) {
 		debug->enable = false;
@@ -1588,7 +1824,7 @@ static s32 de_ccsc_de2_apply(struct de_csc_handle *hdl,
 	}
 
 	if (o_csc_coeff)
-		memcpy(o_csc_coeff, csc_coeff, sizeof(u32) * 12);
+		memcpy(o_csc_coeff, csc_coeff, sizeof(u32) * 16);
 
 	if (apply) {
 		reg->c00.dwval = *(csc_coeff);

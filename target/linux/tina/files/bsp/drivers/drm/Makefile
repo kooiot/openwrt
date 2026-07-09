@@ -7,12 +7,16 @@ ccflags-y += -I$(srctree)/$(obj)/lib/inc/
 
 # base
 sunxidrm-y += sunxi_drm_drv.o sunxi_drm_crtc.o sunxi_drm_intf.o sunxi_drm_notify.o
+sunxidrm-y += sunxi_drm_gem.o
 sunxidrm-y += sunxi_drm_debug.o kernel_panic_printf.o
 
 #fbdev
 ifdef CONFIG_FB
-sunxidrm-y += sunxi_fbdev_core.o sunxi_fbdev_platform.o
+sunxidrm-y += sunxi_fbdev_core.o
+else
+sunxidrm-y += sunxi_drmfb_core.o
 endif
+sunxidrm-y += sunxi_fbdev_platform.o
 
 # de
 include $(srctree)/$(obj)/sunxi_device/hardware/lowlevel_de/Makefile
@@ -64,4 +68,3 @@ CFLAGS_sunxi_drm_trace.o := -I$(src)
 sunxidrm-y += sunxi_drm_trace.o
 
 obj-$(CONFIG_AW_DRM)        += sunxidrm.o
-obj-y += lt8912b.o

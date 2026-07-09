@@ -40,10 +40,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#ifndef __PHYSMEM_OSMEM_LINUX_H__
-#define __PHYSMEM_OSMEM_LINUX_H__
+#ifndef PHYSMEM_OSMEM_LINUX_H
+#define PHYSMEM_OSMEM_LINUX_H
 
 void LinuxInitPhysmem(void);
 void LinuxDeinitPhysmem(void);
 
-#endif /* __PHYSMEM_OSMEM_LINUX_H__ */
+#endif /* PHYSMEM_OSMEM_LINUX_H */

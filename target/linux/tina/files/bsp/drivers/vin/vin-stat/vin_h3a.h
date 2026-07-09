@@ -24,12 +24,15 @@
 
 #include "../vin-video/vin_video.h"
 
-#if !defined CONFIG_ISP_SERVER_MELIS
+#if !IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
 #define STAT_MAX_BUFS		6
 #define STAT_NEVENTS		8
 
 #define STAT_BUF_DONE		0	/* Buffer is ready */
 #define STAT_NO_BUF		1	/* An error has occurred */
+
+#define LDCI_WIDTH 160
+#define LDCI_HEIGHT 90
 
 enum ispstat_buf_state_t {
 	ISPSTAT_IDLE = 0,
@@ -63,6 +66,7 @@ struct isp_stat {
 	enum ispstat_state_t state;	/* enabling/disabling state */
 	struct isp_dev *isp;
 	struct mutex ioctl_lock; /* serialize private ioctl */
+	struct mutex ldci_lock;
 
 	/* Buffer */
 	u8 stat_en_flag;
@@ -71,6 +75,8 @@ struct isp_stat {
 	u32 frame_number;
 	u32 buf_size;
 	u32 event_type;
+	bool ldci_send_flags;
+	char ldci_buffer[LDCI_WIDTH * LDCI_HEIGHT];
 	struct vin_mm ion_man[STAT_MAX_BUFS]; /* for ion alloc/free manage */
 	struct ispstat_buffer buf[STAT_MAX_BUFS];
 	struct ispstat_buffer *active_buf;
@@ -85,6 +91,9 @@ void isp_stat_load_set(struct isp_stat *stat);
 
 #define STAT_BUF_DONE		0	/* Buffer is ready */
 #define STAT_NO_BUF		1	/* An error has occurred */
+
+#define LDCI_WIDTH 160
+#define LDCI_HEIGHT 90
 
 enum ispstat_buf_state_t {
 	ISPSTAT_IDLE = 0,
@@ -111,7 +120,7 @@ struct isp_dev;
 
 struct isp_stat {
 	struct isp_dev *isp;
-
+	struct mutex ldci_lock;
 	/* Buffer */
 	enum ispstat_state_t state;	/* enabling/disabling state */
 	struct mutex ioctl_lock; /* serialize private ioctl */
@@ -120,6 +129,8 @@ struct isp_stat {
 	u8 buf_cnt;
 	u32 frame_number;
 	u32 buf_size;
+	bool ldci_send_flags;
+	char ldci_buffer[LDCI_WIDTH * LDCI_HEIGHT];
 	struct vin_mm ion_man[STAT_MAX_BUFS]; /* for ion alloc/free manage */
 	struct ispstat_buffer buf[STAT_MAX_BUFS];
 	struct ispstat_buffer *active_buf;
@@ -129,11 +140,14 @@ int isp_stat_enable(struct isp_stat *stat, u8 enable);
 int isp_stat_request_statistics(struct isp_stat *stat);
 
 int isp_config_sensor_info(struct isp_dev *isp);
-int isp_reset_config_sensor_info(struct isp_dev *isp, enum rpmsg_cmd cmd);
+int isp_reset_config_sensor_info(struct isp_dev *isp, enum rpmsg_cmd cmd, unsigned int flag);
 void isp_sensor_set_exp_gain(struct isp_dev *isp, void *data);
+void isp_tdm_dqbuffer(struct isp_dev *isp, void *data);
 void isp_set_encpp_cfg(struct isp_dev *isp, void *data);
 void isp_set_ir_cfg(struct isp_dev *isp, void *data);
 void isp_update_isp_attr_cfg(struct isp_dev *isp, void *data);
+void vin_sync_isp_info_node(struct isp_dev *isp, void *data);
+void isp_sensor_set_mipi_switch(struct isp_dev *isp, void *data);
 void isp_save_ae(struct isp_dev *isp, void *data);
 void isp_get_sensor_state(struct isp_dev *isp);
 int isp_write_nor_flash(loff_t to, loff_t to_offset, size_t len, const u_char *buf);

@@ -40,8 +40,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#if !defined(__PVR_NOTIFIER_H__)
-#define __PVR_NOTIFIER_H__
+#if !defined(PVR_NOTIFIER_H)
+#define PVR_NOTIFIER_H
 
 #include "img_types.h"
 #include "pvr_debug.h"
@@ -52,9 +52,9 @@ Command Complete Notifier Interface
 */ /**************************************************************************/
 
 typedef IMG_HANDLE PVRSRV_CMDCOMP_HANDLE;
-#ifndef _CMDCOMPNOTIFY_PFN_
+#ifndef CMDCOMPNOTIFY_PFN
 typedef void (*PFN_CMDCOMP_NOTIFY)(PVRSRV_CMDCOMP_HANDLE hCmdCompHandle);
-#define _CMDCOMPNOTIFY_PFN_
+#define CMDCOMPNOTIFY_PFN
 #endif
 
 /*************************************************************************/ /*!
@@ -102,9 +102,9 @@ PVRSRVUnregisterCmdCompleteNotify(IMG_HANDLE hNotify);
 
 /*************************************************************************/ /*!
 @Function       PVRSRVCheckStatus
-@Description    Notify any registered command complete handlers that some work
-                has been finished (unless hCmdCompCallerHandle matches a
-                handler's hPrivData). Also signal the global event object.
+@Description    Calls PVRSRVNotifyCommandCompletion() to notify registered
+                command complete handlers of work completion and then calls
+                PVRSRVSignalGlobalEO() to signal the global event object.
 @Input          hCmdCompCallerHandle Used to prevent a handler from being
                                      notified. A NULL value results in all
                                      handlers being notified.
@@ -112,20 +112,41 @@ PVRSRVUnregisterCmdCompleteNotify(IMG_HANDLE hNotify);
 void
 PVRSRVCheckStatus(PVRSRV_CMDCOMP_HANDLE hCmdCompCallerHandle);
 
+/*************************************************************************/ /*!
+@Function       PVRSRVNotifyCommandCompletion
+@Description    Notify any registered command complete handlers that some work
+                has been finished (unless hCmdCompCallerHandle matches a
+                handler's hPrivData).
+@Input          hCmdCompCallerHandle Used to prevent a handler from being
+                                     notified. A NULL value results in all
+                                     handlers being notified.
+*/ /**************************************************************************/
+void
+PVRSRVNotifyCommandCompletion(PVRSRV_CMDCOMP_HANDLE hCmdCompCallerHandle);
+
+/*************************************************************************/ /*!
+@Function       PVRSRVSignalGlobalEO
+@Description    Signals the global event object.
+*/ /**************************************************************************/
+void
+PVRSRVSignalGlobalEO(void);
+
 
 /*************************************************************************/ /*!
 Debug Notifier Interface
 */ /**************************************************************************/
 
 #define DEBUG_REQUEST_DC                0
-#define DEBUG_REQUEST_SERVERSYNC        1
-#define DEBUG_REQUEST_SYS               2
-#define DEBUG_REQUEST_ANDROIDSYNC       3
-#define DEBUG_REQUEST_LINUXFENCE        4
-#define DEBUG_REQUEST_SYNCCHECKPOINT    5
-#define DEBUG_REQUEST_HTB               6
-#define DEBUG_REQUEST_APPHINT           7
-#define DEBUG_REQUEST_FALLBACKSYNC      8
+#define DEBUG_REQUEST_SYNCTRACKING      1
+#define DEBUG_REQUEST_SRV               2
+#define DEBUG_REQUEST_SYS               3
+#define DEBUG_REQUEST_RGX               4
+#define DEBUG_REQUEST_ANDROIDSYNC       5
+#define DEBUG_REQUEST_LINUXFENCE        6
+#define DEBUG_REQUEST_SYNCCHECKPOINT    7
+#define DEBUG_REQUEST_HTB               8
+#define DEBUG_REQUEST_APPHINT           9
+#define DEBUG_REQUEST_FALLBACKSYNC      10
 
 #define DEBUG_REQUEST_VERBOSITY_LOW     0
 #define DEBUG_REQUEST_VERBOSITY_MEDIUM  1
@@ -148,54 +169,76 @@ Debug Notifier Interface
 			pfnDumpDebugPrintf(pvDumpDebugFile, __VA_ARGS__); \
 		else                                                  \
 			PVR_LOG((__VA_ARGS__));                           \
-	} while(0)
+	} while (0)
 
 struct _PVRSRV_DEVICE_NODE_;
 
 typedef IMG_HANDLE PVRSRV_DBGREQ_HANDLE;
-#ifndef _DBGNOTIFY_PFNS_
+#ifndef DBGNOTIFY_PFNS
 typedef void (DUMPDEBUG_PRINTF_FUNC)(void *pvDumpDebugFile,
 					const IMG_CHAR *pszFormat, ...);
 typedef void (*PFN_DBGREQ_NOTIFY)(PVRSRV_DBGREQ_HANDLE hDebugRequestHandle,
 					IMG_UINT32 ui32VerbLevel,
 					DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 					void *pvDumpDebugFile);
-#define _DBGNOTIFY_PFNS_
+#define DBGNOTIFY_PFNS
 #endif
 
 /*************************************************************************/ /*!
-@Function       PVRSRVRegisterDbgTable
+@Function       PVRSRVRegisterDeviceDbgTable
 @Description    Registers a debug requester table for the given device. The
-                order in which the debug requester IDs appear in the given
+                order in which the debug requester IDs appear in the
                 table determine the order in which a set of notifier callbacks
                 will be called. In other words, the requester ID that appears
                 first will have all of its associated debug notifier callbacks
                 called first. This will then be followed by all the callbacks
                 associated with the next requester ID in the table and so on.
+                The order table is handled internally.
 @Input          psDevNode     Device node to register requester table with
-@Input          paui32Table   Array of requester IDs
-@Input          ui32Length    Number of elements in paui32Table
 @Return         PVRSRV_ERROR  PVRSRV_OK on success otherwise an error
 */ /**************************************************************************/
 PVRSRV_ERROR
-PVRSRVRegisterDbgTable(struct _PVRSRV_DEVICE_NODE_ *psDevNode,
-                       const IMG_UINT32 *paui32Table, IMG_UINT32 ui32Length);
+PVRSRVRegisterDeviceDbgTable(struct _PVRSRV_DEVICE_NODE_ *psDevNode);
 
 /*************************************************************************/ /*!
-@Function       PVRSRVUnregisterDbgTable
+@Function       PVRSRVRegisterDriverDbgTable
+@Description    Registers a debug requester table for the driver. The
+                order in which the debug requester IDs appear in the
+                table determine the order in which a set of notifier callbacks
+                will be called. In other words, the requester ID that appears
+                first will have all of its associated debug notifier callbacks
+                called first. This will then be followed by all the callbacks
+                associated with the next requester ID in the table and so on.
+                The order table is handled internally.
+@Return         PVRSRV_ERROR  PVRSRV_OK on success otherwise an error
+*/ /**************************************************************************/
+PVRSRV_ERROR
+PVRSRVRegisterDriverDbgTable(void);
+
+/*************************************************************************/ /*!
+@Function       PVRSRVUnregisterDeviceDbgTable
 @Description    Unregisters a debug requester table.
 @Input          psDevNode     Device node for which the requester table should
                               be unregistered
 @Return         void
 */ /**************************************************************************/
 void
-PVRSRVUnregisterDbgTable(struct _PVRSRV_DEVICE_NODE_ *psDevNode);
+PVRSRVUnregisterDeviceDbgTable(struct _PVRSRV_DEVICE_NODE_ *psDevNode);
 
 /*************************************************************************/ /*!
-@Function       PVRSRVRegisterDbgRequestNotify
-@Description    Register a callback function that is called when a debug request
-                is made via a call PVRSRVDebugRequest. There are a number of
-                verbosity levels ranging from DEBUG_REQUEST_VERBOSITY_LOW up to
+@Function       PVRSRVUnregisterDriverDbgTable
+@Description    Unregisters the driver debug requester table.
+@Return         void
+*/ /**************************************************************************/
+void
+PVRSRVUnregisterDriverDbgTable(void);
+
+/*************************************************************************/ /*!
+@Function       PVRSRVRegisterDeviceDbgRequestNotify
+@Description    Register a callback function on a given device that is called
+                when a debug request is made via a call PVRSRVDebugRequest.
+                There are a number of verbosity levels ranging from
+                DEBUG_REQUEST_VERBOSITY_LOW up to
                 DEBUG_REQUEST_VERBOSITY_MAX. The callback will be called once
                 for each level up to the highest level specified to
                 PVRSRVDebugRequest.
@@ -210,20 +253,53 @@ PVRSRVUnregisterDbgTable(struct _PVRSRV_DEVICE_NODE_ *psDevNode);
 @Return         PVRSRV_ERROR         PVRSRV_OK on success otherwise an error
 */ /**************************************************************************/
 PVRSRV_ERROR
-PVRSRVRegisterDbgRequestNotify(IMG_HANDLE *phNotify,
-                               struct _PVRSRV_DEVICE_NODE_ *psDevNode,
-                               PFN_DBGREQ_NOTIFY pfnDbgRequestNotify,
-                               IMG_UINT32 ui32RequesterID,
-                               PVRSRV_DBGREQ_HANDLE hDbgReqeustHandle);
+PVRSRVRegisterDeviceDbgRequestNotify(IMG_HANDLE *phNotify,
+                                     struct _PVRSRV_DEVICE_NODE_ *psDevNode,
+                                     PFN_DBGREQ_NOTIFY pfnDbgRequestNotify,
+                                     IMG_UINT32 ui32RequesterID,
+                                     PVRSRV_DBGREQ_HANDLE hDbgReqeustHandle);
 
 /*************************************************************************/ /*!
-@Function       PVRSRVUnregisterDbgRequestNotify
-@Description    Unregister a previously registered callback function.
+@Function       PVRSRVRegisterDriverDbgRequestNotify
+@Description    Register a callback function that is called when a debug request
+                is made via a call PVRSRVDebugRequest. There are a number of
+                verbosity levels ranging from DEBUG_REQUEST_VERBOSITY_LOW up to
+                DEBUG_REQUEST_VERBOSITY_MAX. The callback will be called once
+                for each level up to the highest level specified to
+                PVRSRVDebugRequest.
+@Output         phNotify             Points to debug notifier handle on success
+@Input          pfnDbgRequestNotify  Function callback
+@Input          ui32RequesterID      Requester ID. This is used to determine
+                                     the order in which callbacks are called
+@Input          hDbgReqeustHandle    Data to be passed back to the caller via
+                                     the callback function
+@Return         PVRSRV_ERROR         PVRSRV_OK on success otherwise an error
+*/ /**************************************************************************/
+PVRSRV_ERROR
+PVRSRVRegisterDriverDbgRequestNotify(IMG_HANDLE *phNotify,
+									 PFN_DBGREQ_NOTIFY pfnDbgRequestNotify,
+									 IMG_UINT32 ui32RequesterID,
+									 PVRSRV_DBGREQ_HANDLE hDbgRequestHandle);
+
+/*************************************************************************/ /*!
+@Function       PVRSRVUnregisterDeviceDbgRequestNotify
+@Description    Unregister a previously registered (device context) callback
+                function.
 @Input          hNotify              Debug notifier handle.
 @Return         PVRSRV_ERROR         PVRSRV_OK on success otherwise an error
 */ /**************************************************************************/
 PVRSRV_ERROR
-PVRSRVUnregisterDbgRequestNotify(IMG_HANDLE hNotify);
+PVRSRVUnregisterDeviceDbgRequestNotify(IMG_HANDLE hNotify);
+
+/*************************************************************************/ /*!
+@Function       PVRSRVUnregisterDriverDbgRequestNotify
+@Description    Unregister a previously registered (driver context) callback
+                function.
+@Input          hNotify              Debug notifier handle.
+@Return         PVRSRV_ERROR         PVRSRV_OK on success otherwise an error
+*/ /**************************************************************************/
+PVRSRV_ERROR
+PVRSRVUnregisterDriverDbgRequestNotify(IMG_HANDLE hNotify);
 
 /*************************************************************************/ /*!
 @Function       PVRSRVDebugRequest
@@ -247,4 +323,4 @@ PVRSRVDebugRequest(struct _PVRSRV_DEVICE_NODE_ *psDevNode,
                    DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
                    void *pvDumpDebugFile);
 
-#endif /* !defined(__PVR_NOTIFIER_H__) */
+#endif /* !defined(PVR_NOTIFIER_H) */

@@ -142,8 +142,8 @@ static int cci_sys_unregister(struct cci_driver *drv_data)
 
 static int sensor_registered(struct v4l2_subdev *sd)
 {
-#if !defined CONFIG_VIDEO_SUNXI_VIN_SPECIAL
-#if !defined CONFIG_VIN_INIT_MELIS
+#if !IS_ENABLED(CONFIG_VIDEO_SUNXI_VIN_SPECIAL)
+#if !IS_ENABLED(CONFIG_VIN_INIT_MELIS)
 	int ret;
 	struct sensor_info *info = to_state(sd);
 
@@ -271,7 +271,7 @@ void cci_lock(struct v4l2_subdev *sd)
 #else
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 
-	i2c_mark_adapter_suspended(client->adapter);
+	i2c_lock_bus(client->adapter, I2C_LOCK_ROOT_ADAPTER);
 #endif
 }
 EXPORT_SYMBOL_GPL(cci_lock);
@@ -283,7 +283,7 @@ void cci_unlock(struct v4l2_subdev *sd)
 #else
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 
-	i2c_mark_adapter_resumed(client->adapter);
+	i2c_unlock_bus(client->adapter, I2C_LOCK_ROOT_ADAPTER);
 #endif
 }
 EXPORT_SYMBOL_GPL(cci_unlock);
@@ -1188,6 +1188,9 @@ int sensor_write_array(struct v4l2_subdev *sd, struct regval_list *regs, int arr
 
 	while (i < array_size) {
 		len = 1;
+#ifdef FPGA_VER
+		usleep_range(1000, 1100);
+#endif
 		if (regs->addr == REG_DLY) {
 			usleep_range(regs->data * 1000, regs->data * 1000 + 100);
 		} else {

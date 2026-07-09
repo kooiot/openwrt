@@ -56,6 +56,7 @@ static struct rproc_common_res common_res[] = {
 };
 
 static struct rproc_clk_opration common_start_seq[]  = {
+	{ .name = "check_vf_table", .option = RPROC_COMMON_OP(VF_TABLE_CHECK), .prop_rate = RV_DTS_PROPERTY_CORE_CLK_FREQ},
 #if (!IS_ENABLED(CONFIG_AW_REMOTEPROC_E907_ECC_ENABLE))
 	{ .name = "core-rst",  .option = RPROC_COMMON_OP(DEASSERT) },
 	{ .name = "rv-sys-rst", .option = RPROC_COMMON_OP(DEASSERT) },
@@ -83,6 +84,7 @@ static struct rproc_clk_opration common_stop_seq[]  = {
 	{ .name = "core-rst",  .option = RPROC_COMMON_OP(ASSERT) },
 };
 static struct rproc_clk_opration common_attach_seq[]  = {
+	{ .name = "check_vf_table",  .option = RPROC_COMMON_OP(VF_TABLE_CHECK), .prop_rate = RV_DTS_PROPERTY_CORE_CLK_FREQ},
 #if (!IS_ENABLED(CONFIG_AW_REMOTEPROC_E907_ECC_ENABLE))
 	{ .name = "core-rst",  .option = RPROC_COMMON_OP(DEASSERT) },
 	{ .name = "rv-sys-rst", .option = RPROC_COMMON_OP(DEASSERT) },

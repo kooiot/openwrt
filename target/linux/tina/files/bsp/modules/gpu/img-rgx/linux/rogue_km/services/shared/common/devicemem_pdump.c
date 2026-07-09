@@ -42,7 +42,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */ /**************************************************************************/
 
-#if defined PDUMP
+#if defined(PDUMP)
 
 #include "allocmem.h"
 #include "img_types.h"
@@ -52,12 +52,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "devicemem.h"
 #include "devicemem_utils.h"
 #include "devicemem_pdump.h"
+#include "client_pdump_bridge.h"
 #include "client_pdumpmm_bridge.h"
-#if defined(LINUX) && !defined(__KERNEL__)
+#if defined(__linux__) && !defined(__KERNEL__)
 #include <stdio.h>
-#if defined(SUPPORT_ANDROID_PLATFORM)
-#include "android_utils.h"
-#endif
 #endif
 
 IMG_INTERNAL void
@@ -77,13 +75,12 @@ DevmemPDumpLoadMem(DEVMEM_MEMDESC *psMemDesc,
 	                               uiPDumpFlags,
 	                               IMG_FALSE);
 
-	if (eError != PVRSRV_OK)
+	PVR_LOG_IF_ERROR(eError, "BridgePMRPDumpLoadMem");
+	/* If PDump was rejected for this device, suppress silently */
+	if (eError != PVRSRV_ERROR_PDUMP_CAPTURE_BOUND_TO_ANOTHER_DEVICE)
 	{
-		PVR_DPF((PVR_DBG_ERROR,
-				"%s: failed with error %d",
-				__func__, eError));
+		PVR_ASSERT(eError == PVRSRV_OK);
 	}
-	PVR_ASSERT(eError == PVRSRV_OK);
 }
 
 IMG_INTERNAL void
@@ -103,13 +100,12 @@ DevmemPDumpLoadZeroMem(DEVMEM_MEMDESC *psMemDesc,
 	                               uiPDumpFlags,
 	                               IMG_TRUE);
 
-	if (eError != PVRSRV_OK)
+	PVR_LOG_IF_ERROR(eError, "BridgePMRPDumpLoadMem");
+	/* If PDump was rejected for this device, suppress silently */
+	if (eError != PVRSRV_ERROR_PDUMP_CAPTURE_BOUND_TO_ANOTHER_DEVICE)
 	{
-		PVR_DPF((PVR_DBG_ERROR,
-				"%s: failed with error %d",
-				__func__, eError));
+		PVR_ASSERT(eError == PVRSRV_OK);
 	}
-	PVR_ASSERT(eError == PVRSRV_OK);
 }
 
 IMG_INTERNAL void
@@ -121,18 +117,17 @@ DevmemPDumpLoadMemValue32(DEVMEM_MEMDESC *psMemDesc,
 	PVRSRV_ERROR eError;
 
 	eError = BridgePMRPDumpLoadMemValue32(GetBridgeHandle(psMemDesc->psImport->hDevConnection),
-	                                      psMemDesc->psImport->hPMR,
-	                                      psMemDesc->uiOffset + uiOffset,
-	                                      ui32Value,
-	                                      uiPDumpFlags);
+                                        psMemDesc->psImport->hPMR,
+                                        psMemDesc->uiOffset + uiOffset,
+                                        ui32Value,
+                                        uiPDumpFlags);
 
-	if (eError != PVRSRV_OK)
+	PVR_LOG_IF_ERROR(eError, "BridgePMRPDumpLoadMemValue32");
+	/* If PDump was rejected for this device, suppress silently */
+	if (eError != PVRSRV_ERROR_PDUMP_CAPTURE_BOUND_TO_ANOTHER_DEVICE)
 	{
-		PVR_DPF((PVR_DBG_ERROR,
-				"%s: failed with error %d",
-				__func__, eError));
+		PVR_ASSERT(eError == PVRSRV_OK);
 	}
-	PVR_ASSERT(eError == PVRSRV_OK);
 }
 
 IMG_INTERNAL void
@@ -148,16 +143,14 @@ DevmemPDumpLoadMemValue64(DEVMEM_MEMDESC *psMemDesc,
 	                                      psMemDesc->uiOffset + uiOffset,
 	                                      ui64Value,
 	                                      uiPDumpFlags);
-	if (eError != PVRSRV_OK)
+	PVR_LOG_IF_ERROR(eError, "BridgePMRPDumpLoadMemValue64");
+	/* If PDump was rejected for this device, suppress silently */
+	if (eError != PVRSRV_ERROR_PDUMP_CAPTURE_BOUND_TO_ANOTHER_DEVICE)
 	{
-		PVR_DPF((PVR_DBG_ERROR,
-				"%s: failed with error %d",
-				__func__, eError));
+		PVR_ASSERT(eError == PVRSRV_OK);
 	}
-	PVR_ASSERT(eError == PVRSRV_OK);
 }
 
-/* FIXME: This should be server side only */
 IMG_INTERNAL PVRSRV_ERROR
 DevmemPDumpPageCatBaseToSAddr(DEVMEM_MEMDESC		*psMemDesc,
                               IMG_DEVMEM_OFFSET_T	*puiMemOffset,
@@ -181,13 +174,12 @@ DevmemPDumpPageCatBaseToSAddr(DEVMEM_MEMDESC		*psMemDesc,
 	                                    puiMemOffset,
 	                                    &uiNextSymName);
 
-	if (eError != PVRSRV_OK)
+	PVR_LOG_IF_ERROR(eError, "BridgePMRPDumpSymbolicAddr");
+	/* If PDump was rejected for this device, suppress silently */
+	if (eError != PVRSRV_ERROR_PDUMP_CAPTURE_BOUND_TO_ANOTHER_DEVICE)
 	{
-		PVR_DPF((PVR_DBG_ERROR,
-				"%s: failed with error %d",
-				__func__, eError));
+		PVR_ASSERT(eError == PVRSRV_OK);
 	}
-	PVR_ASSERT(eError == PVRSRV_OK);
 
 	OSSNPrintf(pszName, ui32Size, "%s:%s", &aszMemspaceName[0], &aszSymbolicName[0]);
 	return eError;
@@ -210,25 +202,21 @@ DevmemPDumpSaveToFile(DEVMEM_MEMDESC *psMemDesc,
 	                                  pszFilename,
 	                                  uiFileOffset);
 
-	if (eError != PVRSRV_OK)
+	PVR_LOG_IF_ERROR(eError, "BridgePMRPDumpSaveToFile");
+	/* If PDump was rejected for this device, suppress silently */
+	if (eError != PVRSRV_ERROR_PDUMP_CAPTURE_BOUND_TO_ANOTHER_DEVICE)
 	{
-		PVR_DPF((PVR_DBG_ERROR,
-				"%s: failed with error %d",
-				__func__, eError));
+		PVR_ASSERT(eError == PVRSRV_OK);
 	}
-	PVR_ASSERT(eError == PVRSRV_OK);
 }
 
-
-
-/* FIXME: Remove? */
 IMG_INTERNAL void
 DevmemPDumpSaveToFileVirtual(DEVMEM_MEMDESC *psMemDesc,
                              IMG_DEVMEM_OFFSET_T uiOffset,
                              IMG_DEVMEM_SIZE_T uiSize,
                              const IMG_CHAR *pszFilename,
                              IMG_UINT32 ui32FileOffset,
-                             IMG_UINT32	ui32PdumpFlags)
+                             IMG_UINT32 ui32PdumpFlags)
 {
 	PVRSRV_ERROR eError;
 	IMG_DEV_VIRTADDR sDevAddrStart;
@@ -246,15 +234,49 @@ DevmemPDumpSaveToFileVirtual(DEVMEM_MEMDESC *psMemDesc,
 	                                               ui32FileOffset,
 	                                               ui32PdumpFlags);
 
-	if (eError != PVRSRV_OK)
+	PVR_LOG_IF_ERROR(eError, "BridgeDevmemIntPDumpSaveToFileVirtual");
+	/* If PDump was rejected for this device, suppress silently */
+	if (eError != PVRSRV_ERROR_PDUMP_CAPTURE_BOUND_TO_ANOTHER_DEVICE)
 	{
-		PVR_DPF((PVR_DBG_ERROR,
-				"%s: failed with error %d",
-				__func__, eError));
+		PVR_ASSERT(eError == PVRSRV_OK);
 	}
-	PVR_ASSERT(eError == PVRSRV_OK);
 }
 
+IMG_INTERNAL void
+DevmemPDumpDataDescriptor(DEVMEM_MEMDESC *psMemDesc,
+                          IMG_DEVMEM_OFFSET_T uiOffset,
+                          IMG_DEVMEM_SIZE_T uiSize,
+                          const IMG_CHAR *pszFilename,
+                          IMG_UINT32 ui32HeaderType,
+                          IMG_UINT32 ui32ElementType,
+                          IMG_UINT32 ui32ElementCount,
+                          IMG_UINT32 ui32PdumpFlags)
+{
+	PVRSRV_ERROR eError;
+	IMG_DEV_VIRTADDR sDevAddrStart;
+
+	sDevAddrStart = psMemDesc->psImport->sDeviceImport.sDevVAddr;
+	sDevAddrStart.uiAddr += psMemDesc->uiOffset;
+	sDevAddrStart.uiAddr += uiOffset;
+
+	eError = BridgePDumpDataDescriptor(GetBridgeHandle(psMemDesc->psImport->hDevConnection),
+	                                   psMemDesc->psImport->sDeviceImport.psHeap->psCtx->hDevMemServerContext,
+                                       OSStringLength(pszFilename) + 1,
+	                                   pszFilename,
+	                                   sDevAddrStart,
+	                                   uiSize,
+	                                   ui32HeaderType,
+	                                   ui32ElementType,
+	                                   ui32ElementCount,
+	                                   ui32PdumpFlags);
+
+	PVR_LOG_IF_ERROR(eError, "BridgePDumpDataDescriptor");
+	/* If PDump was rejected for this device, suppress silently */
+	if (eError != PVRSRV_ERROR_PDUMP_CAPTURE_BOUND_TO_ANOTHER_DEVICE)
+	{
+		PVR_ASSERT(eError == PVRSRV_OK);
+	}
+}
 
 IMG_INTERNAL PVRSRV_ERROR
 DevmemPDumpDevmemPol32(const DEVMEM_MEMDESC *psMemDesc,
@@ -271,11 +293,54 @@ DevmemPDumpDevmemPol32(const DEVMEM_MEMDESC *psMemDesc,
 
 	if (psMemDesc->uiOffset + uiOffset + uiNumBytes > psMemDesc->psImport->uiSize)
 	{
+		PVR_GOTO_WITH_ERROR(eError, PVRSRV_ERROR_DEVICEMEM_OUT_OF_RANGE, e0);
+	}
+
+	eError = BridgePMRPDumpPol32(GetBridgeHandle(psMemDesc->psImport->hDevConnection),
+	                             psMemDesc->psImport->hPMR,
+	                             psMemDesc->uiOffset + uiOffset,
+	                             ui32Value,
+	                             ui32Mask,
+	                             eOperator,
+	                             ui32PDumpFlags);
+	PVR_GOTO_IF_ERROR(eError, e0);
+
+	return PVRSRV_OK;
+
+	/*
+	  error exit paths follow
+	 */
+
+e0:
+	/* If PDump was rejected for this device, suppress silently */
+	if (eError != PVRSRV_ERROR_PDUMP_CAPTURE_BOUND_TO_ANOTHER_DEVICE)
+	{
+		PVR_ASSERT(eError != PVRSRV_OK);
+	}
+	return eError;
+}
+
+#if defined(__KERNEL__)
+IMG_INTERNAL PVRSRV_ERROR
+DevmemPDumpDevmemCheck32(const DEVMEM_MEMDESC *psMemDesc,
+                         IMG_DEVMEM_OFFSET_T uiOffset,
+                         IMG_UINT32 ui32Value,
+                         IMG_UINT32 ui32Mask,
+                         PDUMP_POLL_OPERATOR eOperator,
+                         PDUMP_FLAGS_T ui32PDumpFlags)
+{
+	PVRSRV_ERROR eError;
+	IMG_DEVMEM_SIZE_T uiNumBytes;
+
+	uiNumBytes = 4;
+
+	if (psMemDesc->uiOffset + uiOffset + uiNumBytes >= psMemDesc->psImport->uiSize)
+	{
 		eError = PVRSRV_ERROR_DEVICEMEM_OUT_OF_RANGE;
 		goto e0;
 	}
 
-	eError = BridgePMRPDumpPol32(GetBridgeHandle(psMemDesc->psImport->hDevConnection),
+	eError = BridgePMRPDumpCheck32(GetBridgeHandle(psMemDesc->psImport->hDevConnection),
 	                             psMemDesc->psImport->hPMR,
 	                             psMemDesc->uiOffset + uiOffset,
 	                             ui32Value,
@@ -290,13 +355,18 @@ DevmemPDumpDevmemPol32(const DEVMEM_MEMDESC *psMemDesc,
 	return PVRSRV_OK;
 
 	/*
-      error exit paths follow
+	  error exit paths follow
 	 */
 
-	 e0:
-	 PVR_ASSERT(eError != PVRSRV_OK);
-	 return eError;
+e0:
+	/* If PDump was rejected for this device, suppress silently */
+	if (eError != PVRSRV_ERROR_PDUMP_CAPTURE_BOUND_TO_ANOTHER_DEVICE)
+	{
+		PVR_ASSERT(eError != PVRSRV_OK);
+	}
+	return eError;
 }
+#endif /* defined(__KERNEL__) */
 
 IMG_INTERNAL PVRSRV_ERROR
 DevmemPDumpCBP(const DEVMEM_MEMDESC *psMemDesc,
@@ -309,8 +379,7 @@ DevmemPDumpCBP(const DEVMEM_MEMDESC *psMemDesc,
 
 	if ((psMemDesc->uiOffset + uiReadOffset) > psMemDesc->psImport->uiSize)
 	{
-		eError = PVRSRV_ERROR_DEVICEMEM_OUT_OF_RANGE;
-		goto e0;
+		PVR_GOTO_WITH_ERROR(eError, PVRSRV_ERROR_DEVICEMEM_OUT_OF_RANGE, e0);
 	}
 
 	eError = BridgePMRPDumpCBP(GetBridgeHandle(psMemDesc->psImport->hDevConnection),
@@ -319,17 +388,17 @@ DevmemPDumpCBP(const DEVMEM_MEMDESC *psMemDesc,
 	                           uiWriteOffset,
 	                           uiPacketSize,
 	                           uiBufferSize);
-	if (eError != PVRSRV_OK)
-	{
-		goto e0;
-	}
+	PVR_GOTO_IF_ERROR(eError, e0);
 
 	return PVRSRV_OK;
 
-	e0:
-	PVR_ASSERT(eError != PVRSRV_OK);
+e0:
+	/* If PDump was rejected for this device, suppress silently */
+	if (eError != PVRSRV_ERROR_PDUMP_CAPTURE_BOUND_TO_ANOTHER_DEVICE)
+	{
+		PVR_ASSERT(eError != PVRSRV_OK);
+	}
 	return eError;
 }
 
 #endif /* PDUMP */
-

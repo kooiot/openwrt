@@ -72,12 +72,11 @@ u32  open_usb_clock(sunxi_udc_io_t *sunxi_udc_io)
 	usb_otg_phy_txtune(sunxi_udc_io->usb_vbase);
 #endif
 
-#if IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN60IW2)
-	usbc_rescal_clock_set(sunxi_udc_io, true);
-	usbc_phyx_res_cal(0, true, sunxi_udc_io->rext_cal_bypass);
-#endif
-
 	if (!sunxi_udc_io->clk_is_open) {
+#if IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN60IW2)
+		usbc_rescal_clock_set(sunxi_udc_io, true);
+		usbc_phyx_res_cal(0, true, sunxi_udc_io->rext_cal_bypass);
+#endif
 		if (sunxi_udc_io->ahb_otg) {
 			ret = clk_prepare_enable(sunxi_udc_io->ahb_otg);
 			if (ret) {
@@ -183,7 +182,8 @@ u32  open_usb_clock(sunxi_udc_io_t *sunxi_udc_io)
 	USBC_PHY_Clear_Ctl(sunxi_udc_io->usb_vbase, USBC_PHY_CTL_LOOPBACKENB);
 #endif
 
-#if IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN300IW1)
+#if IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN300IW1) \
+	|| IS_ENABLED(CONFIG_ARCH_SUN251IW1)
 	/* There is no USBC_PHY_CTL_VBUSVLDEXT bit in this SOC, configure it here.  */
 	USBC_PHY_Clear_Ctl(sunxi_udc_io->usb_vbase, USBC_PHY_CTL_SIDDQ);
 #endif
@@ -200,7 +200,15 @@ u32  open_usb_clock(sunxi_udc_io_t *sunxi_udc_io)
 	USBC_PHY_Set_Ctl(sunxi_udc_io->usb_vbase, USBC_PHY_CTL_VBUSVLDEXT);
 	USBC_PHY_Clear_Ctl(sunxi_udc_io->usb_vbase, USBC_PHY_CTL_SIDDQ);
 #else
-	UsbPhyInit(0);
+	if (sunxi_udc_io->usb2_generic_phy) {
+		ret = phy_init(sunxi_udc_io->usb2_generic_phy);
+		if (ret < 0) {
+			DMSG_ERR("[udc]: init phy err, return %d\n", ret);
+			return ret;
+		}
+	} else {
+		UsbPhyInit(0);
+	}
 #endif
 		if (sunxi_udc_io->reset_phy) {
 			ret = reset_control_deassert(sunxi_udc_io->reset_phy);
@@ -248,9 +256,17 @@ u32  open_usb_clock(sunxi_udc_io_t *sunxi_udc_io)
 	|| IS_ENABLED(CONFIG_ARCH_SUN20IW1) || IS_ENABLED(CONFIG_ARCH_SUN50IW12) \
 	|| IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN60IW2) \
 	|| IS_ENABLED(CONFIG_ARCH_SUN8IW21) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) \
-	|| IS_ENABLED(CONFIG_ARCH_SUN300IW1)
+	|| IS_ENABLED(CONFIG_ARCH_SUN300IW1) || IS_ENABLED(CONFIG_ARCH_SUN65IW1) \
+	|| IS_ENABLED(CONFIG_ARCH_SUN251IW1) || IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 	/* otg and hci0 Controller Shared phy in SUN50I and SUN8IW10 */
 	USBC_SelectPhyToDevice(sunxi_udc_io->usb_vbase);
+
+	ret = phy_set_mode(sunxi_udc_io->usb2_generic_phy, PHY_MODE_USB_DEVICE);
+	if (ret < 0) {
+		DMSG_ERR("[udc]: set phy mdode err, return %d\n", ret);
+		return ret;
+	}
+
 #endif
 
 #if IS_ENABLED(CONFIG_ARCH_SUN8IW20) || IS_ENABLED(CONFIG_ARCH_SUN20IW1) \
@@ -266,6 +282,10 @@ u32  open_usb_clock(sunxi_udc_io_t *sunxi_udc_io)
 	usbc_phy_reassign(sunxi_udc_io->usb_vbase, NULL, 0x228);
 	/* Adapt USB phy bandwidth tuning parameters */
 	usbc_phy_bandwidth_tuning(sunxi_udc_io->usb_vbase, NULL, 0x3f);
+#endif
+#if IS_ENABLED(CONFIG_ARCH_SUN251IW1)
+	/* Adapt USB phy parameters */
+	usbc_phy_reassign(sunxi_udc_io->usb_vbase, NULL, 0x208);
 #endif
 #if IS_ENABLED(CONFIG_ARCH_SUN300IW1)
 	/* For 24Mhz crystal oscillator, you need to modify the phy pll
@@ -294,6 +314,7 @@ u32 close_usb_clock(sunxi_udc_io_t *sunxi_udc_io)
 	|| IS_ENABLED(CONFIG_ARCH_SUN55IW6)
 	USBC_PHY_Set_Ctl(sunxi_udc_io->usb_vbase, USBC_PHY_CTL_SIDDQ);
 #endif
+	phy_exit(sunxi_udc_io->usb2_generic_phy);
 
 	if (sunxi_udc_io->clk_is_open) {
 		sunxi_udc_io->clk_is_open = 0;
@@ -358,11 +379,11 @@ u32 close_usb_clock(sunxi_udc_io_t *sunxi_udc_io)
 			clk_disable_unprepare(sunxi_udc_io->clk_msi_lite);
 
 		udelay(10);
-	}
 #if IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN60IW2)
-	usbc_phyx_res_cal(0, false, sunxi_udc_io->rext_cal_bypass);
-	usbc_rescal_clock_set(sunxi_udc_io, false);
+		usbc_phyx_res_cal(0, false, sunxi_udc_io->rext_cal_bypass);
+		usbc_rescal_clock_set(sunxi_udc_io, false);
 #endif
+	}
 
 #if IS_ENABLED(CONFIG_ARCH_SUN8IW12) || IS_ENABLED(CONFIG_ARCH_SUN50IW3) \
 	|| IS_ENABLED(CONFIG_ARCH_SUN8IW6) || IS_ENABLED(CONFIG_ARCH_SUN50IW6) \
@@ -371,10 +392,12 @@ u32 close_usb_clock(sunxi_udc_io_t *sunxi_udc_io)
 	|| IS_ENABLED(CONFIG_ARCH_SUN50IW9) || IS_ENABLED(CONFIG_ARCH_SUN50IW10) \
 	|| IS_ENABLED(CONFIG_ARCH_SUN8IW19) || IS_ENABLED(CONFIG_ARCH_SUN50IW11) \
 	|| IS_ENABLED(CONFIG_ARCH_SUN8IW20) || IS_ENABLED(CONFIG_ARCH_SUN20IW1) \
-	|| IS_ENABLED(CONFIG_ARCH_SUN8IW21) || IS_ENABLED(CONFIG_ARCH_SUN300IW1)
+	|| IS_ENABLED(CONFIG_ARCH_SUN8IW21) || IS_ENABLED(CONFIG_ARCH_SUN300IW1) \
+	|| IS_ENABLED(CONFIG_ARCH_SUN251IW1)
 	USBC_PHY_Set_Ctl(sunxi_udc_io->usb_vbase, USBC_PHY_CTL_SIDDQ);
 #else
-	UsbPhyInit(0);
+	if (!sunxi_udc_io->usb2_generic_phy)
+		UsbPhyInit(0);
 #endif
 
 	return 0;

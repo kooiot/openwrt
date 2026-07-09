@@ -201,6 +201,18 @@ config AW_SUN252IW1_R_CCU
 	default ARCH_SUN252IW1
 	depends on AW_CCU
 
+config AW_SUN8IW22_CCU
+	tristate "SUN8IW22 CCU"
+	default ARCH_SUN8IW22
+	select AW_STANDARD_CCU
+	depends on AW_CCU
+
+config AW_SUN8IW22_R_CCU
+	tristate "SUN8IW22 PRCM CCU"
+	default ARCH_SUN8IW22
+	select AW_STANDARD_CCU
+	depends on AW_CCU
+
 config AW_RTC_CCU
 	tristate "RTC domain clocks"
 	default y

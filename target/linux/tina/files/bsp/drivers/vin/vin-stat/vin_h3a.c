@@ -22,6 +22,10 @@
 
 #include "../vin-isp/sunxi_isp.h"
 #include "../vin-video/vin_video.h"
+#if IS_ENABLED(CONFIG_AW_MTD)
+#include <linux/mtd/mtd.h>
+#include <linux/mtd/spi-nor.h>
+#endif
 
 static struct ispstat_buffer *__isp_stat_buf_find(struct isp_stat *stat, int look_empty)
 {
@@ -42,7 +46,7 @@ static struct ispstat_buffer *__isp_stat_buf_find(struct isp_stat *stat, int loo
 		if (!look_empty && curr->empty)
 			continue;
 
-#if !defined ISP_600
+#if !defined ISP_600 && !defined ISP_610
 		if (curr->empty) {
 			found = curr;
 			break;
@@ -81,7 +85,7 @@ static void isp_stat_buf_next(struct isp_stat *stat)
 {
 	if (unlikely(stat->active_buf)) {
 		/* Overwriting unused active buffer */
-#if !defined CONFIG_ISP_SERVER_MELIS
+#if !IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
 		vin_log(VIN_LOG_STAT, "%s: new buffer requested without queuing active one.\n",	stat->sd.name);
 #else
 		vin_log(VIN_LOG_STAT, "new buffer requested without queuing active one.\n");
@@ -100,13 +104,14 @@ static void isp_stat_buf_release(struct isp_stat *stat)
 	stat->locked_buf = NULL;
 	spin_unlock_irqrestore(&stat->isp->slock, flags);
 }
-#if !defined CONFIG_ISP_SERVER_MELIS
+#if !IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
 /* Get buffer to userspace. */
 static struct ispstat_buffer *isp_stat_buf_get(struct isp_stat *stat, struct vin_isp_stat_data *data)
 {
 	int rval = 0;
 	unsigned long flags;
 	struct ispstat_buffer *buf;
+	__maybe_unused unsigned int total_buf_size;
 
 	spin_lock_irqsave(&stat->isp->slock, flags);
 
@@ -124,12 +129,15 @@ static struct ispstat_buffer *isp_stat_buf_get(struct isp_stat *stat, struct vin
 
 	spin_unlock_irqrestore(&stat->isp->slock, flags);
 	if (NULL != data) {
-#if !defined ISP_600
+#if !defined ISP_600 && !defined ISP_610
 		if (buf->buf_size > data->buf_size) {
 			vin_warn("%s: userspace's buffer size is not enough.\n", stat->sd.name);
 			isp_stat_buf_release(stat);
 			return ERR_PTR(-EINVAL);
 		}
+#if defined VIN_CACHE_CLEAN_INVALID
+		dma_sync_single_for_cpu(&stat->isp->pdev->dev, (vin_dma_addr_t)buf->dma_addr, buf->buf_size, DMA_FROM_DEVICE);
+#endif
 		rval = copy_to_user(data->buf, buf->virt_addr, buf->buf_size);
 		if (rval) {
 			vin_warn("%s: failed copying %d bytes of stat data\n", stat->sd.name, rval);
@@ -137,12 +145,80 @@ static struct ispstat_buffer *isp_stat_buf_get(struct isp_stat *stat, struct vin
 			isp_stat_buf_release(stat);
 		}
 #else
-		if ((buf->buf_size + ISP_SAVE_LOAD_STATISTIC_SIZE) > data->buf_size) {
+#if defined ISP_600
+		if (stat->isp->ldci_select == 1)
+			total_buf_size = buf->buf_size + ISP_SAVE_LOAD_STATISTIC_SIZE + LDCI_WIDTH * LDCI_HEIGHT;
+		else
+			total_buf_size = buf->buf_size + ISP_SAVE_LOAD_STATISTIC_SIZE;
+		if (total_buf_size > data->buf_size) {
 			vin_warn("%s: userspace's buffer size is not enough.\n", stat->sd.name);
 			isp_stat_buf_release(stat);
 			return ERR_PTR(-EINVAL);
 		}
 
+		/* use config_counter to tell kernel stop getting some statistics. reduce cpu usage.
+		   bit[0]:AF stop
+		   bit[1]:PLTM pkx stop
+		   bit[2]:ldci stop
+		*/
+#if defined VIN_CACHE_CLEAN_INVALID
+		dma_sync_single_for_cpu(&stat->isp->pdev->dev, (vin_dma_addr_t)buf->dma_addr, buf->buf_size, DMA_FROM_DEVICE);
+#endif
+		if ((data->config_counter & 0x1) && buf->frame_number > 60) {
+			rval = copy_to_user(data->buf, buf->virt_addr, ISP_STAT_AF_MEM_OFS);
+			rval = copy_to_user(data->buf + ISP_STAT_AWB_MEM_OFS, buf->virt_addr + ISP_STAT_AWB_MEM_OFS, buf->buf_size - ISP_STAT_AWB_MEM_OFS);
+		} else {
+			rval = copy_to_user(data->buf, buf->virt_addr, buf->buf_size);
+		}
+		if (rval) {
+			vin_warn("%s: failed copying %d bytes of stat data\n", stat->sd.name, rval);
+			buf = ERR_PTR(-EFAULT);
+			isp_stat_buf_release(stat);
+			return buf;
+		}
+
+#if defined VIN_CACHE_CLEAN_INVALID
+		dma_sync_single_for_cpu(&stat->isp->pdev->dev, (vin_dma_addr_t)(stat->isp->isp_save_load.dma_addr + ISP_SAVE_LOAD_REG_SIZE), ISP_SAVE_LOAD_REG_SIZE, DMA_FROM_DEVICE);
+#endif
+		if ((data->config_counter & 0x2) && buf->frame_number > 60) {
+			rval = copy_to_user(data->buf + buf->buf_size + ISP_SAVE_LOAD_PLTM_PKX_SIZE, stat->isp->isp_save_load.vir_addr + ISP_SAVE_LOAD_REG_SIZE + ISP_SAVE_LOAD_PLTM_PKX_SIZE, ISP_SAVE_LOAD_D3D_K_SIZE);
+		} else {
+			rval = copy_to_user(data->buf + buf->buf_size, stat->isp->isp_save_load.vir_addr + ISP_SAVE_LOAD_REG_SIZE, ISP_SAVE_LOAD_STATISTIC_SIZE);
+		}
+		if (rval) {
+			vin_warn("%s: failed copying %d bytes of save_stat data\n", stat->sd.name, rval);
+			buf = ERR_PTR(-EFAULT);
+			isp_stat_buf_release(stat);
+			return buf;
+		}
+
+		if (stat->isp->ldci_select == 1) {
+			mutex_lock(&stat->ldci_lock);
+			if (!(data->config_counter & 0x4)) {
+				if (stat->ldci_send_flags) {
+					rval = copy_to_user(data->buf + buf->buf_size + ISP_SAVE_LOAD_STATISTIC_SIZE, stat->ldci_buffer, LDCI_WIDTH * LDCI_HEIGHT);
+					if (rval) {
+						vin_warn("%s: failed copying %d bytes of save_stat data\n", stat->sd.name, rval);
+						buf = ERR_PTR(-EFAULT);
+						isp_stat_buf_release(stat);
+						return buf;
+					}
+					stat->ldci_send_flags = false;
+				}
+			}
+			mutex_unlock(&stat->ldci_lock);
+		}
+#else //ISP_610
+		total_buf_size = buf->buf_size + ISP_SAVE_LOAD_STATISTIC_SIZE;
+		if (total_buf_size > data->buf_size) {
+			vin_warn("%s: userspace's buffer size is not enough.\n", stat->sd.name);
+			isp_stat_buf_release(stat);
+			return ERR_PTR(-EINVAL);
+		}
+
+#if defined VIN_CACHE_CLEAN_INVALID
+		dma_sync_single_for_cpu(&stat->isp->pdev->dev, (vin_dma_addr_t)buf->dma_addr, buf->buf_size, DMA_FROM_DEVICE);
+#endif
 		rval = copy_to_user(data->buf, buf->virt_addr, buf->buf_size);
 		if (rval) {
 			vin_warn("%s: failed copying %d bytes of stat data\n", stat->sd.name, rval);
@@ -151,6 +227,9 @@ static struct ispstat_buffer *isp_stat_buf_get(struct isp_stat *stat, struct vin
 			return buf;
 		}
 
+#if defined VIN_CACHE_CLEAN_INVALID
+		dma_sync_single_for_cpu(&stat->isp->pdev->dev, (vin_dma_addr_t)(stat->isp->isp_save_load.dma_addr + ISP_SAVE_LOAD_REG_SIZE), ISP_SAVE_LOAD_STATISTIC_SIZE, DMA_FROM_DEVICE);
+#endif
 		rval = copy_to_user(data->buf + buf->buf_size, stat->isp->isp_save_load.vir_addr + ISP_SAVE_LOAD_REG_SIZE, ISP_SAVE_LOAD_STATISTIC_SIZE);
 		if (rval) {
 			vin_warn("%s: failed copying %d bytes of save_stat data\n", stat->sd.name, rval);
@@ -158,6 +237,7 @@ static struct ispstat_buffer *isp_stat_buf_get(struct isp_stat *stat, struct vin
 			isp_stat_buf_release(stat);
 			return buf;
 		}
+#endif
 #endif
 	}
 	return buf;
@@ -302,8 +382,12 @@ int isp_stat_config(struct isp_stat *stat, void *new_conf)
 	mutex_lock(&stat->ioctl_lock);
 
 	user_cfg->buf_size = ISP_STAT_TOTAL_SIZE;
+#if defined ISP_600 || defined ISP_610
+	if (stat->isp->ldci_select == 1)
+		user_cfg->config_counter = 1; /* use config_counter to tell user malloc more buf to ldci */
+	else
+		user_cfg->config_counter = 0;
 
-#if defined ISP_600
 	if (stat->sensor_fps <= 30)
 		count = 3;
 	else if (stat->sensor_fps <= 60)
@@ -369,7 +453,7 @@ int isp_stat_enable(struct isp_stat *stat, u8 enable)
 	return 0;
 }
 
-#if defined ISP_600
+#if defined ISP_600 || defined ISP_610
 static int isp_stat_buf_queue(struct isp_stat *stat)
 {
 	if (!stat->active_buf)
@@ -476,7 +560,7 @@ next:
 
 	isp_stat_queue_event(stat, ret != STAT_BUF_DONE);
 }
-#else /* else not ISP_600*/
+#else /* else not ISP_600&ISP_610*/
 static int isp_stat_buf_queue(struct isp_stat *stat)
 {
 	if (!stat->active_buf)
@@ -741,6 +825,7 @@ int vin_isp_h3a_init(struct isp_dev *isp)
 	stat->event_type = V4L2_EVENT_VIN_H3A;
 
 	mutex_init(&stat->ioctl_lock);
+	mutex_init(&stat->ldci_lock);
 
 	v4l2_subdev_init(&stat->sd, &h3a_subdev_ops);
 	snprintf(stat->sd.name, V4L2_SUBDEV_NAME_SIZE, "sunxi_h3a.%u", isp->id);
@@ -762,6 +847,7 @@ void vin_isp_h3a_cleanup(struct isp_dev *isp)
 
 	media_entity_cleanup(&stat->sd.entity);
 	mutex_destroy(&stat->ioctl_lock);
+	mutex_destroy(&stat->ldci_lock);
 	isp_stat_bufs_free(stat);
 }
 #else //CONFIG_ISP_SERVER_MELIS
@@ -897,6 +983,9 @@ int isp_stat_request_statistics(struct isp_stat *stat)
 		return PTR_ERR(buf);
 	}
 
+#if defined VIN_CACHE_CLEAN_INVALID
+	dma_sync_single_for_cpu(&stat->isp->pdev->dev, (vin_dma_addr_t)buf->dma_addr, buf->buf_size, DMA_FROM_DEVICE);
+#endif
 	isp_save_rpbuf_send(isp, buf->virt_addr);
 	buf->state = ISPSTAT_IDLE;
 
@@ -988,7 +1077,7 @@ void isp_stat_isr(struct isp_stat *stat)
 	}
 	//vin_warn("lost load_pd to set buffer\n");
 	spin_unlock_irqrestore(&stat->isp->slock, irqflags);
-
+	return;
 next:
 	for (i = 0; i < stat->buf_cnt; i++) {
 		if (stat->buf[i].state == ISPSTAT_LOAD_SET)
@@ -1009,12 +1098,12 @@ next:
 	spin_unlock_irqrestore(&stat->isp->slock, irqflags);
 }
 
-int isp_reset_config_sensor_info(struct isp_dev *isp, enum rpmsg_cmd cmd)
+int isp_reset_config_sensor_info(struct isp_dev *isp, enum rpmsg_cmd cmd, unsigned int flag)
 {
 	struct vin_md *vind = dev_get_drvdata(isp->subdev.v4l2_dev->dev);
 	struct vin_core *vinc = NULL;
 	struct sensor_config cfg;
-	unsigned int data[20];
+	unsigned int data[21];
 	char *sensor_name;
 	int ret = 0;
 	int i;
@@ -1129,8 +1218,13 @@ int isp_reset_config_sensor_info(struct isp_dev *isp, enum rpmsg_cmd cmd)
 	sensor_name = (char *)&data[16];
 	memcpy(sensor_name, vinc->vid_cap.pipe.sd[VIN_IND_SENSOR]->name, 4 * sizeof(unsigned int));
 
+	if (VIN_SET_ISP_RESET == cmd) {
+		data[20] = flag;
+		vin_print("send to melis VIN_SET_ISP_RESET, data[20] = %d\n", data[20]);
+	}
+
 	data[0] = cmd;
-	isp_rpmsg_send(isp, data, 20 * sizeof(unsigned int));
+	isp_rpmsg_send(isp, data, 21 * sizeof(unsigned int));
 
 	return 0;
 }
@@ -1264,7 +1358,7 @@ int isp_config_sensor_info(struct isp_dev *isp)
 void isp_sensor_set_exp_gain(struct isp_dev *isp, void *data)
 {
 	struct sensor_exp_gain exp_gain;
-	static struct sensor_exp_gain exp_gain_save[4];
+	static struct sensor_exp_gain exp_gain_save[VIN_MAX_ISP];
 	struct vin_md *vind = dev_get_drvdata(isp->subdev.v4l2_dev->dev);
 	struct vin_core *vinc = NULL;
 	unsigned int *result = data;
@@ -1284,7 +1378,8 @@ void isp_sensor_set_exp_gain(struct isp_dev *isp, void *data)
 		return;
 	}
 #else
-	if ((exp_gain_save[isp->id].exp_val != exp_gain.exp_val) || (exp_gain_save[isp->id].gain_val != exp_gain.gain_val)) {
+	if ((exp_gain_save[isp->id].exp_val != exp_gain.exp_val) || (exp_gain_save[isp->id].gain_val != exp_gain.gain_val) ||
+		(exp_gain_save[isp->id].exp_mid_val != exp_gain.exp_mid_val) || (exp_gain_save[isp->id].gain_mid_val != exp_gain.gain_mid_val)) {
 		memcpy(&exp_gain_save[isp->id], &exp_gain, sizeof(struct sensor_exp_gain));
 	} else {
 		return;
@@ -1401,6 +1496,9 @@ void isp_update_isp_attr_cfg(struct isp_dev *isp, void *data)
 	case ISP_CTRL_AE_EV_LV_ADJ:
 		isp->isp_cfg_attr.ae_ev_lv_adj = rpmsg_data[2];
 		break;
+	case ISP_CTRL_AE_EV_IDX_STATUS:
+		isp->isp_cfg_attr.ae_ev_idx_status = rpmsg_data[2];
+		break;
 	case ISP_CTRL_IR_STATUS:
 		isp->isp_cfg_attr.ir_status = rpmsg_data[2];
 		break;
@@ -1408,8 +1506,52 @@ void isp_update_isp_attr_cfg(struct isp_dev *isp, void *data)
 		isp->isp_cfg_attr.awb_ir_gain.awb_rgain_ir = rpmsg_data[2];
 		isp->isp_cfg_attr.awb_ir_gain.awb_bgain_ir = rpmsg_data[3];
 		break;
+	case ISP_CTRL_AE_WEIGHT_LUM:
+		isp->isp_cfg_attr.ae_weight_lum = rpmsg_data[2];
+		break;
+	case ISP_CTRL_AE_FACE_CFG:
+		memcpy(&isp->isp_cfg_attr.ae_face_info.face_ae_coor, &rpmsg_data[2], sizeof(struct fastboot_ae_face_cfg));
+		break;
+	case ISP_CTRL_MIPI_SWITCH:
+		isp->isp_cfg_attr.mipi_switch_info.switch_ctrl = rpmsg_data[2];
+		isp->isp_cfg_attr.mipi_switch_info.mipi_switch_status = rpmsg_data[3];
+		isp->isp_cfg_attr.mipi_switch_info.comp_ratio = rpmsg_data[4];
+		isp->isp_cfg_attr.mipi_switch_info.exp_comp = rpmsg_data[5];
+		isp->isp_cfg_attr.mipi_switch_info.gain_comp = rpmsg_data[6];
+		isp->isp_cfg_attr.mipi_switch_info.drop_frame_num = rpmsg_data[7];
+		/* isp->isp_cfg_attr.mipi_switch_info.time_stamp will update by isp_sensor_set_mipi_switch */
+		break;
+	default:
+		vin_err("Unknown ctrl.\n");
+		break;
 	}
 	isp->isp_cfg_attr.update_flag = 1;
+}
+
+void isp_tdm_dqbuffer(struct isp_dev *isp, void *data)
+{
+	struct vin_isp_tdm_event_status status;
+	struct vin_md *vind = dev_get_drvdata(isp->subdev.v4l2_dev->dev);
+	struct vin_core *vinc = NULL;
+	unsigned int *result = data;
+	int i;
+
+	memset(&status, 0, sizeof(struct vin_isp_tdm_event_status));
+	status.buf_id = result[1];
+
+	for (i = 0; i < VIN_MAX_DEV; i++) {
+		if (vind->vinc[i] == NULL)
+			continue;
+		if (!vin_streaming(&vind->vinc[i]->vid_cap))
+			continue;
+
+		vinc = vind->vinc[i];
+		if (vinc->isp_sel == isp->id)
+			break;
+	}
+	if (vinc != NULL && vinc->vid_cap.pipe.sd[VIN_IND_TDM_RX])
+		v4l2_subdev_call(vinc->vid_cap.pipe.sd[VIN_IND_TDM_RX], core, ioctl,
+					VIDIOC_VIN_TDM_DQBUF, &status);
 }
 
 void isp_set_encpp_cfg(struct isp_dev *isp, void *data)
@@ -1498,9 +1640,84 @@ void isp_set_encpp_cfg(struct isp_dev *isp, void *data)
 	isp->encoder_2dnr_cfg.filter_th_y = rpmsg_data[208];
 }
 
+void vin_sync_isp_info_node(struct isp_dev *isp, void *data)
+{
+	int *rpmsg_data = data;
+	unsigned char *copy_ver_str;
+
+	isp->isp_info_node.exp_val = rpmsg_data[EXP_VAL];
+	isp->isp_info_node.exp_time = rpmsg_data[EXP_TIME];
+	isp->isp_info_node.gain_val = rpmsg_data[GAIN_VAL];
+	isp->isp_info_node.total_gain_val = rpmsg_data[TOTAL_GAIN_VAL];
+	isp->isp_info_node.lum_idx = rpmsg_data[LUM_IDX];
+	isp->isp_info_node.awb_color_temp = rpmsg_data[COLOR_TEMP];
+	isp->isp_info_node.awb_rgain = rpmsg_data[AWB_RGAIN];
+	isp->isp_info_node.awb_bgain = rpmsg_data[AWB_BGAIN];
+	isp->isp_info_node.contrast_level = rpmsg_data[CONTRAST_LEVEL];
+	isp->isp_info_node.brightness_level = rpmsg_data[BRIGHTNESS_LEVEL];
+	isp->isp_info_node.sharpness_level = rpmsg_data[SHARPNESS_LEVEL];
+	isp->isp_info_node.saturation_level = rpmsg_data[SATURATION_LEVEL];
+	isp->isp_info_node.tdf_level = rpmsg_data[TDNF_LEVEL];
+	isp->isp_info_node.denoise_level = rpmsg_data[DENOISE_LEVEL];
+	isp->isp_info_node.pltmwdr_level = rpmsg_data[PLTM_LEVEL];
+	isp->isp_info_node.pltmwdr_next_stren = rpmsg_data[PLTM_NEXT_STREN];
+	copy_ver_str = (unsigned char *)(&rpmsg_data[LIBS_VER_STR]);
+	strcpy(isp->isp_info_node.libs_version, copy_ver_str);
+	copy_ver_str = (unsigned char *)(&rpmsg_data[ISP_CFG_VER_STR]);
+	strcpy(isp->isp_info_node.isp_cfg_version, copy_ver_str);
+	isp->isp_info_node.update_flag = 1;
+}
+
+void isp_sensor_set_mipi_switch(struct isp_dev *isp, void *data)
+{
+	struct vin_md *vind = dev_get_drvdata(isp->subdev.v4l2_dev->dev);
+	struct sensor_mipi_switch_entity sensor_mipi_switch_info;
+	struct vin_core *vinc = NULL;
+	unsigned int *rpmsg_data = data;
+	int i;
+
+	sensor_mipi_switch_info.switch_ctrl = rpmsg_data[1];
+	sensor_mipi_switch_info.mipi_switch_status = rpmsg_data[2];
+	sensor_mipi_switch_info.comp_ratio = rpmsg_data[3];
+	sensor_mipi_switch_info.exp_comp = rpmsg_data[4];
+	sensor_mipi_switch_info.gain_comp = rpmsg_data[5];
+	sensor_mipi_switch_info.drop_frame_num = rpmsg_data[6];
+	sensor_mipi_switch_info.time_stamp = 0;
+
+	for (i = 0; i < VIN_MAX_DEV; i++) {
+		if (vind->vinc[i] == NULL)
+			continue;
+		if (!vin_streaming(&vind->vinc[i]->vid_cap))
+			continue;
+
+		vinc = vind->vinc[i];
+		if (vinc->isp_sel == isp->id)
+			break;
+	}
+
+	for (i = 0; i < VIN_MAX_DEV; i++) {
+		if (vind->vinc[i] == NULL)
+			continue;
+		if (!vin_streaming(&vind->vinc[i]->vid_cap))
+			continue;
+
+		if (vind->vinc[i]->isp_sel == isp->id) {
+			vinc = vind->vinc[i];
+			vin_print("vinc%d will do drop frame\n", i);
+			vinc->vid_cap.frame_delay_cnt = sensor_mipi_switch_info.drop_frame_num;
+		}
+	}
+
+	if (vinc != NULL)
+		v4l2_subdev_call(vinc->vid_cap.pipe.sd[VIN_IND_SENSOR], core, ioctl,
+					VIDIOC_VIN_SENSOR_MIPI_SWITCH, &sensor_mipi_switch_info);
+	isp->isp_cfg_attr.mipi_switch_info.time_stamp = sensor_mipi_switch_info.time_stamp;
+}
+
+#if IS_ENABLED(CONFIG_AW_MTD)
+extern struct spi_nor *get_spinor(void);
 int isp_write_nor_flash(loff_t to, loff_t to_offset, size_t len, const u_char *buf)
 {
-#if	IS_ENABLED(CONFIG_MTD_SPI_NOR)
 	struct spi_nor *nor = get_spinor();
 	struct mtd_info *mtd = &nor->mtd;
 	struct erase_info instr;
@@ -1525,11 +1742,9 @@ int isp_write_nor_flash(loff_t to, loff_t to_offset, size_t len, const u_char *b
 	to_base = round_down(to / 512, 8) * 512; /* to_base is the begin of 4k */
 	ret = mtd->_read(mtd, to_base, block_size, &written, cache);
 
-	instr.mtd = mtd;
-	instr.addr = to;
+	instr.addr = to_base;
 	instr.len = block_size;
-	instr.callback = NULL;
-	ret = mtd->_erase_4k(mtd, &instr);
+	ret = mtd->_erase(mtd, &instr);
 	if (ret)
 		goto write_err;
 
@@ -1552,10 +1767,13 @@ write_err:
 	kfree(cache);
 	vin_err("%s err!!!\n", __func__);
 	return ret;
-#else
-	return 0;
-#endif
 }
+#else
+int isp_write_nor_flash(loff_t to, loff_t to_offset, size_t len, const u_char *buf)
+{
+	return 0;
+}
+#endif
 
 void isp_save_ae(struct isp_dev *isp, void *data)
 {

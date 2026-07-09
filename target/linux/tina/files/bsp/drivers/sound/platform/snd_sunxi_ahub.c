@@ -67,8 +67,8 @@ static void sunxi_ahub_get_hdmi_fmt(struct snd_notifier_block *snd_nb)
 	hdmi_fmt = snd_nb->tx_data;
 
 	if (ahub->dts.dai_type == SUNXI_DAI_HDMI_TYPE) {
-		ahub->hdmi_fmt = *hdmi_fmt;
-		SND_LOG_DEBUG("hdmi fmt -> %d\n", ahub->hdmi_fmt);
+		ahub->playback_dma_param.hdmi_fmt = *hdmi_fmt;
+		SND_LOG_DEBUG("hdmi fmt -> %d\n", ahub->playback_dma_param.hdmi_fmt);
 	}
 }
 
@@ -553,6 +553,9 @@ static int sunxi_ahub_dai_hw_params(struct snd_pcm_substream *substream,
 		0x0001, 0x0003, 0x0007, 0x000f, 0x001f, 0x003f, 0x007f, 0x00ff,
 		0x01ff, 0x03ff, 0x07ff, 0x0fff, 0x1fff, 0x3fff, 0x7fff, 0xffff
 	};
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct sunxi_dma_params *dma_params = snd_soc_dai_get_dma_data(sunxi_adpt_rtd_cpu_dai(rtd),
+								       substream);
 
 	SND_LOG_DEBUG("\n");
 
@@ -572,7 +575,7 @@ static int sunxi_ahub_dai_hw_params(struct snd_pcm_substream *substream,
 		/* apbifn bits */
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			if (ahub->dts.dai_type == SUNXI_DAI_HDMI_TYPE) {
-				if (ahub->hdmi_fmt > HDMI_FMT_PCM) {
+				if (dma_params->hdmi_fmt > HDMI_FMT_PCM) {
 					regmap_update_bits(regmap,
 							   SUNXI_AHUB_APBIF_TX_CTL(apb_num),
 							   0x7 << APBIF_TX_WS,
@@ -613,7 +616,7 @@ static int sunxi_ahub_dai_hw_params(struct snd_pcm_substream *substream,
 		}
 		/* tdmn bits */
 		if (ahub->dts.dai_type == SUNXI_DAI_HDMI_TYPE) {
-			if (ahub->hdmi_fmt > HDMI_FMT_PCM) {
+			if (dma_params->hdmi_fmt > HDMI_FMT_PCM) {
 				regmap_update_bits(regmap,
 						   SUNXI_AHUB_I2S_FMT0(tdm_num),
 						   0x7 << I2S_FMT0_SR,
@@ -682,7 +685,7 @@ static int sunxi_ahub_dai_hw_params(struct snd_pcm_substream *substream,
 			regmap_write(regmap,
 				     SUNXI_AHUB_I2S_OUT_CHMAP0(tdm_num, 0),
 				     0x10);
-			if (ahub->hdmi_fmt > HDMI_FMT_PCM) {
+			if (dma_params->hdmi_fmt > HDMI_FMT_PCM) {
 				regmap_write(regmap,
 					     SUNXI_AHUB_I2S_OUT_CHMAP0(tdm_num, 1),
 					     0x32);
@@ -1568,6 +1571,7 @@ static void snd_sunxi_dma_params_init(struct sunxi_ahub *ahub)
 	ahub->playback_dma_param.dma_addr = res->start + SUNXI_AHUB_APBIF_TXFIFO(dts->apb_num);
 	ahub->playback_dma_param.cma_kbytes = dts->playback_cma;
 	ahub->playback_dma_param.fifo_size = dts->playback_fifo_size;
+	ahub->playback_dma_param.hdmi_fmt = HDMI_FMT_PCM;
 
 	ahub->capture_dma_param.src_maxburst = 4;
 	ahub->capture_dma_param.dst_maxburst = 4;

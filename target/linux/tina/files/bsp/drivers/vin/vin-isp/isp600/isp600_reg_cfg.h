@@ -30,7 +30,7 @@
 #define ISP_ADDR_BIT_R_SHIFT 2
 
 /*load data*/
-#if IS_ENABLED(CONFIG_ARCH_SUN55IW6)
+#if IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN65IW1)
 #define ISP_LOAD_DRAM_SIZE			0xAF40
 #else
 #define ISP_LOAD_DRAM_SIZE			0x7700
@@ -39,7 +39,7 @@
 #define ISP_FE_TBL_SIZE				0x1800
 #define ISP_BAYER_TABLE_SIZE			0x2600
 #define ISP_RGB_TABLE_SIZE			0x1200
-#if IS_ENABLED(CONFIG_ARCH_SUN55IW6)
+#if IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN65IW1)
 #define ISP_YUV_TABLE_SIZE			0x4F40
 #else
 #define ISP_YUV_TABLE_SIZE			0x1700
@@ -53,66 +53,102 @@
 #define ISP_STAT_TOTAL_SIZE			0x6a00
 #define ISP_DBG_STAT_SIZE			0x0000
 
+#define ISP_STAT_AE_MEM_OFS			0x0100
+#define ISP_STAT_AF_MEM_OFS			0x0480
+#define ISP_STAT_AWB_MEM_OFS			0x4080
+#define ISP_STAT_AFS_MEM_OFS			0x5880
+#define ISP_STAT_HIST_MEM_OFS			0x5a80
+#define ISP_STAT_HIST0_MEM_OFS			0x5a80
+#define ISP_STAT_HIST1_MEM_OFS			0x5e80
+#define ISP_STAT_PLTM_LUM_MEM_OFS		0x6280
+
 /*save and load data*/
 #define ISP_SAVE_LOAD_DRAM_SIZE			0x3400
 #define ISP_SAVE_LOAD_REG_SIZE			0x0100
-#define ISP_SAVE_LOAD_STATISTIC_SIZE	0x3300
+#define ISP_SAVE_LOAD_STATISTIC_SIZE		0x3300
+
+#define ISP_SAVE_LOAD_PLTM_PKX_SIZE		0x3000
+#define ISP_SAVE_LOAD_D3D_K_SIZE		0x300
+
+/*fe table*/
+#define ISP_CH0_MSC_FE_TBL_SIZE			0x0800
+#define ISP_CH1_MSC_FE_TBL_SIZE			0x0800
+#define ISP_CH2_MSC_FE_TBL_SIZE			0x0800
 
 /*bayer table*/
 #define ISP_RSC_TBL_SIZE			0x0800
 //#define ISP_MSC_TBL_SIZE			0x0800
 #define ISP_MSC_NR_TBL_SIZE			0x03c8
 #define ISP_D3D_DK_TBL_SIZE			0x0800
-#define ISP_PLTM_TM_TBL_SIZE		0x0800
-#define ISP_PLTM_LM_TBL_SIZE		0x0200
+#define ISP_PLTM_TM_TBL_SIZE			0x0800
+#define ISP_PLTM_LM_TBL_SIZE			0x0200
 
 /*rgbtable*/
-#define ISP_RGB_DRC_TBL_SIZE		0x0200
-#define ISP_RGB_GAMMA_TBL_SIZE		0x1000
+#define ISP_RGB_DRC_TBL_SIZE			0x0200
+#define ISP_RGB_GAMMA_TBL_SIZE			0x1000
 
 /*yuv table*/
 #define ISP_CEM_TBL0_SIZE			0x0cc0
 #define ISP_CEM_TBL1_SIZE			0x0a40
 
 /*save statistics*/
-#define ISP_STAT_AE_MEM_SIZE		0x0360
+#define ISP_STAT_AE_MEM_SIZE			0x0360
 #define ISP_STAT_RES_SIZE			0x0020
-#define ISP_STAT_AF_IIR_ACC_SIZE	0x0c00
-#define ISP_STAT_AF_FIR_ACC_SIZE	0x0c00
-#define ISP_STAT_AF_IIR_CNT_SIZE	0x0c00
-#define ISP_STAT_AF_FIR_CNT_SIZE	0x0c00
-#define ISP_STAT_AF_HL_CNT_SIZE		0x0c00
-#define ISP_STAT_AWB_RGB_MEM_SIZE	0x1800
-#define ISP_STAT_AFS_MEM_SIZE		0x0200
-#define ISP_STAT_HIST0_MEM_SIZE		0x0400
-#define ISP_STAT_HIST1_MEM_SIZE		0x0400
-#define ISP_STAT_PLTM_LUM_SIZE		0x0780
+#define ISP_STAT_AF_IIR_ACC_SIZE		0x0c00
+#define ISP_STAT_AF_FIR_ACC_SIZE		0x0c00
+#define ISP_STAT_AF_IIR_CNT_SIZE		0x0c00
+#define ISP_STAT_AF_FIR_CNT_SIZE		0x0c00
+#define ISP_STAT_AF_HL_CNT_SIZE			0x0c00
+#define ISP_STAT_AWB_RGB_MEM_SIZE		0x1800
+#define ISP_STAT_AFS_MEM_SIZE			0x0200
+#define ISP_STAT_HIST0_MEM_SIZE			0x0400
+#define ISP_STAT_HIST1_MEM_SIZE			0x0400
+#define ISP_STAT_PLTM_LUM_SIZE			0x0780
 
 #define ISP_STAT_HIST0_MEM_OFS			0x5a80
 
 /*save and load statistics*/
-#define ISP_STAT_PLTM_PKX_SIZE		0x3000
+#define ISP_STAT_PLTM_PKX_SIZE			0x3000
 #define ISP_STAT_D3D_K_SIZE			0x0300
 
+/*2in1 large_image mode save data*/
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW21) || IS_ENABLED(CONFIG_ARCH_SUN55IW3)
+#define ISP_AHB0_MEM_OFS			0x20
+#define ISP_AHB1_MEM_OFS			0x40
+#define ISP_AHB_MEM_SIZE			0x20
+#else
+#define ISP_AHB0_MEM_OFS			0x20
+#define ISP_AHB1_MEM_OFS			0x50
+#define ISP_AHB_MEM_SIZE			0x30
+#endif
+#define ISP_AE_REG_OFS				0x650
+#define ISP_AF_REG_OFS				0x670
+#define ISP_AWB_REG_OFS				0x6e0
+#define ISP_HIST_REG_OFS			0x710
+#define ISP_AE_REG_SIZE				0x8
+#define ISP_AF_REG_SIZE				0xc
+#define ISP_AWB_REG_SIZE			0x8
+#define ISP_HIST_REG_SIZE			0x20
+
 #define LENS_UPDATE				(1 << 8)
-#define GAMMA_UPDATE			(1 << 9)
+#define GAMMA_UPDATE				(1 << 9)
 #define DRC_UPDATE				(1 << 10)
 #define D3D_UPDATE				(1 << 13)
 #define PLTM_UPDATE				(1 << 14)
 #define CEM_UPDATE				(1 << 15)
 #define MSC_UPDATE				(1 << 16)
-#define FE0_MSC_UPDATE			(1 << 17)
-#define NR_MSC_UPDATE			(1 << 18)
-#define FE1_MSC_UPDATE			(1 << 19)
-#define FE2_MSC_UPDATE			(1 << 20)
+#define FE0_MSC_UPDATE				(1 << 17)
+#define NR_MSC_UPDATE				(1 << 18)
+#define FE1_MSC_UPDATE				(1 << 19)
+#define FE2_MSC_UPDATE				(1 << 20)
 
-#define TABLE_UPDATE_ALL 		0x1fE700
+#define TABLE_UPDATE_ALL 			0x1fE700
 
 /*
  *  ISP Module enable
  */
 
-#define WDR_STITCH_EN			(1 << 0)
+#define WDR_STITCH_EN				(1 << 0)
 #define DPC_EN					(1 << 1)
 #define CTC_EN					(1 << 2)
 #define GCA_EN					(1 << 3)
@@ -139,13 +175,16 @@
 #define HIST1_EN				(1 << 29)
 
 #define WDR_EN					(1 << 0)
-#define WDR_SPLIT_EN			(1 << 1)
+#define WDR_SPLIT_EN				(1 << 1)
 #define CH0_DG_EN				(1 << 8)
 #define CH1_DG_EN				(1 << 9)
 #define CH2_DG_EN				(1 << 10)
+#define CH0_MSC_EN				(1 << 12)
+#define CH1_MSC_EN				(1 << 13)
+#define CH2_MSC_EN				(1 << 14)
 
-#define ISP_MODULE0_EN_ALL		(0xffffffff)
-#define ISP_MODULE1_EN_ALL		(0xffffffff)
+#define ISP_MODULE0_EN_ALL			(0xffffffff)
+#define ISP_MODULE1_EN_ALL			(0xffffffff)
 /*
  *  ISP interrupt enable
  */
@@ -157,34 +196,34 @@
 #define HB_SHORT_INT_EN			(1 << 9)
 #define CFG_ERROR_INT_EN		(1 << 10)
 #define FRAME_LOST_INT_EN		(1 << 11)
-#define INTER_FIFO_FULL_INT_EN	(1 << 16)
-#define WDMA_FIFO_FULL_INT_EN	(1 << 17)
-#define WDMA_OVER_BND_INT_EN	(1 << 18)
-#define RDMA_FIFO_FULL_INT_EN	(1 << 19)
+#define INTER_FIFO_FULL_INT_EN		(1 << 16)
+#define WDMA_FIFO_FULL_INT_EN		(1 << 17)
+#define WDMA_OVER_BND_INT_EN		(1 << 18)
+#define RDMA_FIFO_FULL_INT_EN		(1 << 19)
 #define LBC_ERROR_INT_EN		(1 << 20)
 #define DDR_RW_ERROR_INT_EN		(1 << 21)
 #define AHB_MBUS_W_INT_EN		(1 << 22)
 
-#define ISP_IRQ_EN_ALL	0xffffffff
+#define ISP_IRQ_EN_ALL			0xffffffff
 
 /*
  *  ISP interrupt status
  */
 #define FINISH_PD				(1 << 0)
 #define START_PD				(1 << 1)
-#define PARA_SAVE_PD			(1 << 2)
-#define PARA_LOAD_PD			(1 << 3)
-#define N_LINE_START_PD			(1 << 4)
+#define PARA_SAVE_PD				(1 << 2)
+#define PARA_LOAD_PD				(1 << 3)
+#define N_LINE_START_PD				(1 << 4)
 #define HB_SHORT_PD				(1 << 9)
-#define CFG_ERROR_PD			(1 << 10)
-#define FRAME_LOST_PD			(1 << 11)
-#define INTER_FIFO_FULL_PD		(1 << 16)
-#define WDMA_FIFO_FULL_PD		(1 << 17)
-#define WDMA_OVER_BND_PD		(1 << 18)
-#define RDMA_FIFO_FULL_PD		(1 << 19)
-#define LBC_ERROR_PD			(1 << 20)
-#define DDR_RW_ERROR_PD			(1 << 21)
-#define AHB_MBUS_W_PD			(1 << 22)
+#define CFG_ERROR_PD				(1 << 10)
+#define FRAME_LOST_PD				(1 << 11)
+#define INTER_FIFO_FULL_PD			(1 << 16)
+#define WDMA_FIFO_FULL_PD			(1 << 17)
+#define WDMA_OVER_BND_PD			(1 << 18)
+#define RDMA_FIFO_FULL_PD			(1 << 19)
+#define LBC_ERROR_PD				(1 << 20)
+#define DDR_RW_ERROR_PD				(1 << 21)
+#define AHB_MBUS_W_PD				(1 << 22)
 
 #define ISP_IRQ_STATUS_ALL		0xffffffff
 
@@ -398,6 +437,12 @@ void bsp_isp_set_d3d_lbc_cfg(unsigned long id, struct isp_lbc_cfg d3d_lbc);
 void bsp_isp_set_ch_input_bit(unsigned long id, int ch, int bit);
 void bsp_isp_set_ch_output_bit(unsigned long id, int ch, int bit);
 void bsp_isp_clr_d3d_rec_en(unsigned long id);
+void bsp_isp_set_d3d_raw_fifo(unsigned long id, unsigned int fifo_num);
+void bsp_isp_set_rec_rdma_fifo_low_limit(unsigned long id, unsigned int limit_l);
+void bsp_isp_set_rec_rdma_fifo_high_limit(unsigned long id, unsigned int limit_h);
+void bsp_isp_set_rec_wdma_fifo_low_limit(unsigned long id, unsigned int limit_l);
+void bsp_isp_set_rec_wdma_fifo_high_limit(unsigned long id, unsigned int limit_h);
+void bsp_isp_set_blc_offset_shift(unsigned long id, unsigned int shift_bit);
 
 /*******syscfg sram boot mode ctrl*********/
 void bsp_isp_map_syscfg_addr(unsigned long id, vin_dma_addr_t base);

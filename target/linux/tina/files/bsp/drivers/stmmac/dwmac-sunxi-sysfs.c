@@ -485,11 +485,6 @@ static ssize_t sunxi_dwmac_calibrate_store(struct device *dev,
 		return -EINVAL;
 	}
 
-	if (phydev->speed < SPEED_1000) {
-		sunxi_err(chip->dev, "Speed %s no need calibrate\n", phy_speed_to_str(phydev->speed));
-		return -EINVAL;
-	}
-
 	cali = devm_kzalloc(dev, sizeof(*cali), GFP_KERNEL);
 	if (!cali)
 		return -ENOMEM;
@@ -502,7 +497,7 @@ static ssize_t sunxi_dwmac_calibrate_store(struct device *dev,
 
 	ret = sunxi_dwmac_calibrate_scan_window(chip, cali);
 	if (ret) {
-		sunxi_err(dev, "Calibrate scan window tx:%d rx:%d failed\n", cali->window_tx, cali->window_rx);
+		sunxi_err(dev, "Calibrate scan window tx:%d rx:%d failed %d\n", cali->window_tx, cali->window_rx, ret);
 		goto err;
 	}
 

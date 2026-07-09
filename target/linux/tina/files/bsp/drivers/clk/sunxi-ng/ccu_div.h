@@ -152,6 +152,7 @@ struct ccu_div {
 		.mux	= _SUNXI_CCU_MUX_TABLE(_muxshift, _muxwidth, _table), \
 		.common	= {						\
 			.features	= CCU_FEATURE_KEY_FIELD_MOD,	\
+			.key_reg        = _reg,				\
 			.key_value	= _key_value,			\
 			.reg		= _reg,				\
 			.hw.init	= CLK_HW_INIT_PARENTS(_name,	\

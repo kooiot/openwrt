@@ -14,6 +14,7 @@
 #define _DE_GAMMA_PLATFORM_H_
 
 #include "de_base.h"
+#include "de_gamma.h"
 
 struct de_gamma_dsc {
 	unsigned int id;
@@ -22,6 +23,8 @@ struct de_gamma_dsc {
 	bool support_ctc;
 	bool support_cm;
 	bool support_demo_skin;
+	enum de_gamma_type type;
+	unsigned int reg_offset;
 };
 
 const struct de_gamma_dsc *get_gamma_dsc(struct module_create_info *info);

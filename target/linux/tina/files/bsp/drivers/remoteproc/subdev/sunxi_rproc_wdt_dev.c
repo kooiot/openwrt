@@ -17,6 +17,7 @@
 #include <linux/of_device.h>
 #include <linux/of_irq.h>
 #include <linux/of_address.h>
+#include <linux/version.h>
 
 #define wdt_to_wdt_dev(_wdt)		container_of(_wdt, struct sunxi_rproc_wdt_dev, wdt)
 #define dev_to_wdt_dev(_dev)		container_of(_dev, struct sunxi_rproc_wdt_dev, dev)
@@ -409,8 +410,11 @@ static int sunxi_rproc_wdt_subdev_prepare(struct rproc_subdev *subdev)
 	int ret, ignore = 0;
 
 	sunxi_rproc_wdt_trace(wdt_dev, "prepare");
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
 	if (wdt_dev->rproc->state == RPROC_DETACHED || wdt_dev->rproc->state == RPROC_ATTACHED) {
+#else
+	if (wdt_dev->rproc->state == RPROC_DETACHED) {
+#endif
 		if (wdt_dev->keep_reg) {
 			dev_info(&wdt_dev->dev, "rproc has been booted, keep the config\n");
 			ignore = 1;

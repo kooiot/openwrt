@@ -18,7 +18,7 @@
 #include <uapi/linux/sunxi-g2d.h>
 
 #define CREATE_TRACE_POINTS
-#include "g2d_trace.h"
+#include "../g2d_trace.h"
 
 #if IS_ENABLED(CONFIG_G2D_SYNCFENCE)
 extern int syncfence_init(void);
@@ -1620,16 +1620,23 @@ int g2d_ioctl_mutex_lock(void)
 {
 #if IS_ENABLED(CONFIG_G2D_USE_HWSPINLOCK)
 	int ret;
+	int i;
 	if (hwlock) {
-		ret =  __hwspin_lock_timeout(hwlock, 500, HWLOCK_RAW, &hwspinlock_flag);
+		for (i = 0; i < 200; i++) {
+			ret =  __hwspin_trylock(hwlock, HWLOCK_RAW, &hwspinlock_flag);
+			if (ret != 0) {
+				msleep(3);
+				continue;
+			} else
+				break;
+		}
 		if (ret != 0) {
-			G2D_ERR("Hwspinlock is already taken\n");
+			G2D_ERR("try to get hwspinlock filed 200 times\n");
 			return -1;
 		}
 	}
 	enable_irq(para.irq);
 #endif
-
 	if (!mutex_trylock(&para.mutex))
 		mutex_lock(&para.mutex);
 	return 0;
@@ -2145,7 +2152,6 @@ int g2d_resume(struct device *dev)
 static int g2d_runtime_resume(struct device *dev)
 {
 
-	g2d_clock_prepare(&para);
 	g2d_clock_enable(&para);
 
 #ifdef G2D_V2X_SUPPORT
@@ -2159,7 +2165,6 @@ static int g2d_runtime_suspend(struct device *dev)
 {
 
 	g2d_clock_disable(&para);
-	g2d_clock_unprepare(&para);
 
 #ifdef G2D_V2X_SUPPORT
 	g2d_bsp_close();
@@ -2227,7 +2232,11 @@ int __init g2d_module_init(void)
 		return -1;
 	}
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0)
 	g2d_class = class_create(THIS_MODULE, "g2d");
+#else
+	g2d_class = class_create("g2d");
+#endif
 	if (IS_ERR(g2d_class)) {
 		G2D_ERR("create class error\n");
 		return -1;

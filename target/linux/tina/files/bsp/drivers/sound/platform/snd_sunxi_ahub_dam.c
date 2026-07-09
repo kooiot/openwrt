@@ -272,7 +272,9 @@ struct sunxi_ahub_mem sunxi_mem = {
 };
 static struct sunxi_ahub_clk sunxi_clk;
 
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 static struct sunxi_ahub_dump sunxi_dump;
+#endif
 
 static int snd_sunxi_clk_init(struct platform_device *pdev, struct sunxi_ahub_clk *clk);
 static void snd_sunxi_clk_exit(struct sunxi_ahub_clk *clk);
@@ -875,6 +877,7 @@ static void snd_sunxi_clk_disable(struct sunxi_ahub_clk *clk)
 	reset_control_assert(clk->clk_rst);
 }
 
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 /* sysfs debug */
 static void snd_sunxi_dump_version(void *priv, char *buf, size_t *count)
 {
@@ -1007,6 +1010,7 @@ static int snd_sunxi_dump_store(void *priv, const char *buf, size_t count)
 
 	return 0;
 }
+#endif
 
 static int sunxi_ahub_dam_dev_probe(struct platform_device *pdev)
 {
@@ -1014,7 +1018,9 @@ static int sunxi_ahub_dam_dev_probe(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	struct sunxi_ahub_mem *mem = &sunxi_mem;
 	struct sunxi_ahub_clk *clk = &sunxi_clk;
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 	struct snd_sunxi_dump *dump = &sunxi_dump.dump;
+#endif
 
 	SND_LOG_DEBUG("\n");
 
@@ -1039,6 +1045,7 @@ static int sunxi_ahub_dam_dev_probe(struct platform_device *pdev)
 		goto err_snd_soc_register_component;
 	}
 
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 	sunxi_dump.pdev = pdev;
 	sunxi_dump.show_reg_num = -1;	/* default: unshow */
 	sunxi_dump.regmap = mem->regmap;
@@ -1052,6 +1059,7 @@ static int sunxi_ahub_dam_dev_probe(struct platform_device *pdev)
 	ret = snd_sunxi_dump_register(dump);
 	if (ret)
 		SND_LOG_WARN("snd_sunxi_dump_register failed\n");
+#endif
 
 	SND_LOG_DEBUG("register ahub_dam platform success\n");
 
@@ -1070,11 +1078,16 @@ static int sunxi_ahub_dam_dev_remove(struct platform_device *pdev)
 {
 	struct sunxi_ahub_mem *mem = &sunxi_mem;
 	struct sunxi_ahub_clk *clk = &sunxi_clk;
+
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 	struct snd_sunxi_dump *dump = &sunxi_dump.dump;
+#endif
 
 	SND_LOG_DEBUG("\n");
 
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 	snd_sunxi_dump_unregister(dump);
+#endif
 	snd_soc_unregister_component(&pdev->dev);
 
 	snd_sunxi_mem_exit(pdev, mem);

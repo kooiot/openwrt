@@ -46,6 +46,9 @@
 #include <linux/iio/driver.h>
 #include <linux/regmap.h>
 #endif
+#ifdef CONFIG_AW_AMP_SYS_RSC_MANAGER
+#include <linux/sunxi_amp_rsc.h>
+#endif
 #if IS_ENABLED(CONFIG_ARCH_SUN55IW6)
 #include <sunxi-sid.h>
 #endif
@@ -97,6 +100,10 @@
 #define GP_CHE_CMP_DATA_REG		(0x78)
 #define GP_CHF_CMP_DATA_REG		(0x7c)
 
+#define GP_BOOTSTRAP_EN_REG		(0x160)
+
+#define THS_EN_REG				(0x04)
+
 /* channel N data register */
 #define GP_CH0_DATA_REG			(0x80)
 
@@ -109,6 +116,8 @@
 
 /* delay time of the first time */
 #define GP_FIRST_CONCERT_DLY		(0xff << 24)
+
+#define GP_AUTO_CALI_EN		BIT(23)
 
 /* After calibration, this bit is automatically cleared to 0 */
 #define GP_CALI_EN			BIT(17)
@@ -163,6 +172,8 @@
 #define GP_CH_CMP_HIGH_DATA_SHIFT	(16)
 #define GP_CH_CMP_SHIFT			16
 
+#define GP_LDO_EN				BIT(16)
+
 #define ADDRESS(offset, id, width) ((offset) + ((id) * (width)))
 #define KEY_MAX_CNT			13
 #define VOL_NUM				KEY_MAX_CNT
@@ -178,6 +189,7 @@
 #define MIN_SR				(400UL)
 #define DEFAULT_SR			(1000000UL)
 
+#define DEFAULT_TACQ    	(500UL)
 /* reference voltage 1.8v */
 #define VOL_REFER			(1800000UL)
 
@@ -188,7 +200,14 @@
 /* The maximum number of channels of a single gpadc chip */
 #define CHANNEL_MAX_NUM                 16
 
+/* The maximum number of gpadc chip resources */
+#define GPADC_MAX_CHIP                  4
+
 #define STR_SIZE			30
+
+/* The time of entering sleep during runtime */
+#define AUTOSUSPEND_TIMEOUT 5000
+
 enum sunxi_gpadc_mode {
 	GP_SINGLE_MODE,
 	GP_SINGLE_CYCLE_MODE,
@@ -232,7 +251,6 @@ static u32 sunxi_gpadc_regs_offset[] = {
 	GP_CTRL_REG,
 	GP_CS_EN_REG,
 	GP_FIFO_INTC_REG,
-	GP_FIFO_DATA_REG,
 	GP_CB_DATA_REG,
 	GP_DATAL_INTC_REG,
 	GP_DATAH_INTC_REG,
@@ -256,6 +274,9 @@ static u32 sunxi_gpadc_regs_offset[] = {
 };
 
 struct sunxi_gpadc_hw_data {
+	u32 measure;  /* reference voltage */
+	u32 resol;  /* resolution: reference voltage / 4095 */
+	bool has_bootstrap;
 	bool has_bus_clk_hosc;
 	int  gpadc_support_config_pinmux; /* each bit represents whether the gpadc controller supports config the used pinmux or not */
 	int  channel_offset;
@@ -303,8 +324,11 @@ struct sunxi_gpadc {
 	const struct sunxi_gpadc_hw_data *data;
 	unsigned char keypad_mapindex[CHANNEL_MAX_NUM][MAXIMUM_SCALE];
 	u32 regs_backup[ARRAY_SIZE(sunxi_gpadc_regs_offset)];
+#ifdef CONFIG_AW_AMP_SYS_RSC_MANAGER
+	sunxi_amp_rsc_t amp_rsc;
+#endif
 };
-
+static struct sunxi_gpadc global_gpadc[GPADC_MAX_CHIP];
 #include "sync.c"
 
 static u32 sunxi_gpadc_sample_rate_read(void __iomem *reg_base, u32 clk_in)
@@ -351,6 +375,24 @@ static void sunxi_gpadc_ch_enable(void __iomem *reg_base, u32 id)
 	writel(reg_val, reg_base + GP_CS_EN_REG);
 }
 
+static void sunxi_gpadc_bootstrap_enable(void __iomem *reg_base, u32 id)
+{
+	u32 reg_val;
+
+	reg_val = readl(reg_base + GP_BOOTSTRAP_EN_REG);
+	reg_val |= BIT(id);
+	writel(reg_val, reg_base + GP_BOOTSTRAP_EN_REG);
+}
+
+static void sunxi_gpadc_bootstrap_disable(void __iomem *reg_base, u32 id)
+{
+	u32 reg_val;
+
+	reg_val = readl(reg_base + GP_BOOTSTRAP_EN_REG);
+	reg_val &= ~(BIT(id));
+	writel(reg_val, reg_base + GP_BOOTSTRAP_EN_REG);
+}
+
 static void sunxi_gpadc_ch_disable(void __iomem *reg_base, u32 id)
 {
 	u32 reg_val;
@@ -360,37 +402,37 @@ static void sunxi_gpadc_ch_disable(void __iomem *reg_base, u32 id)
 	writel(reg_val, reg_base + GP_CS_EN_REG);
 }
 
-static void sunxi_gpadc_ch_cmp_low(void __iomem *reg_base, u32 id,
+static void sunxi_gpadc_ch_cmp_low(struct sunxi_gpadc *chip, u32 id,
 							u32 low_uv)
 {
 	u32 reg_val, low, unit;
 
 	/* anolog voltage range 0~1.8v, 12bits resolution ratio, unit = 1.8v / (2^12 - 1) */
-	unit = VOL_REFER / GP_RESOLUTION_RATIO;
+	unit = chip->data->resol;
 	low = low_uv / unit;
 	if (low > GP_RESOLUTION_RATIO)
 		low = GP_RESOLUTION_RATIO;
 
-	reg_val = readl(reg_base + ADDRESS(GP_CH0_CMP_DATA_REG, id, GP_CH_CMP_DATA_SHIFT));
+	reg_val = readl(chip->reg_base + ADDRESS(GP_CH0_CMP_DATA_REG, id, GP_CH_CMP_DATA_SHIFT));
 	reg_val &= ~GP_RESOLUTION_RATIO;
 	reg_val |= low & GP_RESOLUTION_RATIO;
-	writel(reg_val, reg_base + ADDRESS(GP_CH0_CMP_DATA_REG, id, GP_CH_CMP_DATA_SHIFT));
+	writel(reg_val, chip->reg_base + ADDRESS(GP_CH0_CMP_DATA_REG, id, GP_CH_CMP_DATA_SHIFT));
 }
 
-static void sunxi_gpadc_ch_cmp_high(void __iomem *reg_base, u32 id, u32 hig_uv)
+static void sunxi_gpadc_ch_cmp_high(struct sunxi_gpadc *chip, u32 id, u32 hig_uv)
 {
 	u32 reg_val, hig, unit;
 
 	/* anolog voltage range 0~1.8v, 12bits resolution ratio, unit = 1.8v / (2^12 - 1) */
-	unit = VOL_REFER / GP_RESOLUTION_RATIO;
+	unit = chip->data->resol;
 	hig = hig_uv / unit;
 	if (hig > GP_RESOLUTION_RATIO)
 		hig = GP_RESOLUTION_RATIO;
 
-	reg_val = readl(reg_base + ADDRESS(GP_CH0_CMP_DATA_REG, id, GP_CH_CMP_DATA_SHIFT));
+	reg_val = readl(chip->reg_base + ADDRESS(GP_CH0_CMP_DATA_REG, id, GP_CH_CMP_DATA_SHIFT));
 	reg_val &= ~(GP_RESOLUTION_RATIO << GP_CH_CMP_HIGH_DATA_SHIFT);
 	reg_val |= (hig & GP_RESOLUTION_RATIO) << GP_CH_CMP_HIGH_DATA_SHIFT;
-	writel(reg_val, reg_base + ADDRESS(GP_CH0_CMP_DATA_REG, id, GP_CH_CMP_DATA_SHIFT));
+	writel(reg_val, chip->reg_base + ADDRESS(GP_CH0_CMP_DATA_REG, id, GP_CH_CMP_DATA_SHIFT));
 }
 
 static void sunxi_gpadc_cmp_enable(void __iomem *reg_base, u32 id)
@@ -477,7 +519,7 @@ static void sunxi_gpadc_highirq_control(void __iomem *reg_base, u32 id, bool irq
 	writel(reg_val, reg_base + GP_DATAH_INTC_REG);
 }
 
-static void sunxi_gpadc_datairq_control(void __iomem *reg_base, bool irq_en)
+static void sunxi_gpadc_fifo_datairq_control(void __iomem *reg_base, bool irq_en)
 {
 	u32 reg_val;
 
@@ -489,6 +531,20 @@ static void sunxi_gpadc_datairq_control(void __iomem *reg_base, bool irq_en)
 		reg_val &= ~FIFO_DATA_IRQ_EN;
 
 	writel(reg_val, reg_base + GP_FIFO_INTC_REG);
+}
+
+static void sunxi_gpadc_datairq_control(void __iomem *reg_base, u32 id, bool irq_en)
+{
+	u32 reg_val;
+
+	reg_val = readl(reg_base + GP_DATA_INTC_REG);
+
+	if (irq_en)
+		reg_val |= BIT(id);
+	else
+		reg_val &= ~BIT(id);
+
+	writel(reg_val, reg_base + GP_DATA_INTC_REG);
 }
 
 static u32 sunxi_gpadc_read_data(void __iomem *reg_base, u32 id)
@@ -505,7 +561,7 @@ static void sunxi_gpadc_key_report(struct sunxi_gpadc *chip, u32 data, u32 id)
 	u32 vin_m, vin_u;
 
 	/* vin = (Vref / 4095) * data, 4095 <---> 12bits resolution ratio */
-	vin_u = ((VOL_REFER / GP_RESOLUTION_RATIO) * data);
+	vin_u = (chip->data->resol * data);
 	vin_m = vin_u / 1000;
 
 	if (vin_m < SUNXIKEY_DOWN) {
@@ -557,14 +613,12 @@ static void sunxi_gpadc_low_key_report(struct sunxi_gpadc *chip, u32 channel)
 	u32 data;
 
 	data = sunxi_gpadc_read_data(chip->reg_base, channel);
-	printk("low_key_report: %d\n", data);
 	sunxi_gpadc_key_report(chip, data, channel);
 	sunxi_gpadc_highirq_control(chip->reg_base, channel, true);
 }
 
 static void sunxi_gpadc_high_key_report(struct sunxi_gpadc *chip, u32 channel)
 {
-	printk("channel: %d\n", channel);
 	input_report_key(chip->input_gpadc[channel],
 				chip->scankeycodes[channel][chip->key_code], 0);
 	input_sync(chip->input_gpadc[channel]);
@@ -813,11 +867,19 @@ sunxi_gpadc_status_store(struct device *dev, struct device_attribute *attr,
 	}
 
 	if (status_para.val) {
+		/* the sunxi_gpadc_runtime_reseme() call back */
+		err = pm_runtime_get_sync(chip->dev);
+		if (err < 0) {
+			sunxi_err(chip->dev, "%s(): %d: runtime get sync fail\n", __func__, __LINE__);
+			return err;
+		}
+
 		sunxi_gpadc_ch_enable(chip->reg_base, status_para.channel);
 		sunxi_info(chip->dev, "Enable channel %u\n", status_para.channel);
 	} else {
 		sunxi_gpadc_ch_disable(chip->reg_base, status_para.channel);
 		sunxi_info(chip->dev, "Disable channel %u\n", status_para.channel);
+		pm_runtime_put_autosuspend(chip->dev);
 	}
 
 	return count;
@@ -981,18 +1043,29 @@ sunxi_gpadc_filter_store(struct device *dev, struct device_attribute *attr,
  *
  * returns: The voltage value obtained by the specified channel of the gpadc chip
  */
-u32 sunxi_gpadc_read_channel_data(struct sunxi_gpadc *chip)
+u32 sunxi_gpadc_read_channel_data(u32 controller_num, u8 channel)
 {
 	u32 reg_val, data, vin_u, vin_m;
+	struct sunxi_gpadc *chip = &global_gpadc[controller_num];
 
 	reg_val = readl(chip->reg_base + GP_CS_EN_REG);
 
-	if ((reg_val & BIT(chip->channel)) == 0)
-		return VOL_REFER + 1;
+	if ((reg_val & BIT(channel)) == 0)
+		return chip->data->measure + 1;
 
-	data = sunxi_gpadc_read_data(chip->reg_base, chip->channel);
+	/* enable gpadc bootstrap */
+	if (chip->data->has_bootstrap) {
+		sunxi_gpadc_bootstrap_enable(chip->reg_base, channel);
+	}
 
-	vin_u = ((VOL_REFER / GP_RESOLUTION_RATIO) * data);
+	data = sunxi_gpadc_read_data(chip->reg_base, channel);
+
+	/* disable gpadc bootstrap */
+	if (chip->data->has_bootstrap) {
+		sunxi_gpadc_bootstrap_disable(chip->reg_base, channel);
+	}
+
+	vin_u = (chip->data->resol * data);
 	vin_m = vin_u / 1000;
 
 	sunxi_debug(chip->dev, "vol_data: %d\n", vin_m);
@@ -1016,7 +1089,7 @@ sunxi_gpadc_data_show(struct device *dev, struct device_attribute *attr, char *b
 		return -EINVAL;
 	}
 
-	data = sunxi_gpadc_read_channel_data(chip);
+	data = sunxi_gpadc_read_channel_data(chip->controller_num, chip->channel);
 
 	return scnprintf(buf, PAGE_SIZE, "gpadc%d-channel%d voltage data is %u\n",
 			chip->controller_num, chip->channel, data);
@@ -1081,6 +1154,14 @@ static int sunxi_gpadc_read_raw(struct iio_dev *indio_dev,
 	u32 data, vin_m, vin_u;
 
 	mutex_lock(&info->lock);
+
+	/* the sunxi_gpadc_runtime_reseme() call back */
+	ret = pm_runtime_get_sync(sunxi_gpadc->dev);
+	if (ret < 0) {
+		sunxi_err(sunxi_gpadc->dev, "%s(): %d: runtime get sync fail\n", __func__, __LINE__);
+		return ret;
+	}
+
 	switch (mask) {
 	case IIO_CHAN_INFO_RAW:
 		/*
@@ -1092,7 +1173,7 @@ static int sunxi_gpadc_read_raw(struct iio_dev *indio_dev,
 		 */
 		data = sunxi_gpadc_read_data(sunxi_gpadc->reg_base, chan->channel);
 
-		vin_u = ((VOL_REFER / GP_RESOLUTION_RATIO) * data);
+		vin_u = (sunxi_gpadc->data->resol * data);
 		vin_m = vin_u / 1000;
 		*val  = vin_m;
 
@@ -1105,6 +1186,7 @@ static int sunxi_gpadc_read_raw(struct iio_dev *indio_dev,
 	default:
 		ret = -EINVAL;
 	}
+	pm_runtime_put_autosuspend(sunxi_gpadc->dev);
 	mutex_unlock(&info->lock);
 
 	return ret;
@@ -1147,12 +1229,12 @@ static const struct iio_chan_spec gpadc_adc_iio_channels[] = {
 	ADC_CHANNEL(1, "adc_chan1"),
 	ADC_CHANNEL(2, "adc_chan2"),
 	ADC_CHANNEL(3, "adc_chan3"),
+	/*
 	ADC_CHANNEL(4, "adc_chan4"),
 	ADC_CHANNEL(5, "adc_chan5"),
 	ADC_CHANNEL(6, "adc_chan6"),
-	ADC_CHANNEL(7, "adc_chan6"),
-	ADC_CHANNEL(8, "adc_chan7"),
-	ADC_CHANNEL(9, "adc_chan7"),
+	ADC_CHANNEL(7, "adc_chan7"),
+	*/
 };
 
 /*
@@ -1209,8 +1291,9 @@ err_iio_unregister:
 static int sunxi_gpadc_dts_parse(struct sunxi_gpadc *chip)
 {
 	u32 val;
-	int i;
+	int i, j;
 	unsigned char name[STR_SIZE];
+	unsigned char child_node_name[STR_SIZE];
 	struct device_node *np = chip->dev->of_node;
 	struct sunxi_gpadc_config *config = &chip->gpadc_config;
 
@@ -1237,13 +1320,18 @@ static int sunxi_gpadc_dts_parse(struct sunxi_gpadc *chip)
 		config->channel_select = 0;
 	}
 
+	if (config->channel_select >= (0x1 << chip->channel_num)) {
+		sunxi_err(chip->dev, "channel_select value more than channel_num\n");
+		return -EINVAL;
+	}
+
 	config->mode_select = GP_CONTINUOUS_MODE;
 	of_property_read_u32(np, "gpadc_mode_select", &config->mode_select);
 
-	if (of_property_read_u32(np, "keyadc-select",
-				&config->keyadc_select)) {
-		sunxi_warn(chip->dev, "%s: warn: keyadc not select\n", __func__);
-		config->keyadc_select = 0;
+	for (j = 0; j < chip->channel_num; j++) {
+		snprintf(child_node_name, sizeof(child_node_name), "keyadc%d", j);
+		if (of_get_child_by_name(np, child_node_name))
+			config->keyadc_select |= BIT(j);
 	}
 
 	if (of_property_read_u32(np, "channel_data_select", &config->data_select)) {
@@ -1347,7 +1435,7 @@ static int sunxi_gpadc_clk_get(struct sunxi_gpadc *chip)
 			return PTR_ERR(chip->rtp_bus_clk);
 		}
 	} else {
-		chip->reset = devm_reset_control_get(chip->dev, NULL);
+		chip->reset = devm_reset_control_get_optional(chip->dev, NULL);
 		if (IS_ERR(chip->reset)) {
 			sunxi_err(chip->dev, "gpadc request GPADC reset failed\n");
 			return PTR_ERR(chip->reset);
@@ -1356,8 +1444,11 @@ static int sunxi_gpadc_clk_get(struct sunxi_gpadc *chip)
 
 	chip->bus_clk = devm_clk_get(chip->dev, "bus");
 	if (IS_ERR(chip->bus_clk)) {
-		sunxi_err(chip->dev, "gpadc request GPADC clock failed\n");
-		return PTR_ERR(chip->bus_clk);
+		chip->bus_clk = of_clk_get(chip->dev->of_node, 0);
+		if (IS_ERR_OR_NULL(chip->bus_clk)) {
+			sunxi_err(chip->dev, "gpadc request GPADC clock failed\n");
+			return PTR_ERR(chip->bus_clk);
+		}
 	}
 
 	if (chip->data->has_bus_clk_hosc) {
@@ -1377,7 +1468,7 @@ static int sunxi_gpadc_clk_init(struct sunxi_gpadc *chip)
 {
 	int err;
 
-	err = reset_control_deassert(chip->reset);
+	err = reset_control_reset(chip->reset);
 	if (err) {
 		sunxi_err(chip->dev, "deassert clk error\n");
 		goto err0;
@@ -1520,12 +1611,6 @@ static int sunxi_gpadc_resource_get(struct sunxi_gpadc *chip)
 		return -EINVAL;
 	}
 
-	err = devm_request_irq(chip->dev, chip->irq_num, sunxi_gpadc_irq_handler,
-						0, SUNXI_GPADC_DEV_NAME, chip);
-	if (err) {
-		return err;
-	}
-
 	gpadc_pinmux_value = chip->data->gpadc_support_config_pinmux;
 	if (gpadc_pinmux_value > 0) {
 		if ((gpadc_pinmux_value >> chip->controller_num) & 0x1) {
@@ -1589,12 +1674,27 @@ static int sunxi_gpadc_hw_init(struct sunxi_gpadc *chip)
 		return err;
 	}
 
-	sunxi_gpadc_sample_rate_set(chip->reg_base, chip->gpadc_clk_hosc, chip->gpadc_sample_rate);
+	if (chip->data->has_bootstrap)
+		sunxi_gpadc_sample_rate_set(chip->reg_base, chip->gpadc_clk_hosc / 1000000 * DEFAULT_TACQ - 1,
+							chip->gpadc_sample_rate);
+	else
+		sunxi_gpadc_sample_rate_set(chip->reg_base, chip->gpadc_clk_hosc, chip->gpadc_sample_rate);
+
 	for (i = 0; i < chip->channel_num; i++) {
 		if (config->channel_select & BIT(i)) {
 			/* enable the ith gpadc channel */
 			if (!chip->sync)
 				sunxi_gpadc_ch_enable(chip->reg_base, i);
+
+			/* enable data irq */
+			if (config->data_select & BIT(i)) {
+				sunxi_gpadc_datairq_control(chip->reg_base, i, true);
+			}
+
+			/* enable gpadc bootstrap */
+			if (chip->data->has_bootstrap) {
+				sunxi_gpadc_bootstrap_enable(chip->reg_base, i);
+			}
 
 			/* compare data enable */
 			if (!chip->sync && ((config->chd_select | config->cld_select) & BIT(i)))
@@ -1602,23 +1702,23 @@ static int sunxi_gpadc_hw_init(struct sunxi_gpadc *chip)
 
 			/* compare low data enable */
 			if (config->cld_select & BIT(i)) {
-				//printk("hzdbg: ch: %d, low: %dus\n", i, config->cmp_lowdata[i]);
 				sunxi_gpadc_lowirq_control(chip->reg_base, i, true);
-				sunxi_gpadc_ch_cmp_low(chip->reg_base, i, config->cmp_lowdata[i]);
+				sunxi_gpadc_ch_cmp_low(chip, i, config->cmp_lowdata[i]);
 			}
 
 			/* compare high data enable */
 			if (config->chd_select & BIT(i)) {
-				//printk("hzdbg: ch: %d, high: %dus\n", i, config->cmp_highdata[i]);
 				sunxi_gpadc_highirq_control(chip->reg_base, i, true);
-				sunxi_gpadc_ch_cmp_high(chip->reg_base, i, config->cmp_highdata[i]);
+				sunxi_gpadc_ch_cmp_high(chip, i, config->cmp_highdata[i]);
 			}
 		}
 	}
 
 	sunxi_gpadc_calibration_enable(chip->reg_base);
 	sunxi_gpadc_set_mode(chip->reg_base, config->mode_select);
-	sunxi_gpadc_datairq_control(chip->reg_base, true);
+
+	if (config->mode_select == GP_BURST_MODE)
+		sunxi_gpadc_fifo_datairq_control(chip->reg_base, true);
 
 	sunxi_gpadc_enable(chip->reg_base);
 
@@ -1645,10 +1745,15 @@ static int sunxi_gpadc_hw_exit(struct sunxi_gpadc *chip)
 		sync_stop(chip->sync);
 
 	sunxi_gpadc_disable(chip->reg_base);
-	sunxi_gpadc_datairq_control(chip->reg_base, false);
+	if (config->mode_select == GP_BURST_MODE)
+		sunxi_gpadc_fifo_datairq_control(chip->reg_base, false);
 
 	for (i = 0; i < chip->channel_num; i++) {
 		if (config->channel_select & BIT(i)) {
+
+			/* data irq disable */
+			if (config->data_select & BIT(i))
+				sunxi_gpadc_datairq_control(chip->reg_base, i, false);
 
 			/* compare high data disable */
 			if (config->chd_select & BIT(i))
@@ -1677,60 +1782,84 @@ static int sunxi_gpadc_hw_exit(struct sunxi_gpadc *chip)
 	return 0;
 }
 
+static int sunxi_gpadc_set_key_value(struct sunxi_gpadc *chip, int chan)
+{
+	int i;
+	int j = 0;
+	u32 set_vol[VOL_NUM];
+
+	for (i = 0; i < chip->key_num[chan]; i++)
+		set_vol[i] = chip->key_vol[chan][i]
+				+ (chip->key_vol[chan][i+1]
+				- chip->key_vol[chan][i]) / 2;
+
+	for (i = 0; i < 128; i++) {
+		if ((j < VOL_NUM) && (i * SCALE_UNIT > set_vol[j])) {
+			j++;
+		}
+		chip->keypad_mapindex[chan][i] = j;
+	}
+
+	return 0;
+}
+
+static int sunxi_gpadc_get_key_value(struct sunxi_gpadc *chip, struct device_node *child, int chan)
+{
+	int i;
+	u32 vol, val;
+
+	for (i = 0; i < chip->key_num[chan]; i++) {
+		snprintf(chip->key_name[chan], sizeof(chip->key_name[chan]), "key%d_vol", i);
+		if (of_property_read_u32(child, chip->key_name[chan], &vol)) {
+			sunxi_err(chip->dev, "get%s err!\n", chip->key_name[chan]);
+			return -EINVAL;
+		}
+		chip->key_vol[chan][i] = vol;
+
+		snprintf(chip->key_name[chan], sizeof(chip->key_name[chan]), "key%d_val", i);
+		if (of_property_read_u32(child, chip->key_name[chan], &val)) {
+			sunxi_err(chip->dev, "get%s err!\n", chip->key_name[chan]);
+			return -EINVAL;
+		}
+		chip->scankeycodes[chan][i] = val;
+		sunxi_debug(chip->dev, "%s: key%d vol= %d code= %d\n", __func__, i,
+							chip->key_vol[chan][i],
+							chip->scankeycodes[chan][i]);
+	}
+
+	chip->key_vol[chan][i] = MAX_INPUT_VOLTAGE;
+
+	return 0;
+}
+
 static int sunxi_gpadc_key_init(struct sunxi_gpadc *chip)
 {
 	struct device_node *child, *np = chip->dev->of_node;
-	struct sunxi_gpadc_config *config = &chip->gpadc_config;
-	unsigned char i, j;
-	u32 vol, val;
-	u32 set_vol[VOL_NUM];
 	int chan = 0;
+	int err;
 
 	for_each_child_of_node(np, child) {
-		if (config->keyadc_select & BIT(chan)) {
-			j = 0;
-			if (of_property_read_u32(child, "key_cnt", &chip->key_num[chan])) {
-				sunxi_err(chip->dev, "%s: get key count failed", __func__);
-				return -EINVAL;
-			}
-			sunxi_debug(chip->dev, "%s key number = %d.\n", __func__, chip->key_num[chan]);
-			if (chip->key_num[chan] < 1 || chip->key_num[chan] > VOL_NUM) {
-				sunxi_err(chip->dev, "chan%d incorrect key number\n", chan);
-				return -EINVAL;
-			}
-			for (i = 0; i < chip->key_num[chan]; i++) {
-				snprintf(chip->key_name[chan], sizeof(chip->key_name[chan]), "key%d_vol", i);
-				if (of_property_read_u32(child, chip->key_name[chan], &vol)) {
-					sunxi_err(chip->dev, "%s:get%s err!\n", __func__,
-							chip->key_name[chan]);
-					return -EINVAL;
-				}
-				chip->key_vol[chan][i] = vol;
+		sscanf(child->name, "keyadc%d", &chan);
 
-				snprintf(chip->key_name[chan], sizeof(chip->key_name[chan]), "key%d_val", i);
-				if (of_property_read_u32(child, chip->key_name[chan], &val)) {
-					sunxi_err(chip->dev, "%s:get%s err!\n", __func__,
-							chip->key_name[chan]);
-					return -EINVAL;
-				}
-				chip->scankeycodes[chan][i] = val;
-				sunxi_debug(chip->dev, "%s: key%d vol= %d code= %d\n", __func__, i,
-									chip->key_vol[chan][i],
-									chip->scankeycodes[chan][i]);
-			}
-			chip->key_vol[chan][i] = MAX_INPUT_VOLTAGE;
-
-			for (i = 0; i < chip->key_num[chan]; i++)
-				set_vol[i] = chip->key_vol[chan][i]
-						+ (chip->key_vol[chan][i+1]
-						- chip->key_vol[chan][i]) / 2;
-
-			for (i = 0; i < 128; i++) {
-				if (i * SCALE_UNIT > set_vol[j])
-					j++;
-				chip->keypad_mapindex[chan][i] = j;
-			}
+		if (of_property_read_u32(child, "key_cnt", &chip->key_num[chan])) {
+			sunxi_err(chip->dev, "get key count failed");
+			return -EINVAL;
 		}
+
+		sunxi_debug(chip->dev, "key number = %d\n", chip->key_num[chan]);
+
+		if ((chip->key_num[chan] < 1) || (chip->key_num[chan] > VOL_NUM)) {
+			sunxi_err(chip->dev, "chan%d incorrect key number\n", chan);
+			return -EINVAL;
+		}
+
+		err = sunxi_gpadc_get_key_value(chip, child, chan);
+		if (err) {
+			return err;
+		}
+
+		sunxi_gpadc_set_key_value(chip, chan);
+
 		chan++;
 	};
 
@@ -1889,11 +2018,21 @@ static int sunxi_gpadc_probe(struct platform_device *pdev)
 		goto err0;
 	}
 
+#ifdef CONFIG_AW_AMP_SYS_RSC_MANAGER
+	err = sunxi_pdev_request_peri_rsc(chip->pdev, "gpadc_drv", &chip->amp_rsc);
+	if (err) {
+		sunxi_err(chip->dev, "request AMP system peri resource for gpadc failed, err: %d\n", err);
+		return -EINVAL;
+	}
+#endif
+
 	err = sunxi_gpadc_resource_get(chip);
 	if (err) {
 		sunxi_err(chip->dev, "failed to resource_get\n");
 		goto err0;
 	}
+
+	global_gpadc[chip->controller_num] = *chip;
 
 	if (chip->gpadc_config.keyadc_select) {
 		err = sunxi_gpadc_key_init(chip);
@@ -1915,10 +2054,30 @@ static int sunxi_gpadc_probe(struct platform_device *pdev)
 		goto err2;
 	}
 
+	err = devm_request_irq(chip->dev, chip->irq_num, sunxi_gpadc_irq_handler,
+						0, SUNXI_GPADC_DEV_NAME, chip);
+	if (err) {
+		goto err3;
+	}
+
 	err = sunxi_gpadc_sysfs_create(chip);
 	if (err) {
 		sunxi_err(chip->dev, "failed to node_init\n");
 		goto err3;
+	}
+
+	if ((!chip->gpadc_config.keyadc_select) && (!chip->gpadc_config.data_select)) {
+		pm_runtime_set_active(chip->dev);
+		pm_runtime_set_autosuspend_delay(chip->dev, AUTOSUSPEND_TIMEOUT);
+		pm_runtime_use_autosuspend(chip->dev);
+		pm_runtime_enable(chip->dev);
+
+		err = pm_runtime_get_sync(chip->dev);
+		if (err < 0)
+			goto err4;
+
+		pm_runtime_mark_last_busy(chip->dev);
+		pm_runtime_put_autosuspend(chip->dev);
 	}
 
 	platform_set_drvdata(pdev, chip);
@@ -1931,6 +2090,11 @@ static int sunxi_gpadc_probe(struct platform_device *pdev)
 
 	return 0;
 
+err4:
+	pm_runtime_disable(chip->dev);
+	pm_runtime_dont_use_autosuspend(chip->dev);
+	pm_runtime_set_suspended(chip->dev);
+	sunxi_gpadc_sysfs_destroy(chip);
 err3:
 	err = sunxi_gpadc_hw_exit(chip);
 err2:
@@ -1947,12 +2111,24 @@ static int sunxi_gpadc_remove(struct platform_device *pdev)
 	struct sunxi_gpadc *chip = platform_get_drvdata(pdev);
 	int err;
 
+	pm_runtime_put_noidle(chip->dev);
+	pm_runtime_disable(chip->dev);
+	pm_runtime_dont_use_autosuspend(chip->dev);
+	pm_runtime_set_suspended(chip->dev);
+
 	sunxi_gpadc_sysfs_destroy(chip);
 	unregister_sync_group(chip->sync);
 	err = sunxi_gpadc_hw_exit(chip);
 	if (err)
 		return err;
 	sunxi_gpadc_inputdev_unregister(chip);
+
+#ifdef CONFIG_AW_AMP_SYS_RSC_MANAGER
+	err = sunxi_amp_rsc_free(chip->amp_rsc);
+	if (err)
+		sunxi_err(chip->dev, "release AMP system resource for gpadc failed, err: %d\n", err);
+#endif
+
 	sunxi_gpadc_resource_put(chip);
 
 	return 0;
@@ -2009,9 +2185,45 @@ static int sunxi_gpadc_resume(struct device *dev)
 	return 0;
 }
 
+static int sunxi_gpadc_runtime_suspend(struct device *dev)
+{
+	struct sunxi_gpadc *chip = dev_get_drvdata(dev);
+
+	disable_irq_nosync(chip->irq_num);
+
+	sunxi_gpadc_save_regs(chip);
+
+	sunxi_gpadc_clk_exit(chip);
+
+	sunxi_gpadc_select_pin_state(chip, PINCTRL_STATE_SLEEP);
+
+	sunxi_info(chip->dev, "runtime suspend finish\n");
+
+	return 0;
+}
+
+static int sunxi_gpadc_runtime_resume(struct device *dev)
+{
+	struct sunxi_gpadc *chip = dev_get_drvdata(dev);
+
+	sunxi_gpadc_select_pin_state(chip, PINCTRL_STATE_DEFAULT);
+
+	sunxi_gpadc_clk_init(chip);
+
+	sunxi_gpadc_restore_regs(chip);
+
+	enable_irq(chip->irq_num);
+
+	sunxi_info(chip->dev, "runtime resume finish\n");
+
+	return 0;
+}
+
 static const struct dev_pm_ops sunxi_gpadc_dev_pm_ops = {
 	.suspend = sunxi_gpadc_suspend,
 	.resume = sunxi_gpadc_resume,
+	.runtime_suspend = sunxi_gpadc_runtime_suspend,
+	.runtime_resume  = sunxi_gpadc_runtime_resume,
 };
 
 #define SUNXI_GPADC_DEV_PM_OPS (&sunxi_gpadc_dev_pm_ops)
@@ -2020,28 +2232,60 @@ static const struct dev_pm_ops sunxi_gpadc_dev_pm_ops = {
 #endif  /* IS_ENABLED(CONFIG_PM) */
 
 static struct sunxi_gpadc_hw_data sunxi_gpadc_v100_data = {
+	.measure = 1800000,/* 1.8v */
+	.resol = 439,
 	.has_bus_clk_hosc = false,
+	.has_bootstrap = false,
 	.gpadc_support_config_pinmux = 0x0,
 	.channel_offset   = 0,
 };
 
 static struct sunxi_gpadc_hw_data sunxi_gpadc_v101_data = {
+	.measure = 1800000,/* 1.8v */
+	.resol = 439,
 	.has_bus_clk_hosc = true,
+	.has_bootstrap = false,
 	.gpadc_support_config_pinmux = 0x0,
 	.channel_offset   = 0,
 };
 
 static struct sunxi_gpadc_hw_data sunxi_gpadc_v102_data = {
+	.measure = 1800000,/* 1.8v */
+	.resol = 439,
 	.has_bus_clk_hosc = true,
+	.has_bootstrap = false,
 	.gpadc_support_config_pinmux = 0x1, /* only gpadc0 support it */
 	.channel_offset   = 0,
 };
 
 /* @IP-TODO: sun55iw6 gpadc1 channel0~3 only used for tpadc */
 static struct sunxi_gpadc_hw_data sunxi_gpadc_v103_data = {
+	.measure = 1800000,/* 1.8v */
+	.resol = 439,
 	.has_bus_clk_hosc = true,
+	.has_bootstrap = false,
 	.gpadc_support_config_pinmux = 0x0,
 	.channel_offset   = 4,
+};
+
+/* for aw1882 */
+static struct sunxi_gpadc_hw_data sunxi_gpadc_v104_data = {
+	.measure = 1800000,/* 1.8v */
+	.resol = 439,
+	.has_bus_clk_hosc = true,
+	.has_bootstrap = true,
+	.gpadc_support_config_pinmux = 0x0,
+	.channel_offset   = 0,
+};
+
+/* for aw1708 */
+static struct sunxi_gpadc_hw_data sunxi_gpadc_v105_data = {
+	.measure = 3000000,/* 3v */
+	.resol = 732,
+	.has_bus_clk_hosc = false,
+	.has_bootstrap = false,
+	.gpadc_support_config_pinmux = 0x0,
+	.channel_offset   = 0,
 };
 
 static const struct of_device_id sunxi_gpadc_of_match[] = {
@@ -2052,6 +2296,10 @@ static const struct of_device_id sunxi_gpadc_of_match[] = {
 	{ .compatible = "allwinner,sunxi-gpadc-v102", .data = &sunxi_gpadc_v102_data },
 	/* for aw1912 */
 	{ .compatible = "allwinner,sunxi-gpadc-v103", .data = &sunxi_gpadc_v103_data },
+	/* for aw1882 */
+	{ .compatible = "allwinner,sunxi-gpadc-v104", .data = &sunxi_gpadc_v104_data },
+	/* for aw1708 */
+	{ .compatible = "allwinner,sunxi-gpadc-v105", .data = &sunxi_gpadc_v105_data },
 	{},
 };
 MODULE_DEVICE_TABLE(of, sunxi_gpadc_of_match);
@@ -2098,4 +2346,4 @@ MODULE_AUTHOR("Fuzhaoke <fuzhaoke@allwinnertech.com>");
 MODULE_AUTHOR("shaosidi <shaosidi@allwinnertech.com>");
 MODULE_DESCRIPTION("sunxi gpadc driver");
 MODULE_LICENSE("GPL v2");
-MODULE_VERSION("2.1.7");
+MODULE_VERSION("2.2.5");

@@ -57,11 +57,15 @@ endif
 
 KERNEL_COMPONENTS := srvkm $(DISPLAY_CONTROLLER)
 
-HWR_DEFAULT_ENABLED := 0
+ifeq ($(PVR_ARCH),volcanic)
+ ifeq ($(PVR_BUILD_HMMU),1)
+  KERNEL_COMPONENTS += pvrhmmu
+ endif
+endif
+
+ASSERTONHWRTRIGGER_DEFAULT_ENABLED := 1
 
 # Should be last
 include ../config/core.mk
 -include ../common/lws.mk
 include ../common/3rdparty.mk
-
-$(eval $(call TunableUserConfigC,SGLTRACE,))

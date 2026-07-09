@@ -33,6 +33,15 @@
 #define ECC_TIMEOUT	(msecs_to_jiffies(100))
 #endif
 
+#define RV_AXI_MONITOR_RES_NAME "axi-monitor-cfg"
+#define RV_AXI_MONITOR_RST_NAME "rst-axi-monitor"
+#define AXI_MONITOR_TAKEN_OVER_REG			(0x0000)	/* AXI_MONITOR_TAKEN_OVER_REG */
+#define AXI_MONITOR_TAKEN_IRQEN_REG			(0x0004)	/* AXI_MONITOR_TAKEN_IRQEN_REG */
+#define AXI_MONITOR_TAKEN_TIMEOUT_REG		(0x0020)	/* AXI_MONITOR_TAKEN_TIMEOUT_REG */
+
+#define AXI_MONITOR_TAKEN_OVER_ENABLE		(0x0001)	/* AXI_MONITOR_TAKEN OVER ENABLE VALUE */
+#define AXI_MONITOR_TAKEN_OVER_TIMEOUT_TIME	(0x0040)	/* AXI_MONITOR_TAKEN OVER TIMEOUT VALUE */
+
 struct sunxi_rproc_priv;
 struct rproc_common_boot;
 
@@ -48,6 +57,10 @@ struct sunxi_rproc_ops {
 	/* set remote processors start reg bit */
 	int (*set_runstall)(struct sunxi_rproc_priv *rproc_priv, u32 value);
 	bool (*is_booted)(struct sunxi_rproc_priv *rproc_priv);
+
+	/* NMI releated ops */
+	int (*trigger_nmi)(struct sunxi_rproc_priv *rproc_priv);
+	int (*is_nmi_complete)(struct sunxi_rproc_priv *rproc_priv);
 };
 
 struct sunxi_rproc_memory_mapping {
@@ -89,14 +102,17 @@ struct sunxi_rproc_e906_cfg {
 struct sunxi_rproc_e907_cfg {
 	struct rproc_common_boot *com;
 	void __iomem *rv_cfg_reg_base;
+	void __iomem *axi_monitor_reg_base;
 };
 
-struct sunxi_rproc_arm64_cfg {
-	u32 cpu_id;
-	struct pinctrl *jtag_pins;	/* arm64 jtag pins */
-	u32 mod_clk_freq;		/* arm64 freq */
+
+#define AMP_CPUS CONFIG_NR_CPUS
+
+struct sunxi_rproc_arm_cfg {
+	u32 cpu_id[AMP_CPUS];
 	void __iomem *sram_remap;
-	void __iomem *arm64_cfg;
+	void __iomem *arm_cfg;
+	void __iomem *gic_dist;
 	struct delayed_work dead_work;
 	struct completion complete_dead;
 };
@@ -121,6 +137,13 @@ struct sunxi_rproc_priv {
 	bool auto_boot;
 };
 
+ struct vf_info{
+	unsigned int dvfs;
+	unsigned int voltage; /* mv */
+	unsigned int core_rate_range;
+	};
+
+
 struct sunxi_rproc_priv *sunxi_rproc_priv_find(const char *name);
 int sunxi_rproc_priv_ops_register(const char *name, struct sunxi_rproc_ops *rproc_ops, void *priv);
 int sunxi_rproc_priv_ops_unregister(const char *name);
@@ -133,6 +156,8 @@ int sunxi_rproc_priv_assert(struct sunxi_rproc_priv *rproc_priv);
 int sunxi_rproc_priv_set_localram(struct sunxi_rproc_priv *rproc_priv, u32 value);
 int sunxi_rproc_priv_set_runstall(struct sunxi_rproc_priv *rproc_priv, u32 value);
 bool sunxi_rproc_priv_is_booted(struct sunxi_rproc_priv *rproc_priv);
+int sunxi_rproc_priv_trigger_nmi(struct sunxi_rproc_priv *rproc_priv);
+int sunxi_rproc_priv_is_nmi_complete(struct sunxi_rproc_priv *rproc_priv);
 
 #define RPROC_COMMON_CLK_RES			(0)
 #define RPROC_COMMON_RST_RES			(1)
@@ -204,6 +229,8 @@ struct rproc_common_boot {
 
 	/* internal member */
 	void * __iomem base_addr;
+	void * __iomem axi_monitor_base_addr;
+
 	struct reset_control *rst;
 	int nr_rst;
 	struct clk *clk;
@@ -224,6 +251,7 @@ enum rproc_common_clk_op {
 	RPROC_COMMON_OP_WRITEREG,		/* write reg */
 	RPROC_COMMON_OP_SETBIT,
 	RPROC_COMMON_OP_USLEEP,
+	RPROC_COMMON_OP_VF_TABLE_CHECK,
 
 	RPROC_COMMON_OP_MAX
 };

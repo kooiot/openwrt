@@ -20,6 +20,7 @@
 #endif
 
 #include "dw_dev.h"
+#include "dw_mc.h"
 #include "dw_edid.h"
 #include "dw_hdcp.h"
 #include "dw_hdcp22.h"
@@ -105,7 +106,7 @@ int dw_hdmi_ctrl_reset(void)
 	hdmi->hdmi_on = 1;
 	hdmi->tmds_clk = 0;
 	hdmi->pixel_clk = 0;
-	hdmi->color_bits = 0;
+	hdmi->color_bits = 8;
 	hdmi->pixel_repeat = 0;
 	hdmi->audio_on = 1;
 
@@ -115,6 +116,7 @@ int dw_hdmi_ctrl_reset(void)
 int dw_hdmi_ctrl_update(void)
 {
 	struct dw_video_s *video  = &hdmi->video_dev;
+	u32 pixel_clk = 0;
 
 	hdmi->hdmi_on      = (video->mHdmi == DW_TMDS_MODE_HDMI) ? 1 : 0;
 	hdmi->audio_on     = (video->mHdmi == DW_TMDS_MODE_HDMI) ? 1 : 0;
@@ -122,24 +124,26 @@ int dw_hdmi_ctrl_update(void)
 	hdmi->color_bits   = video->mColorResolution;
 	hdmi->pixel_repeat = video->mDtd.mPixelRepetitionInput;
 
-	if (video->mEncodingIn == DW_COLOR_FORMAT_YCC422) {
-		hdmi->color_bits  = 8;
-		hdmi->tmds_clk    = hdmi->pixel_clk;
-		return 0;
-	}
-
 	if (video->mEncodingIn == DW_COLOR_FORMAT_YCC420)
 		hdmi->pixel_clk /= 2;
 
+	pixel_clk = hdmi->pixel_clk * (hdmi->pixel_repeat + 1);
+
+	if (video->mEncodingIn == DW_COLOR_FORMAT_YCC422) {
+		hdmi->color_bits  = 8;
+		hdmi->tmds_clk = pixel_clk;
+		return 0;
+	}
+
 	switch (video->mColorResolution) {
 	case DW_COLOR_DEPTH_10:
-		hdmi->tmds_clk = hdmi->pixel_clk * 125 / 100;
+		hdmi->tmds_clk = pixel_clk * 125 / 100;
 		break;
 	case DW_COLOR_DEPTH_12:
-		hdmi->tmds_clk = hdmi->pixel_clk * 3 / 2;
+		hdmi->tmds_clk = pixel_clk * 3 / 2;
 		break;
 	default:
-		hdmi->tmds_clk = hdmi->pixel_clk;
+		hdmi->tmds_clk = pixel_clk;
 		break;
 	}
 
@@ -148,7 +152,7 @@ int dw_hdmi_ctrl_update(void)
 
 int dw_hdmi_scdc_set_scramble(u8 setup)
 {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0)
 	struct i2c_adapter   *dev = hdmi->i2c_adap;
 #else
 	struct drm_connector *dev = hdmi->connect;
@@ -199,19 +203,30 @@ int dw_hdmi_exit(void)
 ssize_t dw_hdmi_dump(char *buf)
 {
 	ssize_t n = 0;
+	struct dw_i2cm_s *i2cm = &hdmi->i2cm_dev;
 
-	n += sprintf(buf + n, "\n========= [hdmi dw] =========\n");
-	n += sprintf(buf + n, "[dw ctrl]\n");
-	n += sprintf(buf + n, " - tmds clock  : %dKHz\n", hdmi->tmds_clk);
-	n += sprintf(buf + n, " - pixel clock : %dKHz\n", hdmi->pixel_clk);
-	n += sprintf(buf + n, " - pixel repet : %d\n", hdmi->pixel_repeat);
-	n += sprintf(buf + n, " - color depth : %d-bits\n", hdmi->color_bits);
-
-	n += dw_phy_dump(buf + n);
+	n += sprintf(buf + n, "\n[dw ctrl]\n");
+	n += sprintf(buf + n, "|       |              control params                 |                  clock domain                    |              ddc            |\n");
+	n += sprintf(buf + n, "|  name |---------------------------------------------+--------------------------------------------------+-----------------------------|\n");
+	n += sprintf(buf + n, "|       | pixel clk |  tmds clk | repeat | color bits | pixel | tmds | repeat | audio | csc | cec | hdcp |   mode   | ref clk |  rate  |\n");
+	n += sprintf(buf + n, "|-------+-----------+-----------+--------+------------+-------+------+--------+-------+-----+-----+------+----------+---------+--------|\n");
+	n += sprintf(buf + n, "| state |  %-6d   |  %-6d   |   %-2d   |     %-2d     |  %-4s | %-4s |  %-4s  |  %-4s | %-4s| %-4s| %-4s | %-8s |  %-2dMHz  | %-2d.%-1dK  |\n",
+		hdmi->pixel_clk, hdmi->tmds_clk, hdmi->pixel_repeat, hdmi->color_bits,
+		dw_mc_get_clk(DW_MC_CLK_PIXEL) ? "on" : "off",
+		dw_mc_get_clk(DW_MC_CLK_TMDS)  ? "on" : "off",
+		dw_mc_get_clk(DW_MC_CLK_PREP)  ? "on" : "off",
+		dw_mc_get_clk(DW_MC_CLK_AUDIO) ? "on" : "off",
+		dw_mc_get_clk(DW_MC_CLK_CSC)   ? "on" : "off",
+		dw_mc_get_clk(DW_MC_CLK_CEC)   ? "on" : "off",
+		dw_mc_get_clk(DW_MC_CLK_HDCP)  ? "on" : "off",
+		i2cm->mode ? "fast" : "standard", i2cm->sfrClock / 100,
+		dw_i2cm_get_rate() / 10, dw_i2cm_get_rate() % 10);
 
 	n += dw_avp_dump(buf + n);
 
 	n += dw_hdcp_dump(buf + n);
+
+	n += dw_phy_dump(buf + n);
 
 	return n;
 }

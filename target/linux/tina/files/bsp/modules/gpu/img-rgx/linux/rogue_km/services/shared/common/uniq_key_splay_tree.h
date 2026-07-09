@@ -54,8 +54,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   typedef IMG_UINT64 IMG_ELTS_MAPPINGS;
 #endif
 
+typedef IMG_UINT64 IMG_PSPLAY_FLAGS_T;
+
 /* head of list of free boundary tags for indexed by pvr_log2 of the
    boundary tag size */
+
 #define FREE_TABLE_LIMIT 40
 
 struct _BT_;
@@ -69,7 +72,7 @@ typedef struct img_splay_tree
     struct img_splay_tree * psRight;
 
     /* Flags to match on this span, used as the key. */
-    IMG_UINT32 ui32Flags;
+    IMG_PSPLAY_FLAGS_T uiFlags;
 #if defined(PVR_CTZLL)
 	/* each bit of this int is a boolean telling if the corresponding
 	   bucket is empty or not */
@@ -78,9 +81,10 @@ typedef struct img_splay_tree
 	struct _BT_ * buckets[FREE_TABLE_LIMIT];
 } IMG_SPLAY_TREE, *IMG_PSPLAY_TREE;
 
-IMG_PSPLAY_TREE PVRSRVSplay (IMG_UINT32 ui32Flags, IMG_PSPLAY_TREE psTree);
-IMG_PSPLAY_TREE PVRSRVInsert(IMG_UINT32 ui32Flags, IMG_PSPLAY_TREE psTree);
-IMG_PSPLAY_TREE PVRSRVDelete(IMG_UINT32 ui32Flags, IMG_PSPLAY_TREE psTree);
+IMG_PSPLAY_TREE PVRSRVSplay (IMG_PSPLAY_FLAGS_T uiFlags, IMG_PSPLAY_TREE psTree);
+IMG_PSPLAY_TREE PVRSRVInsert(IMG_PSPLAY_FLAGS_T uiFlags, IMG_PSPLAY_TREE psTree);
+IMG_PSPLAY_TREE PVRSRVDelete(IMG_PSPLAY_FLAGS_T uiFlags, IMG_PSPLAY_TREE psTree);
+IMG_PSPLAY_TREE PVRSRVFindNode(IMG_PSPLAY_FLAGS_T uiFlags, IMG_PSPLAY_TREE psTree);
 
 
 #endif /* !UNIQ_KEY_SPLAY_TREE_H_ */

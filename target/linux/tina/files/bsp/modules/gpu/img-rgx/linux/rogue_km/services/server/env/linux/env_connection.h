@@ -41,8 +41,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#if !defined(_ENV_CONNECTION_H_)
-#define _ENV_CONNECTION_H_
+#if !defined(ENV_CONNECTION_H)
+#define ENV_CONNECTION_H
 
 #include <linux/version.h>
 #include <linux/list.h>
@@ -60,7 +60,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 typedef struct _ENV_CONNECTION_PRIVATE_DATA_
 {
-	struct file *psFile;
 	PVRSRV_DEVICE_NODE *psDevNode;
 } ENV_CONNECTION_PRIVATE_DATA;
 
@@ -79,12 +78,15 @@ typedef struct _ENV_CONNECTION_DATA_
 {
 	pid_t owner;
 
-	struct file *psFile;
 	PVRSRV_DEVICE_NODE *psDevNode;
+
+#if defined(SUPPORT_NATIVE_FENCE_SYNC)
+	void *pvPvrSyncPrivateData;
+#endif
 
 #if defined(SUPPORT_ION) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0))
 	ENV_ION_CONNECTION_DATA *psIonData;
 #endif
 } ENV_CONNECTION_DATA;
 
-#endif /* !defined(_ENV_CONNECTION_H_) */
+#endif /* !defined(ENV_CONNECTION_H) */

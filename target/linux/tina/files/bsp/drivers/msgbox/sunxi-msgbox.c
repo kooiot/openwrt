@@ -408,6 +408,7 @@ static int sunxi_msgbox_startup(struct mbox_chan *chan)
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_AW_MAILBOX_WAIT_IEC60730_INSTALL)
 #define msgbox_writable(_reg)		(readl(_reg + SUNXI_MSGBOX_VERSION()) ? 1 : 0)
 static int msgbox_wait_writable(struct sunxi_msgbox *chip, int remote_id)
 {
@@ -440,6 +441,7 @@ static int msgbox_wait_writable(struct sunxi_msgbox *chip, int remote_id)
 	}
 	return 0;
 }
+#endif
 
 static int sunxi_msgbox_send_data(struct mbox_chan *chan, void *data)
 {
@@ -464,8 +466,10 @@ static int sunxi_msgbox_send_data(struct mbox_chan *chan, void *data)
 	remote_n = sunxi_msgbox_coef_n(chip, remote_id, local_id);
 	write_reg_base = sunxi_msgbox_reg_base(chip, remote_id);
 
+#if IS_ENABLED(CONFIG_AW_MAILBOX_WAIT_IEC60730_INSTALL)
 	if (msgbox_wait_writable(chip, remote_id) < 0)
 		return -EBUSY;
+#endif
 
 #if IS_ENABLED(CONFIG_AW_MAILBOX_SUPPORT_TXDONE_IRQ)
 	spin_lock_irqsave(&chip->lock, flags);
@@ -749,7 +753,7 @@ static const struct sunxi_msgbox_hwdata sun55iw6_hwdata = {
  *             3           2            2
  *     --------------------------------------------
  */
-static const struct sunxi_msgbox_hwdata sun55iw6_core_msgbox_hwdata = {
+static const struct sunxi_msgbox_hwdata sunxi_core0_msgbox_hwdata = {
 	.processors_max = 4,
 	.channels_max = 4,
 	.fifo_msg_max = 8,
@@ -842,13 +846,14 @@ static const struct of_device_id sunxi_msgbox_of_match[] = {
 	{ .compatible = "allwinner,sun8iw20-msgbox", .data = &sun8iw20_hwdata},
 	{ .compatible = "allwinner,sun55iw3-msgbox", .data = &sun55iw3_hwdata},
 	{ .compatible = "allwinner,sun55iw6-msgbox", .data = &sun55iw6_hwdata},
-	{ .compatible = "allwinner,sun55iw6-msgbox-core0", .data = &sun55iw6_core_msgbox_hwdata},
+	{ .compatible = "allwinner,sunxi-msgbox-core0", .data = &sunxi_core0_msgbox_hwdata},
 	{ .compatible = "allwinner,sun60iw1-msgbox", .data = &sun60iw1_hwdata},
 	/* The msgbox resources of sun60iw2 sun65iw1 and sun55iw5 are the same, so use sun55iw5_hwdata uniformly */
 	{ .compatible = "allwinner,sun55iw5-msgbox", .data = &sun55iw5_hwdata},
 	{ .compatible = "allwinner,sun60iw2-msgbox", .data = &sun55iw5_hwdata},
 	{ .compatible = "allwinner,sun65iw1-msgbox", .data = &sun55iw5_hwdata},
 	{ .compatible = "allwinner,sun8iw21-msgbox", .data = &sun55iw5_hwdata},
+	{ .compatible = "allwinner,sun8iw22-msgbox", .data = &sun55iw5_hwdata},
 	{},
 };
 MODULE_DEVICE_TABLE(of, sunxi_msgbox_of_match);

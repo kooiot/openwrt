@@ -37,7 +37,6 @@
 #define PRS_EN_REG_MCSIC_EN         31
 #define PRS_EN_REG_MCSIC_EN_MASK   (0X1 << PRS_EN_REG_MCSIC_EN)
 
-
 #define PRS_NCSIC_IF_CFG_REG_OFF       0X004
 #define PRS_NCSIC_IF_CSI_IF            0
 #define PRS_NCSIC_IF_CSI_IF_MASK      (0X1F << PRS_NCSIC_IF_CSI_IF)
@@ -126,15 +125,15 @@
 
 #define PRS_PARSER_CAP_FRM_MASK0_REG_OFF   0X018
 #define CH0_FRM_DATA_MASK                  0
-#define CH0_FRM_DATA_MASK_MASK            (0XFF << CH0_FRM_DATA_MASK)
+#define CH0_FRM_DATA_MASK_MASK            (0XFFFF << CH0_FRM_DATA_MASK)
 #define CH1_FRM_DATA_MASK                  16
-#define CH1_FRM_DATA_MASK_MASK            (0XFF << CH1_FRM_DATA_MASK)
+#define CH1_FRM_DATA_MASK_MASK            (0XFFFF << CH1_FRM_DATA_MASK)
 
 #define PRS_PARSER_CAP_FRM_MASK1_REG_OFF   0X01C
 #define CH2_FRM_DATA_MASK                  0
-#define CH2_FRM_DATA_MASK_MASK            (0XFF << CH2_FRM_DATA_MASK)
+#define CH2_FRM_DATA_MASK_MASK            (0XFFFF << CH2_FRM_DATA_MASK)
 #define CH3_FRM_DATA_MASK                  16
-#define CH3_FRM_DATA_MASK_MASK            (0XFF << CH3_FRM_DATA_MASK)
+#define CH3_FRM_DATA_MASK_MASK            (0XFFFF << CH3_FRM_DATA_MASK)
 
 /***channel 0***/
 #define PARSER_CH_OFF           0x100

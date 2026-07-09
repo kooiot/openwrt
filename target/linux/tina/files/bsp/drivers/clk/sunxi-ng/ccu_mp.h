@@ -128,6 +128,7 @@ struct ccu_mp {
 		.common	= {						\
 			.features       = CCU_FEATURE_KEY_FIELD_MOD,	\
 			.key_value      = _key_value,			\
+			.key_reg        = _reg,				\
 			.reg		= _reg,				\
 			.hw.init	= CLK_HW_INIT_PARENTS(_name,	\
 							      _parents, \

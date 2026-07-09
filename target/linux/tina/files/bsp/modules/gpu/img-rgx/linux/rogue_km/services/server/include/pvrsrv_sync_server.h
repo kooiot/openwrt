@@ -40,8 +40,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /***************************************************************************/
 
-#ifndef _PVRSRV_SYNC_SERVER_H_
-#define _PVRSRV_SYNC_SERVER_H_
+#ifndef PVRSRV_SYNC_SERVER_H
+#define PVRSRV_SYNC_SERVER_H
 
 #if defined(SUPPORT_FALLBACK_FENCE_SYNC)
 #include "sync_fallback_server.h"
@@ -79,7 +79,7 @@ static inline void SyncClearTimelineObj(SYNC_TIMELINE_OBJ *psSTO)
 
 static inline IMG_BOOL SyncIsTimelineObjValid(const SYNC_TIMELINE_OBJ *psSTO)
 {
-	return psSTO->pvTlObj != NULL;
+	return (IMG_BOOL)(psSTO->pvTlObj != NULL);
 }
 
 static inline void SyncClearFenceObj(SYNC_FENCE_OBJ *psSFO)
@@ -90,10 +90,9 @@ static inline void SyncClearFenceObj(SYNC_FENCE_OBJ *psSFO)
 
 static inline IMG_BOOL SyncIsFenceObjValid(const SYNC_FENCE_OBJ *psSFO)
 {
-	return psSFO->pvFenceObj != NULL;
+	return (IMG_BOOL)(psSFO->pvFenceObj != NULL);
 }
 
-#if defined(PVR_USE_FENCE_SYNC_MODEL)
 
 /* Mapping of each required function to its appropriate sync-implementation function */
 #if defined(SUPPORT_FALLBACK_FENCE_SYNC)
@@ -212,7 +211,8 @@ SyncSWTimelineFenceCreateKM(PVRSRV_DEVICE_NODE *psDevNode,
 {
 	IMG_UINT64 ui64SyncPtIdx;
 	PVRSRV_ERROR eError;
-	eError = SyncSWTimelineFenceCreateKM_(hSWTimeline,
+	eError = SyncSWTimelineFenceCreateKM_(psDevNode,
+	                                      hSWTimeline,
 	                                      pszFenceName,
 	                                      phOutFence,
 	                                      &ui64SyncPtIdx);
@@ -274,6 +274,5 @@ SyncSWDumpTimeline(const SYNC_TIMELINE_OBJ *psSWTimelineObj,
 	return SyncSWDumpTimeline_(psSWTimelineObj->pvTlObj, pfnDumpDebugPrintf, pvDumpDebugFile);
 }
 
-#endif /* PVR_USE_FENCE_SYNC_MODEL */
 
-#endif /* _PVRSRV_SYNC_SERVER_H_ */
+#endif /* PVRSRV_SYNC_SERVER_H */

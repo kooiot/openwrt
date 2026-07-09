@@ -13,6 +13,7 @@ enum {
 	TCS4838_ID = 0,
 	SY8827G_ID,
 	AXP1530_ID,
+	SY8827K_ID,
 	NR_PMU_EXT_VARIANTS,
 };
 
@@ -62,6 +63,14 @@ enum {
 #define SY8827G_ID2		    0x04
 #define SY8827G_PGOOD		0x05
 
+/* List of registers for sy8827k */
+#define SY8827K_VSEL0		0x00
+#define SY8827K_VSEL1		0x01
+#define SY8827K_CTRL		0x02
+#define SY8827K_ID1		    0x03
+#define SY8827K_ID2		    0x04
+#define SY8827K_PGOOD		0x05
+
 enum {
 	AXP1530_DCDC1 = 0,
 	AXP1530_DCDC2,
@@ -95,6 +104,12 @@ enum {
 	SY8827G_DCDC0 = 0,
 	SY8827G_DCDC1,
 	SY8827G_REG_ID_MAX,
+};
+
+enum {
+	SY8827K_DCDC0 = 0,
+	SY8827K_DCDC1,
+	SY8827K_REG_ID_MAX,
 };
 
 int pmu_ext_match_device(struct pmu_ext_dev *ext);

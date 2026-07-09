@@ -104,9 +104,10 @@ static void ccu_nkmp_find_best(struct ccu_common *common, unsigned long parent, 
 static void ccu_nkmp_disable(struct clk_hw *hw)
 {
 	struct ccu_nkmp *nkmp = hw_to_ccu_nkmp(hw);
+	__attribute__((unused)) struct ccu_pllctrl *pllctrl = (struct ccu_pllctrl *)nkmp;
 
 #if IS_ENABLED(CONFIG_AW_STANDARD_CCU)
-	return ccu_pll_gate_helper_disable(&nkmp->common, nkmp->enable, nkmp->output, nkmp->lock_enable, nkmp->ldo_en);
+	return ccu_pll_gate_helper_disable(&nkmp->common, pllctrl);
 #else
 	return ccu_gate_helper_disable(&nkmp->common, nkmp->enable);
 #endif
@@ -136,9 +137,10 @@ static void ccu_nkmp_init(struct clk_hw *hw)
 static int ccu_nkmp_enable(struct clk_hw *hw)
 {
 	struct ccu_nkmp *nkmp = hw_to_ccu_nkmp(hw);
+	__attribute__((unused)) struct ccu_pllctrl *pllctrl = (struct ccu_pllctrl *)nkmp;
 
 #if IS_ENABLED(CONFIG_AW_STANDARD_CCU)
-	return ccu_pll_gate_helper_enable(&nkmp->common, nkmp->enable, nkmp->output, nkmp->lock, nkmp->lock_enable, nkmp->ldo_en);
+	return ccu_pll_gate_helper_enable(&nkmp->common, pllctrl);
 #else
 	return ccu_gate_helper_enable(&nkmp->common, nkmp->enable);
 #endif
@@ -189,7 +191,7 @@ static unsigned long ccu_nkmp_recalc_rate(struct clk_hw *hw,
 		rate /= nkmp->fixed_post_div;
 
 	if (nkmp->common.sdm_info) {
-		sdmval = ccu_get_sdmval(rate, &nkmp->common, m, n);
+		sdmval = ccu_get_sdmval(rate, &nkmp->common, n);
 		ccu_common_set_sdm_value(&nkmp->common, &nkmp->sdm, sdmval);
 	}
 	return rate;
@@ -299,8 +301,11 @@ static int ccu_nkmp_set_rate(struct clk_hw *hw, unsigned long _rate,
 		}
 	}
 
-	if (nkmp->common.features & CCU_FEATURE_CLEAR_MOD)
-		ccu_helper_wait_for_clear(&nkmp->common, nkmp->common.clear);
+	if (nkmp->common.features & CCU_FEATURE_CLEAR_MOD && nkmp->common.clear) {
+		reg |= nkmp->common.clear;
+		writel(reg, nkmp->common.base + nkmp->common.reg);
+		WARN_ON(readl_relaxed_poll_timeout_atomic(nkmp->common.base + nkmp->common.reg, reg, !(reg & nkmp->common.clear), 100, 10000));
+	}
 
 	if (nkmp->p_reg) {
 		if (new_p < back_p)

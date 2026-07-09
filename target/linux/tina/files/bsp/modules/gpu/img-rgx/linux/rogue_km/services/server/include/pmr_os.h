@@ -41,8 +41,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#if !defined(__PMR_OS_H__)
-#define __PMR_OS_H__
+#if !defined(PMR_OS_H)
+#define PMR_OS_H
 
 #include "pmr_impl.h"
 
@@ -59,4 +59,4 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 PVRSRV_ERROR
 OSMMapPMRGeneric(PMR *psPMR, PMR_MMAP_DATA pOSMMapData);
 
-#endif /* !defined(__PMR_OS_H__) */
+#endif /* !defined(PMR_OS_H) */

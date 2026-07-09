@@ -41,12 +41,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#if defined(LINUX)
+#if defined(__linux__)
 #include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
-#if defined(SUPPORT_PDVFS)
-#include "pvr_debugfs.h"
-#endif
 #endif
 
 #include "pvrsrv_device.h"
@@ -55,16 +52,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "sysconfig.h"
 #include "physheap.h"
 #include "interrupt_support.h"
-#include "vz_support.h"
+#include "vz_vmm_pvz.h"
 #if defined(SUPPORT_PDVFS)
 #include "rgxpdvfs.h"
 #endif
 
-static RGX_TIMING_INFORMATION	gsRGXTimingInfo;
-static RGX_DATA					gsRGXData;
-static PVRSRV_DEVICE_CONFIG 	gsDevices[1];
 static PHYS_HEAP_FUNCTIONS		gsPhysHeapFuncs;
-static PHYS_HEAP_CONFIG			gsPhysHeapConfig[2];
+
+#define VEXPRESS_SYSTEM_NAME "vexpress"
+#define VEXPRESS_NUM_PHYS_HEAPS 2U
 
 #if defined(SUPPORT_PDVFS)
 static const IMG_OPP asOPPTable[] =
@@ -78,9 +74,9 @@ static const IMG_OPP asOPPTable[] =
 
 #define LEVEL_COUNT (sizeof(asOPPTable) / sizeof(asOPPTable[0]))
 
-static void SetFrequency(IMG_UINT32 ui32Frequency) {}
+static void SetFrequency(IMG_HANDLE hSysData, IMG_UINT32 ui32Frequency) {}
 
-static void SetVoltage(IMG_UINT32 ui32Volt) {}
+static void SetVoltage(IMG_HANDLE hSysData, IMG_UINT32 ui32Volt) {}
 #endif
 
 /*
@@ -146,7 +142,11 @@ static void SysDevFeatureDepInit(PVRSRV_DEVICE_CONFIG *psDevConfig, IMG_UINT64 u
 PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 {
 	IMG_UINT32 ui32NextPhysHeapID = 0;
-#if defined(LINUX)
+	PVRSRV_DEVICE_CONFIG *psDevConfig;
+	RGX_DATA *psRGXData;
+	RGX_TIMING_INFORMATION *psRGXTimingInfo;
+	PHYS_HEAP_CONFIG *psPhysHeapConfig;
+#if defined(__linux__)
 	int iIrq;
 	struct resource *psDevMemRes = NULL;
 	struct platform_device *psDev;
@@ -154,12 +154,20 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 	psDev = to_platform_device((struct device *)pvOSDevice);
 #endif
 
-	if (gsDevices[0].pvOSDevice)
+	psDevConfig = OSAllocZMem(sizeof(*psDevConfig) +
+							  sizeof(*psRGXData) +
+							  sizeof(*psRGXTimingInfo) +
+							  sizeof(*psPhysHeapConfig) * VEXPRESS_NUM_PHYS_HEAPS);
+	if (!psDevConfig)
 	{
-		return PVRSRV_ERROR_INVALID_DEVICE;
+		return PVRSRV_ERROR_OUT_OF_MEMORY;
 	}
 
-#if defined(LINUX)
+	psRGXData = (RGX_DATA *)((IMG_CHAR *)psDevConfig + sizeof(*psDevConfig));
+	psRGXTimingInfo = (RGX_TIMING_INFORMATION *)((IMG_CHAR *)psRGXData + sizeof(*psRGXData));
+	psPhysHeapConfig = (PHYS_HEAP_CONFIG *)((IMG_CHAR *)psRGXTimingInfo + sizeof(*psRGXTimingInfo));
+
+#if defined(__linux__)
 	dma_set_mask(pvOSDevice, DMA_BIT_MASK(32));
 #endif
 
@@ -169,123 +177,116 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 	gsPhysHeapFuncs.pfnCpuPAddrToDevPAddr = UMAPhysHeapCpuPAddrToDevPAddr;
 	gsPhysHeapFuncs.pfnDevPAddrToCpuPAddr = UMAPhysHeapDevPAddrToCpuPAddr;
 
-	gsPhysHeapConfig[ui32NextPhysHeapID].ui32PhysHeapID = ui32NextPhysHeapID;
-	gsPhysHeapConfig[ui32NextPhysHeapID].pszPDumpMemspaceName = "SYSMEM";
-	gsPhysHeapConfig[ui32NextPhysHeapID].eType = PHYS_HEAP_TYPE_UMA;
-	gsPhysHeapConfig[ui32NextPhysHeapID].psMemFuncs = &gsPhysHeapFuncs;
-	gsPhysHeapConfig[ui32NextPhysHeapID].hPrivData = NULL;
+	psPhysHeapConfig[ui32NextPhysHeapID].pszPDumpMemspaceName = "SYSMEM";
+	psPhysHeapConfig[ui32NextPhysHeapID].eType = PHYS_HEAP_TYPE_UMA;
+	psPhysHeapConfig[ui32NextPhysHeapID].psMemFuncs = &gsPhysHeapFuncs;
+	psPhysHeapConfig[ui32NextPhysHeapID].hPrivData = NULL;
+	psPhysHeapConfig[ui32NextPhysHeapID].ui32UsageFlags = PHYS_HEAP_USAGE_GPU_LOCAL;
 	ui32NextPhysHeapID += 1;
 
 	/*
 	 * Setup RGX specific timing data
 	 */
-	gsRGXTimingInfo.ui32CoreClockSpeed        = RGX_VEXPRESS_CORE_CLOCK_SPEED;
-	gsRGXTimingInfo.bEnableActivePM           = IMG_FALSE;
-	gsRGXTimingInfo.bEnableRDPowIsland        = IMG_FALSE;
-	gsRGXTimingInfo.ui32ActivePMLatencyms     = SYS_RGX_ACTIVE_POWER_LATENCY_MS;
+	psRGXTimingInfo->ui32CoreClockSpeed        = RGX_VEXPRESS_CORE_CLOCK_SPEED;
+	psRGXTimingInfo->bEnableActivePM           = IMG_FALSE;
+	psRGXTimingInfo->bEnableRDPowIsland        = IMG_FALSE;
+	psRGXTimingInfo->ui32ActivePMLatencyms     = SYS_RGX_ACTIVE_POWER_LATENCY_MS;
 
 	/*
 	 *Setup RGX specific data
 	 */
-	gsRGXData.psRGXTimingInfo = &gsRGXTimingInfo;
+	psRGXData->psRGXTimingInfo = psRGXTimingInfo;
 
 	/*
 	 * Setup device
 	 */
-	gsDevices[0].pvOSDevice				= pvOSDevice;
-	gsDevices[0].pszName                = "vexpress";
-	gsDevices[0].pszVersion             = NULL;
+	psDevConfig->pvOSDevice				= pvOSDevice;
+	psDevConfig->pszName                = VEXPRESS_SYSTEM_NAME;
+	psDevConfig->pszVersion             = NULL;
 
 	/* Device setup information */
-#if defined(LINUX)
+#if defined(__linux__)
 	psDevMemRes = platform_get_resource(psDev, IORESOURCE_MEM, 0);
 	if (psDevMemRes)
 	{
-		gsDevices[0].sRegsCpuPBase.uiAddr = psDevMemRes->start;
-		gsDevices[0].ui32RegsSize         = (unsigned int)(psDevMemRes->end - psDevMemRes->start);
+		psDevConfig->sRegsCpuPBase.uiAddr = psDevMemRes->start;
+		psDevConfig->ui32RegsSize         = (unsigned int)(psDevMemRes->end - psDevMemRes->start);
 	}
 	else
 #endif
 	{
-#if defined(LINUX)
+#if defined(__linux__)
 		PVR_LOG(("%s: platform_get_resource() failed, using mmio/sz 0x%x/0x%x",
 				__func__,
 				VEXPRESS_GPU_PBASE,
 				VEXPRESS_GPU_SIZE));
 #endif
-		gsDevices[0].sRegsCpuPBase.uiAddr   = VEXPRESS_GPU_PBASE;
-		gsDevices[0].ui32RegsSize           = VEXPRESS_GPU_SIZE;
+		psDevConfig->sRegsCpuPBase.uiAddr   = VEXPRESS_GPU_PBASE;
+		psDevConfig->ui32RegsSize           = VEXPRESS_GPU_SIZE;
 	}
 
-#if defined(LINUX)
+#if defined(__linux__)
 	iIrq = platform_get_irq(psDev, 0);
 	if (iIrq >= 0)
 	{
-		gsDevices[0].ui32IRQ = (IMG_UINT32) iIrq;
+		psDevConfig->ui32IRQ = (IMG_UINT32) iIrq;
 	}
 	else
 #endif
 	{
-#if defined(LINUX)
+#if defined(__linux__)
 		PVR_LOG(("%s: platform_get_irq() failed, using irq %d",
 				__func__,
 				VEXPRESS_IRQ_GPU));
 #endif
-		gsDevices[0].ui32IRQ = VEXPRESS_IRQ_GPU;
+		psDevConfig->ui32IRQ = VEXPRESS_IRQ_GPU;
 	}
 
 	/* Device's physical heaps */
-	gsDevices[0].pasPhysHeaps = gsPhysHeapConfig;
-	gsDevices[0].ui32PhysHeapCount = ARRAY_SIZE(gsPhysHeapConfig);
-
-	/* Device's physical heap IDs */
-	gsDevices[0].aui32PhysHeapID[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL] = 0;
-	gsDevices[0].aui32PhysHeapID[PVRSRV_DEVICE_PHYS_HEAP_CPU_LOCAL] = 0;
-	gsDevices[0].aui32PhysHeapID[PVRSRV_DEVICE_PHYS_HEAP_FW_LOCAL] = 0;
-	gsDevices[0].aui32PhysHeapID[PVRSRV_DEVICE_PHYS_HEAP_EXTERNAL] = 0;
-
-	gsDevices[0].eBIFTilingMode = geBIFTilingMode;
-	gsDevices[0].pui32BIFTilingHeapConfigs = gauiBIFTilingHeapXStrides;
-	gsDevices[0].ui32BIFTilingHeapCount = ARRAY_SIZE(gauiBIFTilingHeapXStrides);
+	psDevConfig->pasPhysHeaps = psPhysHeapConfig;
+	psDevConfig->ui32PhysHeapCount = VEXPRESS_NUM_PHYS_HEAPS;
+	psDevConfig->eDefaultHeap = PVRSRV_PHYS_HEAP_GPU_LOCAL;
 
 	/* No power management on VIRTUAL_PLATFORM system */
-	gsDevices[0].pfnPrePowerState       = NULL;
-	gsDevices[0].pfnPostPowerState      = NULL;
+	psDevConfig->pfnPrePowerState       = NULL;
+	psDevConfig->pfnPostPowerState      = NULL;
 
 	/* No clock frequency either */
-	gsDevices[0].pfnClockFreqGet        = NULL;
+	psDevConfig->pfnClockFreqGet        = NULL;
 
-	gsDevices[0].hDevData               = &gsRGXData;
+	psDevConfig->hDevData               = psRGXData;
 
-	gsDevices[0].pfnSysDevFeatureDepInit = &SysDevFeatureDepInit;
-	gsDevices[0].pfnSysDriverMode		 = NULL;
+	psDevConfig->pfnSysDevFeatureDepInit = &SysDevFeatureDepInit;
 
-	gsDevices[0].bHasFBCDCVersion31	= IMG_FALSE;
+	psDevConfig->bHasFBCDCVersion31	= IMG_FALSE;
+	psDevConfig->bDevicePA0IsValid	= IMG_FALSE;
+
+	/* device error notify callback function */
+	psDevConfig->pfnSysDevErrorNotify = NULL;
 
 	/* Virtualization support services needs to know which heap ID corresponds to FW */
-	PVR_ASSERT(ui32NextPhysHeapID < ARRAY_SIZE(gsPhysHeapConfig));
-	gsDevices[0].aui32PhysHeapID[PVRSRV_DEVICE_PHYS_HEAP_FW_LOCAL] = ui32NextPhysHeapID;
-	gsPhysHeapConfig[ui32NextPhysHeapID].ui32PhysHeapID = ui32NextPhysHeapID;
-	gsPhysHeapConfig[ui32NextPhysHeapID].pszPDumpMemspaceName = "SYSMEM";
-	gsPhysHeapConfig[ui32NextPhysHeapID].eType = PHYS_HEAP_TYPE_UMA;
-	gsPhysHeapConfig[ui32NextPhysHeapID].psMemFuncs = &gsPhysHeapFuncs;
-	gsPhysHeapConfig[ui32NextPhysHeapID].hPrivData = NULL;
+	PVR_ASSERT(ui32NextPhysHeapID < VEXPRESS_NUM_PHYS_HEAPS);
+	psPhysHeapConfig[ui32NextPhysHeapID].pszPDumpMemspaceName = "SYSMEM";
+	psPhysHeapConfig[ui32NextPhysHeapID].eType = PHYS_HEAP_TYPE_UMA;
+	psPhysHeapConfig[ui32NextPhysHeapID].psMemFuncs = &gsPhysHeapFuncs;
+	psPhysHeapConfig[ui32NextPhysHeapID].hPrivData = NULL;
+	psPhysHeapConfig[ui32NextPhysHeapID].ui32UsageFlags = PHYS_HEAP_USAGE_FW_SHARED;
 
 #if defined(SUPPORT_PDVFS)
-	gsDevices[0].sDVFS.sDVFSDeviceCfg.pasOPPTable = asOPPTable;
-	gsDevices[0].sDVFS.sDVFSDeviceCfg.ui32OPPTableSize = LEVEL_COUNT;
-	gsDevices[0].sDVFS.sDVFSDeviceCfg.pfnSetFrequency = SetFrequency;
-	gsDevices[0].sDVFS.sDVFSDeviceCfg.pfnSetVoltage = SetVoltage;
+	psDevConfig->sDVFS.sDVFSDeviceCfg.pasOPPTable = asOPPTable;
+	psDevConfig->sDVFS.sDVFSDeviceCfg.ui32OPPTableSize = LEVEL_COUNT;
+	psDevConfig->sDVFS.sDVFSDeviceCfg.pfnSetFrequency = SetFrequency;
+	psDevConfig->sDVFS.sDVFSDeviceCfg.pfnSetVoltage = SetVoltage;
 #endif
 
-	*ppsDevConfig = &gsDevices[0];
+	*ppsDevConfig = psDevConfig;
 
 	return PVRSRV_OK;
 }
 
 void SysDevDeInit(PVRSRV_DEVICE_CONFIG *psDevConfig)
 {
-	psDevConfig->pvOSDevice = NULL;
+	OSFreeMem(psDevConfig);
 }
 
 PVRSRV_ERROR SysInstallDeviceLISR(IMG_HANDLE hSysData,

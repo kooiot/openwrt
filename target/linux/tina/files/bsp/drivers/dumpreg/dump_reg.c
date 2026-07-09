@@ -37,7 +37,7 @@
 #include <linux/suspend.h>
 #include <linux/syscore_ops.h>
 #include <linux/version.h>
-
+#include <linux/ioport.h>
 #include "dump_reg.h"
 
 /* the register and vaule to be test by dump_reg */
@@ -55,6 +55,12 @@ static struct compare_group *cmp_group;
 
 static u32   standby_dump_ctrl;
 static char *standby_dump_buff;
+
+/*
+ * Used for select whether to print warning messages when access non-IOMEM.
+ * Default is false.
+ */
+static bool debug_enable;
 
 enum {
 	DUMP_CTRL_DEV_PREPARE = 0,
@@ -173,6 +179,17 @@ static int __addr_valid(unsigned long uaddr)
 	return -ENXIO;
 }
 
+static bool is_address_in_iomem(struct resource *res)
+{
+	struct resource *ret = request_mem_region(res->start, resource_size(res), "dumpreg_temp_region");
+	if (!ret)
+		return true;
+
+	release_mem_region(res->start, resource_size(res));
+
+	return false;
+}
+
 /**
  * __dump_regs_ex - dump a range of registers' value, copy to buf.
  * @dump_addr: start and end address of registers.
@@ -188,11 +205,22 @@ static ssize_t __dump_regs_ex(struct dump_addr *dump_addr, char *buf, ssize_t bu
 	unsigned long uaddr;
 	unsigned long remap_size;
 	const struct dump_struct *dump;
-
+	bool is_iomem;
+	struct resource res;
 	/* Make the address 4-bytes aligned */
 	dump_addr->uaddr_start &= (~0x3UL);
 	dump_addr->uaddr_end &= (~0x3UL);
 	remap_size = dump_addr->uaddr_end - dump_addr->uaddr_start + 4;
+
+	if (debug_enable) {
+		res.start = dump_addr->uaddr_start;
+		res.end = dump_addr->uaddr_start + remap_size - 1;
+
+		is_iomem = is_address_in_iomem(&res);
+		if (!is_iomem)
+			sunxi_warn(NULL, "Non-iomem: start=0x%lx, size=0x%lx. Accessing to it may cause a crash!", \
+					dump_addr->uaddr_start, remap_size);
+	}
 
 	index = __addr_valid(dump_addr->uaddr_start);
 	if ((index < 0) || (index != __addr_valid(dump_addr->uaddr_end)) ||
@@ -922,6 +950,39 @@ err:
 	return -EINVAL;
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0))
+static ssize_t debug_show(const struct class *class, const struct class_attribute *attr, char *buf)
+#else
+static ssize_t debug_show(struct class *class, struct class_attribute *attr, char *buf)
+#endif
+{
+	return sprintf(buf, "%d\n", debug_enable);
+}
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0))
+static ssize_t debug_store(const struct class *class, const struct class_attribute *attr,
+	   const char *buf, size_t count)
+#else
+static ssize_t debug_store(struct class *class, struct class_attribute *attr,
+	   const char *buf, size_t count)
+#endif
+{
+	int num;
+	if (kstrtoint(buf, 10, &num) != 0) {
+		sunxi_err(NULL, "Invalid input!\n");
+		return -EINVAL;
+	}
+
+	if (num != 0 && num != 1) {
+		sunxi_err(NULL, "Invalid input, please input 0 or 1\n");
+		return -EINVAL;
+	}
+
+	debug_enable = !!num;
+
+	return count;
+}
+
 static ssize_t
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0))
 write_show(const struct class *class, const struct class_attribute *attr, char *buf)
@@ -1049,15 +1110,16 @@ help_show(struct class *class, struct class_attribute *attr, char *buf)
 #endif
 {
 	const char *info =
-		"dump single register:          echo {addr} > dump; cat dump\n"
-		"dump multi  registers:         echo {start-addr},{end-addr} > dump; cat dump\n"
-		"write single register:         echo {addr} {val} > write; cat write\n"
-		"write multi  registers:        echo {addr1} {val1},{addr2} {val2},... > write; cat write\n"
-		"compare single register:       echo {addr} {expect-val} {mask} > compare; cat compare\n"
-		"compare multi  registers:      echo {addr1} {expect-val1} {mask1},{addr2} {expect-val2} {mask2},... > compare; cat compare\n"
-		"byte-access mode:              echo 1 > rw_byte\n"
-		"word-access mode (default):    echo 0 > rw_byte\n"
-		"show test address info:        cat test\n"
+		"dump single register:                      echo {addr} > dump; cat dump\n"
+		"dump multi  registers:                     echo {start-addr},{end-addr} > dump; cat dump\n"
+		"write single register:                     echo {addr} {val} > write; cat write\n"
+		"write multi  registers:                    echo {addr1} {val1},{addr2} {val2},... > write; cat write\n"
+		"compare single register:                   echo {addr} {expect-val} {mask} > compare; cat compare\n"
+		"compare multi  registers:                  echo {addr1} {expect-val1} {mask1},{addr2} {expect-val2} {mask2},... > compare; cat compare\n"
+		"byte-access mode:                          echo 1 > rw_byte\n"
+		"word-access mode (default):                echo 0 > rw_byte\n"
+		"enable warning when accessing non-iomem:   echo 1 > debug\n"
+		"show test address info:                    cat test\n"
 		"abort standby_dump_ctrl, \n"
 		"	If you don't know it, please keep at zero.\n"
 		"	If you want to use it, please read the source code or the wiki first.\n";
@@ -1073,6 +1135,7 @@ static struct class_attribute dump_class_attrs[] = {
 	__ATTR(test,     S_IRUGO,           test_show, NULL),
 	__ATTR(help,     S_IRUGO,           help_show, NULL),
 	__ATTR(standby_dump_ctrl, S_IWUSR | S_IRUGO, standby_dump_ctrl_show, standby_dump_ctrl_store),
+	__ATTR(debug,    S_IWUSR | S_IRUGO, debug_show,     debug_store),
 };
 
 static const struct of_device_id sunxi_dump_reg_match[] = {
@@ -1170,7 +1233,7 @@ module_platform_driver(sunxi_dump_reg_driver);
 
 MODULE_ALIAS("sunxi-dump_reg-driver");
 MODULE_LICENSE("GPL v2");
-MODULE_VERSION("1.0.8");
+MODULE_VERSION("1.1.0");
 MODULE_AUTHOR("xiafeng <xiafeng@allwinnertech.com>");
 MODULE_AUTHOR("Martin <wuyan@allwinnertech.com>");
 MODULE_AUTHOR("liuyu <SWCliuyus@allwinnertech.com>");

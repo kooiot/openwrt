@@ -40,8 +40,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#ifndef _PVR_DVFS_DEVICE_H_
-#define _PVR_DVFS_DEVICE_H_
+#ifndef PVR_DVFS_DEVICE_H
+#define PVR_DVFS_DEVICE_H
 
 #include "opaque_types.h"
 #include "pvrsrv_error.h"
@@ -51,8 +51,12 @@ PVRSRV_ERROR InitDVFS(PPVRSRV_DEVICE_NODE psDeviceNode);
 
 void DeinitDVFS(PPVRSRV_DEVICE_NODE psDeviceNode);
 
-PVRSRV_ERROR SuspendDVFS(void);
+PVRSRV_ERROR RegisterDVFSDevice(PPVRSRV_DEVICE_NODE psDeviceNode);
 
-PVRSRV_ERROR ResumeDVFS(void);
+void UnregisterDVFSDevice(PPVRSRV_DEVICE_NODE psDeviceNode);
 
-#endif /* _PVR_DVFS_DEVICE_H_ */
+PVRSRV_ERROR SuspendDVFS(PPVRSRV_DEVICE_NODE psDeviceNode);
+
+PVRSRV_ERROR ResumeDVFS(PPVRSRV_DEVICE_NODE psDeviceNode);
+
+#endif /* PVR_DVFS_DEVICE_H */

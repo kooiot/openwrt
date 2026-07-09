@@ -14,6 +14,7 @@
 #define _DE_CDC_PLATFORM_H_
 
 #include "de_base.h"
+#include "de_cdc.h"
 
 struct de_cdc_desc {
 	char name[32];
@@ -21,6 +22,7 @@ struct de_cdc_desc {
 	unsigned int reg_offset;
 	bool support_gtm;
 	bool support_csc;
+	enum de_cdc_type type;
 };
 
 /* input info from channel */

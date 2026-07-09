@@ -92,16 +92,6 @@
 #define SUNXI_IADR	0xD4
 #define SUNXI_IADW	0xD8
 
-#if IS_ENABLED(CONFIG_ARCH_SUN55IW6)
-#define MC_SRAM_ECC			0x30
-#define MC_ECC_INJ_DATA(n)	(0x30 + (n) * 4)
-#define MC_ECC_INJ_STA(n)	(0x44 + (n) * 4)
-#define MC_ECC_ORI_DATA(n)	(0x80 + (n) * 4)
-#define MX_SWCTL			0x10320
-#define MX_ECCSTAT			0x10078
-#define MX_ECCCLR			0x1007C
-#endif
-
 #define SECOND		1000	/* 1ms(const) */
 #define DFSO_UPTHRESHOLD	(90)
 #define DFSO_DOWNDIFFERENCTIAL	(5)
@@ -138,8 +128,6 @@ struct sunxi_dmcfreq {
 	unsigned int de_rw_data;
 	unsigned int normalvoltage, boostvoltage;
 	int irq;
-	int inlinecc_irq;
-	int sramecc_irq;
 	unsigned long rate;
 	struct freq_t freq[8];
 };
@@ -299,74 +287,6 @@ handled:
 	mutex_unlock(&dmcfreq->devfreq->lock);
 	return IRQ_HANDLED;
 }
-
-#if IS_ENABLED(CONFIG_ARCH_SUN55IW6)
-static irqreturn_t sunxi_inlinecc_isr(int irq, void *data)
-{
-	struct sunxi_dmcfreq *dmcfreq = data;
-	struct device *dev = dmcfreq->dev;
-	unsigned int reg_val = 0, ecc_uncorrected_err, ecc_corrected_err, ecc_corrected_bit;
-
-	regmap_write(dmcfreq->regmap, MX_SWCTL, 0);
-	regmap_read(dmcfreq->regmap, MX_ECCSTAT, &reg_val);
-	sunxi_err(dev, "MX_ECCSTAT:0x%x\n", reg_val);
-
-	ecc_uncorrected_err = (reg_val >> 16) & 0xffff;
-	ecc_corrected_err	= (reg_val >> 8) & 0x00ff;
-	ecc_corrected_bit	= (reg_val >> 0) & 0x007f;
-
-	/* lock	0;unlock 1;*/
-	regmap_update_bits(dmcfreq->regmap, MX_ECCCLR, (0x3 << 8), 0);
-	regmap_update_bits(dmcfreq->regmap, MX_ECCCLR, 0x1f, -1U);
-
-	regmap_write(dmcfreq->regmap, MX_SWCTL, 1);
-
-	if (ecc_uncorrected_err)
-		sunxi_err(dev, "inline_ecc_uncorrected_err:%d\n", ecc_uncorrected_err);
-
-	if (ecc_corrected_err) {
-		sunxi_err(dev, "inline_ecc_corrected_err:%d\r\n", ecc_corrected_err);
-		sunxi_err(dev, "ecc_corrected_bit:%d\n", ecc_corrected_bit);
-	}
-
-	regmap_write(dmcfreq->regmap, MX_SWCTL, 0);
-	regmap_update_bits(dmcfreq->regmap, MX_ECCCLR, (0x3 << 8), -1U);
-	regmap_write(dmcfreq->regmap, MX_SWCTL, 1);
-
-	return IRQ_HANDLED;
-}
-
-static irqreturn_t sunxi_sramecc_isr(int irq, void *data)
-{
-	struct sunxi_dmcfreq *dmcfreq = data;
-	struct device *dev = dmcfreq->dev;
-	unsigned int reg_val = 0, i = 0;
-
-	/* close irq enable */
-	regmap_update_bits(dmcfreq->regmap, MC_SRAM_ECC, (0x1 << 2), 0);
-
-	for (i = 1; i <= 4; i++) {
-		regmap_read(dmcfreq->regmap, MC_ECC_INJ_DATA(i), &reg_val);
-		sunxi_err(dev, "MC_ECC_INJ_DATA%d:0x%x\n", i, reg_val);
-	}
-
-	for (i = 0; i < 16; i++) {
-		regmap_read(dmcfreq->regmap, MC_ECC_INJ_STA(i), &reg_val);
-		sunxi_err(dev, "MC_ECC_INJ_STA%d:0x%x\n", i, reg_val);
-	}
-
-	for (i = 1; i <= 4; i++) {
-		regmap_read(dmcfreq->regmap, MC_ECC_ORI_DATA(i), &reg_val);
-		sunxi_err(dev, "MC_ECC_ORI_DATA%d:0x%x\n", i, reg_val);
-	}
-	/* clear ecc status */
-	regmap_update_bits(dmcfreq->regmap, MC_SRAM_ECC, (0x1 << 0), -1U);
-	regmap_update_bits(dmcfreq->regmap, MC_SRAM_ECC, (0x1 << 0), 0);
-	regmap_update_bits(dmcfreq->regmap, MC_SRAM_ECC, (0x1 << 2), -1U);
-
-	return IRQ_HANDLED;
-}
-#endif
 
 static int sunxi_dmc_target(struct device *dev,
 						unsigned long *freq, u32 flags)
@@ -841,36 +761,6 @@ static int sunxi_dmcfreq_probe(struct platform_device *pdev)
 	if (IS_ERR(dmcfreq->con_base)) {
 		sunxi_err(&pdev->dev, "devm_ioremap_resource error!\n");
 		return PTR_ERR(dmcfreq->con_base);
-	}
-#endif
-
-#if IS_ENABLED(CONFIG_ARCH_SUN55IW6)
-	dmcfreq->inlinecc_irq = platform_get_irq(pdev, 1);
-	if (dmcfreq->inlinecc_irq < 0) {
-		sunxi_err(&pdev->dev, "inlinecc_irq get error!\n");
-		return dmcfreq->inlinecc_irq;
-	}
-
-	dmcfreq->sramecc_irq = platform_get_irq(pdev, 2);
-	if (dmcfreq->sramecc_irq < 0) {
-		sunxi_err(&pdev->dev, "sramecc_irq get error!\n");
-		return dmcfreq->sramecc_irq;
-	}
-
-	rc = devm_request_threaded_irq(&pdev->dev, dmcfreq->inlinecc_irq, NULL,
-					sunxi_inlinecc_isr, IRQF_ONESHOT,
-					"sun55iw3-devfreq", dmcfreq);
-	if (rc) {
-		sunxi_err(&pdev->dev, "Inlinecc interrupt request failed: %d\n", rc);
-		return rc;
-	}
-
-	rc = devm_request_threaded_irq(&pdev->dev, dmcfreq->sramecc_irq, NULL,
-					sunxi_sramecc_isr, IRQF_ONESHOT,
-					"sun55iw3-devfreq", dmcfreq);
-	if (rc) {
-		sunxi_err(&pdev->dev, "Sramecc interrupt request failed: %d\n", rc);
-		return rc;
 	}
 #endif
 

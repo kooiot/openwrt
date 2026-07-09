@@ -104,6 +104,16 @@ struct smc_tee_secure_key_addr_group {
 #define OPTEE_SMC_CRASHDUMP \
 	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_CRASHDUMP)
 
+#define OPTEE_SMC_FUNCID_AMP (31 | sunxi_smc_call_offset())
+#define OPTEE_SMC_AMP \
+	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_AMP)
+
+
+/* DRM */
+#define OPTEE_SMC_SUNXI_DRM				OPTEE_SMC_FAST_CALL_VAL(40 | sunxi_smc_call_offset())
+#define OPTEE_SMC_SUNXI_DRM__MASTER_EN_BY_TYPE		0x01
+#define OPTEE_SMC_SUNXI_DRM__QUERY			0x02
+
 #if defined(CONFIG_ARM64)
 /* cmd to call ATF service */
 #define ARM_SVC_EFUSE_PROBE_SECURE_ENABLE (0xc000fe03)
@@ -275,7 +285,7 @@ static inline int arm_svc_tee_efuse_op(phys_addr_t key_buf, phys_addr_t read_buf
 	}
 
 	/*different kernel version has different interface about cache*/
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 	flush_kernel_vmap_range(
 		(void *)smc_data_shm_va,
 		(unsigned long)((char *)smc_data_shm_va + 4096));
@@ -296,7 +306,7 @@ static inline int arm_svc_tee_efuse_op(phys_addr_t key_buf, phys_addr_t read_buf
 	}
 
 	/*different kernel version has different interface about cache*/
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 	invalidate_kernel_vmap_range(
 		(void *)smc_data_shm_va,
 		(unsigned long)((char *)smc_data_shm_va + 4096));
@@ -483,6 +493,15 @@ int sunxi_optee_call_crashdump(void)
 	return 0;
 }
 EXPORT_SYMBOL(sunxi_optee_call_crashdump);
+
+uint32_t sunxi_optee_call_amp(uint32_t cmd, uint32_t arg1, uint32_t arg2)
+{
+	struct arm_smccc_res res = { 0 };
+
+	arm_smccc_smc(OPTEE_SMC_AMP, cmd, arg1, arg2, 0, 0, 0, 0, &res);
+	return res.a0;
+}
+EXPORT_SYMBOL(sunxi_optee_call_amp);
 
 #define TEESMC_PROBE_SHM_BASE    2
 #define TEESMC_HUK_ENCRYPT       8

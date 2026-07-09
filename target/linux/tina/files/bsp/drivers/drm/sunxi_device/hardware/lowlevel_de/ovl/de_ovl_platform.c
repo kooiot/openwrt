@@ -300,8 +300,36 @@ static struct de_version_ovl de352 = {
 	.ovl = de352_ovls,
 };
 
+static struct de_ovl_dsc de212_ovls[] = {
+	{
+		.name = "vch0",
+		.id = 0,
+		.type_hw_id = 0,
+		.layer_cnt = 4,
+		.channel_base = DE_CHN_BASE_OFFSET(DE_CHN_OFFSET_BASE,
+					0, 0, 0, DE_CHN_SIZE),
+		.type = OVL_TYPE_VI,
+	},
+	{
+		.name = "uch0",
+		.id = 1,
+		.type_hw_id = 0,
+		.layer_cnt = 4,
+		.channel_base = DE_CHN_BASE_OFFSET(DE_CHN_OFFSET_BASE,
+					0, 0, 3, DE_CHN_SIZE),
+		.type = OVL_TYPE_UI,
+	},
+};
+
+
+static struct de_version_ovl de212 = {
+	.version = 0x212,
+	.ovl_cnt = ARRAY_SIZE(de212_ovls),
+	.ovl = de212_ovls,
+};
+
 static struct de_version_ovl *de_version[] = {
-	&de350, &de355, &de210, &de201, &de352,
+	&de350, &de355, &de210, &de201, &de352, &de212,
 };
 
 const struct de_ovl_dsc *get_ovl_dsc(struct module_create_info *info)
@@ -317,4 +345,3 @@ const struct de_ovl_dsc *get_ovl_dsc(struct module_create_info *info)
 	}
 	return NULL;
 }
-

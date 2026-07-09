@@ -11,8 +11,8 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-
 #include "sunxi_rproc_rsc_helper.h"
+#include "sunxi_rproc_load_partition.h"
 #include <linux/pm_domain.h>
 #include <linux/of_device.h>
 #include <linux/of_irq.h>
@@ -30,48 +30,6 @@ static const struct rsc_ops * const rsc_ops_table[] = {
 	&user_resource_ops,
 #endif
 };
-
-int load_from_file(const char *path, void *dst, size_t size)
-{
-	struct file *filp;
-	int ret, bytes = 0;
-
-	if (!path || !dst || !size)
-		return -EINVAL;
-
-	filp = filp_open(path, O_RDONLY, 0);
-	if (IS_ERR(filp))
-		return PTR_ERR(filp);
-
-	while (bytes < size) {
-		ret = kernel_read(filp, dst + bytes, size - bytes, &filp->f_pos);
-		if (ret < 0)
-			goto err_out;
-		else if (ret > 0)
-			bytes += ret;
-		else
-			break; // success ?
-	}
-
-	filp_close(filp, NULL);
-	return bytes;
-err_out:
-	filp_close(filp, NULL);
-	memset(dst, 0, size);
-	return ret;
-}
-EXPORT_SYMBOL(load_from_file);
-
-int load_from_partition(const char *partition, void *dst, size_t size)
-{
-	char path[64];
-
-	memset(path, 0, sizeof(path));
-	scnprintf(path, sizeof(path) - 1, "/dev/by-name/%s", partition);
-
-	return load_from_file(path, dst, size);
-}
-EXPORT_SYMBOL(load_from_partition);
 
 int copy_to_rproc_da(struct rproc *rproc, u64 da, const void *src, size_t size)
 {

@@ -628,8 +628,16 @@ static int sunxi_mmc_oclk_onoff(struct sunxi_mmc_host *host, u32 oclk_en)
 	}
 
 	np = mmc->parent->of_node;
+#if (defined(CONFIG_ARCH_SUN55IW3) || defined(CONFIG_ARCH_SUN60IW2)\
+		|| defined(CONFIG_ARCH_SUN55IW6) || defined(CONFIG_ARCH_SUN65IW1)\
+		|| defined(CONFIG_ARCH_SUN8IW22) || defined(CONFIG_ARCH_SUN50IW15))
+	/* use clk always on, to fix sample bug */
+	if (of_find_property(np, "sunxi-power-save-mode", &len) && host->phy_index != 2)
+		pwr_save = 1;
+#else
 	if (of_find_property(np, "sunxi-power-save-mode", &len))
 		pwr_save = 1;
+#endif
 	return __sunxi_mmc_do_oclk_onoff(host, oclk_en, pwr_save, 1);
 }
 static int sunxi_mmc_clk_set_rate_for_sdmmc_v4p5x(struct sunxi_mmc_host *host,
@@ -878,15 +886,15 @@ static void sunxi_mmc_thld_ctl_for_sdmmc_v4p5x(struct sunxi_mmc_host *host,
 		rval &= ~(SDXC_CARD_WR_THLD_ENB);
 		mmc_writel(host, REG_THLD, rval);
 	}
-
+/*
+ *    Enable thld for all speed mode to avoid stop clk in block
+ *    when stop clk in block and use sample fifo,this will lead
+ *    to DCE on ddr50
+ */
 	if ((data->flags & MMC_DATA_READ)
 	    && (bsz <= SDXC_CARD_RD_THLD_SIZE)
 	    /*((SDXC_FIFO_DETH<<2)-bsz) >= (rdtl) */
-	    && ((SDXC_FIFO_DETH << 2) >= (rdtl + bsz))
-	    && ((ios->timing == MMC_TIMING_MMC_HS200)
-		   || (ios->timing == MMC_TIMING_MMC_HS400)
-	       || (ios->timing == MMC_TIMING_UHS_SDR50)
-	       || (ios->timing == MMC_TIMING_UHS_SDR104))) {
+	    && ((SDXC_FIFO_DETH << 2) >= (rdtl + bsz))) {
 		rval = mmc_readl(host, REG_THLD);
 		rval &= ~SDXC_CARD_RD_THLD_MASK;
 		rval |= data->blksz << SDXC_CARD_RD_THLD_SIZE_SHIFT;

@@ -25,6 +25,9 @@
 #define HDR_REG_COUNT 6
 #define SNR_REG_COUNT 11
 #define ASU_REG_COUNT 9
+#define DLC_USER_PARAM_COUNT (21)
+#define DLC_CURVE_CTRL_POINT_COUNT (32)
+#define DLC_ALL_COUNT (DLC_USER_PARAM_COUNT + DLC_CURVE_CTRL_POINT_COUNT * 7 + 1)
 
 /* -- dci api -- */
 /* dci pqd ioctl para */
@@ -57,6 +60,55 @@ struct de_dci_para {
 };
 
 /* -- dci api end -- */
+
+/* -- dlc api -- */
+struct dlc_module_para {
+	unsigned int user_value[DLC_USER_PARAM_COUNT];
+	unsigned int dynamic_limit[DLC_CURVE_CTRL_POINT_COUNT];
+	unsigned int static_curvel[DLC_CURVE_CTRL_POINT_COUNT];
+	unsigned int static_curvem[DLC_CURVE_CTRL_POINT_COUNT];
+	unsigned int static_curveh[DLC_CURVE_CTRL_POINT_COUNT];
+
+	// feedback data
+	unsigned int final_curve[DLC_CURVE_CTRL_POINT_COUNT];
+	unsigned int dynamic_curve[DLC_CURVE_CTRL_POINT_COUNT];
+	unsigned int histogram[DLC_CURVE_CTRL_POINT_COUNT];
+	int apl_show;
+};
+
+/* dlc pqd ioctl para */
+typedef struct _dlc_module_param_t {
+	union {
+		int id;
+		/* enum pq_cmd */
+		int cmd;
+	};
+	union {
+		unsigned int value[DLC_ALL_COUNT];
+		struct dlc_module_para param;
+	};
+} dlc_module_param_t;
+
+/* dlc commit para */
+struct de_dlc_commit_para {
+	u8 enable;
+	u8 demo_en;
+	u8 demo_x;
+	u8 demo_y;
+	u8 demo_w;
+	u8 demo_h;
+	u32 dirty; /* enum pq_commit_dirty_mask */
+};
+
+/* dlc blob data */
+struct de_dlc_para {
+	struct de_dlc_commit_para commit;
+	dlc_module_param_t pqd;
+	/* enum pq_dirty_type_mask */
+	u32 dirty;
+};
+
+/* -- dlc api end -- */
 
 /* -- deband api -- */
 /* deband pqd ioctl para */
@@ -410,6 +462,7 @@ enum sunxi_pq_type {
 	PQ_GTM =		0xb,
 	PQ_ASU =		0xc,
 	PQ_GAMMA =		0xd,
+	PQ_DLC =		0xe,
 };
 
 enum pq_dirty_mask {
@@ -421,6 +474,7 @@ enum pq_dirty_mask {
 	SNR_DIRTY =	1 << PQ_SNR,
 	ASU_DIRTY =	1 << PQ_ASU,
 	DEBAND_DIRTY =	1 << PQ_DEBAND,
+	DLC_DIRTY =	1 << PQ_DLC,
 	PQ_ALL_DIRTY =	0xffffffff,
 };
 
@@ -441,6 +495,7 @@ struct de_frontend_data {
 	struct de_cdc_para cdc_para;
 	struct de_sharp_para sharp_para;
 	struct de_asu_para asu_para;
+	struct de_dlc_para dlc_para;
 	/* enum pq_dirty_mask */
 	u32 dirty;
 };
@@ -451,8 +506,13 @@ struct de_dither_para {
 };
 
 struct de_smbl_para {
-	u32 enable;
-	u32 dirty;
+	u8 enable;
+	u8 demo_en;
+	u8 demo_x;
+	u8 demo_y;
+	u8 demo_w;
+	u8 demo_h;
+	u32 dirty; /* enum pq_commit_dirty_mask */
 };
 
 struct de_fmt_para {
@@ -499,9 +559,11 @@ struct de_chn_mod_support {
 		struct {
 			u32 fcm:1;
 			u32 dci:1;
+			u32 dlc:1;
+			u32 gamma:1;
 			u32 sharp:1;
 			u32 snr:1;
-			u32 res:28;
+			u32 res:26;
 		} module;
 	};
 };
@@ -511,6 +573,14 @@ struct de_channel_feature {
 	u8 feature_cnt;
 	u8 layer_cnt;
 	u8 hw_id;
+};
+
+struct de_channel_linebuf_feature {
+	u32 scaler_lbuffer_yuv;
+	u32 scaler_lbuffer_rgb;
+	u32 scaler_lbuffer_yuv_ed;
+	u8 afbc_rotate_support;
+	u32 limit_afbc_rotate_height;
 };
 
 struct de_disp_mod_support {

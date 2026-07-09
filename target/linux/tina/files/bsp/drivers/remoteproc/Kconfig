@@ -58,6 +58,13 @@ config AW_RPROC_SUBDEV
 	help
 	  Say y here to support subdev for Allwinner remote processor.
 
+config AW_RPROC_SUBDEV_BOOT_REASON
+	bool "Allwinner remoteproc boot reason subdev support"
+	depends on AW_RPROC_SUBDEV
+	default n
+	help
+	  Say y here to support boot reason subdev for Allwinner remote processor.
+
 config AW_RPROC_SUBDEV_WDT
 	bool "Allwinner remoteproc wdt subdev support"
 	depends on AW_RPROC_SUBDEV
@@ -143,11 +150,26 @@ config AW_REMOTEPROC_E907_ECC_ENABLE
 	help
 	  Say y here to support e907 ecc function
 
-config AW_REMOTEPROC_ARM64_BOOT
-	tristate "Allwinner remoteproc arm64 boot"
+config AW_REMOTEPROC_ARM_BOOT
+	tristate "Allwinner remoteproc arm boot"
 	depends on AW_REMOTEPROC
 	default n
 	help
-	  Say y here to support Allwinner SOC processors arm64 via
+	  Say y here to support Allwinner SOC processors arm via
 	  remote processor framework.
+
+config AW_REMOTEPROC_E907_AXI_MONITOR
+	tristate "Allwinner remoteproc e90X axi monitor funtion enable"
+	depends on AW_REMOTEPROC && AW_REMOTEPROC_E907_BOOT
+	default n
+	help
+	  Say y here to support e907 axi monitor function
+
+config AW_REMOTEPROC_UBI_PATH_TRANSFER
+	tristate "Allwinner remoteproc ubi path transfer funtion enable"
+	depends on AW_REMOTEPROC
+	default y
+	help
+	  Say y here to support ubi path transfer function
+
 endmenu

@@ -1,51 +1,48 @@
-/* -*- mode: c; indent-tabs-mode: t; c-basic-offset: 8; tab-width: 8 -*- */
-/* vi: set ts=8 sw=8 sts=8: */
-/*************************************************************************/ /*!
-@File
-@Codingstyle    LinuxKernel
-@Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
-@License        Dual MIT/GPLv2
-
-The contents of this file are subject to the MIT license as set out below.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-Alternatively, the contents of this file may be used under the terms of
-the GNU General Public License Version 2 ("GPL") in which case the provisions
-of GPL are applicable instead of those above.
-
-If you wish to allow use of your version of this file only under the terms of
-GPL, and not to allow others to use your version of this file under the terms
-of the MIT license, indicate your decision by deleting the provisions above
-and replace them with the notice and other provisions required by GPL as set
-out in the file called "GPL-COPYING" included in this distribution. If you do
-not delete the provisions above, a recipient may use your version of this file
-under the terms of either the MIT license or GPL.
-
-This License is also included in this distribution in the file called
-"MIT-COPYING".
-
-EXCEPT AS OTHERWISE STATED IN A NEGOTIATED AGREEMENT: (A) THE SOFTWARE IS
-PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
-BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE AND NONINFRINGEMENT; AND (B) IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/ /**************************************************************************/
+/*
+ * @File
+ * @Codingstyle LinuxKernel
+ * @Copyright   Copyright (c) Imagination Technologies Ltd. All Rights Reserved
+ * @License     Dual MIT/GPLv2
+ *
+ * The contents of this file are subject to the MIT license as set out below.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * Alternatively, the contents of this file may be used under the terms of
+ * the GNU General Public License Version 2 ("GPL") in which case the provisions
+ * of GPL are applicable instead of those above.
+ *
+ * If you wish to allow use of your version of this file only under the terms of
+ * GPL, and not to allow others to use your version of this file under the terms
+ * of the MIT license, indicate your decision by deleting the provisions above
+ * and replace them with the notice and other provisions required by GPL as set
+ * out in the file called "GPL-COPYING" included in this distribution. If you do
+ * not delete the provisions above, a recipient may use your version of this file
+ * under the terms of either the MIT license or GPL.
+ *
+ * This License is also included in this distribution in the file called
+ * "MIT-COPYING".
+ *
+ * EXCEPT AS OTHERWISE STATED IN A NEGOTIATED AGREEMENT: (A) THE SOFTWARE IS
+ * PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+ * BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+ * PURPOSE AND NONINFRINGEMENT; AND (B) IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 
 #include <linux/atomic.h>
 #include <linux/mm_types.h>
 #include <linux/dma-buf.h>
-#include <linux/reservation.h>
 #include <linux/dma-mapping.h>
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
@@ -53,6 +50,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <linux/mutex.h>
 #include <linux/capability.h>
 
+#include "pvr_dma_resv.h"
 #include "drm_nulldisp_gem.h"
 #include "nulldisp_drm.h"
 #include "kernel_compatibility.h"
@@ -62,10 +60,12 @@ struct nulldisp_gem_object {
 
 	atomic_t pg_refcnt;
 	struct page **pages;
-	dma_addr_t *addrs;
+	dma_addr_t *addrs; /* Will be NULL for imported buffers. */
 
-	struct reservation_object _resv;
-	struct reservation_object *resv;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0))
+	struct dma_resv _resv;
+#endif
+	struct dma_resv *resv;
 
 	bool cpu_prep;
 	struct sg_table *import_sgt;
@@ -150,7 +150,7 @@ static void nulldisp_gem_object_put_pages(struct drm_gem_object *obj)
 }
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0))
-int nulldisp_gem_object_vm_fault(struct vm_fault *vmf)
+vm_fault_t nulldisp_gem_object_vm_fault(struct vm_fault *vmf)
 #else
 int nulldisp_gem_object_vm_fault(struct vm_area_struct *vma,
 				 struct vm_fault *vmf)
@@ -223,11 +223,12 @@ void nulldisp_gem_object_free(struct drm_gem_object *obj)
 
 	if (obj->import_attach) {
 		kfree(nulldisp_obj->pages);
-		kfree(nulldisp_obj->addrs);
 		drm_gem_free_mmap_offset(obj);
 		drm_prime_gem_destroy(obj, nulldisp_obj->import_sgt);
 	} else {
-		reservation_object_fini(nulldisp_obj->resv);
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0))
+		dma_resv_fini(&nulldisp_obj->_resv);
+#endif
 		drm_gem_object_release(obj);
 	}
 
@@ -268,7 +269,7 @@ nulldisp_gem_prime_get_sg_table(struct drm_gem_object *obj)
 	if (WARN_ON(atomic_read(&nulldisp_obj->pg_refcnt) == 0))
 		return NULL;
 
-	return drm_prime_pages_to_sg(nulldisp_obj->pages, nr_pages);
+	return drm_prime_pages_to_sg(obj->dev, nulldisp_obj->pages, nr_pages);
 }
 
 struct drm_gem_object *
@@ -283,7 +284,6 @@ nulldisp_gem_prime_import_sg_table(struct drm_device *dev,
 	struct nulldisp_gem_object *nulldisp_obj;
 	struct drm_gem_object *obj;
 	struct page **pages;
-	dma_addr_t *addrs;
 	unsigned int npages;
 
 	nulldisp_obj = kzalloc(sizeof(*nulldisp_obj), GFP_KERNEL);
@@ -291,35 +291,39 @@ nulldisp_gem_prime_import_sg_table(struct drm_device *dev,
 		return NULL;
 
 	nulldisp_obj->resv = attach->dmabuf->resv;
+
 	obj = &nulldisp_obj->base;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 2, 0))
+	obj->resv = nulldisp_obj->resv;
+#endif
 
 	drm_gem_private_object_init(dev, obj, attach->dmabuf->size);
 
 	npages = obj->size >> PAGE_SHIFT;
 
 	pages = kmalloc_array(npages, sizeof(*pages), GFP_KERNEL);
-	addrs = kmalloc_array(npages, sizeof(*addrs), GFP_KERNEL);
-	if (!pages || !addrs)
+	if (!pages)
 		goto exit_free_arrays;
 
-	if (drm_prime_sg_to_page_addr_arrays(sgt, pages, addrs, npages))
+	if (drm_prime_sg_to_page_array(sgt, pages, npages))
 		goto exit_free_arrays;
 
 	nulldisp_obj->import_sgt = sgt;
 	nulldisp_obj->pages = pages;
-	nulldisp_obj->addrs = addrs;
+	nulldisp_obj->addrs = NULL;
 
 	return obj;
 
 exit_free_arrays:
 	kfree(pages);
-	kfree(addrs);
 	drm_prime_gem_destroy(obj, sgt);
 	kfree(nulldisp_obj);
 	return NULL;
 }
 
-struct dma_buf *nulldisp_gem_prime_export(struct drm_device *dev,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0))
+struct dma_buf *nulldisp_gem_prime_export(
+					  struct drm_device *dev,
 					  struct drm_gem_object *obj,
 					  int flags)
 {
@@ -329,8 +333,9 @@ struct dma_buf *nulldisp_gem_prime_export(struct drm_device *dev,
 #endif
 	return drm_gem_prime_export(dev, obj, flags);
 }
+#endif
 
-void *nulldisp_gem_prime_vmap(struct drm_gem_object *obj)
+static void *nulldisp_gem_vmap(struct drm_gem_object *obj)
 {
 	struct nulldisp_gem_object *nulldisp_obj = to_nulldisp_obj(obj);
 	int nr_pages = obj->size >> PAGE_SHIFT;
@@ -343,13 +348,39 @@ void *nulldisp_gem_prime_vmap(struct drm_gem_object *obj)
 		return NULL;
 
 
-	return vmap(nulldisp_obj->pages, nr_pages, 0, PAGE_KERNEL);
+	return vmap(nulldisp_obj->pages, nr_pages, VM_MAP, PAGE_KERNEL);
+}
+
+static void nulldisp_gem_vunmap(struct drm_gem_object *obj, void *vaddr)
+{
+	vunmap(vaddr);
+}
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0))
+void *nulldisp_gem_prime_vmap(struct drm_gem_object *obj)
+{
+	return nulldisp_gem_vmap(obj);
 }
 
 void nulldisp_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr)
 {
-	vunmap(vaddr);
+	nulldisp_gem_vunmap(obj, vaddr);
 }
+#else
+int nulldisp_gem_prime_vmap(struct drm_gem_object *obj, struct iosys_map *map)
+{
+	void *vaddr = nulldisp_gem_vmap(obj);
+
+	iosys_map_set_vaddr_iomem(map, vaddr);
+	return (vaddr == NULL) ? -ENOMEM : 0;
+}
+
+void nulldisp_gem_prime_vunmap(struct drm_gem_object *obj, struct iosys_map *map)
+{
+	nulldisp_gem_vunmap(obj, map->vaddr);
+	iosys_map_clear(map);
+}
+#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0) */
 
 int nulldisp_gem_prime_mmap(struct drm_gem_object *obj,
 			    struct vm_area_struct *vma)
@@ -365,13 +396,15 @@ int nulldisp_gem_prime_mmap(struct drm_gem_object *obj,
 	return err;
 }
 
-struct reservation_object *
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0))
+struct dma_resv *
 nulldisp_gem_prime_res_obj(struct drm_gem_object *obj)
 {
 	struct nulldisp_gem_object *nulldisp_obj = to_nulldisp_obj(obj);
 
 	return nulldisp_obj->resv;
 }
+#endif
 
 int nulldisp_gem_object_mmap_ioctl(struct drm_device *dev, void *data,
 				   struct drm_file *file)
@@ -430,12 +463,12 @@ int nulldisp_gem_object_cpu_prep_ioctl(struct drm_device *dev, void *data,
 	if (wait) {
 		long lerr;
 
-		lerr = reservation_object_wait_timeout_rcu(nulldisp_obj->resv,
-							   write,
-							   true,
-							   30 * HZ);
+		lerr = dma_resv_wait_timeout(nulldisp_obj->resv,
+						 write,
+						 true,
+						 30 * HZ);
 
-		/* remap return value (0 indicates busy state, > 0 success) */
+		/* Remap return value (0 indicates busy state, > 0 success) */
 		if (lerr > 0)
 			err = 0;
 		else if (!lerr)
@@ -443,9 +476,12 @@ int nulldisp_gem_object_cpu_prep_ioctl(struct drm_device *dev, void *data,
 		else
 			err = lerr;
 	} else {
-		/* remap return value (false indicates busy state, true success) */
-		if (!reservation_object_test_signaled_rcu(nulldisp_obj->resv,
-							  write))
+		/*
+		 * Remap return value (false indicates busy state,
+		 * true success).
+		 */
+		if (!dma_resv_test_signaled(nulldisp_obj->resv,
+						write))
 			err = -EBUSY;
 		else
 			err = 0;
@@ -454,7 +490,7 @@ int nulldisp_gem_object_cpu_prep_ioctl(struct drm_device *dev, void *data,
 	if (!err)
 		nulldisp_obj->cpu_prep = true;
 exit_unref:
-	drm_gem_object_put_unlocked(obj);
+	drm_gem_object_put(obj);
 exit_unlock:
 	mutex_unlock(&dev->struct_mutex);
 	return err;
@@ -493,7 +529,7 @@ int nulldisp_gem_object_cpu_fini_ioctl(struct drm_device *dev, void *data,
 	nulldisp_obj->cpu_prep = false;
 	err = 0;
 exit_unref:
-	drm_gem_object_put_unlocked(obj);
+	drm_gem_object_put(obj);
 exit_unlock:
 	mutex_unlock(&dev->struct_mutex);
 	return err;
@@ -513,8 +549,10 @@ static int nulldisp_gem_object_create_priv(struct drm_file *file,
 	if (!nulldisp_obj)
 		return -ENOMEM;
 
-	nulldisp_obj->resv = &nulldisp_obj->_resv;
 	obj = &nulldisp_obj->base;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0))
+	obj->funcs = &nulldisp_gem_funcs;
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0) */
 
 	err = drm_gem_object_init(dev, obj, size);
 	if (err) {
@@ -523,15 +561,25 @@ static int nulldisp_gem_object_create_priv(struct drm_file *file,
 	}
 
 	mapping = file_inode(obj->filp)->i_mapping;
-	mapping_set_gfp_mask(mapping, GFP_USER | __GFP_DMA32 | __GFP_NORETRY);
+	mapping_set_gfp_mask(mapping, GFP_USER |
+#if !defined(NULLDISP_PHYS_BUS_WIDTH) || NULLDISP_PHYS_BUS_WIDTH <= 32
+				      __GFP_DMA32 |
+#endif
+				      __GFP_NORETRY);
 
 	err = drm_gem_handle_create(file, obj, handle);
 	if (err)
 		goto exit;
 
-	reservation_object_init(nulldisp_obj->resv);
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0))
+	dma_resv_init(&nulldisp_obj->_resv);
+	nulldisp_obj->resv = &nulldisp_obj->_resv;
+#else
+	nulldisp_obj->resv = nulldisp_obj->base.resv;
+#endif
+
 exit:
-	drm_gem_object_put_unlocked(obj);
+	drm_gem_object_put(obj);
 	return err;
 }
 
@@ -608,13 +656,13 @@ int nulldisp_gem_dumb_map_offset(struct drm_file *file,
 	*offset = drm_vma_node_offset_addr(&obj->vma_node);
 
 exit_obj_unref:
-	drm_gem_object_put_unlocked(obj);
+	drm_gem_object_put(obj);
 exit_unlock:
 	mutex_unlock(&dev->struct_mutex);
 	return err;
 }
 
-struct reservation_object *nulldisp_gem_get_resv(struct drm_gem_object *obj)
+struct dma_resv *nulldisp_gem_get_resv(struct drm_gem_object *obj)
 {
 	return (to_nulldisp_obj(obj)->resv);
 }

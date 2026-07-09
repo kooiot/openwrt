@@ -25,6 +25,17 @@
 #include "isp522_reg_cfg.h"
 
 #define ISP522_MAX_NUM 2
+
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW22)
+int isp_virtual_find_sel[ISP522_MAX_NUM + 2] = {
+	0, 0, 2, 3,
+};
+
+int isp_ch_find[ISP522_MAX_NUM + 2] = {
+	0, 0, 0, 0,
+};
+#endif
+
 /* #define USE_DEF_PARA */
 
 /*

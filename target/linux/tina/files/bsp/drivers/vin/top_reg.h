@@ -48,6 +48,8 @@ struct csic_version {
 };
 
 enum ptn_port_sel {
+	NCSIC1 = 0x3,
+	NCSIC2 = 0x4,
 	NCSIC3 = 0x5,
 	COMBO = 0x6,
 };
@@ -136,13 +138,22 @@ void csic_top_f2s0_bridge_en(unsigned int sel, unsigned int en, unsigned int id)
 void csic_top_s2f0_bridge_en(unsigned int sel, unsigned int en, unsigned int id);
 void csic_top_isp_bridge_ch_enable(unsigned int sel);
 void csic_top_isp_bridge_ch_disable(unsigned int sel);
+void csic_top_isp1_bridge_ch_enable(unsigned int sel);
+void csic_top_isp1_bridge_ch_disable(unsigned int sel);
+void csic_top_f2s1_bridge_en(unsigned int sel, unsigned int en, unsigned int id);
+void csic_top_s2f1_bridge_en(unsigned int sel, unsigned int en, unsigned int id);
 void csic_top_version_read_en(unsigned int sel, unsigned int en);
 void csic_isp_input_select(unsigned int sel, unsigned int isp, unsigned int in,
 				unsigned int psr, unsigned int ch);
 void csic_vipp_input_select(unsigned int sel, unsigned int vipp,
 				unsigned int isp, unsigned int ch);
+#if !defined VIPP_ALLMASK_BK
 void csic_dma_input_select(unsigned int sel, unsigned int dma,
 				unsigned int parser, unsigned int ch);
+#else
+void csic_dma_input_select(unsigned int sel, unsigned int dma,
+				unsigned int vipp);
+#endif
 void csic_feature_list_get(unsigned int sel, struct csic_feature_list *fl);
 void csic_version_get(unsigned int sel, struct csic_version *v);
 void csic_mbus_req_mex_set(unsigned int sel, unsigned int data);
@@ -175,14 +186,21 @@ void csic_ccu_bk_intpool_clock_control(unsigned int m, unsigned int n);
 void csic_ccu_clk_gating_enable(void);
 void csic_ccu_clk_gating_disable(void);
 void csic_ccu_mcsi_clk_mode(unsigned int mode);
+void csic_ccu_mcsi_hclk_autogate_enable(void);
+void csic_ccu_mcsi_hclk_autogate_disable(void);
+void csic_ccu_mcsi_hclk_autogate_cycle_set(unsigned int cycle);
 void csic_ccu_mcsi_combo_clk_en(unsigned int sel, unsigned int en);
 void csic_ccu_mcsi_mipi_clk_en(unsigned int sel, unsigned int en);
 void csic_ccu_mcsi_parser_clk_en(unsigned int sel, unsigned int en);
 void csic_ccu_misp_isp_clk_en(unsigned int sel, unsigned int en);
 void csic_ccu_misp_bridge_clk_gating_enable(void);
 void csic_ccu_misp_bridge_clk_gating_disable(void);
+void csic_ccu_misp1_bridge_clk_gating_enable(void);
+void csic_ccu_misp1_bridge_clk_gating_disable(void);
 void csic_ccu_f2s0_bridge_clk_en(unsigned int en, unsigned int id);
 void csic_ccu_s2f0_bridge_clk_en(unsigned int en, unsigned int id);
+void csic_ccu_f2s1_bridge_clk_en(unsigned int en, unsigned int id);
+void csic_ccu_s2f1_bridge_clk_en(unsigned int en, unsigned int id);
 void csic_ccu_mcsi_post_clk_enable(unsigned int sel);
 void csic_ccu_mcsi_post_clk_disable(unsigned int sel);
 void csic_ccu_bk_clk_en(unsigned int sel, unsigned int en);

@@ -128,7 +128,9 @@ typedef enum {
 
 	/* Flag set when Drop Oldest is set and packets have been dropped */
 	TL_FLAG_OVERWRITE_DETECTED = (1 << 0),
-
+	/* Prevents DoTLStreamReserve() from adding from injecting
+	 * PVRSRVTL_PACKETTYPE_MOST_RECENT_WRITE_FAILED */
+	TL_FLAG_NO_WRITE_FAILED = (1 << 1),
 } TL_Flags;
 
 static_assert(TL_OPMODE_LAST <= TL_OPMODE_MASK,
@@ -209,8 +211,6 @@ TLFreeSharedMem(IMG_HANDLE hStream);
 				used. This ensures the resources of a stream are released when
 				it is no longer required.
  @Output        phStream        Pointer to handle to store the new stream.
- @Input			psDevNode       Pointer to the Device Node to be used for
-                                stream allocation.
  @Input         szStreamName    Name of stream, maximum length:
                                 PRVSRVTL_MAX_STREAM_NAME_SIZE.
                                 If a longer string is provided,creation fails.
@@ -234,7 +234,6 @@ TLFreeSharedMem(IMG_HANDLE hStream);
 */ /**************************************************************************/
 PVRSRV_ERROR
 TLStreamCreate(IMG_HANDLE *phStream,
-               PVRSRV_DEVICE_NODE *psDevNode,
                const IMG_CHAR *szStreamName,
                IMG_UINT32 ui32Size,
                IMG_UINT32 ui32StreamFlags,
@@ -379,6 +378,8 @@ TLStreamReserve(IMG_HANDLE hStream,
                                   suggestion is returned in this argument which
                                   the caller can attempt to reserve again for a
                                   successful allocation.
+ @Output        pbIsReaderConnected Let writing clients know if reader is
+                                    connected or not, in case of error.
  @Return        PVRSRV_INVALID_PARAMS        NULL stream handler.
  @Return        PVRSRV_ERROR_NOT_READY       There are data previously reserved
                                              that are pending to be committed.
@@ -404,7 +405,8 @@ TLStreamReserve2(IMG_HANDLE hStream,
                 IMG_UINT8  **ppui8Data,
                 IMG_UINT32 ui32Size,
                 IMG_UINT32 ui32SizeMin,
-                IMG_UINT32* pui32Available);
+                IMG_UINT32* pui32Available,
+                IMG_BOOL* pbIsReaderConnected);
 
 /*************************************************************************/ /*!
  @Function      TLStreamReserveReturnFlags

@@ -37,15 +37,29 @@ struct scaler_dev *glb_vipp[VIN_MAX_SCALER];
 
 #define MIN_OUT_WIDTH			16
 #define MIN_OUT_HEIGHT			10
+
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW22)/* SUN8IW22 vipp output limited to 720p */
+#define MAX_OUT_WIDTH			1280
+#define MAX_OUT_HEIGHT			720
+#else
 #define MAX_OUT_WIDTH			4224
 #define MAX_OUT_HEIGHT			4224
+#endif
 
 #define MIN_RATIO			256
+#if defined VIPP_213
+#define MAX_RATIO			(8 * 256)
+#define MIN_BILINEAR_RATIO		(4096)
+#define MAX_BILINEAR_RATIO		(64 * 4096)
+#else /*VIPP_200&VIPP_100*/
 #if IS_ENABLED(CONFIG_ARCH_SUN8IW12P1) || IS_ENABLED(CONFIG_ARCH_SUN8IW15P1) || IS_ENABLED(CONFIG_ARCH_SUN8IW16P1) || IS_ENABLED(CONFIG_ARCH_SUN8IW17P1)
-#define MAX_RATIO			2048
+#define MAX_RATIO			(8 * 256)
 #else
-#define MAX_RATIO			4096
+#define MAX_RATIO			(16 * 256)
 #endif
+#endif
+
+#define MAX_DS_RATIO		8
 
 static void __scaler_try_crop(const struct v4l2_mbus_framefmt *sink,
 			    const struct v4l2_mbus_framefmt *source,
@@ -58,13 +72,166 @@ static void __scaler_try_crop(const struct v4l2_mbus_framefmt *sink,
 	crop->height = clamp_t(u32, crop->height, source->height, sink->height - crop->top);
 }
 
-static int __scaler_w_shift(int x_ratio, int y_ratio)
+#if defined VIPP_213
+static int __scaler_w_shift_y(int x_ratio, int y_ratio, int sc_ratio_precision)
+{
+	int m, n;
+	unsigned int sum_weight = 0;
+	int weight_shift;
+	int precision = sc_ratio_precision + 8;
+	int xr = (x_ratio >> precision) + 1;
+	int yr = (y_ratio >> precision) + 1;
+	int weight_shift_bak = 0;
+
+	weight_shift = -9;
+	for (weight_shift = 17; weight_shift > 0; weight_shift--) {
+		sum_weight = 0;
+		for (m = 0; m <= xr; m++) {
+			for (n = 0; n <= yr; n++) {
+				sum_weight += (y_ratio - abs((n << precision) - (yr << (precision - 1)))) *
+					(x_ratio - abs((m << precision) - (xr << (precision - 1)))) >> (weight_shift + precision);
+			}
+		}
+		if (sum_weight > 0 && sum_weight < 128)
+			weight_shift_bak = weight_shift;
+		if (sum_weight > 127 && sum_weight < 240)
+			break;
+	}
+	if (weight_shift == 0)
+		weight_shift = weight_shift_bak;
+
+	return weight_shift;
+}
+
+static void __y_start_stop_buf(int y_ratio, int out_height, int sc_ratio_precision, unsigned int *y_start_buf, unsigned int *y_stop_buf)
+{
+	int y_core = 0, y_start = 0, y_stop = 0;
+	int precision = sc_ratio_precision + 8;
+	int i = 0;
+
+	for (i = 0; i < out_height; i++) {
+		y_stop = (y_core + (y_ratio >> 1) + (1 << (precision - 1))) >> precision;
+
+		if (y_ratio == (1 << precision)) {
+			y_start = y_stop = y_core >> precision;
+		}
+
+		y_start_buf[i] = y_start;
+		y_stop_buf[i] = (y_ratio == (1 << precision)) ? y_core : (y_core + (y_ratio >> 1));
+
+		y_core += y_ratio;
+		y_start = y_stop;
+	}
+}
+
+static int __min_scale_w_shift_c(int x_ratio, int y_ratio, int out_width, int out_height, int weight_shift, int sc_ratio_precision)
+{
+	int weight = 0;
+	int sum_weight = 0;
+	int x_core = 0, x_start = 0, x_stop = 0;
+	int y_core = 0, y_start = 0, y_stop = 0;
+	int weight_shift_c = 0;
+	int sum_weight_max = 0;
+	int sum_weight_limit = 0;
+	int i = 0, j = 0, m = 0, n = 0;
+	unsigned int *y_start_buf;
+	unsigned int *y_stop_buf;
+	int precision = sc_ratio_precision + 8;
+
+	y_start_buf = kzalloc(sizeof(unsigned int) * out_width, GFP_KERNEL);
+	y_stop_buf = kzalloc(sizeof(unsigned int) * out_width, GFP_KERNEL);
+	__y_start_stop_buf(y_ratio, out_height, sc_ratio_precision, y_start_buf, y_stop_buf);
+
+	sum_weight_limit = 255;
+	sum_weight_max = 256;
+	weight_shift_c = weight_shift;
+
+	while (sum_weight_max > sum_weight_limit) {
+		weight = 0;
+		sum_weight = 0;
+		sum_weight_max = 0;
+		x_core = 0, x_start = 0, x_stop = 0;
+		y_core = 0, y_start = 0, y_stop = 0;
+		for (i = 0; i < (out_height >> 1); i++) {
+			y_stop = (y_core + (y_ratio) + (1 << (precision - 1))) >> precision;
+
+			if (y_ratio != (1 << precision)) {
+				y_core = y_stop_buf[(i * 2)];
+				y_stop = (y_stop_buf[((i * 2) + 1)] + (1 << (precision - 1))) >> precision;
+			}
+
+			x_core = 0;
+			x_start = 0;
+			for (j = 0; j < (out_width >> 1); j++) {
+				x_stop = (x_core + (x_ratio >> 1) + (1 << (precision - 1))) >> precision;
+				if (x_ratio == (1 << precision)) {
+					x_start = x_stop = (x_core >> precision);
+				}
+				sum_weight = 0;
+
+				for (m = y_start; m <= y_stop; m++) {
+					for (n = x_start; n <= x_stop; n++) {
+						weight =
+							((x_ratio - abs((n << precision) - x_core)) * ((y_ratio << 1) - abs((m << precision) - y_core))) >> precision;
+						weight >>= weight_shift_c;
+						sum_weight += weight;
+					}
+				}
+				if (sum_weight > sum_weight_max)
+					sum_weight_max = sum_weight;
+
+				if (sum_weight_max > sum_weight_limit) {
+					break;
+				}
+				x_core += x_ratio;
+				x_start = x_stop;
+			}
+
+			y_core += (y_ratio << 1);
+			y_start = y_stop;
+			if (sum_weight_max > sum_weight_limit) {
+				weight_shift_c++;
+				break;
+			}
+		}
+	}
+
+	kfree(y_start_buf);
+	kfree(y_stop_buf);
+
+	return weight_shift_c;
+}
+
+static void __bilinear_calc_cfg(int x_ratio, int y_ratio, int *phase_x, int *phase_y)
+{
+	*phase_x = x_ratio / 2 - (1 << (12 - 1));
+	*phase_y = y_ratio / 2 - (1 << (12 - 1));
+}
+
+unsigned int __judge_vipp_mode(int id, unsigned int mode)
+{
+	int ret = 0;
+
+	if (vipp_virtual_find_sel[id] == 0) {
+		ret = SCALER0_MODE_SUPPORT & mode;
+	} else if (vipp_virtual_find_sel[id] == 1) {
+		ret = SCALER1_MODE_SUPPORT & mode;
+	} else if (vipp_virtual_find_sel[id] == 2) {
+		ret = SCALER2_MODE_SUPPORT & mode;
+	} else if (vipp_virtual_find_sel[id] == 3) {
+		ret = SCALER3_MODE_SUPPORT & mode;
+	}
+
+	return ret;
+}
+#else /* VIPP_100&VIPP_200 */
+static int __scaler_w_shift(int x_ratio, int y_ratio, int precision)
 {
 	int m, n;
 	int sum_weight = 0;
 	int weight_shift;
-	int xr = (x_ratio >> 8) + 1;
-	int yr = (y_ratio >> 8) + 1;
+	int xr = (x_ratio >> (8 + precision)) + 1;
+	int yr = (y_ratio >> (8 + precision)) + 1;
 
 #if IS_ENABLED(CONFIG_ARCH_SUN8IW19P1) || IS_ENABLED(CONFIG_ARCH_SUN50IW10) || defined VIPP_200
 	int weight_shift_bak = 0;
@@ -101,6 +268,7 @@ static int __scaler_w_shift(int x_ratio, int y_ratio)
 #endif
 	return weight_shift;
 }
+#endif
 
 static void __scaler_calc_ratios(struct scaler_dev *scaler,
 			       struct v4l2_rect *input,
@@ -110,15 +278,130 @@ static void __scaler_calc_ratios(struct scaler_dev *scaler,
 	unsigned int width;
 	unsigned int height;
 	unsigned int r_min;
+	__maybe_unused unsigned int xrt, yrt, bratio;
+	__maybe_unused unsigned int min_ratio, max_ratio;
 
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW22) /* SUN8IW22 vipp output limited to 720p */
+	if (input->width > MAX_OUT_WIDTH)
+		output->width = clamp_t(u32, output->width, MIN_OUT_WIDTH, MAX_OUT_WIDTH);
+	else
+		output->width = clamp_t(u32, output->width, MIN_OUT_WIDTH, input->width);
+
+	if (input->height > MAX_OUT_HEIGHT)
+		output->height = clamp_t(u32, output->height, MIN_OUT_HEIGHT, MAX_OUT_HEIGHT);
+	else
+		output->height = clamp_t(u32, output->height, MIN_OUT_HEIGHT, input->height);
+
+#else
 	output->width = clamp_t(u32, output->width, MIN_OUT_WIDTH, input->width);
 	output->height = clamp_t(u32, output->height, MIN_OUT_HEIGHT, input->height);
+#endif
 
+#if defined VIPP_213
+	xrt = DIV_ROUND_UP(input->width, output->width);
+	yrt = DIV_ROUND_UP(input->height, output->height);
+	if (min(xrt, yrt) <= SCALER_DOWN_2 && __judge_vipp_mode(scaler->id, VIPP_SCALER | VIPP_ALL_NOT)) {
+		bratio = 1024;
+		para->ratio_precision = 2;
+		para->sc_en = 1;
+		para->nearest_en = 0;
+		para->bilinear_en = 0;
+		min_ratio = 1024;
+		max_ratio = MAX_RATIO;
+	} else if (min(xrt, yrt) <= SCALER_DOWN_1 && __judge_vipp_mode(scaler->id, VIPP_SCALER)) {
+		bratio = 512;
+		para->ratio_precision = 1;
+		para->sc_en = 1;
+		para->nearest_en = 0;
+		para->bilinear_en = 0;
+		min_ratio = 512;
+		max_ratio = MAX_RATIO;
+	} else if (min(xrt, yrt) <= SCALER_DOWN_0 && __judge_vipp_mode(scaler->id, VIPP_SCALER)) {
+		bratio = 256;
+		para->ratio_precision = 0;
+		para->sc_en = 1;
+		para->nearest_en = 0;
+		para->bilinear_en = 0;
+		min_ratio = 256;
+		max_ratio = MAX_RATIO;
+	} else if (__judge_vipp_mode(scaler->id, VIPP_BILINEAR)) {
+		bratio = 4096;
+		para->ratio_precision = 0;
+		para->sc_en = 0;
+		para->nearest_en = 0;
+		para->bilinear_en = 1;
+		min_ratio = MIN_BILINEAR_RATIO;
+		max_ratio = MAX_BILINEAR_RATIO;
+	} else if (__judge_vipp_mode(scaler->id, VIPP_NEARNEST)) {
+		bratio = 4096;
+		para->ratio_precision = 0;
+		para->sc_en = 0;
+		para->nearest_en = 1;
+		para->bilinear_en = 0;
+		min_ratio = MIN_BILINEAR_RATIO;
+		max_ratio = MAX_BILINEAR_RATIO;
+	} else {
+		bratio = 256;
+		para->ratio_precision = 0;
+		para->sc_en = 1;
+		para->nearest_en = 0;
+		para->bilinear_en = 0;
+		min_ratio = 256;
+		max_ratio = MAX_RATIO;
+	}
+	para->xratio = bratio * input->width / output->width;
+	para->yratio = bratio * input->height / output->height;
+	para->xratio = clamp_t(u32, para->xratio, min_ratio, max_ratio);
+	para->yratio = clamp_t(u32, para->yratio, min_ratio, max_ratio);
+	r_min = min(para->xratio, para->yratio);
+
+	if (scaler->large_image >= 3)
+		width = ALIGN(min(output->width * r_min / bratio, input->width), 4);
+	else
+		width = ALIGN(min(output->width * r_min / bratio, input->width), 2);
+	height = ALIGN(min(output->height * r_min / bratio, input->height), 2);
+	para->xratio = bratio * width / output->width;
+	para->yratio = bratio * height / output->height;
+	para->xratio = clamp_t(u32, para->xratio, min_ratio, max_ratio);
+	para->yratio = clamp_t(u32, para->yratio, min_ratio, max_ratio);
+	para->width = output->width;
+	para->height = output->height;
+	vin_log(VIN_LOG_SCALER, "para: br = %d, xr = %d, yr = %d, w = %d, h = %d\n",
+		  bratio, para->xratio, para->yratio, para->width, para->height);
+	if (__judge_vipp_mode(scaler->id, VIPP_ALL_NOT)) {
+		if (para->xratio != min_ratio || para->yratio != min_ratio)
+			vin_warn("vipp%d not support scaler\n", scaler->id);
+		para->sc_en = 0;
+		para->nearest_en = 0;
+		para->bilinear_en = 0;
+	}
+	/* Center the new crop rectangle.
+	 * crop is before scaler
+	 */
+	input->left += (input->width - width) / 2;
+	input->top += (input->height - height) / 2;
+	input->left = ALIGN(input->left, 2);
+	input->top = ALIGN(input->top, 1);
+	input->width = width;
+	input->height = height;
+#else/* VIPP_200&VIPP_100 */
 	para->xratio = 256 * input->width / output->width;
 	para->yratio = 256 * input->height / output->height;
+	para->ratio_precision = 0;
+
+// #if IS_ENABLED(CONFIG_ARCH_SUN65IW1)
+// 	/* only vipp3 suporrt downsample */
+// 	if (scaler->id / 12 == 1) {
+// 		para->xratio = clamp_t(u32, para->xratio, MIN_RATIO, MAX_DS_RATIO*MAX_RATIO);
+// 		para->yratio = clamp_t(u32, para->yratio, MIN_RATIO, MAX_DS_RATIO*MAX_RATIO);
+// 	} else {
+// 		para->xratio = clamp_t(u32, para->xratio, MIN_RATIO, MAX_RATIO);
+// 		para->yratio = clamp_t(u32, para->yratio, MIN_RATIO, MAX_RATIO);
+// 	}
+// #else
 	para->xratio = clamp_t(u32, para->xratio, MIN_RATIO, MAX_RATIO);
 	para->yratio = clamp_t(u32, para->yratio, MIN_RATIO, MAX_RATIO);
-
+//#endif
 	r_min = min(para->xratio, para->yratio);
 #ifdef CROP_AFTER_SCALER
 	width = ALIGN(256 * input->width / r_min, 4);
@@ -135,7 +418,7 @@ static void __scaler_calc_ratios(struct scaler_dev *scaler,
 	output->width = width;
 	output->height = height;
 #else
-	if (scaler->large_image == 3)
+	if (scaler->large_image >= 3)
 		width = ALIGN(min(output->width * r_min / 256, input->width), 4);
 	else
 		width = ALIGN(min(output->width * r_min / 256, input->width), 2);
@@ -148,6 +431,37 @@ static void __scaler_calc_ratios(struct scaler_dev *scaler,
 	para->height = output->height;
 	vin_log(VIN_LOG_SCALER, "para: xr = %d, yr = %d, w = %d, h = %d\n",
 		  para->xratio, para->yratio, para->width, para->height);
+#if IS_ENABLED(CONFIG_ARCH_SUN65IW1)
+#if VIN_FALSE
+	/* only vipp3 suporrt downsample */
+	if (scaler->id / 12 == 1) {
+		scaler->ds_para.w_num = (2 * (para->xratio/MAX_RATIO) - 1);
+		scaler->ds_para.h_num = (2 * (para->yratio/MAX_RATIO) - 1);
+		scaler->ds_para.ds_phase = min(scaler->ds_para.w_num, scaler->ds_para.h_num);
+		scaler->ds_para.width = ALIGN_DOWN(input->width / (scaler->ds_para.w_num + 1), 4);
+		scaler->ds_para.height = ALIGN_DOWN(input->height / (scaler->ds_para.h_num + 1), 2);
+		width = (scaler->ds_para.w_num + 1) * scaler->ds_para.width;
+		height = (scaler->ds_para.h_num + 1) * scaler->ds_para.height;
+		if ((scaler->ds_para.width/para->width) <= 4) {
+			para->xratio = (1024 * scaler->ds_para.width/para->width);
+			para->yratio = (1024 * scaler->ds_para.height/para->height);
+			para->ratio_precision = 2;
+		} else if ((scaler->ds_para.width/para->width) <= 8) {
+			para->xratio = (512 * scaler->ds_para.width/para->width);
+			para->yratio = (512 * scaler->ds_para.height/para->height);
+			para->ratio_precision = 1;
+		} else if ((scaler->ds_para.width/para->width) <= 16) {
+			para->xratio = (256 * scaler->ds_para.width/para->width);
+			para->yratio = (256 * scaler->ds_para.height/para->height);
+			para->ratio_precision = 0;
+		}
+		vin_log(VIN_LOG_SCALER, "para: w_num = %d, h_num = %d, width = %d, height = %d\n",
+				scaler->ds_para.w_num, scaler->ds_para.h_num, scaler->ds_para.width, scaler->ds_para.height);
+		vin_log(VIN_LOG_SCALER, "para: xr = %d, yr = %d, rp = %d, w = %d, h = %d\n",
+				para->xratio, para->yratio, para->ratio_precision, para->width, para->height);
+	}
+#endif
+#endif
 	/* Center the new crop rectangle.
 	 * crop is before scaler
 	 */
@@ -157,6 +471,7 @@ static void __scaler_calc_ratios(struct scaler_dev *scaler,
 	input->top = ALIGN(input->top, 1);
 	input->width = width;
 	input->height = height;
+#endif
 #endif
 	vin_log(VIN_LOG_SCALER, "crop: left = %d, top = %d, w = %d, h = %d\n",
 		input->left, input->top, input->width, input->height);
@@ -278,6 +593,9 @@ static int sunxi_scaler_subdev_set_selection(struct v4l2_subdev *sd,
 	struct scaler_para para;
 	struct vipp_scaler_config scaler_cfg;
 	struct vipp_crop crop;
+#if defined VIPP_213
+	struct vipp_bilinear_config bili_cfg;
+#endif
 
 	if (scaler->noneed_register)
 		return 0;
@@ -309,7 +627,35 @@ static int sunxi_scaler_subdev_set_selection(struct v4l2_subdev *sd,
 		  format_source->width, format_source->height);
 
 	__scaler_try_crop(format_sink, format_source, &sel->r);
-
+#if defined VIPP_200 || defined VIPP_213
+	if (scaler->large_image == 3 && scaler->id % 2 == 0) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+		if (scaler->stream_count) {
+#else
+		if (sd->entity.stream_count) {
+#endif
+			vipp_clear_status(scaler->id,
+				CHN0_REG_LOAD_PD << (vipp_virtual_find_ch[scaler->id] * VIPP_CHN_INT_AMONG_OFFSET));
+			vipp_irq_disable(scaler->id,
+				CHN0_REG_LOAD_EN << (vipp_virtual_find_ch[scaler->id] * VIPP_CHN_INT_AMONG_OFFSET));
+			vipp_clear_status(scaler->id,
+				CHN0_REG_LOAD_PD << (vipp_virtual_find_ch[scaler->id + 1] * VIPP_CHN_INT_AMONG_OFFSET));
+			vipp_irq_disable(scaler->id,
+				CHN0_REG_LOAD_EN << (vipp_virtual_find_ch[scaler->id + 1] * VIPP_CHN_INT_AMONG_OFFSET));
+		}
+	} else if (scaler->large_image != 3) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+		if (scaler->stream_count) {
+#else
+		if (sd->entity.stream_count) {
+#endif
+			vipp_clear_status(scaler->id,
+				CHN0_REG_LOAD_PD << (vipp_virtual_find_ch[scaler->id] * VIPP_CHN_INT_AMONG_OFFSET));
+			vipp_irq_disable(scaler->id,
+				CHN0_REG_LOAD_EN << (vipp_virtual_find_ch[scaler->id] * VIPP_CHN_INT_AMONG_OFFSET));
+		}
+	}
+#endif
 	if (sel->reserved[0] != VIPP_ONLY_SHRINK) { /* vipp crop */
 		__scaler_calc_ratios(scaler, &sel->r, format_source, &para);
 
@@ -320,7 +666,7 @@ static int sunxi_scaler_subdev_set_selection(struct v4l2_subdev *sd,
 		scaler->crop.active = sel->r;
 		scaler->crop.request = sel->r;
 
-#if !defined VIPP_200
+#if !defined VIPP_200 && !defined VIPP_213
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 		if (scaler->stream_count)
 #else
@@ -329,7 +675,18 @@ static int sunxi_scaler_subdev_set_selection(struct v4l2_subdev *sd,
 			vipp_set_para_ready(scaler->id, NOT_READY);
 #endif
 		/* we need update register when streaming */
-		crop.hor = scaler->crop.active.left;
+		if (scaler->large_image == 3) {
+			if (format_sink->width / 2 < scaler->crop.active.left) {
+				vin_err("vipp crop left is greater than the half of width\n");
+				return -1;
+			}
+			if (scaler->id % 2 == 0) {
+				crop.hor = scaler->crop.active.left;
+			} else if (scaler->id % 2 == 1) {
+				crop.hor = vin_set_large_overlayer(format_sink->width);
+			}
+		} else
+			crop.hor = scaler->crop.active.left;
 		crop.ver = scaler->crop.active.top;
 		crop.width = scaler->crop.active.width;
 		crop.height = scaler->crop.active.height;
@@ -340,23 +697,62 @@ static int sunxi_scaler_subdev_set_selection(struct v4l2_subdev *sd,
 				return -1;
 			}
 			crop.width = scaler->crop.active.width/2;
-			if (scaler->id % 4 == 0)
+			if (scaler->id % 2 == 0)
 				crop.hor = format_sink->width/2 - crop.width;
-			else
+			else if (scaler->id % 2 == 1) {
 				crop.hor = vin_set_large_overlayer(format_sink->width);
+			}
 		}
 		vipp_set_crop(scaler->id, &crop);
-
+#if defined VIPP_213
+		if (scaler->para.sc_en) {
+			if (scaler->id < MAX_OSD_NUM)
+				scaler_cfg.sc_out_fmt = YUV422;
+			else
+				scaler_cfg.sc_out_fmt = YUV420;
+			scaler_cfg.sc_x_ratio = scaler->para.xratio;
+			scaler_cfg.sc_y_ratio = scaler->para.yratio;
+			scaler_cfg.sc_ratio_precision = scaler->para.ratio_precision;
+			scaler_cfg.sc_w_shift_y = __scaler_w_shift_y(scaler->para.xratio, scaler->para.yratio, scaler->para.ratio_precision);
+			if (scaler->yuv422to420)
+				scaler_cfg.sc_w_shift_c = __min_scale_w_shift_c(scaler->para.xratio, scaler->para.yratio, format_source->width, format_source->height,
+								scaler_cfg.sc_w_shift_y, scaler->para.ratio_precision);
+			else
+				scaler_cfg.sc_w_shift_c = scaler_cfg.sc_w_shift_y;
+			vipp_scaler_cfg(scaler->id, &scaler_cfg);
+		} else if (scaler->para.bilinear_en) {
+			if (scaler->id < MAX_OSD_NUM)
+				bili_cfg.bilinear_out_fmt = YUV422;
+			else
+				bili_cfg.bilinear_out_fmt = YUV420;
+			bili_cfg.bilinear_ratio_x = scaler->para.xratio;
+			bili_cfg.bilinear_ratio_y = scaler->para.yratio;
+			__bilinear_calc_cfg(scaler->para.xratio, scaler->para.yratio, &bili_cfg.bilinear_phase_x, &bili_cfg.bilinear_phase_y);
+			vipp_bilinear_cfg(scaler->id, &bili_cfg);
+		} else if (scaler->para.nearest_en) {
+			if (scaler->id < MAX_OSD_NUM)
+				bili_cfg.nearest_out_fmt = YUV422;
+			else
+				bili_cfg.nearest_out_fmt = YUV420;
+			bili_cfg.bilinear_ratio_x = scaler->para.xratio;
+			bili_cfg.bilinear_ratio_y = scaler->para.yratio;
+			vipp_nearest_cfg(scaler->id, &bili_cfg);
+		}
+#else
 		if (scaler->id < MAX_OSD_NUM)
 			scaler_cfg.sc_out_fmt = YUV422;
 		else
 			scaler_cfg.sc_out_fmt = YUV420;
 		scaler_cfg.sc_x_ratio = scaler->para.xratio;
 		scaler_cfg.sc_y_ratio = scaler->para.yratio;
-		scaler_cfg.sc_w_shift = __scaler_w_shift(scaler->para.xratio, scaler->para.yratio);
+#if defined VIPP_200
+		scaler_cfg.sc_ratio_precision = scaler->para.ratio_precision;
+#endif
+		scaler_cfg.sc_w_shift = __scaler_w_shift(scaler->para.xratio, scaler->para.yratio, scaler->para.ratio_precision);
 		vipp_scaler_cfg(scaler->id, &scaler_cfg);
+#endif
 
-#if !defined VIPP_200
+#if !defined VIPP_200 && !defined VIPP_213
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 		if (scaler->stream_count)
 #else
@@ -388,16 +784,29 @@ static int sunxi_scaler_subdev_set_selection(struct v4l2_subdev *sd,
 			scaler->para.xratio, scaler->para.yratio);
 	}
 
-#if defined VIPP_200
+#if defined VIPP_200 || defined VIPP_213
+	if (scaler->large_image == 3 && (scaler->id) % 2 == 1) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 		if (scaler->stream_count) {
 #else
 		if (sd->entity.stream_count) {
 #endif
-		vipp_clear_status(scaler->id,
-			CHN0_REG_LOAD_PD << (vipp_virtual_find_ch[scaler->id] * VIPP_CHN_INT_AMONG_OFFSET));
-		vipp_irq_enable(scaler->id,
-			CHN0_REG_LOAD_EN << (vipp_virtual_find_ch[scaler->id] * VIPP_CHN_INT_AMONG_OFFSET));
+			vipp_clear_status(scaler->id,
+				CHN0_REG_LOAD_PD << (vipp_virtual_find_ch[scaler->id] * VIPP_CHN_INT_AMONG_OFFSET));
+			vipp_irq_enable(scaler->id,
+				CHN0_REG_LOAD_EN << (vipp_virtual_find_ch[scaler->id] * VIPP_CHN_INT_AMONG_OFFSET));
+		}
+	} else if (scaler->large_image != 3) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+		if (scaler->stream_count) {
+#else
+		if (sd->entity.stream_count) {
+#endif
+			vipp_clear_status(scaler->id,
+				CHN0_REG_LOAD_PD << (vipp_virtual_find_ch[scaler->id] * VIPP_CHN_INT_AMONG_OFFSET));
+			vipp_irq_enable(scaler->id,
+				CHN0_REG_LOAD_EN << (vipp_virtual_find_ch[scaler->id] * VIPP_CHN_INT_AMONG_OFFSET));
+		}
 	}
 #endif
 
@@ -497,12 +906,31 @@ static int sunxi_scaler_subdev_set_selection(struct v4l2_subdev *sd,
 	struct scaler_para para;
 	struct vipp_scaler_config scaler_cfg;
 	struct vipp_crop crop;
+#if defined VIPP_213
+	struct vipp_bilinear_config bili_cfg;
+#endif
 
+	if (scaler->noneed_register)
+		return 0;
 	if (sel->target != V4L2_SEL_TGT_CROP || sel->pad != SCALER_PAD_SINK)
 		return -EINVAL;
 
 	format_sink = &scaler->formats[SCALER_PAD_SINK];
 	format_source = &scaler->formats[SCALER_PAD_SOURCE];
+
+	if (sel->r.width == 0 || sel->r.height == 0) {
+		sel->r.left = clamp_t(u32, sel->r.left, 0, format_sink->width - format_source->width);
+		if (sel->r.left > ((format_sink->width - format_source->width) / 2))
+			sel->r.width = format_sink->width - sel->r.left;
+		else
+			sel->r.width = format_sink->width - 2 * sel->r.left;
+
+		sel->r.top = clamp_t(u32, sel->r.top, 0, format_sink->height - format_source->height);
+		if (sel->r.top > ((format_sink->height - format_source->height) / 2))
+			sel->r.height = format_sink->height - sel->r.top;
+		else
+			sel->r.height = format_sink->height - 2 * sel->r.top;
+	}
 
 	vin_log(VIN_LOG_FMT, "%s: L = %d, T = %d, W = %d, H = %d\n", __func__,
 		  sel->r.left, sel->r.top, sel->r.width, sel->r.height);
@@ -512,79 +940,254 @@ static int sunxi_scaler_subdev_set_selection(struct v4l2_subdev *sd,
 		  format_source->width, format_source->height);
 
 	__scaler_try_crop(format_sink, format_source, &sel->r);
+#if defined VIPP_200 || defined VIPP_213
+	if (scaler->large_image >= 3 && scaler->id % 2 == 0) {
+		if (sd->entity.stream_count) {
+			vipp_clear_status(scaler->id,
+				CHN0_REG_LOAD_PD << (vipp_virtual_find_ch[scaler->id] * VIPP_CHN_INT_AMONG_OFFSET));
+			vipp_irq_disable(scaler->id,
+				CHN0_REG_LOAD_EN << (vipp_virtual_find_ch[scaler->id] * VIPP_CHN_INT_AMONG_OFFSET));
+			vipp_clear_status(scaler->id,
+				CHN0_REG_LOAD_PD << (vipp_virtual_find_ch[scaler->id + 1] * VIPP_CHN_INT_AMONG_OFFSET));
+			vipp_irq_disable(scaler->id,
+				CHN0_REG_LOAD_EN << (vipp_virtual_find_ch[scaler->id + 1] * VIPP_CHN_INT_AMONG_OFFSET));
+		}
+	} else if (scaler->large_image != 3) {
+		if (sd->entity.stream_count) {
+			vipp_clear_status(scaler->id,
+				CHN0_REG_LOAD_PD << (vipp_virtual_find_ch[scaler->id] * VIPP_CHN_INT_AMONG_OFFSET));
+			vipp_irq_disable(scaler->id,
+				CHN0_REG_LOAD_EN << (vipp_virtual_find_ch[scaler->id] * VIPP_CHN_INT_AMONG_OFFSET));
+		}
+	}
+#endif
 
 	if (sel->reserved[0] != VIPP_ONLY_SHRINK) { /* vipp crop */
-	__scaler_calc_ratios(scaler, &sel->r, format_source, &para);
+		__scaler_calc_ratios(scaler, &sel->r, format_source, &para);
 
-	if (sel->which == V4L2_SUBDEV_FORMAT_TRY)
-		return 0;
+		if (sel->which == V4L2_SUBDEV_FORMAT_TRY)
+			return 0;
 
-	scaler->para = para;
-	scaler->crop.active = sel->r;
-	scaler->crop.request = sel->r;
+		scaler->para = para;
+		scaler->crop.active = sel->r;
+		scaler->crop.request = sel->r;
 
+#if !defined VIPP_200 && !defined VIPP_213
 		if (sd->entity.stream_count)
 			vipp_set_para_ready(scaler->id, NOT_READY);
-	/* we need update register when streaming */
-	crop.hor = scaler->crop.active.left;
-	crop.ver = scaler->crop.active.top;
-	crop.width = scaler->crop.active.width;
-	crop.height = scaler->crop.active.height;
-	vipp_set_crop(scaler->id, &crop);
+#endif
 
-	if (scaler->id < MAX_OSD_NUM)
-		scaler_cfg.sc_out_fmt = YUV422;
-	else
-		scaler_cfg.sc_out_fmt = YUV420;
-	scaler_cfg.sc_x_ratio = scaler->para.xratio;
-	scaler_cfg.sc_y_ratio = scaler->para.yratio;
-	scaler_cfg.sc_w_shift = __scaler_w_shift(scaler->para.xratio, scaler->para.yratio);
-	vipp_scaler_cfg(scaler->id, &scaler_cfg);
+		/* we need update register when streaming */
+		if (scaler->large_image >= 3) {
+			if (format_sink->width / 2 < scaler->crop.active.left) {
+				vin_err("vipp crop left is greater than the half of width\n");
+				return -1;
+			}
+			if (scaler->id % 2 == 0) {
+				crop.hor = scaler->crop.active.left;
+			} else if (scaler->id % 2 == 1) {
+				crop.hor = vin_set_large_overlayer(format_sink->width);
+			}
+		} else
+			crop.hor = scaler->crop.active.left;
+		crop.ver = scaler->crop.active.top;
+		crop.width = scaler->crop.active.width;
+		crop.height = scaler->crop.active.height;
+		vipp_set_crop(scaler->id, &crop);
 
+#if defined VIPP_213
+		if (scaler->para.sc_en) {
+			if (scaler->id < MAX_OSD_NUM)
+				scaler_cfg.sc_out_fmt = YUV422;
+			else
+				scaler_cfg.sc_out_fmt = YUV420;
+			scaler_cfg.sc_x_ratio = scaler->para.xratio;
+			scaler_cfg.sc_y_ratio = scaler->para.yratio;
+			scaler_cfg.sc_ratio_precision = scaler->para.ratio_precision;
+			scaler_cfg.sc_w_shift_y = __scaler_w_shift_y(scaler->para.xratio, scaler->para.yratio, scaler->para.ratio_precision);
+			if (scaler->yuv422to420)
+				scaler_cfg.sc_w_shift_c = __min_scale_w_shift_c(scaler->para.xratio, scaler->para.yratio, format_source->width, format_source->height,
+								scaler_cfg.sc_w_shift_y, scaler->para.ratio_precision);
+			else
+				scaler_cfg.sc_w_shift_c = scaler_cfg.sc_w_shift_y;
+			vipp_scaler_cfg(scaler->id, &scaler_cfg);
+		} else if (scaler->para.bilinear_en) {
+			if (scaler->id < MAX_OSD_NUM)
+				bili_cfg.bilinear_out_fmt = YUV422;
+			else
+				bili_cfg.bilinear_out_fmt = YUV420;
+			bili_cfg.bilinear_ratio_x = scaler->para.xratio;
+			bili_cfg.bilinear_ratio_y = scaler->para.yratio;
+			__bilinear_calc_cfg(scaler->para.xratio, scaler->para.yratio, &bili_cfg.bilinear_phase_x, &bili_cfg.bilinear_phase_y);
+			vipp_bilinear_cfg(scaler->id, &bili_cfg);
+		} else if (scaler->para.nearest_en) {
+			if (scaler->id < MAX_OSD_NUM)
+				bili_cfg.nearest_out_fmt = YUV422;
+			else
+				bili_cfg.nearest_out_fmt = YUV420;
+			bili_cfg.bilinear_ratio_x = scaler->para.xratio;
+			bili_cfg.bilinear_ratio_y = scaler->para.yratio;
+			vipp_nearest_cfg(scaler->id, &bili_cfg);
+		}
+#else
+		if (scaler->id < MAX_OSD_NUM)
+			scaler_cfg.sc_out_fmt = YUV422;
+		else
+			scaler_cfg.sc_out_fmt = YUV420;
+		scaler_cfg.sc_x_ratio = scaler->para.xratio;
+		scaler_cfg.sc_y_ratio = scaler->para.yratio;
+		scaler_cfg.sc_ratio_precision = scaler->para.ratio_precision;
+		scaler_cfg.sc_w_shift = __scaler_w_shift(scaler->para.xratio, scaler->para.yratio, scaler->para.ratio_precision);
+		vipp_scaler_cfg(scaler->id, &scaler_cfg);
+#endif
+
+#if !defined VIPP_200 && !defined VIPP_213
 		if (sd->entity.stream_count)
 			vipp_set_para_ready(scaler->id, HAS_READY);
-	vin_log(VIN_LOG_SCALER, "active crop: l = %d, t = %d, w = %d, h = %d\n",
-		scaler->crop.active.left, scaler->crop.active.top,
-		scaler->crop.active.width, scaler->crop.active.height);
+#endif
+
+		vin_log(VIN_LOG_SCALER, "active crop: l = %d, t = %d, w = %d, h = %d\n",
+			scaler->crop.active.left, scaler->crop.active.top,
+			scaler->crop.active.width, scaler->crop.active.height);
 	} else { /* vipp shrink */
 		if ((sel->r.width != format_source->width) || (sel->r.height != format_source->height)) {
 			vin_err("vipp shrink size is not equal to output size");
 			return -EINVAL;
 		}
 
+		if (sel->r.width % 16 != 0)
+			vin_warn("please make sure width is a multiples of 16");
+
 		scaler->crop.active.left = sel->r.left;
 		scaler->crop.active.top = sel->r.top;
 		scaler->crop.active.width = format_sink->width;
 		scaler->crop.active.height = format_sink->height;
-		scaler->para.xratio = scaler->crop.active.width * 256 / sel->r.width;
-		scaler->para.yratio = scaler->crop.active.height * 256 / sel->r.height;
+		scaler->para.xratio = clamp_t(u32, scaler->crop.active.width * 256 / sel->r.width, MIN_RATIO, MAX_RATIO);
+		scaler->para.yratio = clamp_t(u32, scaler->crop.active.height * 256 / sel->r.height, MIN_RATIO, MAX_RATIO);
 
 		vin_log(VIN_LOG_SCALER, "active shrink: l = %d, t = %d, w = %d, h = %d, xratio = %d, yratio = %d\n",
 			scaler->crop.active.left, scaler->crop.active.top,
 			scaler->crop.active.width, scaler->crop.active.height,
 			scaler->para.xratio, scaler->para.yratio);
 	}
+
+#if defined VIPP_200 || defined VIPP_213
+	if (scaler->large_image >= 3 && (scaler->id) % 2 == 1) {
+		if (sd->entity.stream_count) {
+			vipp_clear_status(scaler->id,
+				CHN0_REG_LOAD_PD << (vipp_virtual_find_ch[scaler->id] * VIPP_CHN_INT_AMONG_OFFSET));
+			vipp_irq_enable(scaler->id,
+				CHN0_REG_LOAD_EN << (vipp_virtual_find_ch[scaler->id] * VIPP_CHN_INT_AMONG_OFFSET));
+		}
+	} else if (scaler->large_image != 3) {
+		if (sd->entity.stream_count) {
+			vipp_clear_status(scaler->id,
+				CHN0_REG_LOAD_PD << (vipp_virtual_find_ch[scaler->id] * VIPP_CHN_INT_AMONG_OFFSET));
+			vipp_irq_enable(scaler->id,
+				CHN0_REG_LOAD_EN << (vipp_virtual_find_ch[scaler->id] * VIPP_CHN_INT_AMONG_OFFSET));
+		}
+	}
+#endif
 	return 0;
 }
 #endif
+
 /*
-* vipp cgc config func.
-* this function is called when using the vipp cgc feature
+ * vipp cgc config func.
+ * this function is called when using the vipp cgc feature
+ */
 static int sunxi_scaler_cgc_cfg(int id, int on, __u32 colorspace)
 {
-#if defined VIPP_200
+#if (defined VIPP_200 && IS_ENABLED(CONFIG_ARCH_SUN300IW1P1)) || defined VIPP_213
 	int cgc_gain_cfg_val[1][4] =  {{0xdb, 0xe0, 0x10, 0x10}};
 	int cgc_clip_cfg_val[1][4] =  {{0x10, 0xeb, 0x10, 0xf0}};
 
-	if (on && colorspace != V4L2_COLORSPACE_REC709 && colorspace != V4L2_COLORSPACE_BT2020) {
-		vipp_cgc_gain_cfg(id, cgc_gain_cfg_val, 0);
-		vipp_cgc_clip_cfg(id, cgc_clip_cfg_val, 0);
-	}
-	vipp_cgc_f2l_en(id, on);
+	if (on) {
+		if (colorspace == V4L2_COLORSPACE_BT601_PART_RANGE) {
+			vipp_cgc_gain_cfg(id, cgc_gain_cfg_val, 0);
+			vipp_cgc_clip_cfg(id, cgc_clip_cfg_val, 0);
+			vipp_cgc_f2l_en(id, on);
+		} else if (colorspace == V4L2_COLORSPACE_REC709_PART_RANGE) {
+			vipp_cgc_f2l_en(id, 0);
+		} else if (colorspace == V4L2_COLORSPACE_BT2020_PART_RANGE) {
+			vipp_cgc_f2l_en(id, 0);
+		} else { /* V4L2_COLORSPACE_BT601 / V4L2_COLORSPACE_REC709 / V4L2_COLORSPACE_BT2020 */
+			vipp_cgc_f2l_en(id, 0);
+		}
+	} else
+		vipp_cgc_f2l_en(id, on);
 #endif
 	return 0;
 }
-*/
+
+static int sunxi_scaler_ispfe_inerp_cfg(struct scaler_dev *scaler, struct vipp_crop *crop, struct vipp_scaler_size *scaler_size)
+{
+#if defined OUTPUT_EMBED_DATA
+	struct v4l2_mbus_framefmt *format_sink;
+	struct ispfe_interp_cfg interp_cfg;
+	int exp_blk_wnum = 32, exp_blk_hnum = 24;
+	unsigned short stat_valid_block_width, stat_valid_block_height;
+	unsigned short stat_valid_block_w_num, stat_valid_block_h_num;
+
+	format_sink = &scaler->formats[SCALER_PAD_SINK];
+
+	if ((crop->hor == 0) && (crop->ver == 0) && (crop->width == scaler_size->sc_width) && (crop->height == scaler_size->sc_height)) {
+		vipp_chn_select_embed_ispbe_cfg_sel(scaler->id, ENCPP_CFG_FROM_ISPFE);
+		return 0;
+	} else {
+		vipp_chn_select_embed_ispbe_cfg_sel(scaler->id, ENCPP_CFG_FROM_VIPP);
+	}
+
+	stat_valid_block_width = clamp(DIV_ROUND_UP(format_sink->width, exp_blk_wnum), (unsigned int)16, (unsigned int)256);
+	stat_valid_block_height = clamp(DIV_ROUND_UP(format_sink->height, exp_blk_hnum), (unsigned int)16, (unsigned int)256);
+	stat_valid_block_w_num = clamp(DIV_ROUND_UP(format_sink->width, stat_valid_block_width), (unsigned int)4, (unsigned int)32);
+	stat_valid_block_h_num = clamp(DIV_ROUND_UP(format_sink->height, stat_valid_block_height), (unsigned int)4, (unsigned int)24);
+
+	interp_cfg.coord_x = crop->hor / stat_valid_block_width;
+	interp_cfg.coord_y = crop->ver / stat_valid_block_height;
+	interp_cfg.roi_w_num = clamp(DIV_ROUND_UP(crop->width, stat_valid_block_width), (unsigned int)4, (unsigned int)32) - 1;
+	interp_cfg.roi_h_num = clamp(DIV_ROUND_UP(crop->height, stat_valid_block_height), (unsigned int)4, (unsigned int)24) - 1;
+	if ((interp_cfg.coord_x + (interp_cfg.roi_w_num + 1) > stat_valid_block_w_num) || (interp_cfg.coord_y + (interp_cfg.roi_h_num + 1) > stat_valid_block_h_num)) {
+		vin_err("vipp%d ispfe interpation cfg err!", scaler->id);
+		return -1;
+	}
+
+	interp_cfg.interp_init_x_phase = clamp((int)crop->hor % stat_valid_block_width * 4096 / stat_valid_block_width - 2048, (int)-2048, (int)2047);
+	interp_cfg.interp_init_y_phase = clamp((int)crop->ver % stat_valid_block_height * 4096 / stat_valid_block_height - 2048, (int)-2048, (int)2047);
+
+	interp_cfg.interp_x_step = clamp((1 << 12) / DIV_ROUND_UP(scaler_size->sc_width, interp_cfg.roi_w_num + 1), (unsigned int)0, (unsigned int)4095);
+	interp_cfg.interp_y_step = clamp((1 << 12) / DIV_ROUND_UP(scaler_size->sc_height, interp_cfg.roi_h_num + 1), (unsigned int)0, (unsigned int)4095);
+
+	vipp_ispfe_interp_cfg(scaler->id, &interp_cfg);
+#endif
+	return 0;
+}
+
+static int sunxi_scaler_subdev_set_cfg(struct v4l2_subdev *sd,
+						struct v4l2_rect *output)
+{
+	struct scaler_dev *scaler = v4l2_get_subdevdata(sd);
+	struct v4l2_mbus_framefmt output_format;
+
+	vin_log(VIN_LOG_FMT, "%s output: %d*%d, origin: %dx%d\n", __func__, output->width, output->height,
+		scaler->formats[SCALER_PAD_SINK].width, scaler->formats[SCALER_PAD_SINK].height);
+	output_format.width = output->width;
+	output_format.height = output->height;
+	/* update request */
+	scaler->crop.request.left = 0;
+	scaler->crop.request.top = 0;
+	scaler->crop.request.width = scaler->formats[SCALER_PAD_SINK].width;
+	scaler->crop.request.height = scaler->formats[SCALER_PAD_SINK].height;
+	/* update active */
+	scaler->crop.active.left = 0;
+	scaler->crop.active.top = 0;
+	scaler->crop.active.width = scaler->formats[SCALER_PAD_SINK].width;
+	scaler->crop.active.height = scaler->formats[SCALER_PAD_SINK].height;
+	__scaler_calc_ratios(scaler, &scaler->crop.active, &output_format, &scaler->para);
+
+	return 0;
+}
+
 int sunxi_scaler_subdev_init(struct v4l2_subdev *sd, u32 val)
 {
 	struct scaler_dev *scaler = v4l2_get_subdevdata(sd);
@@ -596,7 +1199,7 @@ int sunxi_scaler_subdev_init(struct v4l2_subdev *sd, u32 val)
 	if (val) {
 		if (!scaler->delay_para_ready) {
 			memset(scaler->vipp_reg.vir_addr, 0, scaler->vipp_reg.size);
-#if !defined VIPP_200
+#if !defined VIPP_200 && !defined VIPP_213
 			vipp_set_reg_load_addr(scaler->id, (vin_dma_addr_t)scaler->vipp_reg.dma_addr);
 #else
 			scaler->load_select = true;
@@ -612,11 +1215,59 @@ int sunxi_scaler_subdev_init(struct v4l2_subdev *sd, u32 val)
 	return 0;
 }
 
+static long sunxi_scaler_subdev_ioctl(struct v4l2_subdev *sd, unsigned int cmd,
+										void *arg)
+{
+	int ret;
+
+	switch (cmd) {
+	case VIDIOC_VIN_SET_SCALER_CFG:
+		ret = sunxi_scaler_subdev_set_cfg(sd, (struct v4l2_rect *)arg);
+		break;
+	default:
+		return -ENOIOCTLCMD;
+	}
+
+	return ret;
+}
+
+#if defined VIPP_200 || defined VIPP_213
+static void vin_streamoff_logic_isp(struct scaler_dev *logic_scaler, unsigned char virtual_id)
+{
+#if defined SUPPORT_ISP_TDM && (defined TDM_V200 || defined TDM_V230)
+	struct vin_md *vind = dev_get_drvdata(logic_scaler->subdev.v4l2_dev->dev);
+	struct vin_core *vinc = vind->vinc[virtual_id];
+	struct vin_vid_cap *cap = &vinc->vid_cap;
+	struct tdm_rx_dev *tdm_rx = NULL;
+	struct tdm_dev *tdm = NULL;
+
+	if (vinc->tdm_rx_sel != 0xff) {
+		tdm_rx = container_of(cap->pipe.sd[VIN_IND_TDM_RX], struct tdm_rx_dev, subdev);
+		tdm = container_of(tdm_rx, struct tdm_dev, tdm_rx[tdm_rx->id]);
+
+		if (tdm->stream_cnt == 0) {
+			bsp_isp_top_capture_stop(tdm->id);
+			bsp_isp_enable(tdm->id, 0);
+			/* bsp_isp_sram_boot_mode_ctrl(tdm->id, SRAM_BOOT_MODE); */
+
+			csic_tdm_set_speed_dn(tdm->id, 0);
+			csic_tdm_tx_cap_disable(tdm->id);
+			csic_tdm_tx_disable(tdm->id);
+			csic_tdm_disable(tdm->id);
+			csic_tdm_top_disable(tdm->id);
+			sunxi_tdm_buffer_free(tdm->id);
+		}
+	}
+#endif
+}
+#endif
+
 static int sunxi_scaler_logic_s_stream(unsigned char virtual_id, int on)
 {
-#if defined VIPP_200
+#if defined VIPP_200 || defined VIPP_213
 	unsigned char logic_id = vipp_virtual_find_logic[virtual_id];
 	struct scaler_dev *logic_scaler = glb_vipp[logic_id];
+	unsigned int ini_en = 0;
 	int i;
 
 	if (logic_scaler->work_mode == VIPP_ONLINE && virtual_id != logic_id) {
@@ -638,26 +1289,27 @@ static int sunxi_scaler_logic_s_stream(unsigned char virtual_id, int on)
 		vipp_top_clk_en(logic_scaler->id, on);
 		vipp_clear_status(logic_scaler->id, VIPP_STATUS_ALL);
 #if VIN_FALSE
-		vipp_irq_enable(logic_scaler->id, ID_LOST_EN | AHB_MBUS_W_EN |
-				CHN0_REG_LOAD_EN | CHN0_FRAME_LOST_EN | CHN0_HBLANK_SHORT_EN | CHN0_PARA_NOT_READY_EN |
-				CHN1_REG_LOAD_EN | CHN1_FRAME_LOST_EN | CHN1_HBLANK_SHORT_EN | CHN1_PARA_NOT_READY_EN |
-				CHN2_REG_LOAD_EN | CHN2_FRAME_LOST_EN | CHN2_HBLANK_SHORT_EN | CHN2_PARA_NOT_READY_EN |
-				CHN3_REG_LOAD_EN | CHN3_FRAME_LOST_EN | CHN3_HBLANK_SHORT_EN | CHN3_PARA_NOT_READY_EN);
-#else
-		vipp_irq_enable(logic_scaler->id, ID_LOST_EN | AHB_MBUS_W_EN |
+		ini_en |= CHN0_REG_LOAD_EN | CHN1_REG_LOAD_EN | CHN2_REG_LOAD_EN | CHN3_REG_LOAD_EN;
+#endif
+		ini_en |= ID_LOST_EN | AHB_MBUS_W_EN |
 				CHN0_FRAME_LOST_EN | CHN0_HBLANK_SHORT_EN | CHN0_PARA_NOT_READY_EN | CHN0_HSHORT_INT_EN | CHN0_VSHORT_INT_EN |
 				CHN1_FRAME_LOST_EN | CHN1_HBLANK_SHORT_EN | CHN1_PARA_NOT_READY_EN | CHN1_HSHORT_INT_EN | CHN1_VSHORT_INT_EN |
 				CHN2_FRAME_LOST_EN | CHN2_HBLANK_SHORT_EN | CHN2_PARA_NOT_READY_EN | CHN2_HSHORT_INT_EN | CHN2_VSHORT_INT_EN |
-				CHN3_FRAME_LOST_EN | CHN3_HBLANK_SHORT_EN | CHN3_PARA_NOT_READY_EN | CHN3_HSHORT_INT_EN | CHN3_VSHORT_INT_EN);
+				CHN3_FRAME_LOST_EN | CHN3_HBLANK_SHORT_EN | CHN3_PARA_NOT_READY_EN | CHN3_HSHORT_INT_EN | CHN3_VSHORT_INT_EN;
+#if defined VIPP_213
+		ini_en |= CHN0_YUV2RGB_FMT_ERR_EN | CHN1_YUV2RGB_FMT_ERR_EN | CHN2_YUV2RGB_FMT_ERR_EN | CHN3_YUV2RGB_FMT_ERR_EN;
 #endif
+		vipp_irq_enable(logic_scaler->id, ini_en);
 		vipp_cap_enable(logic_scaler->id);
 	} else {
-		if (logic_scaler->work_mode == VIPP_ONLINE) {
-			vipp_cap_disable(logic_scaler->id);
-			vipp_top_clk_en(logic_scaler->id, on);
-		}
+		vipp_cap_disable(logic_scaler->id);
+		vipp_top_clk_en(logic_scaler->id, on);
 		vipp_clear_status(logic_scaler->id, VIPP_STATUS_ALL);
 		vipp_irq_disable(logic_scaler->id, VIPP_EN_ALL);
+
+		if (logic_scaler->work_mode == VIPP_OFFLINE) {
+			vin_streamoff_logic_isp(logic_scaler, virtual_id);
+		}
 	}
 #endif
 	return 0;
@@ -671,10 +1323,17 @@ static int sunxi_scaler_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 	struct vipp_scaler_config scaler_cfg;
 	struct vipp_scaler_size scaler_size;
 	struct vipp_crop crop;
-	enum vipp_format out_fmt;
 	enum vipp_format sc_fmt;
+	__maybe_unused bool scaler_isenale = 1;
+#if defined VIPP_213
+	struct vipp_bilinear_config bili_cfg;
+#endif
+#if IS_ENABLED(CONFIG_ARCH_SUN65IW1)
+	struct vipp_ds_config ds_cfg;
+	struct vipp_ds_size ds_size;
+#endif
 
-#if defined VIPP_200
+#if defined VIPP_200 || defined VIPP_213
 	if (scaler->noneed_register) {
 		if (enable && glb_vipp[vipp_virtual_find_logic[scaler->id]]->work_mode == VIPP_ONLINE && vipp_virtual_find_logic[scaler->id] != scaler->id) {
 			vin_err("vipp%d work on online mode, vipp%d cannot to work!!\n", vipp_virtual_find_logic[scaler->id], scaler->id);
@@ -726,7 +1385,7 @@ static int sunxi_scaler_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 #if IS_ENABLED(CONFIG_VIN_INIT_MELIS)
 		if (scaler->delay_para_ready) {
 			memset(scaler->vipp_reg.vir_addr, 0, scaler->vipp_reg.size);
-#if !defined VIPP_200
+#if !defined VIPP_200 && !defined VIPP_213
 			vipp_set_reg_load_addr(scaler->id, (vin_dma_addr_t)scaler->vipp_reg.dma_addr);
 #else
 			scaler->load_select = true;
@@ -759,22 +1418,41 @@ static int sunxi_scaler_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 				vin_err("vipp crop left is greater than the half of width\n");
 				return -1;
 			}
-			if (scaler->id % 4 == 0)
+			if (scaler->id % 2 == 0)
 				crop.hor = scaler->crop.active.left;
 			else
-				crop.hor = vin_set_large_overlayer(scaler->crop.active.width);
+				crop.hor = vin_set_large_overlayer(scaler->crop.active.width + scaler->crop.active.left * 2);
 
 			crop.width = scaler->crop.active.width/2;
 			scaler_size.sc_width = scaler->para.width/2;
 			scaler->para.width /= 2;
-			vin_log(VIN_LOG_SCALER, "vipp%d after change crop: left = %d, top = %d, w = %d, h = %d\n",
-				scaler->id, crop.hor, crop.ver, crop.width, crop.height);
-			vin_log(VIN_LOG_SCALER, "vipp%d after change scaler: xr = %d, yr = %d, w = %d, h = %d\n",
-			scaler->id, scaler->para.xratio, scaler->para.yratio,
-			scaler_size.sc_width, scaler_size.sc_height);
+		} else if (scaler->large_image == 5 || scaler->large_image == 4) {
+			if (scaler->crop.active.width/2 <= scaler->crop.active.left) {
+				vin_err("vipp crop left is greater than the half of width\n");
+				return -1;
+			}
+
+			if (scaler->id % 2 == 0) {
+				crop.hor = scaler->crop.active.left;
+			}
+			crop.width = scaler->crop.active.width;
+			scaler_size.sc_width = scaler->para.width;
 		}
+		vin_log(VIN_LOG_SCALER, "vipp%d after change crop: left = %d, top = %d, w = %d, h = %d\n",
+			scaler->id, crop.hor, crop.ver, crop.width, crop.height);
+		vin_log(VIN_LOG_SCALER, "vipp%d after change scaler: xr = %d, yr = %d, w = %d, h = %d\n",
+		scaler->id, scaler->para.xratio, scaler->para.yratio, scaler_size.sc_width, scaler_size.sc_height);
+
 		vipp_set_crop(scaler->id, &crop);
 		vipp_scaler_output_size(scaler->id, &scaler_size);
+		sunxi_scaler_ispfe_inerp_cfg(scaler, &crop, &scaler_size);
+
+#if defined VIPP_200 || defined VIPP_213
+		if (scaler->in_fmt != YUV422 && scaler->in_fmt != YUV420) {
+			vin_err("scaler intput_fmt is %s/%d\n", scaler->in_fmt == YUV2RGB888 ? "RGB888" : "RG565", scaler->in_fmt);
+			return -1;
+		}
+#endif
 
 		switch (res->res_pix_fmt) {
 		case V4L2_PIX_FMT_YUV420:
@@ -790,13 +1468,20 @@ static int sunxi_scaler_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 		case V4L2_PIX_FMT_LBC_2_5X:
 		case V4L2_PIX_FMT_LBC_1_5X:
 		case V4L2_PIX_FMT_LBC_1_0X:
-			if (scaler->id < MAX_OSD_NUM) {
-				sc_fmt = YUV422;
-				out_fmt = YUV420;
-				vipp_chroma_ds_en(scaler->id, 1);
+			if (scaler->in_fmt == YUV422) {
+				if (scaler->id < MAX_OSD_NUM) {
+					sc_fmt = YUV422;
+					scaler->out_fmt = YUV420;
+					vipp_chroma_ds_en(scaler->id, 1);
+				} else {
+					sc_fmt = YUV420;
+					scaler->out_fmt = YUV420;
+				}
+				scaler->yuv422to420 = 1;
 			} else {
 				sc_fmt = YUV420;
-				out_fmt = YUV420;
+				scaler->out_fmt = YUV420;
+				scaler->yuv422to420 = 0;
 			}
 			break;
 		case V4L2_PIX_FMT_YUV422P:
@@ -804,34 +1489,102 @@ static int sunxi_scaler_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 		case V4L2_PIX_FMT_NV61:
 		case V4L2_PIX_FMT_NV61M:
 		case V4L2_PIX_FMT_NV16M:
-			sc_fmt = YUV422;
-			out_fmt = YUV422;
+			if (scaler->in_fmt == YUV422) {
+				sc_fmt = YUV422;
+				scaler->out_fmt = YUV422;
+				scaler->yuv422to420 = 0;
+			} else {
+				vin_err("vipp intput is yuv420, output cannot set to yuvyuv422\n");
+				return -1;
+			}
 			break;
-#if defined VIPP_200 && IS_ENABLED(CONFIG_VIPP_YUV2RGB)
+#if (defined VIPP_200 || defined VIPP_213) && IS_ENABLED(CONFIG_VIPP_YUV2RGB)
 		case V4L2_PIX_FMT_RGB24:
 		case V4L2_PIX_FMT_BGR24:
-			sc_fmt = YUV422;
-			out_fmt = YUV2RGB888;
+			if (scaler->in_fmt == YUV422)
+				sc_fmt = YUV422;
+			else {
+				sc_fmt = YUV420;
+				scaler_isenale = 0;
+			}
+			scaler->out_fmt = YUV2RGB888;
+			scaler->yuv422to420 = 0;
 			break;
 		case V4L2_PIX_FMT_RGB565:
-			sc_fmt = YUV422;
-			out_fmt = YUV2RGB565;
+			if (scaler->in_fmt == YUV422)
+				sc_fmt = YUV422;
+			else {
+				sc_fmt = YUV420;
+				scaler_isenale = 0;
+			}
+			scaler->out_fmt = YUV2RGB565;
+			scaler->yuv422to420 = 0;
 			break;
 #endif
 		default:
 			sc_fmt = YUV420;
-			out_fmt = YUV420;
+			scaler->out_fmt = YUV420;
+			scaler->yuv422to420 = 0;
 			break;
 		}
+
+#if IS_ENABLED(CONFIG_ARCH_SUN65IW1)
+		ds_cfg.ds_w_num = scaler->ds_para.w_num;
+		ds_cfg.ds_h_num = scaler->ds_para.h_num;
+		ds_cfg.ds_phase = scaler->ds_para.ds_phase;
+		ds_size.ds_width = scaler->ds_para.width;
+		ds_size.ds_height = scaler->ds_para.height;
+		vipp_downsample_cfg(scaler->id, &ds_cfg);
+		vipp_downsample_output_size(scaler->id, &ds_size);
+#endif
+#if defined VIPP_213
+		if (scaler_isenale) {
+			if (scaler->para.sc_en) {
+				scaler_cfg.sc_out_fmt = sc_fmt;
+				scaler_cfg.sc_x_ratio = scaler->para.xratio;
+				scaler_cfg.sc_y_ratio = scaler->para.yratio;
+				scaler_cfg.sc_ratio_precision = scaler->para.ratio_precision;
+				scaler_cfg.sc_w_shift_y = __scaler_w_shift_y(scaler->para.xratio, scaler->para.yratio, scaler->para.ratio_precision);
+				if (scaler->yuv422to420)
+					scaler_cfg.sc_w_shift_c = __min_scale_w_shift_c(scaler->para.xratio, scaler->para.yratio, scaler_size.sc_width, scaler_size.sc_height,
+									scaler_cfg.sc_w_shift_y, scaler->para.ratio_precision);
+				else
+					scaler_cfg.sc_w_shift_c = scaler_cfg.sc_w_shift_y;
+				vipp_scaler_cfg(scaler->id, &scaler_cfg);
+			} else if (scaler->para.bilinear_en) {
+				bili_cfg.bilinear_out_fmt = sc_fmt;
+				bili_cfg.bilinear_ratio_x = scaler->para.xratio;
+				bili_cfg.bilinear_ratio_y = scaler->para.yratio;
+				__bilinear_calc_cfg(scaler->para.xratio, scaler->para.yratio, &bili_cfg.bilinear_phase_x, &bili_cfg.bilinear_phase_y);
+				vipp_bilinear_cfg(scaler->id, &bili_cfg);
+			} else if (scaler->para.nearest_en) {
+				bili_cfg.nearest_out_fmt = sc_fmt;
+				bili_cfg.bilinear_ratio_x = scaler->para.xratio;
+				bili_cfg.bilinear_ratio_y = scaler->para.yratio;
+				vipp_nearest_cfg(scaler->id, &bili_cfg);
+			}
+		} else {
+			scaler->para.sc_en = 0;
+			scaler->para.bilinear_en = 0;
+			scaler->para.nearest_en = 0;
+			vin_warn("when input fmt is yuv420 and output fmt is rgb, than scaler is not effect!\n");
+
+		}
+		vipp_output_fmt_cfg(scaler->id, scaler->out_fmt, scaler->in_fmt);
+#else
 		scaler_cfg.sc_out_fmt = sc_fmt;
 		scaler_cfg.sc_x_ratio = scaler->para.xratio;
 		scaler_cfg.sc_y_ratio = scaler->para.yratio;
-		scaler_cfg.sc_w_shift = __scaler_w_shift(scaler->para.xratio, scaler->para.yratio);
+#if defined VIPP_200
+		scaler_cfg.sc_ratio_precision = scaler->para.ratio_precision;
+#endif
+		scaler_cfg.sc_w_shift = __scaler_w_shift(scaler->para.xratio, scaler->para.yratio, scaler->para.ratio_precision);
 		vipp_scaler_cfg(scaler->id, &scaler_cfg);
-		vipp_output_fmt_cfg(scaler->id, out_fmt);
+		vipp_output_fmt_cfg(scaler->id, scaler->out_fmt);
+#endif
 		/* vipp cgc config func */
-		/* sunxi_scaler_cgc_cfg(scaler->id, enable, scaler->formats[SCALER_PAD_SINK].colorspace); */
-#if defined VIPP_200 && IS_ENABLED(CONFIG_VIPP_YUV2RGB)
+		sunxi_scaler_cgc_cfg(scaler->id, enable, scaler->formats[SCALER_PAD_SINK].colorspace);
+#if (defined VIPP_200 || defined VIPP_213) && IS_ENABLED(CONFIG_VIPP_YUV2RGB)
 		if (res->res_pix_fmt == V4L2_PIX_FMT_RGB24 || \
 			res->res_pix_fmt == V4L2_PIX_FMT_BGR24 || \
 			res->res_pix_fmt == V4L2_PIX_FMT_RGB565) {
@@ -848,21 +1601,42 @@ static int sunxi_scaler_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 #endif
 		}
 #endif
+
+#if IS_ENABLED(CONFIG_ARCH_SUN65IW1)
+		vipp_downsample_en(scaler->id, 0);
+#endif
+#if defined VIPP_213
+		vipp_scaler_en(scaler->id, scaler->para.sc_en);
+		vipp_nearest_en(scaler->id, scaler->para.nearest_en);
+		vipp_bilinear_en(scaler->id, scaler->para.bilinear_en);
+#else
 		vipp_scaler_en(scaler->id, 1);
+#endif
 		vipp_osd_en(scaler->id, 1);
 		vipp_set_osd_ov_update(scaler->id, HAS_UPDATED);
 		vipp_set_osd_cv_update(scaler->id, HAS_UPDATED);
-#if !defined VIPP_200
+#if !defined VIPP_200 && !defined VIPP_213
 		vipp_set_para_ready(scaler->id, HAS_READY);
 		vipp_top_clk_en(scaler->id, enable);
 		vipp_enable(scaler->id);
 #else
+#if defined OUTPUT_EMBED_DATA
+		if (scaler->time_embed_en || scaler->ispbe_info_embed_en)
+			vipp_chn_embed_top_en(scaler->id, 1);
+		else
+			vipp_chn_embed_top_en(scaler->id, 0);
+		vipp_chn_embed_ispbe_info_en(scaler->id, scaler->ispbe_info_embed_en ? 1 : 0);
+#endif
+#if defined VIN_CACHE_CLEAN_INVALID
+		dma_sync_single_for_device(&scaler->pdev->dev, (vin_dma_addr_t)scaler->load_para[0].dma_addr, VIPP_REG_SIZE, DMA_TO_DEVICE);
+		vin_print("tdm cache clean\n");
+#endif
 		memcpy(scaler->load_para[0].vir_addr, scaler->vipp_reg.vir_addr, VIPP_REG_SIZE);
 		vipp_set_para_ready(scaler->id, HAS_READY);
 		vipp_chn_cap_enable(scaler->id);
 #endif
 	} else {
-#if !defined VIPP_200
+#if !defined VIPP_200 && !defined VIPP_213
 		vipp_disable(scaler->id);
 		vipp_top_clk_en(scaler->id, enable);
 		vipp_set_para_ready(scaler->id, NOT_READY);
@@ -876,10 +1650,21 @@ static int sunxi_scaler_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 		vipp_chn_cap_disable_para_notready(scaler->id);
 #endif
 #endif
+		if (scaler->large_image == 3) {
+			scaler->para.width = scaler->formats[SCALER_PAD_SOURCE].width;
+		}
+		scaler->in_fmt = YUV422;
 		vipp_chroma_ds_en(scaler->id, 0);
 		vipp_osd_en(scaler->id, 0);
 		vipp_scaler_en(scaler->id, 0);
-#if defined VIPP_200 && IS_ENABLED(CONFIG_VIPP_YUV2RGB)
+#if defined VIPP_213
+		vipp_nearest_en(scaler->id, 0);
+		vipp_bilinear_en(scaler->id, 0);
+#endif
+#if IS_ENABLED(CONFIG_ARCH_SUN65IW1)
+		vipp_downsample_en(scaler->id, 0);
+#endif
+#if (defined VIPP_200 || defined VIPP_213) && IS_ENABLED(CONFIG_VIPP_YUV2RGB)
 		if (res->res_pix_fmt == V4L2_PIX_FMT_RGB24 || \
 			res->res_pix_fmt == V4L2_PIX_FMT_BGR24 || \
 			res->res_pix_fmt == V4L2_PIX_FMT_RGB565)
@@ -890,7 +1675,7 @@ static int sunxi_scaler_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 				vipp_yuv2rgb_en(scaler->id, 0);
 #endif
 		/* vipp cgc config func */
-		/* sunxi_scaler_cgc_cfg(scaler->id, enable, scaler->formats[SCALER_PAD_SINK].colorspace); */
+		sunxi_scaler_cgc_cfg(scaler->id, enable, scaler->formats[SCALER_PAD_SINK].colorspace);
 		vipp_set_osd_ov_update(scaler->id, NOT_UPDATED);
 		vipp_set_osd_cv_update(scaler->id, NOT_UPDATED);
 		sunxi_scaler_logic_s_stream(scaler->id, enable);
@@ -915,6 +1700,7 @@ int sunxi_scaler_subdev_s_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *p
 
 static const struct v4l2_subdev_core_ops sunxi_scaler_subdev_core_ops = {
 	.init = sunxi_scaler_subdev_init,
+	.ioctl = sunxi_scaler_subdev_ioctl,
 };
 static const struct v4l2_subdev_video_ops sunxi_scaler_subdev_video_ops = {
 	.s_stream = sunxi_scaler_subdev_s_stream,
@@ -961,7 +1747,7 @@ int __scaler_init_subdev(struct scaler_dev *scaler)
 static int scaler_resource_alloc(struct scaler_dev *scaler)
 {
 	int ret = 0;
-#if !defined VIPP_200
+#if !defined VIPP_200 && !defined VIPP_213
 	scaler->vipp_reg.size = VIPP_REG_SIZE + OSD_PARA_SIZE + OSD_STAT_SIZE;
 
 	ret = os_mem_alloc(&scaler->pdev->dev, &scaler->vipp_reg);
@@ -997,7 +1783,7 @@ static void scaler_resource_free(struct scaler_dev *scaler)
 	os_mem_free(&scaler->pdev->dev, &scaler->vipp_reg);
 }
 
-#if defined VIPP_200
+#if defined VIPP_200 || defined VIPP_213
 static irqreturn_t scaler_isr(int irq, void *priv)
 {
 	unsigned long flags;
@@ -1018,6 +1804,25 @@ static irqreturn_t scaler_isr(int irq, void *priv)
 		vipp_clear_status(scaler->id, AHB_MBUS_W_PD);
 		vin_err("scaler%d AHB and MBUS write conflict!!!\n", scaler->id);
 	}
+
+#if defined VIPP_213
+	if (vipp_status.chn0_yuv2rgb_fmt_err_pd) {
+		vipp_clear_status(scaler->id, CHN0_YUV2RGB_FMT_ERR_PD);
+		vin_err("scaler%d yuv2rgb fmt err!!!\n", scaler->id + 0);
+	}
+	if (vipp_status.chn1_yuv2rgb_fmt_err_pd) {
+		vipp_clear_status(scaler->id, CHN1_YUV2RGB_FMT_ERR_PD);
+		vin_err("scaler%d yuv2rgb fmt err!!!\n", scaler->id + 0);
+	}
+	if (vipp_status.chn2_yuv2rgb_fmt_err_pd) {
+		vipp_clear_status(scaler->id, CHN2_YUV2RGB_FMT_ERR_PD);
+		vin_err("scaler%d yuv2rgb fmt err!!!\n", scaler->id + 0);
+	}
+	if (vipp_status.chn3_yuv2rgb_fmt_err_pd) {
+		vipp_clear_status(scaler->id, CHN3_YUV2RGB_FMT_ERR_PD);
+		vin_err("scaler%d yuv2rgb fmt err!!!\n", scaler->id + 0);
+	}
+#endif
 
 	if (vipp_status.chn0_frame_lost_pd) {
 		vipp_clear_status(scaler->id, CHN0_FRAME_LOST_PD);
@@ -1112,10 +1917,16 @@ static irqreturn_t scaler_isr(int irq, void *priv)
 		}
 		vin_log(VIN_LOG_SCALER, "vipp%d change to load reg\n", scaler->id);
 		if (scaler->load_select) {
+#if defined VIN_CACHE_CLEAN_INVALID
+			dma_sync_single_for_device(&scaler->pdev->dev, (vin_dma_addr_t)scaler->load_para[1].dma_addr, VIPP_REG_SIZE, DMA_TO_DEVICE);
+#endif
 			memcpy(scaler->load_para[1].vir_addr, scaler->vipp_reg.vir_addr, VIPP_REG_SIZE);
 			vipp_set_reg_load_addr(scaler->id, (vin_dma_addr_t)scaler->load_para[1].dma_addr);
 			scaler->load_select = false;
 		} else {
+#if defined VIN_CACHE_CLEAN_INVALID
+			dma_sync_single_for_device(&scaler->pdev->dev, (vin_dma_addr_t)scaler->load_para[0].dma_addr, VIPP_REG_SIZE, DMA_TO_DEVICE);
+#endif
 			memcpy(scaler->load_para[0].vir_addr, scaler->vipp_reg.vir_addr, VIPP_REG_SIZE);
 			vipp_set_reg_load_addr(scaler->id, (vin_dma_addr_t)scaler->load_para[0].dma_addr);
 			scaler->load_select = true;
@@ -1129,11 +1940,34 @@ static irqreturn_t scaler_isr(int irq, void *priv)
 			return IRQ_HANDLED;
 		}
 		vin_log(VIN_LOG_SCALER, "vipp%d change to load reg\n", scaler->id + 1);
+		if (scaler->large_image >= 3) {
+			if (scaler->load_select) {
+#if defined VIN_CACHE_CLEAN_INVALID
+				dma_sync_single_for_device(&scaler->pdev->dev, (vin_dma_addr_t)scaler->load_para[1].dma_addr, VIPP_REG_SIZE, DMA_TO_DEVICE);
+#endif
+				memcpy(scaler->load_para[1].vir_addr, scaler->vipp_reg.vir_addr, VIPP_REG_SIZE);
+				vipp_set_reg_load_addr(scaler->id, (unsigned long)scaler->load_para[1].dma_addr);
+				scaler->load_select = false;
+			} else {
+#if defined VIN_CACHE_CLEAN_INVALID
+				dma_sync_single_for_device(&scaler->pdev->dev, (vin_dma_addr_t)scaler->load_para[0].dma_addr, VIPP_REG_SIZE, DMA_TO_DEVICE);
+#endif
+				memcpy(scaler->load_para[0].vir_addr, scaler->vipp_reg.vir_addr, VIPP_REG_SIZE);
+				vipp_set_reg_load_addr(scaler->id, (unsigned long)scaler->load_para[0].dma_addr);
+				scaler->load_select = true;
+			}
+		}
 		if (glb_vipp[scaler->id + 1]->load_select) {
+#if defined VIN_CACHE_CLEAN_INVALID
+			dma_sync_single_for_device(&scaler->pdev->dev, (vin_dma_addr_t)glb_vipp[scaler->id + 1]->load_para[1].dma_addr, VIPP_REG_SIZE, DMA_TO_DEVICE);
+#endif
 			memcpy(glb_vipp[scaler->id + 1]->load_para[1].vir_addr, glb_vipp[scaler->id + 1]->vipp_reg.vir_addr, VIPP_REG_SIZE);
 			vipp_set_reg_load_addr(glb_vipp[scaler->id + 1]->id, (vin_dma_addr_t)glb_vipp[scaler->id + 1]->load_para[1].dma_addr);
 			scaler->load_select = false;
 		} else {
+#if defined VIN_CACHE_CLEAN_INVALID
+			dma_sync_single_for_device(&scaler->pdev->dev, (vin_dma_addr_t)glb_vipp[scaler->id + 1]->load_para[0].dma_addr, VIPP_REG_SIZE, DMA_TO_DEVICE);
+#endif
 			memcpy(glb_vipp[scaler->id + 1]->load_para[0].vir_addr, glb_vipp[scaler->id + 1]->vipp_reg.vir_addr, VIPP_REG_SIZE);
 			vipp_set_reg_load_addr(glb_vipp[scaler->id + 1]->id, (vin_dma_addr_t)glb_vipp[scaler->id + 1]->load_para[0].dma_addr);
 			scaler->load_select = true;
@@ -1148,10 +1982,16 @@ static irqreturn_t scaler_isr(int irq, void *priv)
 		}
 		vin_log(VIN_LOG_SCALER, "vipp%d change to load reg\n", scaler->id + 2);
 		if (glb_vipp[scaler->id + 2]->load_select) {
+#if defined VIN_CACHE_CLEAN_INVALID
+			dma_sync_single_for_device(&scaler->pdev->dev, (vin_dma_addr_t)glb_vipp[scaler->id + 2]->load_para[1].dma_addr, VIPP_REG_SIZE, DMA_TO_DEVICE);
+#endif
 			memcpy(glb_vipp[scaler->id + 2]->load_para[1].vir_addr, glb_vipp[scaler->id + 2]->vipp_reg.vir_addr, VIPP_REG_SIZE);
 			vipp_set_reg_load_addr(glb_vipp[scaler->id + 2]->id, (vin_dma_addr_t)glb_vipp[scaler->id + 2]->load_para[1].dma_addr);
 			scaler->load_select = false;
 		} else {
+#if defined VIN_CACHE_CLEAN_INVALID
+			dma_sync_single_for_device(&scaler->pdev->dev, (vin_dma_addr_t)glb_vipp[scaler->id + 2]->load_para[0].dma_addr, VIPP_REG_SIZE, DMA_TO_DEVICE);
+#endif
 			memcpy(glb_vipp[scaler->id + 2]->load_para[0].vir_addr, glb_vipp[scaler->id + 2]->vipp_reg.vir_addr, VIPP_REG_SIZE);
 			vipp_set_reg_load_addr(glb_vipp[scaler->id + 2]->id, (vin_dma_addr_t)glb_vipp[scaler->id + 2]->load_para[0].dma_addr);
 			scaler->load_select = true;
@@ -1166,10 +2006,16 @@ static irqreturn_t scaler_isr(int irq, void *priv)
 		}
 		vin_log(VIN_LOG_SCALER, "vipp%d change to load reg\n", scaler->id + 3);
 		if (glb_vipp[scaler->id + 3]->load_select) {
+#if defined VIN_CACHE_CLEAN_INVALID
+			dma_sync_single_for_device(&scaler->pdev->dev, (vin_dma_addr_t)glb_vipp[scaler->id + 3]->load_para[1].dma_addr, VIPP_REG_SIZE, DMA_TO_DEVICE);
+#endif
 			memcpy(glb_vipp[scaler->id + 3]->load_para[1].vir_addr, glb_vipp[scaler->id + 3]->vipp_reg.vir_addr, VIPP_REG_SIZE);
 			vipp_set_reg_load_addr(glb_vipp[scaler->id + 3]->id, (vin_dma_addr_t)glb_vipp[scaler->id + 3]->load_para[1].dma_addr);
 			scaler->load_select = false;
 		} else {
+#if defined VIN_CACHE_CLEAN_INVALID
+			dma_sync_single_for_device(&scaler->pdev->dev, (vin_dma_addr_t)glb_vipp[scaler->id + 3]->load_para[0].dma_addr, VIPP_REG_SIZE, DMA_TO_DEVICE);
+#endif
 			memcpy(glb_vipp[scaler->id + 3]->load_para[0].vir_addr, glb_vipp[scaler->id + 3]->vipp_reg.vir_addr, VIPP_REG_SIZE);
 			vipp_set_reg_load_addr(glb_vipp[scaler->id + 3]->id, (vin_dma_addr_t)glb_vipp[scaler->id + 3]->load_para[0].dma_addr);
 			scaler->load_select = true;
@@ -1240,8 +2086,9 @@ static int scaler_probe(struct platform_device *pdev)
 
 	scaler->id = pdev->id;
 	scaler->pdev = pdev;
+	scaler->in_fmt = YUV422;
 
-#if defined VIPP_200
+#if defined VIPP_200 || defined VIPP_213
 	of_property_read_u32(np, "work_mode", &scaler->work_mode);
 	if (scaler->work_mode < 0) {
 		vin_err("Scaler%d failed to get work_mode\n", scaler->id);
@@ -1275,7 +2122,7 @@ static int scaler_probe(struct platform_device *pdev)
 		}
 	}
 
-#if defined VIPP_200
+#if defined VIPP_200 || defined VIPP_213
 	/*get irq resource */
 	scaler->irq = irq_of_parse_and_map(np, 0);
 	if (scaler->irq <= 0) {
@@ -1283,21 +2130,22 @@ static int scaler_probe(struct platform_device *pdev)
 		if (scaler->id == vipp_virtual_find_logic[scaler->id])
 			vin_err("failed to get vipp%d IRQ resource\n", scaler->id);
 		else {
-#if !defined CONFIG_VIN_INIT_MELIS
+#if !IS_ENABLED(CONFIG_VIN_INIT_MELIS)
 			scaler->delay_para_ready = 0;
 #else
 			scaler->delay_para_ready = 1;
 #endif
 		}
 	} else {
-#if !defined CONFIG_VIN_INIT_MELIS
+#if !IS_ENABLED(CONFIG_VIN_INIT_MELIS)
 		ret = request_irq(scaler->irq, scaler_isr, IRQF_SHARED, scaler->pdev->name, scaler);
 		if (ret) {
 			vin_err("scaler%d request irq failed\n", scaler->id);
 			ret = -EINVAL;
 			goto unmap;
 		}
-#if IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN60IW2)
+#if IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) \
+			|| IS_ENABLED(CONFIG_ARCH_SUN60IW2) || IS_ENABLED(CONFIG_ARCH_SUN65IW1)
 		vin_iommu_en(CSI_IOMMU_MASTER, true);
 #endif
 		scaler->delay_para_ready = 0;
@@ -1312,7 +2160,16 @@ static int scaler_probe(struct platform_device *pdev)
 			}
 		} else {
 			sprintf(name, "scaler%d", scaler->id);
+#if IS_ENABLED(CONFIG_ARCH_SUN55IW3)
 			rpmsg_notify_add("7130000.e906_rproc", name, scaler_irq_enable, scaler);
+#else
+			of_property_read_string(np, "rpmsg-ser-name", &scaler->rpmsg_ser_name);
+			if (!scaler->rpmsg_ser_name) {
+				vin_err("scaler%d get rpmsg_ser_name falid\n", scaler->id);
+				goto unmap;
+			} else
+				rpmsg_notify_add(scaler->rpmsg_ser_name, name, scaler_irq_enable, scaler);
+#endif
 		}
 		scaler->delay_para_ready = 1;
 #endif
@@ -1358,7 +2215,11 @@ static int scaler_remove(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_VIN_INIT_MELIS)
 	if (scaler->delay_init) {
 		sprintf(name, "scaler%d", scaler->id);
+#if IS_ENABLED(CONFIG_ARCH_SUN55IW3)
 		rpmsg_notify_del("7130000.e906_rproc", name);
+#else
+		rpmsg_notify_del(scaler->rpmsg_ser_name, name);
+#endif
 	}
 #endif
 	if (scaler->noneed_register == 1) {
@@ -1376,7 +2237,7 @@ static int scaler_remove(struct platform_device *pdev)
 			iounmap(scaler->base);
 		else
 			kfree(scaler->base);
-#if defined VIPP_200
+#if defined VIPP_200 || defined VIPP_213
 		if (!scaler->is_irq_empty)
 			free_irq(scaler->irq, scaler);
 #endif
@@ -1407,6 +2268,44 @@ struct v4l2_subdev *sunxi_scaler_get_subdev(int id)
 	else
 		return NULL;
 }
+
+int sunxi_vipp_get_cascade_cfg(int id, int cascade_id, unsigned int *width, unsigned int *height)
+{
+#if defined VIPP_ALLMASK_BK
+	struct v4l2_subdev *sd = sunxi_scaler_get_subdev(id);
+	struct scaler_dev *scaler = v4l2_get_subdevdata(sd);
+	struct v4l2_subdev *cascade_sd = sunxi_scaler_get_subdev(cascade_id);
+	struct scaler_dev *cascade_scaler = NULL;
+
+	if (!cascade_sd) {
+		vin_err("cascade vipp%d is null\n", cascade_id);
+		return -1;
+	} else
+		cascade_scaler = v4l2_get_subdevdata(cascade_sd);
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	if (!cascade_scaler->stream_count) {
+#else
+	if (!cascade_sd->entity.stream_count) {
+#endif
+		vin_err("vipp%d cascade vipp%d, but vipp%d not stream\n", id, cascade_id, cascade_id);
+		return -1;
+	}
+
+	if (cascade_scaler->out_fmt != YUV422 && cascade_scaler->out_fmt != YUV420) {
+		vin_err("cascade_scaler output_fmt is %s\n", cascade_scaler->out_fmt == YUV2RGB888 ? "RGB888" : "RG565");
+		return -1;
+	}
+
+	scaler->in_fmt = cascade_scaler->out_fmt;
+	*width = cascade_scaler->para.width;
+	*height = cascade_scaler->para.height;
+
+	vin_print("cascade_scaler out_fmt is %s, output size is %d*%d\n", cascade_scaler->out_fmt == YUV422 ? "YUV422" : "YUV420", cascade_scaler->para.width, cascade_scaler->para.height);
+#endif
+	return 0;
+}
+
 #if IS_ENABLED(CONFIG_ARCH_SUN8IW12P1)
 int sunxi_vipp_get_osd_stat(int id, unsigned int *stat)
 {
@@ -1424,6 +2323,7 @@ int sunxi_vipp_get_osd_stat(int id, unsigned int *stat)
 	return 0;
 }
 #endif
+
 int sunxi_scaler_platform_register(void)
 {
 	return platform_driver_register(&scaler_platform_driver);

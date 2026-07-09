@@ -8,6 +8,7 @@ menu "General Purpose ADC Drivers"
 
 config AW_GPADC
         tristate "GPADC Support for Allwinner SoCs"
+	select INPUT
 	select INPUT_EVDEV
         default n
         help

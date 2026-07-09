@@ -937,6 +937,12 @@ static void sunxi_efuse_work(struct work_struct *data)
 				break;
 			}
 
+			if (nfcr->key_store.offset & 0x3) {
+				fcpt->ret = -1;
+				SID_ERR("The key offset must be word aligned\n");
+				break;
+			}
+
 			if (sid_get_base(&dev_node, &baseaddr, EFUSE_SID_BASE, 0)) {
 				fcpt->ret = -1;
 				break;
@@ -1054,4 +1060,4 @@ module_exit(sunxi_sid_exit);
 MODULE_LICENSE("GPL v2");
 MODULE_AUTHOR("weidonghui <weidonghui@allwinnertech.com>");
 MODULE_DESCRIPTION("sunxi sid driver");
-MODULE_VERSION("1.0.7");
+MODULE_VERSION("1.0.8");

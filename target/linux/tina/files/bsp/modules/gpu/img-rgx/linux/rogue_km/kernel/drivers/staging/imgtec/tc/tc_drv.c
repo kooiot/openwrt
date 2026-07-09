@@ -1,45 +1,43 @@
-/* -*- mode: c; indent-tabs-mode: t; c-basic-offset: 8; tab-width: 8 -*- */
-/* vi: set ts=8 sw=8 sts=8: */
-/*************************************************************************/ /*!
-@Codingstyle    LinuxKernel
-@Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
-@License        Dual MIT/GPLv2
-
-The contents of this file are subject to the MIT license as set out below.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-Alternatively, the contents of this file may be used under the terms of
-the GNU General Public License Version 2 ("GPL") in which case the provisions
-of GPL are applicable instead of those above.
-
-If you wish to allow use of your version of this file only under the terms of
-GPL, and not to allow others to use your version of this file under the terms
-of the MIT license, indicate your decision by deleting the provisions above
-and replace them with the notice and other provisions required by GPL as set
-out in the file called "GPL-COPYING" included in this distribution. If you do
-not delete the provisions above, a recipient may use your version of this file
-under the terms of either the MIT license or GPL.
-
-This License is also included in this distribution in the file called
-"MIT-COPYING".
-
-EXCEPT AS OTHERWISE STATED IN A NEGOTIATED AGREEMENT: (A) THE SOFTWARE IS
-PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
-BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE AND NONINFRINGEMENT; AND (B) IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/ /**************************************************************************/
+/*
+ * @Codingstyle LinuxKernel
+ * @Copyright   Copyright (c) Imagination Technologies Ltd. All Rights Reserved
+ * @License     Dual MIT/GPLv2
+ *
+ * The contents of this file are subject to the MIT license as set out below.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * Alternatively, the contents of this file may be used under the terms of
+ * the GNU General Public License Version 2 ("GPL") in which case the provisions
+ * of GPL are applicable instead of those above.
+ *
+ * If you wish to allow use of your version of this file only under the terms of
+ * GPL, and not to allow others to use your version of this file under the terms
+ * of the MIT license, indicate your decision by deleting the provisions above
+ * and replace them with the notice and other provisions required by GPL as set
+ * out in the file called "GPL-COPYING" included in this distribution. If you do
+ * not delete the provisions above, a recipient may use your version of this file
+ * under the terms of either the MIT license or GPL.
+ *
+ * This License is also included in this distribution in the file called
+ * "MIT-COPYING".
+ *
+ * EXCEPT AS OTHERWISE STATED IN A NEGOTIATED AGREEMENT: (A) THE SOFTWARE IS
+ * PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+ * BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+ * PURPOSE AND NONINFRINGEMENT; AND (B) IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 
 /*
  * This is a device driver for the testchip framework. It creates platform
@@ -61,6 +59,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "tc_apollo.h"
 #include "tc_odin.h"
+#include "kernel_compatibility.h"
 
 /* How much memory to give to the PDP heap (used for pdp buffers). */
 #define TC_PDP_MEM_SIZE_BYTES           ((TC_DISPLAY_MEM_SIZE)*1024*1024)
@@ -75,14 +74,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DEVICE_ID_PCIE_APOLLO_FPGA	0x1CF2
 
 MODULE_DESCRIPTION("PowerVR testchip framework driver");
+MODULE_IMPORT_NS(DMA_BUF);
 
-static int tc_core_clock = RGX_TC_CORE_CLOCK_SPEED;
+static int tc_core_clock;
 module_param(tc_core_clock, int, 0444);
 MODULE_PARM_DESC(tc_core_clock, "TC core clock speed");
 
-static int tc_mem_clock = RGX_TC_MEM_CLOCK_SPEED;
+static int tc_mem_clock;
 module_param(tc_mem_clock, int, 0444);
 MODULE_PARM_DESC(tc_mem_clock, "TC memory clock speed");
+
+static int tc_clock_multiplex;
+module_param(tc_clock_multiplex, int, 0444);
+MODULE_PARM_DESC(tc_clock_multiplex, "TC core clock multiplex");
 
 static int tc_sys_clock = RGX_TC_SYS_CLOCK_SPEED;
 module_param(tc_sys_clock, int, 0444);
@@ -91,6 +95,10 @@ MODULE_PARM_DESC(tc_sys_clock, "TC system clock speed (TCF5 only)");
 static int tc_mem_latency;
 module_param(tc_mem_latency, int, 0444);
 MODULE_PARM_DESC(tc_mem_latency, "TC memory read latency in cycles (TCF5 only)");
+
+static unsigned long tc_mem_mode = TC_MEMORY_CONFIG;
+module_param(tc_mem_mode, ulong, 0444);
+MODULE_PARM_DESC(tc_mem_mode, "TC memory mode (local = 1, hybrid = 2, host = 3)");
 
 static int tc_wresp_latency;
 module_param(tc_wresp_latency, int, 0444);
@@ -107,6 +115,10 @@ module_param(tc_secure_mem_size, ulong, 0444);
 MODULE_PARM_DESC(tc_secure_mem_size,
 	"TC secure reserved memory size in bytes");
 #endif
+
+static bool fbc_bypass;
+module_param(fbc_bypass, bool, 0444);
+MODULE_PARM_DESC(fbc_bypass, "Force bypass of PDP2 FBC decompression");
 
 static struct debugfs_blob_wrapper tc_debugfs_rogue_name_blobs[] = {
 	[APOLLO_VERSION_TCF_2] = {
@@ -129,7 +141,54 @@ static struct debugfs_blob_wrapper tc_debugfs_rogue_name_blobs[] = {
 		.data = "fpga (unknown)",
 		.size = sizeof("fpga (unknown)") - 1,
 	},
+	[ODIN_VERSION_ORION] = {
+		.data = "orion",
+		.size = sizeof("orion") - 1,
+	},
 };
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
+/* forward declaration */
+static void tc_devres_release(struct device *dev, void *res);
+
+static ssize_t rogue_name_show(struct device_driver *drv, char *buf)
+{
+	struct pci_dev *pci_dev;
+	struct tc_device *tc;
+	struct device *dev;
+
+	dev = driver_find_next_device(drv, NULL);
+	if (!dev)
+		return -ENODEV;
+
+	pci_dev = to_pci_dev(dev);
+	if (!pci_dev)
+		return -ENODEV;
+
+	tc = devres_find(&pci_dev->dev, tc_devres_release, NULL, NULL);
+	if (!tc)
+		return -ENODEV;
+
+	return sprintf(buf, "%s\n", (const char *)
+			tc_debugfs_rogue_name_blobs[tc->version].data);
+}
+
+static DRIVER_ATTR_RO(rogue_name);
+
+static struct attribute *tc_attrs[] = {
+	&driver_attr_rogue_name.attr,
+	NULL,
+};
+
+static struct attribute_group tc_attr_group = {
+	.attrs = tc_attrs,
+};
+
+static const struct attribute_group *tc_attr_groups[] = {
+	&tc_attr_group,
+	NULL,
+};
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)) */
 
 #if defined(CONFIG_MTRR) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0))
 /*
@@ -356,8 +415,7 @@ int setup_io_region(struct pci_dev *pdev,
 	region->region.base = pci_phys_addr + offset;
 	region->region.size = size;
 
-	region->registers
-		= ioremap_nocache(region->region.base, region->region.size);
+	region->registers = ioremap(region->region.base, region->region.size);
 
 	if (!region->registers) {
 		dev_err(&pdev->dev, "Failed to map tc registers\n");
@@ -369,9 +427,15 @@ int setup_io_region(struct pci_dev *pdev,
 }
 
 #if defined(TC_FAKE_INTERRUPTS)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0))
+void tc_irq_fake_wrapper(struct timer_list *t)
+{
+	struct tc_device *tc = from_timer(tc, t, timer);
+#else
 void tc_irq_fake_wrapper(unsigned long data)
 {
 	struct tc_device *tc = (struct tc_device *)data;
+#endif
 
 	if (tc->odin)
 		odin_irq_handler(0, tc);
@@ -387,7 +451,7 @@ static int tc_register_pdp_device(struct tc_device *tc)
 {
 	int err = 0;
 
-	if (tc->odin)
+	if (tc->odin || tc->orion)
 		err = odin_register_pdp_device(tc);
 	else
 		err = apollo_register_pdp_device(tc);
@@ -399,10 +463,20 @@ static int tc_register_ext_device(struct tc_device *tc)
 {
 	int err = 0;
 
-	if (tc->odin)
+	if (tc->odin || tc->orion)
 		err = odin_register_ext_device(tc);
 	else
 		err = apollo_register_ext_device(tc);
+
+	return err;
+}
+
+static int tc_register_dma_device(struct tc_device *tc)
+{
+	int err = 0;
+
+	if (tc->odin)
+		err = odin_register_dma_device(tc);
 
 	return err;
 }
@@ -429,7 +503,7 @@ static int tc_cleanup(struct pci_dev *pdev)
 		if (tc->interrupt_handlers[i].enabled)
 			tc_disable_interrupt(&pdev->dev, i);
 
-	if (tc->odin)
+	if (tc->odin || tc->orion)
 		err = odin_cleanup(tc);
 	else
 		err = apollo_cleanup(tc);
@@ -475,16 +549,20 @@ static int tc_init(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	tc->debugfs_tc_dir = debugfs_create_dir(DRV_NAME, NULL);
 
-	if (pdev->vendor == PCI_VENDOR_ID_ODIN &&
-	    pdev->device == DEVICE_ID_ODIN) {
+	if (pdev->vendor == PCI_VENDOR_ID_ODIN) {
 
-		dev_info(&pdev->dev, "Odin detected");
-		tc->odin = true;
+		if (pdev->device == DEVICE_ID_ODIN)
+			tc->odin = true;
+		else if (pdev->device == DEVICE_ID_ORION)
+			tc->orion = true;
+
+		dev_info(&pdev->dev, "%s detected\n", odin_tc_name(tc));
 
 		err = odin_init(tc, pdev,
-				tc_core_clock, tc_mem_clock,
+				&tc_core_clock, &tc_mem_clock, &tc_clock_multiplex,
 				tc_pdp_mem_size, sec_mem_size,
-				tc_mem_latency, tc_wresp_latency);
+				tc_mem_latency, tc_wresp_latency,
+				tc_mem_mode, fbc_bypass);
 		if (err)
 			goto err_dev_cleanup;
 
@@ -493,9 +571,10 @@ static int tc_init(struct pci_dev *pdev, const struct pci_device_id *id)
 		tc->odin = false;
 
 		err = apollo_init(tc, pdev,
-				  tc_core_clock, tc_mem_clock, tc_sys_clock,
+				  &tc_core_clock, &tc_mem_clock, tc_sys_clock, &tc_clock_multiplex,
 				  tc_pdp_mem_size, sec_mem_size,
-				  tc_mem_latency, tc_wresp_latency);
+				  tc_mem_latency, tc_wresp_latency,
+				  tc_mem_mode);
 		if (err)
 			goto err_dev_cleanup;
 	}
@@ -520,7 +599,13 @@ static int tc_init(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (err)
 		goto err_dev_cleanup;
 
+	err =  tc_register_dma_device(tc);
+	if (err)
+		goto err_dev_cleanup;
+
 	devres_remove_group(&pdev->dev, NULL);
+
+	pci_set_master(pdev);
 
 err_out:
 	if (err)
@@ -552,6 +637,11 @@ static void tc_exit(struct pci_dev *pdev)
 	if (tc->ext_dev)
 		platform_device_unregister(tc->ext_dev);
 
+	if (tc->dma_dev)
+		platform_device_unregister(tc->dma_dev);
+
+	pci_clear_master(pdev);
+
 	tc_cleanup(pdev);
 
 	tc_disable(&pdev->dev);
@@ -560,15 +650,20 @@ static void tc_exit(struct pci_dev *pdev)
 static struct pci_device_id tc_pci_tbl[] = {
 	{ PCI_VDEVICE(POWERVR, DEVICE_ID_PCI_APOLLO_FPGA) },
 	{ PCI_VDEVICE(POWERVR, DEVICE_ID_PCIE_APOLLO_FPGA) },
+	{ PCI_VDEVICE(POWERVR, DEVICE_ID_TBA) },
 	{ PCI_VDEVICE(ODIN, DEVICE_ID_ODIN) },
+	{ PCI_VDEVICE(ODIN, DEVICE_ID_ORION) },
 	{ },
 };
 
 static struct pci_driver tc_pci_driver = {
-	.name		= DRV_NAME,
-	.id_table	= tc_pci_tbl,
-	.probe		= tc_init,
-	.remove		= tc_exit,
+	.name           = DRV_NAME,
+	.id_table       = tc_pci_tbl,
+	.probe          = tc_init,
+	.remove         = tc_exit,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
+	.groups         = tc_attr_groups,
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)) */
 };
 
 module_pci_driver(tc_pci_driver);
@@ -651,7 +746,7 @@ int tc_enable_interrupt(struct device *dev, int interrupt_id)
 	}
 	tc->interrupt_handlers[interrupt_id].enabled = true;
 
-	if (tc->odin)
+	if (tc->odin || tc->orion)
 		odin_enable_interrupt_register(tc, interrupt_id);
 	else
 		apollo_enable_interrupt_register(tc, interrupt_id);
@@ -688,7 +783,7 @@ int tc_disable_interrupt(struct device *dev, int interrupt_id)
 	}
 	tc->interrupt_handlers[interrupt_id].enabled = false;
 
-	if (tc->odin)
+	if (tc->odin || tc->orion)
 		odin_disable_interrupt_register(tc, interrupt_id);
 	else
 		apollo_disable_interrupt_register(tc, interrupt_id);
@@ -710,7 +805,7 @@ int tc_sys_info(struct device *dev, u32 *tmp, u32 *pll)
 		goto err_out;
 	}
 
-	if (tc->odin)
+	if (tc->odin || tc->orion)
 		err = odin_sys_info(tc, tmp, pll);
 	else
 		err = apollo_sys_info(tc, tmp, pll);
@@ -753,7 +848,7 @@ int tc_sys_strings(struct device *dev,
 		goto err_out;
 	}
 
-	if (tc->odin) {
+	if (tc->odin || tc->orion) {
 		err = odin_sys_strings(tc,
 				 str_fpga_rev, size_fpga_rev,
 				 str_tcf_core_rev, size_tcf_core_rev,
@@ -782,3 +877,69 @@ int tc_core_clock_speed(struct device *dev)
 }
 EXPORT_SYMBOL(tc_core_clock_speed);
 
+int tc_core_clock_multiplex(struct device *dev)
+{
+	return tc_clock_multiplex;
+}
+EXPORT_SYMBOL(tc_core_clock_multiplex);
+
+unsigned int tc_odin_subvers(struct device *dev)
+{
+	struct tc_device *tc = devres_find(dev, tc_devres_release,
+		NULL, NULL);
+
+	if (tc->orion)
+		return 1;
+	else
+		return 0;
+}
+EXPORT_SYMBOL(tc_odin_subvers);
+
+bool tc_pfim_capable(struct device *dev)
+{
+	struct tc_device *tc = devres_find(dev, tc_devres_release,
+					   NULL, NULL);
+
+	if (tc->odin && !tc->orion)
+		return (!tc->fbc_bypass &&
+			odin_pfim_compatible(tc));
+
+	return false;
+}
+EXPORT_SYMBOL(tc_pfim_capable);
+
+bool tc_pdp2_compatible(struct device *dev)
+{
+	struct tc_device *tc = devres_find(dev, tc_devres_release,
+					   NULL, NULL);
+
+	/* PDP2 is available in all versions of Sleipnir PCB / Odin RTL */
+	return (tc->odin && !tc->orion);
+}
+EXPORT_SYMBOL(tc_pdp2_compatible);
+
+struct dma_chan *tc_dma_chan(struct device *dev, char *name)
+
+{
+	struct tc_device *tc = devres_find(dev, tc_devres_release,
+					   NULL, NULL);
+
+	if (tc->odin)
+		return odin_cdma_chan(tc, name);
+	else
+		return NULL;
+}
+EXPORT_SYMBOL(tc_dma_chan);
+
+void tc_dma_chan_free(struct device *dev,
+		      void *chan_prv)
+{
+	struct tc_device *tc = devres_find(dev, tc_devres_release,
+					   NULL, NULL);
+
+	if (tc->odin)
+		odin_cdma_chan_free(tc, chan_prv);
+
+	return;
+}
+EXPORT_SYMBOL(tc_dma_chan_free);

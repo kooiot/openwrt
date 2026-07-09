@@ -197,15 +197,14 @@ static u8 gup_get_ic_fw_msg(struct i2c_client *client)
 	/*  buf[2~5]: 00 06 90 00
 	 *  hw_info: 00 90 06 00
 	 */
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < 4; i++)
 		update_msg.ic_fw_msg.hw_info[i] = buf[GTP_ADDR_LENGTH + 3 - i];
-		dev_dbg(&client->dev,
+	dev_dbg(&client->dev,
 			"IC Hardware info:%02x%02x%02x%02x",
 			update_msg.ic_fw_msg.hw_info[0],
 			update_msg.ic_fw_msg.hw_info[1],
 			update_msg.ic_fw_msg.hw_info[2],
 			update_msg.ic_fw_msg.hw_info[3]);
-	}
 	/*  step2:get firmware message */
 	for (retry = 0; retry < 2; retry++) {
 		ret = gup_get_ic_msg(client, GUP_REG_FW_MSG, buf, 1);

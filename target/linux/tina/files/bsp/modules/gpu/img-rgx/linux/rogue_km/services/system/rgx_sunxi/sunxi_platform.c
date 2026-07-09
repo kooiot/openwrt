@@ -147,7 +147,7 @@ static inline void switch_interl_dfs(int val)
 PVRSRV_ERROR sunxiPrePowerState(IMG_HANDLE hSysData,
 					 PVRSRV_DEV_POWER_STATE eNewPowerState,
 					 PVRSRV_DEV_POWER_STATE eCurrentPowerState,
-					 IMG_BOOL bForced)
+					 PVRSRV_POWER_FLAGS bForced)
 {
 	struct sunxi_platform *platform = (struct sunxi_platform *)hSysData;
 
@@ -173,7 +173,7 @@ PVRSRV_ERROR sunxiPrePowerState(IMG_HANDLE hSysData,
 PVRSRV_ERROR sunxiPostPowerState(IMG_HANDLE hSysData,
 					  PVRSRV_DEV_POWER_STATE eNewPowerState,
 					  PVRSRV_DEV_POWER_STATE eCurrentPowerState,
-					  IMG_BOOL bForced)
+					  PVRSRV_POWER_FLAGS bForced)
 {
 	struct sunxi_platform *platform = (struct sunxi_platform *)hSysData;
 
@@ -537,14 +537,14 @@ static ssize_t write_write(struct file *filp, const char __user *buf,
 		val2 = val;
 		while (val <= 200000000)
 			val *= 2;
-		PVRSRVDevicePreClockSpeedChange(sunxi_data->config->psDevNode, IMG_TRUE, NULL);
+		PVRSRVDevicePreClockSpeedChange(sunxi_data->config->psDevNode, true, NULL);
 		clk_set_rate(sunxi_data->clks.pll, val);
 		clk_set_rate(sunxi_data->clks.core, val2);
 		spin_lock(&sunxi_data->lock);
 		if (sunxi_data->power_on)
 			switch_interl_dfs(0x00000001);
 		spin_unlock(&sunxi_data->lock);
-		PVRSRVDevicePostClockSpeedChange(sunxi_data->config->psDevNode, IMG_TRUE, NULL);
+		PVRSRVDevicePostClockSpeedChange(sunxi_data->config->psDevNode, true, NULL);
 
 	} else if (!strncmp("voltage", buffer, head_size)) {
 		if (!sunxi_data->man_ctrl) {
@@ -566,7 +566,7 @@ static ssize_t write_write(struct file *filp, const char __user *buf,
 			wait_event_timeout(dvfs_wq,
 				(dvfs_status%2 == 0), msecs_to_jiffies(100));
 		} else {
-			PVRSRVDevicePreClockSpeedChange(sunxi_data->config->psDevNode, IMG_TRUE, NULL);
+			PVRSRVDevicePreClockSpeedChange(sunxi_data->config->psDevNode, true, NULL);
 			if (sunxi_data->regula) {
 				regulator_set_voltage(sunxi_data->regula,
 					sunxi_data->current_clk->volt, sunxi_data->current_clk->volt);
@@ -574,7 +574,7 @@ static ssize_t write_write(struct file *filp, const char __user *buf,
 			}
 			clk_set_rate(sunxi_data->clks.pll, sunxi_data->pll_clk_rate);
 			sunxi_set_freq_safe(sunxi_data->current_clk->true_clk, true);
-			PVRSRVDevicePostClockSpeedChange(sunxi_data->config->psDevNode, IMG_TRUE, NULL);
+			PVRSRVDevicePostClockSpeedChange(sunxi_data->config->psDevNode, true, NULL);
 		}
 	} else {
 		goto err_out;
@@ -594,13 +594,18 @@ static const struct file_operations write_fops = {
 
 static int dump_debugfs_show(struct seq_file *s, void *data)
 {
-
+	int set = 0;
+	int div = sunxi_data->current_clk->gpu_dfs;
 #ifdef CONFIG_REGULATOR
 	if (!IS_ERR_OR_NULL(sunxi_data->regula)) {
 		int vol = regulator_get_voltage(sunxi_data->regula);
 		seq_printf(s, "voltage:%dmV;\n", vol);
 	}
 #endif /* CONFIG_REGULATOR */
+	while (!(div&0x01<<set) && set < 5) {
+		set++;
+	}
+	set = GPU_DFS_MAX-set;
 	seq_printf(s, "man:%s;\n", sunxi_data->man_ctrl ? "on" : "off");
 	seq_printf(s, "idle:%s;\n", sunxi_data->power_idle ? "on" : "off");
 	seq_printf(s, "scenectrl:%s;\n",
@@ -609,7 +614,7 @@ static int dump_debugfs_show(struct seq_file *s, void *data)
 			sunxi_data->dvfs ? "on" : "off");
 	seq_printf(s, "independent_power:%s;\n",
 			sunxi_data->independent_power ? "Yes" : "No");
-	seq_printf(s, "Frequency:%luMHz;\n", sunxi_data->current_clk->true_clk/1000/1000);
+	seq_printf(s, "Frequency:%luMHz;\n", sunxi_data->current_clk->core_clk/GPU_DFS_MAX*set/1000/1000);
 
 	seq_puts(s, "\n");
 
@@ -690,7 +695,7 @@ bool sunxi_ic_version_ctrl(struct device *dev)
 	 * And in kernel stage, we will always keep domainA poweron.
 	 */
 	if (ic_version == 0 || ic_version == 3 || ic_version == 4
-		|| ic_version == 5)
+		|| ic_version == 5 || ic_version == 6 || ic_version == 7)
 		return false;
 	return true;
 }

@@ -111,6 +111,7 @@ static const struct of_device_id blacklist[] __initconst = {
 	{ .compatible = "arm,sun20iw1p1", },
 	{ .compatible = "arm,sun8iw18p1", },
 	{ .compatible = "arm,sun55iw6p1", },
+	{ .compatible = "arm,sun8iw22p1", },
 
 	{ .compatible = "arm,vexpress", },
 

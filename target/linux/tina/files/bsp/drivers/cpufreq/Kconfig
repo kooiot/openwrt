@@ -1,3 +1,29 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 source "bsp/drivers/cpufreq/cpufreq-linux-$(VERSION).$(PATCHLEVEL)/Kconfig"
+
+
+config AW_VF_FOR_T536
+        tristate "VF for T536 Soc"
+        default n
+        help
+            if say Y here, you can use vf for T536 Soc
+
+config AW_VF_BALANCE_PERFORMANCE
+        tristate "VF balance performance for T536 Soc"
+        depends on AW_VF_FOR_T536
+        default n
+        help
+            if say Y here, you can use vf balance performance for T536 Soc
+
+config AW_VF_FOR_T153
+        tristate "VF for T153 Soc"
+        default n
+        help
+            if say Y here, you can use vf for T153 Soc
+
+config AW_VF_NPU_EXT_DCDC
+        tristate "VF ext dcdc for MR536 Soc"
+        default n
+        help
+            if say Y here, you can use vf ext dcdc for MR536 Soc

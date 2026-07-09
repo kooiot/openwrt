@@ -82,10 +82,13 @@ typedef struct {
 	struct clk *mbus_clk;
 	struct clk *hb_clk;
 	struct clk *ahb_clk;
+	struct clk *ahb_de_clk;
 	struct clk *vo_clk;
 	struct clk *mbus_vo_clk;
+	struct clk *mbus_desys_clk;
 	struct reset_control *reset;
 	struct reset_control *vo_reset;
+	struct reset_control *desys_reset;
 } __g2d_info_t;
 
 typedef struct {
@@ -96,6 +99,7 @@ typedef struct {
 	struct semaphore *event_sem;
 	wait_queue_head_t queue;
 	__u32 finish_flag;
+	bool drm_master_enable;
 } __g2d_drv_t;
 
 struct g2d_alloc_struct {
@@ -132,6 +136,18 @@ struct g2d_format_attr {
 	unsigned int div;
 };
 
+struct g2d_time_info {
+	struct timespec64 time_start;
+	struct timespec64 time_end;
+	__u32 waiting_runtime;
+	__u32 para_config_runtime;
+	__u32 dma_map_start;
+	__u32 dma_map_end;
+	__u32 dma_unmap_start;
+	__u32 dma_unmap_end;
+	__u32 hardware_process_runtime;
+	__u32 total_runtime;
+};
 
 int g2d_wait_cmd_finish(unsigned int timeout);
 int g2d_dma_map(int fd, struct dmabuf_item *item);

@@ -17,10 +17,9 @@
 #include <linux/of_address.h>
 #include <linux/debugfs.h>
 
-#include "../cedar_ve.h"
+#include "cedar_ve.h"
 
 struct ve_dvfs_pair ve_dvfs[VF_NUM] = {
-//v0.23
 	/* dvfs-index   dvfs_name   dvfs_freq_name   dvfs_volt_name */
 	{0x00, "opp-vf0000", "opp-hz-0", "opp-microvolt-0"},
 	{0x01, "opp-vf0100", "opp-hz-0", "opp-microvolt-0"},
@@ -29,10 +28,14 @@ struct ve_dvfs_pair ve_dvfs[VF_NUM] = {
 	{0x02, "opp-vf0200", "opp-hz-1", "opp-microvolt-1"},
 	{0x12, "opp-vf0201", "opp-hz-0", "opp-microvolt-0"},
 	{0x12, "opp-vf0201", "opp-hz-1", "opp-microvolt-1"},
-	{0x22, "opp-vf0202", "opp-hz-0", "opp-microvolt-0"},
-	{0x22, "opp-vf0202", "opp-hz-1", "opp-microvolt-1"},
 	{0x32, "opp-vf0203", "opp-hz-0", "opp-microvolt-0"},
 	{0x32, "opp-vf0203", "opp-hz-1", "opp-microvolt-1"},
+	{0x42, "opp-vf0204", "opp-hz-0", "opp-microvolt-0"},
+	{0x42, "opp-vf0204", "opp-hz-1", "opp-microvolt-1"},
+	{0x52, "opp-vf0205", "opp-hz-0", "opp-microvolt-0"},
+	{0x52, "opp-vf0205", "opp-hz-1", "opp-microvolt-1"},
+	{0x62, "opp-vf0206", "opp-hz-0", "opp-microvolt-0"},
+	{0x62, "opp-vf0206", "opp-hz-1", "opp-microvolt-1"},
 	{0x03, "opp-vf0300", "opp-hz-0", "opp-microvolt-0"},
 	{0x03, "opp-vf0300", "opp-hz-1", "opp-microvolt-1"},
 	{0x04, "opp-vf0400", "opp-hz-0", "opp-microvolt-0"},

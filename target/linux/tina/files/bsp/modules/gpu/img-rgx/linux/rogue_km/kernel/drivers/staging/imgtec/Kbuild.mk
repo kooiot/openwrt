@@ -41,14 +41,20 @@
 ccflags-y := \
  -I$(TOP)/kernel/drivers/staging/imgtec \
  -I$(TOP)/kernel/drivers/staging/imgtec/tc \
+ -I$(TOP)/kernel/drivers/staging/imgtec/fenrir \
  -I$(TOP)/kernel/drivers/staging/imgtec/rk3368 \
  -I$(TOP)/kernel/drivers/staging/imgtec/plato \
  -I$(TOP)/kernel/drivers/staging/imgtec/plato/hdmi \
- -I$(TOP)/kernel/drivers/staging/imgtec/sunxi \
- -I$(TOP)/include/system/rgx_tc \
+ -I$(TOP)/include/$(PVR_ARCH)/system/rgx_tc -I$(TOP)/include/system/rgx_tc \
  -I$(TOP)/include/drm \
- -I$(TOP)/hwdefs \
+ -I$(HWDEFS_DIR) \
  $(ccflags-y)
+
+ifeq ($(SUPPORT_EXTERNAL_PHYSHEAP_INTERFACE),1)
+ ccflags-y := \
+ -I$(TOP)/$(if $(SERVICES_SC),services_sc,services)/include \
+ $(ccflags-y)
+endif
 
 adf_fbdev-y += \
  kernel/drivers/staging/imgtec/adf_fbdev.o \
@@ -66,21 +72,32 @@ tc-y += \
  kernel/drivers/staging/imgtec/tc/tc_odin.o \
  kernel/drivers/staging/imgtec/tc/tc_drv.o
 
+loki-y += \
+ kernel/drivers/staging/imgtec/fenrir/loki_drv.o
+
+ifeq ($(TC_XILINX_DMA),1)
+ccflags-y := \
+ -I$(srctree)/drivers/dma \
+ $(ccflags-y)
+cdma-y += \
+ kernel/drivers/staging/imgtec/tc/xilinx_cdma.o
+endif
+
 ifeq ($(SUPPORT_APOLLO_FPGA),1)
 tc-y += \
  kernel/drivers/staging/imgtec/tc/tc_apollo_debugfs.o
 endif
 
-ifeq ($(SUPPORT_ION),1)
+ifeq ($(SUPPORT_DMA_HEAP),1)
+tc-y += \
+ kernel/drivers/staging/imgtec/tc/dma_lma_heap.o \
+ kernel/drivers/staging/imgtec/tc/tc_dmabuf_heap.o
+else ifeq ($(SUPPORT_ION),1)
 tc-y += \
  kernel/drivers/staging/imgtec/tc/tc_ion.o \
  kernel/drivers/staging/imgtec/tc/ion_lma_heap.o \
  kernel/drivers/staging/imgtec/ion_fbcdc_clear.o
 endif
-
-adf_sunxi-y += \
- kernel/drivers/staging/imgtec/sunxi/adf_sunxi.o \
- kernel/drivers/staging/imgtec/adf_common.o
 
 drm_nulldisp-y += \
  kernel/drivers/staging/imgtec/drm_nulldisp_drv.o \
@@ -104,6 +121,7 @@ drm_pdp-y += \
  kernel/drivers/staging/imgtec/tc/drm_pdp_crtc.o \
  kernel/drivers/staging/imgtec/tc/drm_pdp_dvi.o \
  kernel/drivers/staging/imgtec/tc/drm_pdp_tmds.o \
+ kernel/drivers/staging/imgtec/tc/drm_pdp_fb.o \
  kernel/drivers/staging/imgtec/tc/pdp_apollo.o \
  kernel/drivers/staging/imgtec/tc/pdp_odin.o \
  kernel/drivers/staging/imgtec/tc/pdp_plato.o

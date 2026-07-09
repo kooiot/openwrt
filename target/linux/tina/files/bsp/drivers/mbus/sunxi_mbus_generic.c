@@ -47,7 +47,7 @@
 /* Master Access Enable Register 0 ~ 2,0:disable, 1:enable */
 #define MBUS_MAST_ACEN_CFG_REG(n)   (0x0020 + (0x04 * (n)))
 
-#if IS_ENABLED(AW_MBUS_PRI_IN_ACPR_CFG)
+#if IS_ENABLED(CONFIG_GAW_MBUS_PRI_IN_ACPR_CFG)
 /* Some platform implement master access priority
  * in register MBUS_MAST_CFG0_REG(n)
  * register: Master Access Priority, 0:low, 1:high
@@ -171,7 +171,6 @@ static void __iomem *mbus_ctrl_base;
 static unsigned long mbus_ctrl_phys;
 
 static DEFINE_MUTEX(mbus_seting);
-static DEFINE_MUTEX(mbus_pmureading);
 
 #define mbus_pmu_getstate()                                                    \
 	(readl_relaxed(mbus_ctrl_base + MBUS_PMU_CNTEB_CFG_REG) & 1)
@@ -516,6 +515,17 @@ int notrace mbus_set_bwlwen(bool enable)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(mbus_set_bwlwen);
+
+static bool mbus_bwlw_is_enable(void)
+{
+	unsigned int value = 0x0;
+
+	mutex_lock(&mbus_seting);
+	value = readl_relaxed(mbus_ctrl_base + MBUS_BW_CFG_REG);
+	mutex_unlock(&mbus_seting);
+
+	return (value & (1 << MBUS_BWEN_SHIFT)) ? true : false;
+}
 
 /**
  * mbus_bw_control() - set BandWidth limit window size
@@ -1006,6 +1016,39 @@ static struct attribute *mbus_attributes[] = {
 };
 
 const static SENSOR_DEVICE_ATTR(template, 0400, mbus_show_value, NULL, 0);
+
+static int sunxi_set_msi_qos_params(struct device *dev)
+{
+	struct device_node *np = dev->of_node;
+	unsigned int val = 0x0;
+	unsigned int port = 0;
+	struct device_node *child = NULL;
+	bool enable_flag = false;
+
+	if (!np)
+		return -ENODEV;
+
+	enable_flag = mbus_bwlw_is_enable();
+	for_each_available_child_of_node(np, child) {
+		if (!of_property_read_bool(child, "qos_params"))
+			continue;
+
+		if (!of_property_read_u32(child, "id", &port)) {
+			if (!of_property_read_u32(child, "qos", &val)) {
+				if (enable_flag)
+					mbus_set_bwlwen(false);
+
+				mbus_port_setqos(port, val);
+
+				if (enable_flag)
+					mbus_set_bwlwen(true);
+			}
+		}
+	}
+
+	return 0;
+}
+
 static int mbus_master_manager_init(struct device *dev)
 {
 	int bw_read_idx_cnt;
@@ -1107,6 +1150,9 @@ static int mbus_master_manager_init(struct device *dev)
 			to_sensor_dev_attr(da);
 		dev_attr->index = mbus_master_manager.pmu_max + i;
 	}
+
+	sunxi_set_msi_qos_params(dev);
+
 	if (of_names)
 		kfree(of_names);
 	return 0;

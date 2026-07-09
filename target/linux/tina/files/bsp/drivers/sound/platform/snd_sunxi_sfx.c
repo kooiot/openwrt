@@ -73,7 +73,7 @@ static int snd_sunxi_hw_effect_mmap(struct file *filp, struct vm_area_struct *vm
 		return -1;
 	}
 
-	vma->vm_flags |= VM_IO;
+	sunxi_adpt_vm_flags_set(vma, VM_IO);
 	temp_pfn = sfx->phys_addr >> PAGE_SHIFT;
 
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);

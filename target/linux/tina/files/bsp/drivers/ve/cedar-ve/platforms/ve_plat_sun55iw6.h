@@ -37,7 +37,7 @@
 #define VE_DEBUGFS_MAX_CHANNEL	16
 #define VE_DEBUGFS_BUF_SIZE	1024
 
-#define VF_NUM 17
+#define VF_NUM 21
 
 struct ve_dvfs_pair {
 	unsigned int dvfs_index;

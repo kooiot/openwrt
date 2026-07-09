@@ -1,4 +1,4 @@
-/**************************************************************************/ /*!
+/*************************************************************************/ /*!
 @File
 @Title          Server side connection management
 @Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
@@ -39,10 +39,10 @@ PURPOSE AND NONINFRINGEMENT; AND (B) IN NO EVENT SHALL THE AUTHORS OR
 COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/ /***************************************************************************/
+*/ /**************************************************************************/
 
-#if !defined(_CONNECTION_SERVER_H_)
-#define _CONNECTION_SERVER_H_
+#if !defined(CONNECTION_SERVER_H)
+#define CONNECTION_SERVER_H
 
 
 #include "img_types.h"
@@ -65,23 +65,43 @@ typedef struct _CONNECTION_DATA_
 	struct _PDUMP_CONNECTION_DATA_	*psPDumpConnectionData;
 
 	/* Holds the client flags supplied at connection time */
-	IMG_UINT32			ui32ClientFlags;
+	IMG_UINT32          ui32ClientFlags;
 
 	/*
 	 * OS specific data can be stored via this handle.
 	 * See osconnection_server.h for a generic mechanism
 	 * for initialising this field.
 	 */
-	IMG_HANDLE			hOsPrivateData;
+	IMG_HANDLE          hOsPrivateData;
 
 #define PVRSRV_CONNECTION_PROCESS_NAME_LEN (16)
-	IMG_PID				pid;
+	IMG_PID             pid;
+	IMG_PID				vpid;
+	IMG_UINT32			tid;
 	IMG_CHAR            pszProcName[PVRSRV_CONNECTION_PROCESS_NAME_LEN];
 
-	IMG_HANDLE			hProcessStats;
+	IMG_HANDLE          hProcessStats;
 
-	IMG_HANDLE			hClientTLStream;
+	IMG_HANDLE          hClientTLStream;
 
+#if defined(SUPPORT_CUSTOM_OSID_EMISSION)
+	/*
+	 * Connection-based values per application which can be modified by the
+	 * AppHint settings 'OSid, OSidReg, bOSidAxiProtReg' for each application.
+	 * These control where the connection's memory allocation is sourced from.
+	 * ui32OSid, ui32OSidReg range from 0..(GPUVIRT_VALIDATION_NUM_OS - 1).
+	 */
+	IMG_UINT32          ui32OSid;
+	IMG_UINT32          ui32OSidReg;
+	IMG_BOOL            bOSidAxiProtReg;
+#endif	/* defined(SUPPORT_CUSTOM_OSID_EMISSION) */
+
+#if defined(SUPPORT_DMA_TRANSFER)
+	IMG_BOOL            bAcceptDmaRequests;
+	ATOMIC_T            ui32NumDmaTransfersInFlight;
+	POS_LOCK            hDmaReqLock;
+	IMG_HANDLE          hDmaEventObject;
+#endif
 	/* Structure which is hooked into the cleanup thread work list */
 	PVRSRV_CLEANUP_THREAD_WORK sCleanupThreadFn;
 
@@ -94,12 +114,22 @@ typedef struct _CONNECTION_DATA_
 
 #include "osconnection_server.h"
 
-PVRSRV_ERROR PVRSRVConnectionConnect(void **ppvPrivData, void *pvOSData);
-void PVRSRVConnectionDisconnect(void *pvPrivData);
+PVRSRV_ERROR PVRSRVCommonConnectionConnect(void **ppvPrivData, void *pvOSData);
+void PVRSRVCommonConnectionDisconnect(void *pvPrivData);
 
+/**************************************************************************/ /*!
+@Function       PVRSRVGetPurgeConnectionPid
+
+@Description    Returns PID associated with Connection currently being purged by
+                Cleanup Thread. If no Connection is purged 0 is returned.
+
+@Return         PID associated with currently purged connection or 0 if no
+                connection is being purged
+*/ /***************************************************************************/
 IMG_PID PVRSRVGetPurgeConnectionPid(void);
 
-void PVRSRVConnectionDebugNotify(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
+void PVRSRVConnectionDebugNotify(PVRSRV_DEVICE_NODE *psDevNode,
+                                 DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
                                  void *pvDumpDebugFile);
 
 #ifdef INLINE_IS_PRAGMA
@@ -111,4 +141,4 @@ IMG_HANDLE PVRSRVConnectionPrivateData(CONNECTION_DATA *psConnection)
 	return (psConnection != NULL) ? psConnection->hOsPrivateData : NULL;
 }
 
-#endif /* !defined(_CONNECTION_SERVER_H_) */
+#endif /* !defined(CONNECTION_SERVER_H) */

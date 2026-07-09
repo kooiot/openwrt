@@ -83,7 +83,6 @@ typedef struct _TL_SNODE_* PTL_SNODE;
 typedef struct _TL_STREAM_
 {
 	IMG_CHAR                szName[PRVSRVTL_MAX_STREAM_NAME_SIZE];  /*!< String name identifier */
-	PVRSRV_DEVICE_NODE      *psDevNode;                             /*!< Underlying device on which the stream's buffer is allocated */
 	TL_OPMODE               eOpMode;                                /*!< Mode of Operation of TL Buffer */
 
 	IMG_BOOL                bWaitForEmptyOnDestroy;                 /*!< Flag: On destroying a non-empty stream block until
@@ -93,7 +92,7 @@ typedef struct _TL_STREAM_
                                                                          *         using this flag will need to manually signal when
                                                                          *         appropriate using the TLStreamSync() API */
 
-	void                    (*pfOnReaderOpenCallback)(void *);      /*!< Optional on reader connect callback */
+	void                    (*pfOnReaderOpenCallback)(void *pvArg); /*!< Optional on reader connect callback */
 	void                    *pvOnReaderOpenUserData;                /*!< On reader connect user data */
 	void                    (*pfProducerCallback)(void);            /*!< Optional producer callback of type TL_STREAM_SOURCECB */
 	void                    *pvProducerUserData;                    /*!< Producer callback user data */
@@ -266,7 +265,7 @@ IMG_UINT32 TLDiscoverStreamNodes(const IMG_CHAR *pszNamePattern,
 PTL_SNODE TLFindAndGetStreamNodeByDesc(PTL_STREAM_DESC psDesc);
 void TLReturnStreamNode(PTL_SNODE psNode);
 
-/****************************************************************************************
+/******************************************************************************
  Function Name	: TLTryRemoveStreamAndFreeStreamNode
 
  Inputs		: PTL_SNODE	Pointer to the TL_SNODE whose stream is requested
@@ -285,10 +284,10 @@ void TLReturnStreamNode(PTL_SNODE psNode);
 			cleanup of the TL_STREAM whose TL_SNODE may be removed
 
 		  Otherwise, this function does nothing
-*****************************************************************************************/
+******************************************************************************/
 IMG_BOOL  TLTryRemoveStreamAndFreeStreamNode(PTL_SNODE psRemove);
 
-/*****************************************************************************************
+/******************************************************************************
  Function Name	: TLUnrefDescAndTryFreeStreamNode
 
  Inputs		: PTL_SNODE	Pointer to the TL_SNODE whose descriptor is
@@ -305,7 +304,7 @@ IMG_BOOL  TLTryRemoveStreamAndFreeStreamNode(PTL_SNODE psRemove);
 			stream, this function removes this TL_SNODE from the TL_GLOBAL_DATA's
 			list. The caller is responsible for the cleanup of the TL_STREAM
 			whose TL_SNODE may be removed
-******************************************************************************************/
+******************************************************************************/
 IMG_BOOL TLUnrefDescAndTryFreeStreamNode(PTL_SNODE psRemove, PTL_STREAM_DESC psSD);
 
 /*
@@ -323,14 +322,14 @@ void TLStreamResetReadPos(PTL_STREAM psStream);
 DEVMEM_MEMDESC* TLStreamGetBufferPointer(PTL_STREAM psStream);
 IMG_BOOL TLStreamOutOfData(IMG_HANDLE psStream);
 
-/****************************************************************************************
+/******************************************************************************
  Function Name	: TLStreamDestroy
 
  Inputs		: PTL_STREAM	Pointer to the TL_STREAM to be destroyed
 
  Description	: This function performs all the clean-up operations required for
 			destruction of this stream
-*****************************************************************************************/
+******************************************************************************/
 void TLStreamDestroy(PTL_STREAM psStream);
 
 /*
@@ -344,4 +343,3 @@ PVRSRV_ERROR TUtilsDeinit(PVRSRV_DEVICE_NODE *psDeviceNode);
 /******************************************************************************
  End of file (tlintern.h)
 ******************************************************************************/
-

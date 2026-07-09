@@ -60,13 +60,21 @@ static void sunxi_disp_notify_tp_work(struct work_struct *work)
 /**
  * __sunxi_disp_notify_call_chain - notify clients of fb_events
  * @cmd: value of v->data, such as BLANK or UNBLANK.
+ * @flag: 1: sync notify, 0: async notify
  *
  * Return: The return value of the last notifier function
  */
-void sunxi_disp_notify_call_chain(int cmd)
+void sunxi_disp_notify_call_chain(int cmd, int flag)
 {
-	__sunxi_disp_notify.blank = cmd;
-	schedule_work(&__sunxi_disp_notify.disp_work);
+	struct sunxi_notify_event disp_event;
+
+	if (flag) {
+		disp_event.data = &cmd;
+		__sunxi_disp_notify_call_chain(SUNXI_EVENT_BLANK, &disp_event);
+	} else {
+		__sunxi_disp_notify.blank = cmd;
+		schedule_work(&__sunxi_disp_notify.disp_work);
+	}
 }
 EXPORT_SYMBOL(sunxi_disp_notify_call_chain);
 

@@ -45,6 +45,7 @@ struct de_dci_private {
 	u32 *g_cur_pdf;
 	u32 *g_pdf[PDF_REC_NUM];
 	u32 g_last_cdfs[NUM_BLKS][HIST_BINS];
+	u32 m_cur_cdfs[NUM_BLKS][HIST_BINS]; // avoiding stack overflow warn(1024 byte)
 	u16 g_update_rate;
 	bool g_start;
 	u8 demo_hor_start;
@@ -311,7 +312,7 @@ s32 de35x_dci_update_local_param(struct de_dci_handle *hdl)
 	int blk_idx = 0;
 	int bin_idx = 0;
 	u32 *cur_pdf = priv->g_cur_pdf;
-	u32 cur_cdfs[NUM_BLKS][HIST_BINS];
+	u32 (*cur_cdfs)[HIST_BINS] = priv->m_cur_cdfs;
 	u32 *pdf_pre0 = NULL;
 	u32 *pdf_pre1 = NULL;
 	u32 *g_pdf_pre0 = NULL;

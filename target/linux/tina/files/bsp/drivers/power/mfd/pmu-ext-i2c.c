@@ -31,6 +31,7 @@ static const struct of_device_id pmu_ext_i2c_of_match_table[] = {
 	{ .compatible = "ext,tcs4838", .data = (void *)TCS4838_ID },
 	{ .compatible = "ext,sy8827g", .data = (void *)SY8827G_ID },
 	{ .compatible = "ext,axp1530", .data = (void *)AXP1530_ID },
+	{ .compatible = "ext,sy8827k", .data = (void *)SY8827K_ID },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, pmu_ext_i2c_of_match_table);
@@ -125,4 +126,4 @@ module_exit(pmu_ext_i2c_exit);
 MODULE_AUTHOR("Andrew F. Davis <afd@ti.com>");
 MODULE_DESCRIPTION("pmu_ext I2C Interface Driver");
 MODULE_LICENSE("GPL v2");
-MODULE_VERSION("1.0.0");
+MODULE_VERSION("1.0.1");

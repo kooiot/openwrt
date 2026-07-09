@@ -47,6 +47,8 @@ struct de_smbl_private {
 	const struct de_smbl_dsc *dsc;
 	u32 reg_blk_num;
 	struct de_reg_block reg_blks[SMBL_REG_BLK_NUM];
+	struct mutex status_lock; // protect smbl_status
+	struct mutex regs_lock; // protect regs
 };
 
 static inline struct smbl_reg *get_smbl_reg(struct de_smbl_private *priv)
@@ -90,9 +92,8 @@ static s32 de_smbl_get_hist(struct de_smbl_handle *hdl, u32 *cnt)
 	/* Read histogram from hw reg*/
 	u8 *reg_addr = (u8 *)
 		(priv->reg_blks[SMBL_HIST_REG_BLK].reg_addr);
-	if (priv->smbl_status->ahb_update_en)
-		smbl_memcpy_fromio((u8 *)cnt, reg_addr, sizeof(u32) * IEP_LH_INTERVAL_NUM);
 
+	smbl_memcpy_fromio((u8 *)cnt, reg_addr, sizeof(u32) * IEP_LH_INTERVAL_NUM);
 	return 0;
 }
 
@@ -126,16 +127,21 @@ static u16 *pwrsave_core(struct de_smbl_handle *hdl)
 	struct de_smbl_private *priv = hdl->private;
 
 	printf_cnt = 0;
-	backlight = priv->smbl_status->backlight;
 
+	backlight = priv->smbl_status->backlight;
 	if (backlight < priv->PWRSAVE_PROC_THRES) {
 		/* if current backlight lt PWRSAVE_PROC_THRES, close smart */
 		/* backlight function */
 		memset(priv->smbl_status->min_adj_index_hist, 255,
 		       sizeof(u8) * IEP_LH_PWRSV_NUM);
-		lgcaddr = (u16 *)((uintptr_t) priv->pttab +
-			  ((128 - 1) << 9));
+		// lgcaddr = (u16 *)((uintptr_t) priv->pttab +
+			  // ((128 - 1) << 9));
+		lgcaddr = &pixelGainLut[priv->pttab[getBLIndex(255)]][0];
 
+		if (priv->smbl_status->dimming != 256)
+			priv->smbl_status->dimming_changed = 1;
+		else
+			priv->smbl_status->dimming_changed = 0;
 		priv->smbl_status->dimming = 256;
 	} else {
 		/* if current backlight ge PWRSAVE_PROC_THRES, */
@@ -180,7 +186,7 @@ static u16 *pwrsave_core(struct de_smbl_handle *hdl)
 
 #else		/* fix bug of some thing bright appear in a dark background */
 		for (i = hist_region_num - 1; i >= 0; i--)
-			if (hist[i] < 80)
+			if (hist[i] < priv->smbl_status->dimming_coeff_100)
 				break;
 
 		/* sometime, hist[hist_region_num - 1] may less than 95 */
@@ -224,11 +230,16 @@ static u16 *pwrsave_core(struct de_smbl_handle *hdl)
 		    255 : ((min_adj_index < hist_thres_pwrsv[0]) ?
 		    hist_thres_pwrsv[0] : min_adj_index);
 
+		if (priv->smbl_status->dimming != min_adj_index + 1)
+			priv->smbl_status->dimming_changed = 1;
+		else
+			priv->smbl_status->dimming_changed = 0;
 		priv->smbl_status->dimming = min_adj_index + 1;
 
-		lgcaddr =
-		    (u16 *)((uintptr_t) priv->pttab +
-					((min_adj_index - 128) << 9));
+		// lgcaddr =
+			// (u16 *)((uintptr_t) priv->pttab +
+					// ((min_adj_index - 128) << 9));
+		lgcaddr = &pixelGainLut[priv->pttab[getBLIndex(min_adj_index)]][0];
 
 		if (printf_cnt == 600) {
 			DRM_DEBUG_DRIVER("save backlight power: %d percent\n",
@@ -249,8 +260,10 @@ static s32 de_smbl_set_lut(struct de_smbl_handle *hdl, u16 *lut)
 	struct smbl_reg *reg = get_smbl_reg(priv);
 
 	/* set lut to smbl lut SRAM */
+	mutex_lock(&priv->regs_lock);
 	smbl_memcpy_toio((void *)reg->drclgcoff, (void *)lut, sizeof(reg->drclgcoff));
 	smbl_set_block_dirty(priv, SMBL_LUT_REG_BLK, 1);
+	mutex_unlock(&priv->regs_lock);
 	return 0;
 }
 
@@ -259,8 +272,10 @@ static s32 de_smbl_enable(struct de_smbl_handle *hdl, u32 en)
 	struct de_smbl_private *priv = hdl->private;
 	struct smbl_reg *reg = get_smbl_reg(priv);
 
+	mutex_lock(&priv->regs_lock);
 	reg->gnectl.bits.en = en;
 	smbl_set_block_dirty(priv, SMBL_EN_REG_BLK, 1);
+	mutex_unlock(&priv->regs_lock);
 	return 0;
 }
 
@@ -270,6 +285,7 @@ static s32 de_smbl_set_para(struct de_smbl_handle *hdl, u32 width, u32 height)
 	struct de_smbl_private *priv = hdl->private;
 	struct smbl_reg *reg = get_smbl_reg(priv);
 
+	mutex_lock(&priv->regs_lock);
 	reg->gnectl.bits.mod = 2;
 	reg->drcsize.dwval = (height - 1) << 16 | (width - 1);
 	reg->drcctl.bits.hsv_en = 1;
@@ -294,8 +310,11 @@ static s32 de_smbl_set_para(struct de_smbl_handle *hdl, u32 width, u32 height)
 
 	smbl_set_block_dirty(priv, SMBL_EN_REG_BLK, 1);
 	smbl_set_block_dirty(priv, SMBL_CTL_REG_BLK, 1);
+	mutex_unlock(&priv->regs_lock);
 
+	mutex_lock(&priv->status_lock);
 	priv->smbl_status->size = width * height / 100;
+	mutex_unlock(&priv->status_lock);
 
 	return 0;
 }
@@ -306,8 +325,8 @@ static s32 de_smbl_set_window(struct de_smbl_handle *hdl, u32 win_enable,
 	struct de_smbl_private *priv = hdl->private;
 	struct smbl_reg *reg = get_smbl_reg(priv);
 
+	mutex_lock(&priv->regs_lock);
 	reg->drcctl.bits.win_en = 0;
-
 	if (win_enable && drm_rect_width(&window) && drm_rect_height(&window)) {
 		reg->drcctl.bits.win_en = win_enable;
 		reg->drc_wp0.bits.win_left = window.x1;
@@ -316,23 +335,30 @@ static s32 de_smbl_set_window(struct de_smbl_handle *hdl, u32 win_enable,
 		reg->drc_wp1.bits.win_bottom = window.y2;
 	}
 	smbl_set_block_dirty(priv, SMBL_CTL_REG_BLK, 1);
+	mutex_unlock(&priv->regs_lock);
 	return 0;
 }
 
-s32 de_smbl_tasklet(struct de_smbl_handle *hdl)
+s32 de_smbl_update_local_param(struct de_smbl_handle *hdl)
 {
 	struct de_smbl_private *priv = hdl->private;
+	int ctl_mask = SMBL_FRAME_MASK; // just avoid static check err
 	u16 *lut;
 
-	if (priv->smbl_status->isenable
-		&& priv->smbl_status->ahb_update_en
-	    && ((SMBL_FRAME_MASK == (priv->smbl_frame_cnt % 2))
-		|| (SMBL_FRAME_MASK == 0x2))) {
-		if (priv->smbl_status->runtime > 0) {
+	mutex_lock(&priv->status_lock);
+	if (priv->smbl_status->isenable &&
+	    ((ctl_mask == (priv->smbl_frame_cnt % 2))
+		|| (ctl_mask == 0x2))) {
+		if (priv->smbl_status->runtime > 0 &&
+				(!priv->smbl_status->skip_dimming ||
+				 priv->smbl_frame_cnt >= priv->smbl_status->dimming_start_frame)) {
+			if (priv->smbl_frame_cnt >= priv->smbl_status->dimming_start_frame)
+				priv->smbl_status->skip_dimming = 0;
+
 			/* POWER SAVE ALG */
 			lut = (u16 *)pwrsave_core(hdl);
 		} else {
-			lut = (u16 *)pwrsv_lgc_tab[128 - 1];
+			lut = (u16 *)&pixelGainLut[0][0];
 		}
 
 		de_smbl_set_lut(hdl, lut);
@@ -341,6 +367,7 @@ s32 de_smbl_tasklet(struct de_smbl_handle *hdl)
 			priv->smbl_status->runtime++;
 	}
 	priv->smbl_frame_cnt++;
+	mutex_unlock(&priv->status_lock);
 
 	return 0;
 }
@@ -348,51 +375,108 @@ s32 de_smbl_tasklet(struct de_smbl_handle *hdl)
 s32 de_smbl_apply(struct de_smbl_handle *hdl, struct disp_smbl_info *info)
 {
 	struct de_smbl_private *priv = hdl->private;
-	u32 ahb_enable_status = priv->smbl_status->ahb_update_en;
+	u16 *lut;
 
-	DRM_DEBUG_DRIVER("smbl en=%d, win=<%d,%d,%d,%d>\n", info->enable,
-	      info->window.x1, info->window.y1, drm_rect_width(&info->window),
+	DRM_DEBUG_DRIVER("smbl en=%d, dirty_mask %x win=<%d,%d,%d,%d>\n", info->enable,
+	      info->flags, info->window.x1, info->window.y1, drm_rect_width(&info->window),
 	      drm_rect_height(&info->window));
-	priv->smbl_status->backlight = info->backlight;
 
 	if (info->flags & SMBL_DIRTY_ENABLE) {
-		priv->smbl_status->isenable = info->enable;
-		de_smbl_enable(hdl, priv->smbl_status->isenable);
+		if (!info->enable) {
+			de_smbl_enable(hdl, info->enable);
+			mutex_lock(&priv->status_lock);
+			priv->smbl_status->isenable = 0;
+			mutex_unlock(&priv->status_lock);
+			return 0;
+		}
 
-		if (priv->smbl_status->isenable) {
+		if (drm_rect_width(&info->size) > priv->dsc->width_max ||
+		    drm_rect_height(&info->size) > priv->dsc->height_max) {
+			DRM_ERROR("[SUNXI-CRTC] smbl input size exceeds limit(%dx%d), actual(%dx%d)",
+				  priv->dsc->width_max, priv->dsc->height_max,
+				  drm_rect_width(&info->size), drm_rect_height(&info->size));
+			de_smbl_enable(hdl, 0);
+			mutex_lock(&priv->status_lock);
+			priv->smbl_status->isenable = 0;
+			mutex_unlock(&priv->status_lock);
+			return -1;
+		}
+
+		de_smbl_enable(hdl, info->enable);
+
+		if (priv->smbl_status->isenable == false && info->enable == true) {
+			mutex_lock(&priv->status_lock);
 			priv->smbl_status->runtime = 0;
 			memset(priv->smbl_status->min_adj_index_hist, 255,
 			       sizeof(u8) * IEP_LH_PWRSV_NUM);
+			mutex_unlock(&priv->status_lock);
 			de_smbl_set_para(hdl, drm_rect_width(&info->size),
 					 drm_rect_height(&info->size));
 
 			/* In some cases, resume will not run tasklet immediately,
 			 * which will cause the flower screen. Manually copy lut regs here
 			 */
-			priv->smbl_status->ahb_update_en = 1;
-			de_smbl_tasklet(hdl);
-			priv->smbl_status->ahb_update_en = ahb_enable_status;
+			lut = (u16 *)&pixelGainLut[0][0];
+			de_smbl_set_lut(hdl, lut);
 		} else {
 		}
+		mutex_lock(&priv->status_lock);
+		priv->smbl_status->isenable = info->enable;
+		mutex_unlock(&priv->status_lock);
 	}
-	priv->smbl_status->backlight = info->backlight;
+
+	mutex_lock(&priv->status_lock);
+	if (info->flags & SMBL_DIRTY_BL) {
+		if (priv->smbl_status->backlight != info->backlight) {
+			priv->smbl_status->backlight = info->backlight;
+			priv->smbl_status->backlight_after_dimming = info->backlight;
+			priv->smbl_status->dimming = 255;
+			priv->smbl_status->backlight_changed = 1;
+
+			priv->smbl_status->runtime = 0;
+			priv->smbl_frame_cnt = 0;
+			priv->smbl_status->skip_dimming = 1;
+			memset(priv->smbl_status->min_adj_index_hist, 255,
+			       sizeof(u8) * IEP_LH_PWRSV_NUM);
+			mutex_unlock(&priv->status_lock);
+
+			/* In some cases, resume will not run tasklet immediately,
+			 * which will cause the flower screen. Manually copy lut regs here
+			 */
+			lut = (u16 *)&pixelGainLut[0][0];
+			de_smbl_set_lut(hdl, lut);
+		} else {
+			priv->smbl_status->backlight_changed = 0;
+		}
+	}
+
+	if (info->flags & SMBL_DIRTY_DIMMING_BL) {
+		priv->smbl_status->backlight_after_dimming = info->backlight_after_dimming;
+		priv->smbl_status->dimming_changed = 0;
+	}
+	mutex_unlock(&priv->status_lock);
 
 	if (info->flags & SMBL_DIRTY_WINDOW)
-		de_smbl_set_window(hdl, 1, info->window);
+		de_smbl_set_window(hdl, info->demo_en, info->window);
 
 	return 0;
 }
 
-s32 de_smbl_get_status(struct de_smbl_handle *hdl)
+s32 de_smbl_get_status(struct de_smbl_handle *hdl, struct disp_smbl_info *info)
 {
 	struct de_smbl_private *priv = hdl->private;
-	return priv->smbl_status->dimming;
-}
 
-s32 de_smbl_enable_ahb_read(struct de_smbl_handle *hdl, bool en)
-{
-	struct de_smbl_private *priv = hdl->private;
-	priv->smbl_status->ahb_update_en = en;
+	if (!info)
+		return -1;
+
+	mutex_lock(&priv->status_lock);
+	info->enable = priv->smbl_status->isenable;
+	info->backlight = priv->smbl_status->backlight;
+	info->backlight_after_dimming = priv->smbl_status->backlight_after_dimming;
+	info->dimming = priv->smbl_status->dimming;
+	info->dimming_changed = !!priv->smbl_status->dimming_changed;
+	info->backlight_changed = !!priv->smbl_status->backlight_changed;
+	mutex_unlock(&priv->status_lock);
 	return 0;
 }
 
@@ -431,9 +515,39 @@ int de_smbl_apply_csc(struct de_smbl_handle *hdl, u32 w, u32 h, const struct de_
 	int csc_coeff[12];
 	if (!hdl->private->csc)
 		return -1;
+
+	if (!in_info || !out_info || !bcsh || !ctm || (!bcsh->enable && !ctm->enable)) {
+		de_smbl_set_csc(hdl, 0, 0, 0, NULL);
+		return 0;
+	}
+
 	de_dcsc_apply(hdl->private->csc, in_info, out_info, bcsh, ctm, csc_coeff, false);
 	de_smbl_set_csc(hdl, 1, w, h, csc_coeff);
 	return 0;
+}
+
+void de_smbl_dump_state(struct drm_printer *p, struct de_smbl_handle *hdl)
+{
+	struct de_smbl_private *priv = hdl->private;
+	unsigned long base = (unsigned long)hdl->private->reg_blks[0].reg_addr;
+	unsigned long de_base = (unsigned long)hdl->cinfo.de_reg_base;
+	// int i = 0;
+
+	drm_printf(p, "\tsmbl%d@%8x:\n", hdl->private->dsc->id, (unsigned int)(base - de_base));
+	mutex_lock(&priv->status_lock);
+	drm_printf(p, "\t\tsmbl_tbl %s",
+		   priv->smbl_status->isenable ? "on" : "off\n");
+	if (priv->smbl_status->isenable) {
+		drm_printf(p, ", dimming: %d, backlight: %d, after_dimming: %d, frame %d, skip %d\n",
+				priv->smbl_status->dimming, priv->smbl_status->backlight,
+				priv->smbl_status->backlight > priv->PWRSAVE_PROC_THRES ?
+				priv->smbl_status->backlight_after_dimming : priv->smbl_status->backlight,
+				priv->smbl_frame_cnt, priv->smbl_status->skip_dimming);
+		// drm_printf(p, "\t\tadjust_array:");
+		// for (; i < IEP_LH_PWRSV_NUM; i++)
+			// drm_printf(p, " %d", priv->smbl_status->min_adj_index_hist[i]);
+	}
+	mutex_unlock(&priv->status_lock);
 }
 
 struct de_smbl_handle *de_smbl_create(struct module_create_info *info)
@@ -446,7 +560,7 @@ struct de_smbl_handle *de_smbl_create(struct module_create_info *info)
 	struct de_smbl_handle *hdl;
 	struct csc_extra_create_info excsc;
 	u8 __iomem *base;
-	u32 lcdgamma = 6, i;
+	u32 i;
 
 	dsc = get_smbl_dsc(info);
 	if (!dsc)
@@ -457,6 +571,7 @@ struct de_smbl_handle *de_smbl_create(struct module_create_info *info)
 	memcpy(&hdl->cinfo, info, sizeof(*info));
 	hdl->private = kmalloc(sizeof(*hdl->private), GFP_KERNEL | __GFP_ZERO);
 	hdl->private->dsc = dsc;
+	hdl->support_csc = dsc->support_csc;
 	if (dsc->support_csc) {
 		excsc.type = SMBL_CSC;
 		excsc.extra_id = 0;
@@ -464,10 +579,11 @@ struct de_smbl_handle *de_smbl_create(struct module_create_info *info)
 		csc.extra = &excsc;
 		hdl->private->csc = de_csc_create(&csc);
 		WARN_ON(!hdl->private->csc);
+		if (hdl->private->csc)
+			hdl->hue_default_value = hdl->private->csc->hue_default_value;
 	}
 
 	priv = hdl->private;
-	priv->PWRSAVE_PROC_THRES = 85;
 
 	reg_mem_info = &(hdl->private->reg_mem_info);
 
@@ -533,10 +649,18 @@ struct de_smbl_handle *de_smbl_create(struct module_create_info *info)
 		      (u32)sizeof(struct __smbl_status_t));
 		return ERR_PTR(-ENOMEM);
 	}
+
+	priv->smbl_status->dimming_start_frame = 100;
+	priv->smbl_status->dimming_coeff_100 = 80;
+	priv->PWRSAVE_PROC_THRES = 85;
+
+	mutex_init(&priv->status_lock);
+	mutex_init(&priv->regs_lock);
+
 	priv->smbl_status->isenable = 0;
 	priv->smbl_status->runtime = 0;
 	priv->smbl_status->dimming = 256;
-	priv->pttab = pwrsv_lgc_tab[128 * lcdgamma];
+	priv->pttab = targetGainIndex[getGammaIndex(22)]; // defalult gamma 2.2
 
 	hdl->block_num = priv->reg_blk_num;
 	hdl->block = kmalloc(sizeof(reg_blk[0]) * hdl->block_num, GFP_KERNEL | __GFP_ZERO);

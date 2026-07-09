@@ -41,8 +41,13 @@
 
 MODULE_HOST_BUILD := true
 
+MODULE_AR := $(HOST_AR)
 MODULE_CC := $(HOST_CC)
 MODULE_CXX := $(HOST_CXX)
+MODULE_NM := $(HOST_NM)
+MODULE_OBJCOPY := $(HOST_OBJCOPY)
+MODULE_RANLIB := $(HOST_RANLIB)
+MODULE_STRIP := $(HOST_STRIP)
 
 MODULE_CFLAGS   := $(ALL_HOST_CFLAGS) $($(THIS_MODULE)_cflags)
 MODULE_CXXFLAGS := $(ALL_HOST_CXXFLAGS) $($(THIS_MODULE)_cxxflags)
@@ -51,19 +56,19 @@ MODULE_LDFLAGS  := $(ALL_HOST_LDFLAGS) -L$(MODULE_OUT) $($(THIS_MODULE)_ldflags)
 ifneq ($(BUILD),debug)
 ifeq ($(USE_LTO),1)
 MODULE_LDFLAGS := \
- $(sort $(filter-out -W% -D%,$(ALL_HOST_CFLAGS) $(ALL_HOST_CXXFLAGS))) \
+ $(sort $(filter-out -W% -D% -isystem /%,$(ALL_HOST_CFLAGS) $(ALL_HOST_CXXFLAGS))) \
  $(MODULE_LDFLAGS)
 endif
 endif
 
-ifeq ($(SUPPORT_NEUTRINO_PLATFORM),1)
-include $(MAKE_TOP)/common/neutrino/extra_host.mk
-else
+ifeq ($(SUPPORT_ANDROID_PLATFORM),1)
+ MODULE_LIBRARY_FLAGS_SUBST += \
+  clang_rt:$(__clang_bindir)../lib64/clang/$(__clang_version)/lib/linux/libclang_rt.builtins-x86_64-android.a
 endif
 
 MESON_CROSS_SYSTEM  := linux
 MESON_CROSS_CPU_FAMILY := x86_64
-MESON_CROSS_FILE_CPU := x86_64
+MESON_CROSS_CPU := x86_64
 MESON_CROSS_ENDIAN := little
 MESON_CROSS_CROSS_COMPILE :=
 MESON_CROSS_CC := $(patsubst @%,%,$(HOST_CC))

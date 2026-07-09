@@ -146,7 +146,10 @@
 		|| IS_ENABLED(CONFIG_ARCH_SUN55IW3) \
 		|| IS_ENABLED(CONFIG_ARCH_SUN60IW2) \
 		|| IS_ENABLED(CONFIG_ARCH_SUN55IW6) \
-		|| IS_ENABLED(CONFIG_ARCH_SUN300IW1)
+		|| IS_ENABLED(CONFIG_ARCH_SUN300IW1) \
+		|| IS_ENABLED(CONFIG_ARCH_SUN65IW1) \
+		|| IS_ENABLED(CONFIG_ARCH_SUN251IW1) \
+		|| IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 #define  USBPHYC_REG_o_PHYCTL	0x0410
 #else
 #define  USBPHYC_REG_o_PHYCTL	0x0404
@@ -842,8 +845,8 @@ __s32 USBC_Dev_ConfigEp(__hdle hUSB,
 				__u32 ep_MaxPkt,
 				__u32 mult);
 __s32 USBC_Dev_ConfigEp_Default(__hdle hUSB, __u32 ep_type);
-__s32 USBC_Dev_ConfigEpDma(__hdle hUSB, __u32 ep_type);
-__s32 USBC_Dev_ClearEpDma(__hdle hUSB, __u32 ep_type);
+__s32 USBC_Dev_ConfigEpDma(__hdle hUSB, __u32 ep_type, __u32 mult);
+__s32 USBC_Dev_ClearEpDma(__hdle hUSB, __u32 ep_type, __u32 mult);
 
 __s32 USBC_Dev_IsEpStall(__hdle hUSB, __u32 ep_type);
 __s32 USBC_Dev_EpSendStall(__hdle hUSB, __u32 ep_type);

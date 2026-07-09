@@ -41,8 +41,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#if !defined(__SYSINFO_H__)
-#define __SYSINFO_H__
+#if !defined(SYSINFO_H)
+#define SYSINFO_H
 
 #define SYS_RGX_DEV_VENDOR_ID	(0x1AEE)
 #define SYS_RGX_DEV_DEVICE_ID	(0x0003)
@@ -60,4 +60,4 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DEVICES_WATCHDOG_POWER_OFF_SLEEP_TIMEOUT (3600000)
 #define WAIT_TRY_COUNT                           (10000)
 
-#endif /* !defined(__SYSINFO_H__) */
+#endif /* !defined(SYSINFO_H) */

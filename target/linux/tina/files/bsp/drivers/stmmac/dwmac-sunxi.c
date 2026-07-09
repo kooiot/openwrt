@@ -22,16 +22,21 @@
 #include <linux/phy.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/regmap.h>
 #include <linux/stmmac.h>
+#include <linux/pm_runtime.h>
+#include <linux/pm_domain.h>
+#if defined(CONFIG_AW_SID) || defined(CONFIG_AW_SID_V2)
 #include <sunxi-sid.h>
+#endif
 
 #include "stmmac.h"
 #include "stmmac_platform.h"
 
 #include "dwmac-sunxi.h"
 
-#define DWMAC_MODULE_VERSION		"0.3.1"
+#define DWMAC_MODULE_VERSION		"0.3.8"
 
 #define MAC_ADDR_LEN			18
 #define SUNXI_DWMAC_MAC_ADDRESS		"00:00:00:00:00:00"
@@ -196,50 +201,56 @@ static int sunxi_dwmac_power_on(struct sunxi_dwmac *chip)
 {
 	int ret;
 
-	/* set dwmac pin bank voltage to 3.3v */
-	if (!IS_ERR(chip->dwmac3v3_supply)) {
-		ret = regulator_set_voltage(chip->dwmac3v3_supply, 3300000, 3300000);
-		if (ret) {
-			sunxi_err(chip->dev, "Set dwmac3v3-supply voltage 3300000 failed %d\n", ret);
-			goto err_dwmac3v3;
+	if (!IS_ERR(chip->dwmac_supply)) {
+		if (chip->dwmac_vol > 0) {
+			ret = regulator_set_voltage(chip->dwmac_supply, chip->dwmac_vol, chip->dwmac_vol);
+			if (ret) {
+				sunxi_err(chip->dev, "regulator set dwmac voltage %d failed %d\n", chip->dwmac_vol, ret);
+				goto err_dwmac;
+			}
 		}
 
-		ret = regulator_enable(chip->dwmac3v3_supply);
+		ret = regulator_enable(chip->dwmac_supply);
 		if (ret) {
-			sunxi_err(chip->dev, "Enable dwmac3v3-supply failed %d\n", ret);
-			goto err_dwmac3v3;
+			sunxi_err(chip->dev, "regulator enable dwmac failed %d\n", ret);
+			goto err_dwmac;
 		}
+
+		sunxi_info(chip->dev, "regualtor enable dwmac %d uV\n", regulator_get_voltage(chip->dwmac_supply));
 	}
 
-	/* set phy voltage to 3.3v */
-	if (!IS_ERR(chip->phy3v3_supply)) {
-		ret = regulator_set_voltage(chip->phy3v3_supply, 3300000, 3300000);
-		if (ret) {
-			sunxi_err(chip->dev, "Set phy3v3-supply voltage 3300000 failed %d\n", ret);
-			goto err_phy3v3;
+	if (!IS_ERR(chip->phy_supply)) {
+		if (chip->phy_vol > 0) {
+			ret = regulator_set_voltage(chip->phy_supply, chip->phy_vol, chip->phy_vol);
+			if (ret) {
+				sunxi_err(chip->dev, "regulator set phy voltage %d failed %d\n", chip->phy_vol, ret);
+				goto err_phy;
+			}
 		}
 
-		ret = regulator_enable(chip->phy3v3_supply);
+		ret = regulator_enable(chip->phy_supply);
 		if (ret) {
-			sunxi_err(chip->dev, "Enable phy3v3-supply failed\n");
-			goto err_phy3v3;
+			sunxi_err(chip->dev, "regulator enable phy failed %d\n", ret);
+			goto err_phy;
 		}
+
+		sunxi_info(chip->dev, "regualtor enable phy %d uV\n", regulator_get_voltage(chip->phy_supply));
 	}
 
 	return 0;
 
-err_phy3v3:
-	regulator_disable(chip->dwmac3v3_supply);
-err_dwmac3v3:
+err_phy:
+	regulator_disable(chip->dwmac_supply);
+err_dwmac:
 	return ret;
 }
 
 static void sunxi_dwmac_power_off(struct sunxi_dwmac *chip)
 {
-	if (!IS_ERR(chip->phy3v3_supply))
-		regulator_disable(chip->phy3v3_supply);
-	if (!IS_ERR(chip->dwmac3v3_supply))
-		regulator_disable(chip->dwmac3v3_supply);
+	if (!IS_ERR(chip->phy_supply))
+		regulator_disable(chip->phy_supply);
+	if (!IS_ERR(chip->dwmac_supply))
+		regulator_disable(chip->dwmac_supply);
 }
 
 static int sunxi_dwmac_clk_init(struct sunxi_dwmac *chip)
@@ -260,6 +271,11 @@ static int sunxi_dwmac_clk_init(struct sunxi_dwmac *chip)
 		if (ret) {
 			sunxi_err(chip->dev, "enable hsi_axi failed\n");
 			goto err_axi;
+		}
+		ret = clk_prepare_enable(chip->hsi_ahb_sw);
+		if (ret) {
+			sunxi_err(chip->dev, "enable hsi_ahb_sw failed\n");
+			goto err_ahb_sw;
 		}
 	}
 
@@ -286,9 +302,12 @@ err_phy:
 		clk_disable_unprepare(chip->nsi_clk);
 err_nsi:
 	if (chip->variant->flags & SUNXI_DWMAC_HSI_CLK_GATE) {
+		clk_disable_unprepare(chip->hsi_ahb_sw);
+err_ahb_sw:
 		clk_disable_unprepare(chip->hsi_axi);
 err_axi:
 		clk_disable_unprepare(chip->hsi_ahb);
+
 	}
 err_ahb:
 	reset_control_assert(chip->ahb_rst);
@@ -304,6 +323,7 @@ static void sunxi_dwmac_clk_exit(struct sunxi_dwmac *chip)
 	if (chip->variant->flags & SUNXI_DWMAC_NSI_CLK_GATE)
 		clk_disable_unprepare(chip->nsi_clk);
 	if (chip->variant->flags & SUNXI_DWMAC_HSI_CLK_GATE) {
+		clk_disable_unprepare(chip->hsi_ahb_sw);
 		clk_disable_unprepare(chip->hsi_axi);
 		clk_disable_unprepare(chip->hsi_ahb);
 	}
@@ -343,7 +363,7 @@ static void sunxi_dwmac_hw_exit(struct sunxi_dwmac *chip)
 	writel(0, chip->syscfg_base);
 }
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 14, 0))
 static int sunxi_dwmac_ecc_init(struct sunxi_dwmac *chip)
 {
 	struct net_device *ndev = dev_get_drvdata(chip->dev);
@@ -412,7 +432,7 @@ static void sunxi_dwmac_parse_delay_maps(struct sunxi_dwmac *chip)
 	int ret, maps_cnt, i;
 	const u8 array_size = 3;
 	u32 *maps;
-	u16 soc_ver;
+	u16 soc_ver = 0;
 
 	maps_cnt = of_property_count_elems_of_size(np, "delay-maps", sizeof(u32));
 	if (maps_cnt <= 0) {
@@ -430,7 +450,9 @@ static void sunxi_dwmac_parse_delay_maps(struct sunxi_dwmac *chip)
 		goto err_parse_maps;
 	}
 
+#if defined(CONFIG_AW_SID) || defined(CONFIG_AW_SID_V2)
 	soc_ver = (u16)sunxi_get_soc_ver();
+#endif
 	for (i = 0; i < (maps_cnt / array_size); i++) {
 		if (soc_ver == maps[i * array_size]) {
 			chip->rx_delay = maps[i * array_size + 1];
@@ -444,7 +466,7 @@ err_parse_maps:
 	devm_kfree(&pdev->dev, maps);
 }
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 13, 0))
 static void sunxi_dwmac_request_mtl_irq(struct platform_device *pdev, struct sunxi_dwmac *chip,
 		struct plat_stmmacenet_data *plat_dat)
 {
@@ -514,6 +536,11 @@ static int sunxi_dwmac_resource_get(struct platform_device *pdev, struct sunxi_d
 			sunxi_err(dev, "Get hsi_axi clk failed\n");
 			return -EINVAL;
 		}
+		chip->hsi_ahb_sw = devm_clk_get(dev, "hsi_ahb_sw");
+		if (IS_ERR(chip->hsi_ahb_sw)) {
+			sunxi_err(dev, "Get hsi_ahb_sw clk failed\n");
+			return -EINVAL;
+		}
 	}
 
 	if (chip->variant->flags & SUNXI_DWMAC_NSI_CLK_GATE) {
@@ -549,13 +576,27 @@ static int sunxi_dwmac_resource_get(struct platform_device *pdev, struct sunxi_d
 		return -EINVAL;
 	}
 
-	chip->dwmac3v3_supply = devm_regulator_get_optional(&pdev->dev, "dwmac3v3");
-	if (IS_ERR(chip->dwmac3v3_supply))
-		sunxi_warn(dev, "Not found dwmac3v3-supply\n");
+	chip->dwmac_supply = devm_regulator_get_optional(chip->dev, "dwmac");
+	if (IS_ERR(chip->dwmac_supply)) {
+		chip->dwmac_supply = devm_regulator_get_optional(chip->dev, "dwmac3v3");
+		if (IS_ERR(chip->dwmac_supply))
+			sunxi_warn(dev, "get regulator supply for dwmac failed\n");
+		else
+			chip->dwmac_vol = 3300000;
+	} else {
+		of_property_read_u32(np, "dwmac-microvolt", &chip->dwmac_vol);
+	}
 
-	chip->phy3v3_supply = devm_regulator_get_optional(&pdev->dev, "phy3v3");
-	if (IS_ERR(chip->phy3v3_supply))
-		sunxi_warn(dev, "Not found phy3v3-supply\n");
+	chip->phy_supply = devm_regulator_get_optional(chip->dev, "phy");
+	if (IS_ERR(chip->phy_supply)) {
+		chip->phy_supply = devm_regulator_get_optional(chip->dev, "phy3v3");
+		if (IS_ERR(chip->phy_supply))
+			sunxi_warn(dev, "get regulator supply for phy failed\n");
+		else
+			chip->phy_vol = 3300000;
+	} else {
+		of_property_read_u32(np, "phy-microvolt", &chip->phy_vol);
+	}
 
 	ret = of_property_read_u32(np, "tx-delay", &chip->tx_delay);
 	if (ret) {
@@ -570,7 +611,7 @@ static int sunxi_dwmac_resource_get(struct platform_device *pdev, struct sunxi_d
 	}
 
 	sunxi_dwmac_parse_delay_maps(chip);
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 13, 0))
 	if (chip->variant->flags & SUNXI_DWMAC_MULTI_MSI)
 		sunxi_dwmac_request_mtl_irq(pdev, chip, plat_dat);
 #endif
@@ -596,7 +637,7 @@ static int sunxi_dwmac_probe(struct platform_device *pdev)
 	struct sunxi_dwmac *chip;
 	struct device *dev = &pdev->dev;
 	int ret;
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 12, 0))
 	char *mac_temp = NULL;
 #endif
 
@@ -619,7 +660,7 @@ static int sunxi_dwmac_probe(struct platform_device *pdev)
 	chip->dev = dev;
 	chip->res = &stmmac_res;
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0))
 	plat_dat = stmmac_probe_config_dt(pdev, stmmac_res.mac);
 #else
 	plat_dat = stmmac_probe_config_dt(pdev, &stmmac_res.mac);
@@ -635,7 +676,7 @@ static int sunxi_dwmac_probe(struct platform_device *pdev)
 	if (ret < 0)
 		return -EINVAL;
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0))
 #ifdef MODULE
 	get_custom_mac_address(1, "eth", stmmac_res.mac);
 #else
@@ -655,10 +696,11 @@ static int sunxi_dwmac_probe(struct platform_device *pdev)
 	plat_dat->init = sunxi_dwmac_init;
 	plat_dat->exit = sunxi_dwmac_exit;
 	/* must use 0~4G space */
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0))
-	plat_dat->addr64 = 32;
-#else
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)) || \
+	((LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 21)) && (LINUX_VERSION_CODE < KERNEL_VERSION(6, 2, 0)))
 	plat_dat->host_dma_width = 32;
+#else
+	plat_dat->addr64 = 32;
 #endif
 	/* Disable Split Header (SPH) feature for sunxi platfrom as default
 	 * The same issue also detect on intel platfrom, see 41eebbf90dfbcc8ad16d4755fe2cdb8328f5d4a7.
@@ -672,13 +714,19 @@ static int sunxi_dwmac_probe(struct platform_device *pdev)
 #else
 	if (chip->variant->flags & SUNXI_DWMAC_SPH_DISABLE)
 		plat_dat->sph_disable = true;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 13, 0))
 	if (chip->variant->flags & SUNXI_DWMAC_MULTI_MSI)
 		plat_dat->multi_msi_en = true;
 #endif
 	chip->interface = plat_dat->interface;
 #endif
 	plat_dat->clk_csr = 4; /* MDC = AHB(200M)/102 = 2M */
+	if (!plat_dat->has_gmac4) {
+		/* force fix dwmac ip version */
+		plat_dat->has_gmac4 = 1;
+		plat_dat->has_gmac = 0;
+		plat_dat->pmt = 1;
+	}
 
 	ret = sunxi_dwmac_init(pdev, plat_dat->bsp_priv);
 	if (ret)
@@ -688,7 +736,7 @@ static int sunxi_dwmac_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_dvr_probe;
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 14, 0))
 	if (chip->variant->flags & SUNXI_DWMAC_MEM_ECC) {
 		ret = sunxi_dwmac_ecc_init(chip);
 		if (ret < 0) {
@@ -702,8 +750,12 @@ static int sunxi_dwmac_probe(struct platform_device *pdev)
 
 	sunxi_info(&pdev->dev, "probe success (Version %s)\n", DWMAC_MODULE_VERSION);
 
+	ret = pm_runtime_get_sync(&pdev->dev);
+	if (ret)
+		sunxi_warn(&pdev->dev, "pm runtime get sync failed, ret: %d\n", ret);
+
 	return 0;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 14, 0))
 err_cfg:
 	stmmac_dvr_remove(&pdev->dev);
 #endif
@@ -716,6 +768,7 @@ err_init:
 
 static int sunxi_dwmac_remove(struct platform_device *pdev)
 {
+	pm_runtime_put_sync(&pdev->dev);
 	sunxi_dwmac_sysfs_exit(&pdev->dev);
 	stmmac_pltfr_remove(pdev);
 	return 0;
@@ -727,7 +780,10 @@ static void sunxi_dwmac_shutdown(struct platform_device *pdev)
 	struct stmmac_priv *priv = netdev_priv(ndev);
 	struct sunxi_dwmac *chip = priv->plat->bsp_priv;
 
+	if (ndev->phydev)
+		phy_disconnect(ndev->phydev);
 	sunxi_dwmac_exit(pdev, chip);
+	pinctrl_pm_select_sleep_state(chip->dev);
 }
 
 static int __maybe_unused sunxi_dwmac_suspend(struct device *dev)
@@ -770,7 +826,7 @@ static int __maybe_unused sunxi_dwmac_resume(struct device *dev)
 	ret = stmmac_resume(dev);
 
 	if (ndev && ndev->phydev) {
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(5, 12, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 13, 0))
 		if (ndev->phydev->mac_managed_pm) {
 			sunxi_info(chip->dev, "pm managed by mac, hw init phy\n");
 			phy_init_hw(ndev->phydev);
@@ -789,7 +845,7 @@ static int __maybe_unused sunxi_dwmac_resume(struct device *dev)
 			}
 			mutex_unlock(&ndev->phydev->lock);
 			rtnl_unlock();
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(5, 12, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 13, 0))
 		}
 #endif
 		/* suspend error workaround */
@@ -823,6 +879,17 @@ static const struct sunxi_dwmac_variant dwmac210_variant = {
 	.get_delaychain = sunxi_dwmac210_get_delaychain,
 };
 
+static const struct sunxi_dwmac_variant dwmac211_variant = {
+	.interface = PHY_INTERFACE_MODE_RMII | PHY_INTERFACE_MODE_RGMII,
+	.flags = SUNXI_DWMAC_SPH_DISABLE | SUNXI_DWMAC_MULTI_MSI,
+	.rx_delay_max = 31,
+	.tx_delay_max = 31,
+	.set_syscon = sunxi_dwmac200_set_syscon,
+	.set_delaychain = sunxi_dwmac210_set_delaychain,
+	.get_delaychain = sunxi_dwmac210_get_delaychain,
+	.get_version = sunxi_dwmac110_get_version,
+};
+
 static const struct sunxi_dwmac_variant dwmac220_variant = {
 	.interface = PHY_INTERFACE_MODE_RMII | PHY_INTERFACE_MODE_RGMII,
 	.flags = SUNXI_DWMAC_SPH_DISABLE | SUNXI_DWMAC_NSI_CLK_GATE | SUNXI_DWMAC_MULTI_MSI | SUNXI_DWMAC_MEM_ECC,
@@ -845,10 +912,11 @@ static const struct sunxi_dwmac_variant dwmac110_variant = {
 };
 
 static const struct of_device_id sunxi_dwmac_match[] = {
+	{ .compatible = "allwinner,sunxi-gmac-110", .data = &dwmac110_variant },
 	{ .compatible = "allwinner,sunxi-gmac-200", .data = &dwmac200_variant },
 	{ .compatible = "allwinner,sunxi-gmac-210", .data = &dwmac210_variant },
+	{ .compatible = "allwinner,sunxi-gmac-211", .data = &dwmac211_variant },
 	{ .compatible = "allwinner,sunxi-gmac-220", .data = &dwmac220_variant },
-	{ .compatible = "allwinner,sunxi-gmac-110", .data = &dwmac110_variant },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, sunxi_dwmac_match);

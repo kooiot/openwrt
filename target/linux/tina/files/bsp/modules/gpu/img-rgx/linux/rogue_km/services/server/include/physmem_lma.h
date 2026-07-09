@@ -42,8 +42,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /***************************************************************************/
 
-#ifndef _SRVSRV_PHYSMEM_LMA_H_
-#define _SRVSRV_PHYSMEM_LMA_H_
+#ifndef SRVSRV_PHYSMEM_LMA_H
+#define SRVSRV_PHYSMEM_LMA_H
 
 /* include/ */
 #include "img_types.h"
@@ -54,6 +54,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pmr.h"
 #include "pmr_impl.h"
 
+/*************************************************************************/ /*!
+@Function       PhysmemCreateHeapLMA
+@Description    Create and register new LMA heap with LMA specific details.
+@Input          psDevNode    Pointer to device node struct.
+@Input          uiPolicy     Heap allocation policy flags
+@Input          psConfig     Heap configuration.
+@Input          pszLabel     Debug identifier label
+@Output         ppsPhysHeap  Pointer to the created heap.
+@Return         PVRSRV_ERROR PVRSRV_OK or error code
+*/ /**************************************************************************/
+PVRSRV_ERROR
+PhysmemCreateHeapLMA(PVRSRV_DEVICE_NODE *psDevNode,
+                     PHYS_HEAP_POLICY uiPolicy,
+                     PHYS_HEAP_CONFIG *psConfig,
+                     IMG_CHAR *pszLabel,
+                     PHYS_HEAP **ppsPhysHeap);
+
 /*
  * PhysmemNewLocalRamBackedPMR
  *
@@ -61,26 +78,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * agnostic.
  */
 PVRSRV_ERROR
-PhysmemNewLocalRamBackedPMR(PVRSRV_DEVICE_NODE *psDevNode,
-							IMG_DEVMEM_SIZE_T uiSize,
-							IMG_DEVMEM_SIZE_T uiChunkSize,
-							IMG_UINT32 ui32NumPhysChunks,
-							IMG_UINT32 ui32NumVirtChunks,
-							IMG_UINT32 *pui32MappingTable,
-							IMG_UINT32 uiLog2PageSize,
-							PVRSRV_MEMALLOCFLAGS_T uiFlags,
-							const IMG_CHAR *pszAnnotation,
-							IMG_PID uiPid,
-							PMR **ppsPMRPtr);
+PhysmemNewLocalRamBackedPMR(PHYS_HEAP *psPhysHeap,
+							CONNECTION_DATA *psConnection,
+                            IMG_DEVMEM_SIZE_T uiSize,
+                            IMG_UINT32 ui32NumPhysChunks,
+                            IMG_UINT32 ui32NumVirtChunks,
+                            IMG_UINT32 *pui32MappingTable,
+                            IMG_UINT32 uiLog2PageSize,
+                            PVRSRV_MEMALLOCFLAGS_T uiFlags,
+                            const IMG_CHAR *pszAnnotation,
+                            IMG_PID uiPid,
+                            PMR **ppsPMRPtr,
+                            IMG_UINT32 ui32PDumpFlags);
 
-#if defined(SUPPORT_GPUVIRT_VALIDATION)
-/*
- * Define some helper list functions for the virtualization validation code
- */
-
-void	InsertPidOSidsCoupling(IMG_PID pId, IMG_UINT32 ui32OSid, IMG_UINT32 ui32OSidReg, IMG_BOOL bOSidAxiProt);
-void	RetrieveOSidsfromPidList(IMG_PID pId, IMG_UINT32 *pui32OSid, IMG_UINT32 *pui32OSidReg, IMG_BOOL *pbOSidAxiProt);
-void	RemovePidOSidCoupling(IMG_PID pId);
-#endif
-
-#endif /* #ifndef _SRVSRV_PHYSMEM_LMA_H_ */
+#endif /* #ifndef SRVSRV_PHYSMEM_LMA_H */

@@ -47,7 +47,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "img_types.h"
 #include "img_defs.h"
 #include "pvrsrv_error.h"
-#include "sync_server.h"
+#include "powervr/pvrsrv_sync_ext.h"
+#include "pvr_notifier.h"
+#include "device.h"
 
 
 typedef struct _SCP_CONTEXT_ SCP_CONTEXT;	/*!< Opaque handle to a software command processor context */
@@ -69,7 +71,7 @@ typedef void (*SCPDo)(void *pvReadyData, void *pvCompleteData);
 @Return         PVRSRV_OK if the software command processor was created
 */
 /*****************************************************************************/
-PVRSRV_ERROR IMG_CALLCONV SCPCreate(PVRSRV_DEVICE_NODE *psDevNode,
+PVRSRV_ERROR SCPCreate(PVRSRV_DEVICE_NODE *psDevNode,
 									IMG_UINT32 ui32CCBSizeLog2,
 									SCP_CONTEXT **ppsContext);
 
@@ -89,10 +91,6 @@ PVRSRV_ERROR IMG_CALLCONV SCPCreate(PVRSRV_DEVICE_NODE *psDevNode,
                 be called with the command complete data.
 
 @Input          psSCPContext            Context to allocate from
-
-@Input          ui32SyncPrimCount       Number of Sync Prim operations
-
-@Input          papsSync                Pointer to array of pointers to server syncs
 
 @Input          iAcquireFence           The fence that must be signalled
                                         before the command will be actioned
@@ -122,10 +120,7 @@ PVRSRV_ERROR IMG_CALLCONV SCPCreate(PVRSRV_DEVICE_NODE *psDevNode,
 @Return         PVRSRV_OK if the allocate was successful
 */
 /*****************************************************************************/
-PVRSRV_ERROR IMG_CALLCONV SCPAllocCommand(SCP_CONTEXT *psSCPContext,
-										  IMG_UINT32 ui32SyncPrimCount,
-										  SERVER_SYNC_PRIMITIVE **papsSync,
-										  IMG_BOOL *pabUpdate,
+PVRSRV_ERROR SCPAllocCommand(SCP_CONTEXT *psSCPContext,
 										  PVRSRV_FENCE iAcquireFence,
 										  SCPReady pfnCommandReady,
 										  SCPDo pfnCommandDo,
@@ -220,7 +215,7 @@ IMG_BOOL SCPHasPendingCommand(SCP_CONTEXT *psContext);
 @Return         None
 */
 /*****************************************************************************/
-void IMG_CALLCONV SCPDumpStatus(SCP_CONTEXT *psContext,
+void SCPDumpStatus(SCP_CONTEXT *psContext,
 				DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 				void *pvDumpDebugFile);
 
@@ -234,7 +229,7 @@ void IMG_CALLCONV SCPDumpStatus(SCP_CONTEXT *psContext,
 @Return         None
 */
 /*****************************************************************************/
-void IMG_CALLCONV SCPDestroy(SCP_CONTEXT *psContext);
+void SCPDestroy(SCP_CONTEXT *psContext);
 
 
 #endif /* SCP_H */

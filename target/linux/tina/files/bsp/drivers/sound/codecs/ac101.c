@@ -162,198 +162,6 @@ struct ac101_priv {
 	struct snd_sunxi_rglt *rglt;
 };
 
-static void sunxi_jack_adv_typec_mode_set(struct sunxi_jack_typec_cfg *jack_typec_cfg,
-					  enum sunxi_jack_modes mode)
-{
-	int i;
-	struct sunxi_jack_pins *jack_pins = jack_typec_cfg->jack_pins;
-	struct sunxi_jack_modes_map *modes_map = jack_typec_cfg->modes_map;
-
-	if (!modes_map || !jack_pins) {
-		SND_LOG_ERR("modes map or jack pins is NULL\n");
-		return;
-	}
-
-	if (mode >= SND_JACK_MODE_CNT || modes_map[mode].type == SND_JACK_MODE_NULL) {
-		SND_LOG_WARN("missing mode value,mode:%d\n", mode);
-		return;
-	}
-
-	for (i = 0; i < jack_typec_cfg->sw_pin_max; ++i) {
-		if (!jack_pins[i].used || modes_map[mode].map_value[i] == 0xf)
-			continue;
-		gpio_set_value(jack_pins[i].pin, modes_map[mode].map_value[i]);
-	}
-}
-
-static int sunxi_jack_plugin_notifier(struct notifier_block *nb, unsigned long event, void *ptr)
-{
-	struct sunxi_jack_adv_priv *jack_adv_priv = container_of(nb, struct sunxi_jack_adv_priv, hp_nb);
-	struct sunxi_jack_typec_cfg *jack_typec_cfg = &jack_adv_priv->jack_typec_cfg;
-	struct regmap *regmap = jack_adv_priv->regmap;
-	unsigned int headset_basedata;
-	unsigned int reg_val;
-
-	SND_LOG_INFO("event -> %lu\n", event);
-
-	regmap_read(regmap, HMIC_STS, &reg_val);
-	headset_basedata = (reg_val >> HMIC_DATA) & 0x1f;
-	SND_LOG_INFO("HMIC_DATA:%u\n", headset_basedata);
-
-	if (event) {
-		if (jack_adv_priv->jack_plug_sta == JACK_PLUG_STA_IN)
-			return 0;
-		jack_adv_priv->jack_plug_sta = JACK_PLUG_STA_IN;
-		sunxi_jack_adv_typec_mode_set(jack_typec_cfg, SND_JACK_MODE_HP);
-		SND_LOG_INFO("typec mode set to hp\n");
-	} else {
-		jack_adv_priv->jack_plug_sta = JACK_PLUG_STA_OUT;
-		sunxi_jack_adv_typec_mode_set(jack_typec_cfg, SND_JACK_MODE_USB);
-		SND_LOG_INFO("typec mode set to usb\n");
-	}
-
-	jack_adv_priv->notifier = true;
-
-	return NOTIFY_DONE;
-}
-
-static int ac101_typec_init(struct sunxi_jack_adv_priv *jack_adv_priv)
-{
-	int ret, i;
-	unsigned int temp_val;
-	char str[32] = {0};
-	struct device_node *np = jack_adv_priv->dev->of_node;
-	struct sunxi_jack_typec_cfg *jack_typec_cfg = &jack_adv_priv->jack_typec_cfg;
-	uint32_t *map_value;
-
-	struct {
-		char *name;
-		unsigned int id;
-	} of_mode_table[] = {
-		{ "jack-mode-off",	SND_JACK_MODE_OFF },
-		{ "jack-mode-usb",	SND_JACK_MODE_USB },
-		{ "jack-mode-hp",	SND_JACK_MODE_HP },
-		{ "jack-mode-micn",	SND_JACK_MODE_MICN },
-		{ "jack-mode-mici",	SND_JACK_MODE_MICI },
-	};
-
-	SND_LOG_DEBUG("\n");
-
-	ret = of_property_read_bool(np, "extcon");
-	if (ret < 0) {
-		return 0;
-	}
-
-	jack_adv_priv->pmu_psy = devm_power_supply_get_by_phandle(jack_adv_priv->dev,
-								  "extcon");
-	jack_adv_priv->typec = true;
-	jack_adv_priv->extdev = extcon_get_edev_by_phandle(jack_adv_priv->dev, 0);
-	if (IS_ERR(jack_adv_priv->extdev)) {
-		SND_LOG_ERR("get adv dev failed\n");
-		return -1;
-	}
-
-	jack_adv_priv->hp_nb.notifier_call = sunxi_jack_plugin_notifier;
-	ret = extcon_register_notifier(jack_adv_priv->extdev,
-				       EXTCON_JACK_HEADPHONE,
-				       &jack_adv_priv->hp_nb);
-	if (ret < 0) {
-		SND_LOG_ERR("register jack notifier failed\n");
-		return -1;
-	}
-
-	ret = of_property_read_u32(np, "jack-swpin-max", &temp_val);
-	if (ret < 0) {
-		SND_LOG_WARN("jack-swpin-max get failed,stop init\n");
-		return 0;
-	} else {
-		jack_typec_cfg->sw_pin_max = temp_val;
-	}
-
-	jack_typec_cfg->jack_pins = devm_kcalloc(jack_adv_priv->dev, jack_typec_cfg->sw_pin_max,
-						 sizeof(struct sunxi_jack_pins), GFP_KERNEL);
-	if (!jack_typec_cfg->jack_pins) {
-		SND_LOG_ERR("can't get pin_config memory\n");
-		return -ENOMEM;
-	}
-
-	for (i = 0; i < jack_typec_cfg->sw_pin_max; ++i) {
-		snprintf(str, sizeof(str), "jack-swpin-%d", i);
-		ret = of_get_named_gpio(np, str, 0);
-		if (ret < 0) {
-			SND_LOG_ERR("%s get failed\n", str);
-			jack_typec_cfg->jack_pins[i].used = false;
-			continue;
-		}
-		temp_val = ret;
-		if (!gpio_is_valid(temp_val)) {
-			SND_LOG_ERR("%s (%u) is invalid\n", str, temp_val);
-			jack_typec_cfg->jack_pins[i].used = false;
-			continue;
-		}
-		ret = devm_gpio_request(jack_adv_priv->dev, temp_val, str);
-		if (ret) {
-			SND_LOG_ERR("%s (%u) request failed\n", str, temp_val);
-			jack_typec_cfg->jack_pins[i].used = false;
-			continue;
-		}
-		jack_typec_cfg->jack_pins[i].used = true;
-		jack_typec_cfg->jack_pins[i].pin = temp_val;
-		/* pin default set to output */
-		gpio_direction_output(jack_typec_cfg->jack_pins[i].pin, 1);
-	}
-
-	jack_typec_cfg->modes_map = devm_kcalloc(jack_adv_priv->dev, SND_JACK_MODE_CNT,
-						 sizeof(struct sunxi_jack_modes_map),
-						 GFP_KERNEL);
-	if (!jack_typec_cfg->modes_map) {
-		SND_LOG_ERR("can't get pin_mode_cfg memory\n");
-		return -ENOMEM;
-	}
-
-	for (i = 0; i < ARRAY_SIZE(of_mode_table); ++i) {
-		map_value = devm_kcalloc(jack_adv_priv->dev, jack_typec_cfg->sw_pin_max, sizeof(uint32_t),
-					 GFP_KERNEL);
-		if (!map_value) {
-			SND_LOG_ERR("can't get map value memory\n");
-			return -ENOMEM;
-		}
-
-		ret = of_property_read_u32_array(np, of_mode_table[i].name,
-						 map_value, jack_typec_cfg->sw_pin_max);
-		if (ret) {
-			jack_typec_cfg->modes_map[i].type = SND_JACK_MODE_NULL;
-			SND_LOG_DEBUG("mode:%s get failed,will not set mode map\n",
-				      of_mode_table[i].name);
-		} else {
-			jack_typec_cfg->modes_map[i].type = of_mode_table[i].id;
-			jack_typec_cfg->modes_map[i].map_value = map_value;
-		}
-		map_value = NULL;
-	}
-
-	sunxi_jack_adv_typec_mode_set(jack_typec_cfg, SND_JACK_MODE_USB);
-	SND_LOG_DEBUG("typec mode set to usb\n");
-
-	return 0;
-}
-
-static void ac101_typec_exit(struct sunxi_jack_adv_priv *jack_adv_priv)
-{
-	struct sunxi_jack_typec_cfg *jack_typec_cfg = &jack_adv_priv->jack_typec_cfg;
-
-	SND_LOG_DEBUG("\n");
-
-	sunxi_jack_adv_typec_mode_set(jack_typec_cfg, SND_JACK_MODE_USB);
-	SND_LOG_DEBUG("typec mode set to usb\n");
-
-	extcon_unregister_notifier(jack_adv_priv->extdev,
-				   EXTCON_JACK_HEADPHONE,
-				   &jack_adv_priv->hp_nb);
-
-	return;
-}
-
 /* jack work  */
 static int sunxi_jack_adv_init(void *data);
 static void sunxi_jack_adv_exit(void *data);
@@ -361,10 +169,11 @@ static int sunxi_jack_adv_suspend(void *data);
 static int sunxi_jack_adv_resume(void *data);
 static int sunxi_jack_adv_irq_request(void *data, jack_irq_work jack_interrupt);
 static void sunxi_jack_adv_irq_free(void *data);
-static void sunxi_jack_adv_irq_clean(void *data);
+static void sunxi_jack_adv_irq_clean(void *data, int irq);
 static void sunxi_jack_adv_irq_enable(void *data);
 static void sunxi_jack_adv_irq_disable(void *data);
-static void sunxi_jack_adv_det_work(void *data, enum snd_jack_types *jack_type);
+static void sunxi_jack_adv_det_irq_work(void *data, enum snd_jack_types *jack_type);
+static void sunxi_jack_adv_det_scan_work(void *data, enum snd_jack_types *jack_type);
 
 struct sunxi_jack_adv sunxi_jack_adv = {
 	.jack_init	= sunxi_jack_adv_init,
@@ -377,15 +186,14 @@ struct sunxi_jack_adv sunxi_jack_adv = {
 	.jack_irq_clean		= sunxi_jack_adv_irq_clean,
 	.jack_irq_enable	= sunxi_jack_adv_irq_enable,
 	.jack_irq_disable	= sunxi_jack_adv_irq_disable,
-	.jack_det_irq_work	= sunxi_jack_adv_det_work,
-	// .jack_det_scan_work	= sunxi_jack_adv_det_work,
+	.jack_det_irq_work	= sunxi_jack_adv_det_irq_work,
+	.jack_det_scan_work	= sunxi_jack_adv_det_scan_work,
 };
 
 static int sunxi_jack_adv_init(void *data)
 {
 	struct sunxi_jack_adv_priv *jack_adv_priv = data;
 	struct regmap *regmap = jack_adv_priv->regmap;
-	int ret;
 
 	regmap_update_bits(regmap, HMIC_CTRL2, 0xffff << 0, 0x0 << 0);
 
@@ -393,33 +201,20 @@ static int sunxi_jack_adv_init(void *data)
 			   jack_adv_priv->det_threshold << HMIC_TH1);
 
 	regmap_update_bits(regmap, HMIC_CTRL2, 0x1f << HMIC_TH2,
-			   jack_adv_priv->key_threshold[0] << HMIC_TH2);
-
+			   jack_adv_priv->key_threshold << HMIC_TH2);
 
 	regmap_update_bits(regmap, HMIC_CTRL1, 0xf << HMIC_N,
 			   jack_adv_priv->det_debounce << HMIC_N);
 	regmap_update_bits(regmap, HMIC_CTRL1, 0xf << HMIC_M,
 			   jack_adv_priv->key_debounce << HMIC_M);
 
-	regmap_update_bits(regmap, ADC_APC_CTRL,
-			   0x1 << HBIASMOD, 0x1 << HBIASMOD);
-	regmap_update_bits(regmap, ADC_APC_CTRL,
-			   0x1 << HBIAS_EN, 0x1 << HBIAS_EN);
-	regmap_update_bits(regmap, ADC_APC_CTRL,
-			   0x1 << HBIAS_ADC_EN, 0x1 << HBIAS_ADC_EN);
-
-	regmap_update_bits(regmap, HMIC_CTRL1,
-			   0x1 << PULLIN_IRQ_EN, 0x1 << PULLIN_IRQ_EN);
-
 	if (of_property_read_bool(jack_adv_priv->dev->of_node, "extcon")) {
-		ret = ac101_typec_init(jack_adv_priv);
-		if (ret < 0) {
-			SND_LOG_ERR("typec jack init failed\n");
-			return -1;
-		}
+		jack_adv_priv->typec = true;
 	}
 
 	SND_LOG_DEBUG("\n");
+
+	jack_adv_priv->irq_sta = JACK_IRQ_NULL;
 
 	return 0;
 }
@@ -444,39 +239,15 @@ static void sunxi_jack_adv_exit(void *data)
 			   0x1 << KEYUP_IRQ_EN, 0x0 << KEYUP_IRQ_EN);
 	regmap_update_bits(regmap, HMIC_CTRL1,
 			   0x1 << KEYDOWN_IRQ_EN, 0x0 << KEYDOWN_IRQ_EN);
-
-	if (jack_adv_priv->typec) {
-		ac101_typec_exit(jack_adv_priv);
-	}
 }
 
 static int sunxi_jack_adv_suspend(void *data)
 {
-	struct sunxi_jack_adv_priv *jack_adv_priv = data;
-	struct regmap *regmap = jack_adv_priv->regmap;
-
-	SND_LOG_DEBUG("\n");
-
-	regmap_update_bits(regmap, HMIC_CTRL1,
-			   0x1 << PULLIN_IRQ_EN, 0x0 << PULLIN_IRQ_EN);
-	regmap_update_bits(regmap, HMIC_CTRL1,
-			   0x1 << PULLOUT_IRQ_EN, 0x0 << PULLOUT_IRQ_EN);
-
-	regmap_update_bits(regmap, HMIC_CTRL1,
-			   0x1 << KEYDOWN_IRQ_EN, 0x0 << KEYDOWN_IRQ_EN);
 	return 0;
 }
 
 static int sunxi_jack_adv_resume(void *data)
 {
-	struct sunxi_jack_adv_priv *jack_adv_priv = data;
-	struct regmap *regmap = jack_adv_priv->regmap;
-
-	SND_LOG_DEBUG("\n");
-
-	regmap_update_bits(regmap, HMIC_CTRL1,
-			   0x1 << PULLIN_IRQ_EN, 0x1 << PULLIN_IRQ_EN);
-
 	return 0;
 }
 
@@ -487,15 +258,15 @@ static int sunxi_jack_adv_irq_request(void *data, jack_irq_work jack_interrupt)
 
 	SND_LOG_DEBUG("\n");
 
-	/* irq */
+	/* det_gpio irq */
 	ret = gpio_request_one(jack_adv_priv->det_gpio, GPIOF_IN, "Headphone detection");
 	if (ret) {
 		SND_LOG_ERR("jack-detgpio (%d) request failed, err:%d\n", jack_adv_priv->det_gpio, ret);
 		return ret;
 	}
 
-	jack_adv_priv->desc = gpio_to_desc(jack_adv_priv->det_gpio);
-	ret = request_irq(gpiod_to_irq(jack_adv_priv->desc),
+	jack_adv_priv->det_desc = gpio_to_desc(jack_adv_priv->det_gpio);
+	ret = request_irq(gpiod_to_irq(jack_adv_priv->det_desc),
 				      (void *)jack_interrupt,
 				      IRQF_TRIGGER_FALLING,
 				      "Headphone detection",
@@ -503,6 +274,26 @@ static int sunxi_jack_adv_irq_request(void *data, jack_irq_work jack_interrupt)
 	if (ret) {
 		SND_LOG_ERR("jack-detgpio (%d) request irq failed\n", jack_adv_priv->det_gpio);
 		return ret;
+	}
+
+	/* plug_gpio irq for 3.5mm */
+	if (jack_adv_priv->plug_gpio) {
+		ret = gpio_request_one(jack_adv_priv->plug_gpio, GPIOF_IN, "Headphone plug");
+		if (ret) {
+			SND_LOG_ERR("jack-detgpio (%d) request failed, err:%d\n", jack_adv_priv->plug_gpio, ret);
+			return ret;
+		}
+
+		jack_adv_priv->plug_desc = gpio_to_desc(jack_adv_priv->plug_gpio);
+		ret = request_irq(gpiod_to_irq(jack_adv_priv->plug_desc),
+					(void *)jack_interrupt,
+					IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
+					"Headphone plug",
+					jack_adv_priv);
+		if (ret) {
+			SND_LOG_ERR("plug-gpio (%d) request irq failed\n", jack_adv_priv->plug_gpio);
+			return ret;
+		}
 	}
 
 	return ret;
@@ -514,14 +305,27 @@ static void sunxi_jack_adv_irq_free(void *data)
 
 	SND_LOG_DEBUG("\n");
 
+	/* det_gpio */
 	gpio_free(jack_adv_priv->det_gpio);
-	gpiod_unexport(jack_adv_priv->desc);
-	free_irq(gpiod_to_irq(jack_adv_priv->desc), jack_adv_priv);
-	gpiod_put(jack_adv_priv->desc);
+	gpiod_unexport(jack_adv_priv->det_desc);
+	free_irq(gpiod_to_irq(jack_adv_priv->det_desc), jack_adv_priv);
+	gpiod_put(jack_adv_priv->det_desc);
+
+	/* plug_gpio */
+	if (jack_adv_priv->plug_gpio) {
+		gpio_free(jack_adv_priv->plug_gpio);
+		gpiod_unexport(jack_adv_priv->plug_desc);
+		free_irq(gpiod_to_irq(jack_adv_priv->plug_desc), jack_adv_priv);
+		gpiod_put(jack_adv_priv->plug_desc);
+	}
 }
 
-static void sunxi_jack_adv_irq_clean(void *data)
+static void sunxi_jack_adv_irq_clean(void *data, int irq)
 {
+	struct sunxi_jack_adv_priv *jack_adv_priv = data;
+
+	jack_adv_priv->irq = irq;
+
 	return;
 }
 
@@ -531,7 +335,10 @@ static void sunxi_jack_adv_irq_enable(void *data)
 
 	SND_LOG_DEBUG("\n");
 
-	enable_irq(gpiod_to_irq(jack_adv_priv->desc));
+	enable_irq(gpiod_to_irq(jack_adv_priv->det_desc));
+
+	if (jack_adv_priv->plug_gpio)
+		enable_irq(gpiod_to_irq(jack_adv_priv->plug_desc));
 }
 
 static void sunxi_jack_adv_irq_disable(void *data)
@@ -540,7 +347,10 @@ static void sunxi_jack_adv_irq_disable(void *data)
 
 	SND_LOG_DEBUG("\n");
 
-	disable_irq(gpiod_to_irq(jack_adv_priv->desc));
+	disable_irq(gpiod_to_irq(jack_adv_priv->det_desc));
+
+	if (jack_adv_priv->plug_gpio)
+		disable_irq(gpiod_to_irq(jack_adv_priv->plug_desc));
 }
 
 
@@ -548,66 +358,32 @@ static void sunxi_adv_headset_heasphone_det(struct sunxi_jack_adv_priv *jack_adv
 					    enum snd_jack_types *jack_type)
 {
 	struct regmap *regmap = jack_adv_priv->regmap;
-	struct sunxi_jack_typec_cfg *jack_typec_cfg = &jack_adv_priv->jack_typec_cfg;
 	unsigned int reg_val;
 	unsigned int headset_basedata;
 	unsigned int i;
 	int count = 10;
 	int interval_ms = 10;
 
-	if (jack_adv_priv->typec) {
-		sunxi_jack_adv_typec_mode_set(jack_typec_cfg, SND_JACK_MODE_MICI);
-		msleep(100);
-		for (i = 0; i < count; i++) {
-			regmap_read(regmap, HMIC_STS, &reg_val);
-			headset_basedata = (reg_val >> HMIC_DATA) & 0x1f;
-			SND_LOG_INFO("\033[31m headset_basedata:%d headset:[%d, %d)\033[0m \n",
-				     headset_basedata,
-				     jack_adv_priv->key_threshold[0],
-				     jack_adv_priv->key_threshold[1]);
-			if (headset_basedata > jack_adv_priv->key_threshold[0] &&
-			    headset_basedata < jack_adv_priv->key_threshold[1]) {
-				goto headset;
-			}
-			msleep(interval_ms);
+	msleep(100);
+	for (i = 0; i < count; i++) {
+		regmap_read(regmap, HMIC_STS, &reg_val);
+		headset_basedata = (reg_val >> HMIC_DATA) & 0x1f;
+		SND_LOG_INFO("\033[31m headset_basedata:%d key_threshold:%d\033[0m\n",
+				headset_basedata, jack_adv_priv->key_threshold);
+		if (headset_basedata < jack_adv_priv->key_threshold) {
+			goto headset;
 		}
-
-		sunxi_jack_adv_typec_mode_set(jack_typec_cfg, SND_JACK_MODE_MICN);
-		msleep(100);
-		for (i = 0; i < count; i++) {
-			regmap_read(regmap, HMIC_STS, &reg_val);
-			headset_basedata = (reg_val >> HMIC_DATA) & 0x1f;
-			SND_LOG_INFO("\033[31m headset_basedata:%d headset:[%d, %d)\033[0m \n",
-				     headset_basedata,
-				     jack_adv_priv->key_threshold[0],
-				     jack_adv_priv->key_threshold[1]);
-			if (headset_basedata > jack_adv_priv->key_threshold[0] &&
-			    headset_basedata < jack_adv_priv->key_threshold[1]) {
-				goto headset;
-			}
-			msleep(interval_ms);
-		}
-	} else {
-		msleep(100);
-		for (i = 0; i < count; i++) {
-			regmap_read(regmap, HMIC_STS, &reg_val);
-			headset_basedata = (reg_val >> HMIC_DATA) & 0x1f;
-			SND_LOG_INFO("\033[31m headset_basedata:%d headset:[%d, %d)\033[0m \n",
-				     headset_basedata,
-				     jack_adv_priv->key_threshold[0],
-				     jack_adv_priv->key_threshold[1]);
-			if (headset_basedata > jack_adv_priv->key_threshold[0] &&
-			    headset_basedata < jack_adv_priv->key_threshold[1]) {
-				goto headset;
-			}
-			msleep(interval_ms);
-		}
+		msleep(interval_ms);
 	}
 
 	*jack_type = SND_JACK_HEADPHONE;
 
 	regmap_update_bits(regmap, HMIC_CTRL1,
-			   0x1 << PULLOUT_IRQ_EN, 0x1 << PULLOUT_IRQ_EN);
+			   0x1 << KEYUP_IRQ_EN, 0x0 << KEYUP_IRQ_EN);
+	regmap_update_bits(regmap, HMIC_CTRL1,
+			   0x1 << KEYDOWN_IRQ_EN, 0x0 << KEYDOWN_IRQ_EN);
+	regmap_update_bits(regmap, HMIC_CTRL1,
+			   0x1 << DATA_IRQ_EN, 0x0 << DATA_IRQ_EN);
 
 	return;
 
@@ -615,96 +391,109 @@ headset:
 	*jack_type = SND_JACK_HEADSET;
 
 	regmap_update_bits(regmap, HMIC_CTRL2, 0x1f << HMIC_TH2,
-				jack_adv_priv->key_threshold[1] << HMIC_TH2);
+				jack_adv_priv->key_threshold << HMIC_TH2);
 
 	regmap_update_bits(regmap, HMIC_CTRL1,
-				0x1 << KEYDOWN_IRQ_EN, 0x1 << KEYDOWN_IRQ_EN);
+			   0x1 << KEYDOWN_IRQ_EN, 0x1 << KEYDOWN_IRQ_EN);
 	regmap_update_bits(regmap, HMIC_CTRL1,
-				0x1 << PULLOUT_IRQ_EN, 0x1 << PULLOUT_IRQ_EN);
+			   0x1 << DATA_IRQ_EN, 0x0 << DATA_IRQ_EN);
+	regmap_update_bits(regmap, HMIC_CTRL1,
+			   0x1 << KEYUP_IRQ_EN, 0x0 << KEYUP_IRQ_EN);
 	return;
-
 }
 
-static void sunxi_jack_adv_det_work(void *data, enum snd_jack_types *jack_type)
+static void sunxi_jack_adv_det_irq_work(void *data, enum snd_jack_types *jack_type)
 {
-	unsigned int reg_val, irqen_val, reg_val_tmp;
-	union power_supply_propval temp;
 	struct sunxi_jack_adv_priv *jack_adv_priv = data;
 	struct regmap *regmap = jack_adv_priv->regmap;
-	struct sunxi_jack_typec_cfg *jack_typec_cfg = &jack_adv_priv->jack_typec_cfg;
+	int det_irq = gpiod_to_irq(jack_adv_priv->det_desc);
+	int plug_irq = gpiod_to_irq(jack_adv_priv->plug_desc);
+	unsigned int reg_val, irqen_val, reg_val_tmp;
+	unsigned int gpio_level;
 
-	if (jack_adv_priv->typec &&
-	    !jack_adv_priv->notifier &&
-	    jack_adv_priv->jack_plug_sta == JACK_PLUG_STA_OUT) {
-		power_supply_get_property(jack_adv_priv->pmu_psy,
-					  POWER_SUPPLY_PROP_SCOPE, &temp);
-		if (temp.intval & (0x1 << 3)) {
-			jack_adv_priv->jack_plug_sta = JACK_PLUG_STA_IN;
-			sunxi_jack_adv_typec_mode_set(jack_typec_cfg, SND_JACK_MODE_HP);
-			SND_LOG_INFO("typec mode set to hp\n");
+	if (jack_adv_priv->plug_gpio) {
+		gpio_level = gpio_get_value(jack_adv_priv->plug_gpio);
+		if (gpio_level != jack_adv_priv->gpio_level) {
+			regmap_read(regmap, HMIC_STS, &reg_val_tmp);
+			reg_val_tmp |= 0x1 << KEYDOWN_PEND;
+			reg_val_tmp |= 0x1 << KEYUP_PEND;
+			reg_val_tmp |= 0x1 << PLUGIN_PEND;
+			reg_val_tmp |= 0x1 << PLUGOUT_PEND;
+			reg_val_tmp |= 0x1 << DATA_PEND;
+			regmap_write(regmap, HMIC_STS, reg_val_tmp);
+			jack_adv_priv->irq_sta = JACK_IRQ_OUT;
+
+			goto jack_irq_sts;
 		}
 	}
 
-	regmap_read(regmap, HMIC_CTRL1, &irqen_val);
-	regmap_read(regmap, HMIC_STS, &reg_val);
+	if (jack_adv_priv->irq == det_irq) {
+		regmap_read(regmap, HMIC_CTRL1, &irqen_val);
+		regmap_read(regmap, HMIC_STS, &reg_val);
+		if ((reg_val & (1 << KEYDOWN_PEND)) && (irqen_val & (1 << KEYDOWN_IRQ_EN))) {
+			regmap_update_bits(regmap, HMIC_CTRL1,
+					0x1 << KEYDOWN_IRQ_EN, 0x0 << KEYDOWN_IRQ_EN);
+			regmap_read(regmap, HMIC_STS, &reg_val_tmp);
+			reg_val_tmp |= 0x1 << KEYDOWN_PEND;
+			reg_val_tmp |= 0x1 << PLUGIN_PEND;
+			reg_val_tmp |= 0x1 << KEYUP_PEND;
+			reg_val_tmp |= 0x1 << PLUGOUT_PEND;
+			reg_val_tmp |= 0x1 << DATA_PEND;
+			regmap_write(regmap, HMIC_STS, reg_val_tmp);
+			jack_adv_priv->irq_sta = JACK_IRQ_KEYDOWN;
+		} else {
+			return;
+		}
+	} else if (jack_adv_priv->irq == plug_irq) {
+		jack_adv_priv->gpio_level = gpio_get_value(jack_adv_priv->plug_gpio);
+		if (jack_adv_priv->gpio_level) {
+			regmap_read(regmap, HMIC_STS, &reg_val_tmp);
+			reg_val_tmp |= 0x1 << KEYDOWN_PEND;
+			reg_val_tmp |= 0x1 << KEYUP_PEND;
+			reg_val_tmp |= 0x1 << PLUGIN_PEND;
+			reg_val_tmp |= 0x1 << PLUGOUT_PEND;
+			reg_val_tmp |= 0x1 << DATA_PEND;
+			regmap_write(regmap, HMIC_STS, reg_val_tmp);
 
-	if ((reg_val & (1 << PLUGIN_PEND)) && (irqen_val & (1 << PULLIN_IRQ_EN))) {
-		SND_LOG_INFO("\033[31m JACK IN\033[0m \n");
-		regmap_update_bits(regmap, HMIC_CTRL1,
-				   0x1 << PULLIN_IRQ_EN, 0x0 << PULLIN_IRQ_EN);
-		regmap_read(regmap, HMIC_STS, &reg_val_tmp);
-		reg_val_tmp |= 0x1 << PLUGIN_PEND;
-		reg_val_tmp &= ~(0x1 << PULLOUT_PEND);
-		reg_val_tmp |= 0x1 << KEYUP_PEND;
-		reg_val_tmp |= 0x1 << KEYDOWN_PEND;
-		reg_val_tmp |= 0x1 << DATA_PEND;
-		regmap_write(regmap, HMIC_STS, reg_val_tmp);
+			jack_adv_priv->irq_sta = JACK_IRQ_OUT;
+		} else {
+			regmap_update_bits(regmap, ADC_APC_CTRL,
+					0x1 << HBIASMOD, 0x1 << HBIASMOD);
+			regmap_update_bits(regmap, ADC_APC_CTRL,
+					0x1 << HBIAS_EN, 0x1 << HBIAS_EN);
+			regmap_update_bits(regmap, ADC_APC_CTRL,
+					0x1 << HBIAS_ADC_EN, 0x1 << HBIAS_ADC_EN);
 
-		jack_adv_priv->irq_sta = JACK_IRQ_IN;
+			regmap_read(regmap, HMIC_STS, &reg_val_tmp);
+			reg_val_tmp |= 0x1 << PLUGIN_PEND;
+			reg_val_tmp |= 0x1 << PLUGOUT_PEND;
+			reg_val_tmp |= 0x1 << KEYUP_PEND;
+			reg_val_tmp |= 0x1 << KEYDOWN_PEND;
+			reg_val_tmp |= 0x1 << DATA_PEND;
+			regmap_write(regmap, HMIC_STS, reg_val_tmp);
+
+			jack_adv_priv->irq_sta = JACK_IRQ_IN;
+		}
+	} else {
+		SND_LOG_ERR("err irq\n");
+		return;
 	}
 
-	/* jack out */
-	if ((reg_val & (1 << PULLOUT_PEND)) && (irqen_val & (1 << PULLOUT_IRQ_EN))) {
-		SND_LOG_INFO("\033[31m JACK OUT \033[0m \n");
-		regmap_update_bits(regmap, HMIC_CTRL1,
-				   0x1 << PULLOUT_IRQ_EN, 0x0 << PULLOUT_IRQ_EN);
-		regmap_read(regmap, HMIC_STS, &reg_val_tmp);
-		reg_val_tmp |= 0x1 << PULLOUT_PEND;
-		reg_val_tmp |= 0x1 << PLUGIN_PEND;
-		reg_val_tmp |= 0x1 << KEYUP_PEND;
-		reg_val_tmp |= 0x1 << KEYDOWN_PEND;
-		reg_val_tmp |= 0x1 << DATA_PEND;
-		regmap_write(regmap, HMIC_STS, reg_val_tmp);
-
-		jack_adv_priv->irq_sta = JACK_IRQ_OUT;
-	}
-
-	/* keydown */
-	if ((reg_val & (1 << KEYDOWN_PEND)) && (irqen_val & (1 << KEYDOWN_IRQ_EN))) {
-		regmap_update_bits(regmap, HMIC_CTRL1,
-				   0x1 << KEYDOWN_IRQ_EN, 0x0 << KEYDOWN_IRQ_EN);
-		SND_LOG_INFO("\033[31m keydown \033[0m \n");
-		regmap_read(regmap, HMIC_STS, &reg_val_tmp);
-		reg_val_tmp |= 0x1 << KEYDOWN_PEND;
-		reg_val_tmp |= 0x1 << PLUGIN_PEND;
-		reg_val_tmp |= 0x1 << KEYUP_PEND;
-		reg_val_tmp |= 0x1 << PULLOUT_PEND;
-		reg_val_tmp |= 0x1 << DATA_PEND;
-		regmap_write(regmap, HMIC_STS, reg_val_tmp);
-		jack_adv_priv->irq_sta = JACK_IRQ_KEYDOWN;
-	}
-
+jack_irq_sts:
 	switch (jack_adv_priv->irq_sta) {
 	case JACK_IRQ_OUT:
 		SND_LOG_INFO("jack out\n");
 		regmap_update_bits(regmap, HMIC_CTRL1,
-				   0x1 << PULLOUT_IRQ_EN, 0x0 << PULLOUT_IRQ_EN);
-		regmap_update_bits(regmap, HMIC_CTRL1,
 				   0x1 << KEYUP_IRQ_EN, 0x0 << KEYUP_IRQ_EN);
 		regmap_update_bits(regmap, HMIC_CTRL1,
 				   0x1 << KEYDOWN_IRQ_EN, 0x0 << KEYDOWN_IRQ_EN);
-		regmap_update_bits(regmap, HMIC_CTRL1,
-				   0x1 << PULLIN_IRQ_EN, 0x1 << PULLIN_IRQ_EN);
+
+		regmap_update_bits(regmap, ADC_APC_CTRL,
+				0x1 << HBIASMOD, 0x0 << HBIASMOD);
+		regmap_update_bits(regmap, ADC_APC_CTRL,
+				0x1 << HBIAS_EN, 0x0 << HBIAS_EN);
+		regmap_update_bits(regmap, ADC_APC_CTRL,
+				0x1 << HBIAS_ADC_EN, 0x0 << HBIAS_ADC_EN);
 
 		*jack_type = 0;
 	break;
@@ -756,6 +545,145 @@ static void sunxi_jack_adv_det_work(void *data, enum snd_jack_types *jack_type)
 	return;
 }
 
+static void sunxi_jack_adv_det_scan_work(void *data, enum snd_jack_types *jack_type)
+{
+	struct sunxi_jack_adv *jack_adv = &sunxi_jack_adv;
+	struct sunxi_jack_adv_priv *jack_adv_priv = data;
+	struct regmap *regmap = jack_adv_priv->regmap;
+	unsigned int reg_val;
+	unsigned int headset_basedata_i, headset_basedata_n;
+	int count = 50;
+	int interval_ms = 10;
+	unsigned int i;
+
+	SND_LOG_INFO("\n");
+
+	if (jack_adv_priv->typec) {
+		if (!jack_adv->jack_plug_sta) {
+			*jack_type = 0;
+			goto out;
+		}
+
+		regmap_update_bits(regmap, ADC_APC_CTRL,
+				0x1 << HBIASMOD, 0x1 << HBIASMOD);
+		regmap_update_bits(regmap, ADC_APC_CTRL,
+				0x1 << HBIAS_EN, 0x1 << HBIAS_EN);
+		regmap_update_bits(regmap, ADC_APC_CTRL,
+				0x1 << HBIAS_ADC_EN, 0x1 << HBIAS_ADC_EN);
+
+		sunxi_jack_typec_mode_set(&jack_adv->jack_typec_cfg, SND_JACK_MODE_MICI);
+
+		for (i = 0; i < count; i++) {
+			regmap_read(regmap, HMIC_STS, &reg_val);
+			headset_basedata_i = (reg_val >> HMIC_DATA) & 0x1f;
+			if (headset_basedata_i > 0
+			    && headset_basedata_i < jack_adv_priv->key_threshold) {
+				*jack_type = SND_JACK_HEADSET;
+				printk("[%s %d] headset_basedata_i:%d\n",
+				       __func__, __LINE__, headset_basedata_i);
+				goto headset;
+			}
+			msleep(interval_ms);
+		}
+		printk("[%s %d] headset_basedata_i:%d\n", __func__, __LINE__, headset_basedata_i);
+
+		sunxi_jack_typec_mode_set(&jack_adv->jack_typec_cfg, SND_JACK_MODE_MICN);
+		for (i = 0; i < count; i++) {
+			regmap_read(regmap, HMIC_STS, &reg_val);
+			headset_basedata_n = (reg_val >> HMIC_DATA) & 0x1f;
+			if (headset_basedata_n > 0
+			    && headset_basedata_n < jack_adv_priv->key_threshold) {
+				*jack_type = SND_JACK_HEADSET;
+				printk("[%s %d] headset_basedata_n:%d\n",
+				       __func__, __LINE__, headset_basedata_n);
+				goto headset;
+			}
+			msleep(interval_ms);
+		}
+
+		printk("[%s %d] headset_basedata_n:%d\n",
+		       __func__, __LINE__, headset_basedata_n);
+
+		/* abnormal jack */
+		if (!headset_basedata_i && headset_basedata_n) {
+			sunxi_jack_typec_mode_set(&jack_adv->jack_typec_cfg, SND_JACK_MODE_MICI);
+			*jack_type = SND_JACK_HEADSET;
+			goto headset;
+		}
+
+		if (headset_basedata_i && !headset_basedata_n) {
+			sunxi_jack_typec_mode_set(&jack_adv->jack_typec_cfg, SND_JACK_MODE_MICN);
+			*jack_type = SND_JACK_HEADSET;
+			goto headset;
+		}
+
+		if (!headset_basedata_i && !headset_basedata_n) {
+			SND_LOG_ERR("switch may not work\n");
+			*jack_type = SND_JACK_HEADSET;
+			goto headset;
+		}
+
+
+		*jack_type = SND_JACK_HEADPHONE;
+		jack_adv_priv->jack_type = *jack_type;
+
+		return;
+	}
+
+	if (jack_adv_priv->plug_gpio) {
+		if (gpio_get_value(jack_adv_priv->plug_gpio)) {
+			*jack_type = 0;
+			jack_adv_priv->jack_type = *jack_type;
+		} else {
+			sunxi_adv_headset_heasphone_det(jack_adv_priv, jack_type);
+		}
+		return;
+	}
+
+headset:
+	if (*jack_type == SND_JACK_HEADSET) {
+		msleep(500);
+		regmap_update_bits(regmap, HMIC_CTRL2, 0x1f << HMIC_TH2,
+				   jack_adv_priv->key_threshold << HMIC_TH2);
+
+		regmap_read(regmap, HMIC_STS, &reg_val);
+		reg_val |= 0x1 << PLUGIN_PEND;
+		reg_val |= 0x1 << PLUGOUT_PEND;
+		reg_val |= 0x1 << KEYUP_PEND;
+		reg_val |= 0x1 << KEYDOWN_PEND;
+		reg_val |= 0x1 << DATA_PEND;
+		regmap_write(regmap, HMIC_STS, reg_val);
+
+		regmap_update_bits(regmap, HMIC_CTRL1,
+				0x1 << KEYDOWN_IRQ_EN, 0x1 << KEYDOWN_IRQ_EN);
+		regmap_update_bits(regmap, HMIC_CTRL1,
+				0x1 << DATA_IRQ_EN, 0x0 << DATA_IRQ_EN);
+		regmap_update_bits(regmap, HMIC_CTRL1,
+				0x1 << KEYUP_IRQ_EN, 0x0 << KEYUP_IRQ_EN);
+	}
+
+out:
+	if (*jack_type == 0) {
+		regmap_update_bits(regmap, HMIC_CTRL1,
+				   0x1 << KEYUP_IRQ_EN, 0x0 << KEYUP_IRQ_EN);
+		regmap_update_bits(regmap, HMIC_CTRL1,
+				   0x1 << KEYDOWN_IRQ_EN, 0x0 << KEYDOWN_IRQ_EN);
+		regmap_update_bits(regmap, HMIC_CTRL1,
+				   0x1 << DATA_IRQ_EN, 0x0 << DATA_IRQ_EN);
+
+		regmap_update_bits(regmap, ADC_APC_CTRL,
+					0x1 << HBIASMOD, 0x0 << HBIASMOD);
+		regmap_update_bits(regmap, ADC_APC_CTRL,
+					0x1 << HBIAS_EN, 0x0 << HBIAS_EN);
+		regmap_update_bits(regmap, ADC_APC_CTRL,
+					0x1 << HBIAS_ADC_EN, 0x0 << HBIAS_ADC_EN);
+	}
+
+	jack_adv_priv->jack_type = *jack_type;
+
+	return;
+}
+
 struct sunxi_jack_port sunxi_jack_port = {
 	.jack_adv = &sunxi_jack_adv,
 };
@@ -779,7 +707,7 @@ static int ac101_startup(struct snd_pcm_substream *substream, struct snd_soc_dai
 
 		do {
 			regmap_read(regmap, CHIP_SOFT_RST, &reg_val);
-			SND_LOG_INFO("wait ac101 reset successfully, need 0x101/%d\n", reg_val);
+			SND_LOG_INFO("wait ac101 reset successfully, need 0x101/0x%x\n", reg_val);
 		} while (reg_val != 0x101);
 
 		/* recover reg */
@@ -1247,12 +1175,401 @@ static struct snd_soc_dai_driver ac101_dai = {
 	.ops = &ac101_dai_ops,
 };
 
+static int sunxi_get_plug_det_thr_mode(struct snd_kcontrol *kcontrol,
+				       struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct regmap *regmap = ac101->regmap;
+	unsigned int reg_val;
+
+	regmap_read(regmap, HMIC_CTRL2, &reg_val);
+
+	ucontrol->value.integer.value[0] =  (reg_val >> HMIC_TH1) & 0x1f;
+
+	return 0;
+}
+
+static int sunxi_put_plug_det_thr_mode(struct snd_kcontrol *kcontrol,
+				       struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct regmap *regmap = ac101->regmap;
+	unsigned int reg_val;
+
+	reg_val = ucontrol->value.integer.value[0];
+
+	regmap_update_bits(regmap, HMIC_CTRL2, 0x1f << HMIC_TH1, reg_val << HMIC_TH1);
+
+	return 0;
+}
+
+static int sunxi_get_plug_det_debounce_time_mode(struct snd_kcontrol *kcontrol,
+						 struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct regmap *regmap = ac101->regmap;
+	unsigned int reg_val;
+
+	regmap_read(regmap, HMIC_CTRL1, &reg_val);
+
+	ucontrol->value.integer.value[0] =  (reg_val >> HMIC_N) & 0xf;
+
+	return 0;
+}
+
+static int sunxi_put_plug_det_debounce_time_mode(struct snd_kcontrol *kcontrol,
+						 struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct regmap *regmap = ac101->regmap;
+	unsigned int reg_val;
+
+	reg_val = ucontrol->value.integer.value[0];
+
+	regmap_update_bits(regmap, HMIC_CTRL1, 0xf << HMIC_N, reg_val << HMIC_N);
+
+	return 0;
+}
+
+static int sunxi_get_key_det_thr_mode(struct snd_kcontrol *kcontrol,
+				      struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct regmap *regmap = ac101->regmap;
+	unsigned int reg_val;
+
+	regmap_read(regmap, HMIC_CTRL2, &reg_val);
+
+	ucontrol->value.integer.value[0] =  (reg_val >> HMIC_TH2) & 0x1f;
+
+	return 0;
+}
+
+static int sunxi_put_key_det_thr_mode(struct snd_kcontrol *kcontrol,
+				      struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct regmap *regmap = ac101->regmap;
+	unsigned int reg_val;
+
+	reg_val = ucontrol->value.integer.value[0];
+
+	regmap_update_bits(regmap, HMIC_CTRL2, 0x1f << HMIC_TH2, reg_val << HMIC_TH2);
+
+	return 0;
+}
+
+static int sunxi_get_key_det_debounce_time_mode(struct snd_kcontrol *kcontrol,
+						 struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct regmap *regmap = ac101->regmap;
+	unsigned int reg_val;
+
+	regmap_read(regmap, HMIC_CTRL1, &reg_val);
+
+	ucontrol->value.integer.value[0] =  (reg_val >> HMIC_M) & 0xf;
+
+	return 0;
+}
+
+static int sunxi_put_key_det_debounce_time_mode(struct snd_kcontrol *kcontrol,
+						struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct regmap *regmap = ac101->regmap;
+	unsigned int reg_val;
+
+	reg_val = ucontrol->value.integer.value[0];
+
+	regmap_update_bits(regmap, HMIC_CTRL1, 0xf << HMIC_M, reg_val << HMIC_M);
+
+	return 0;
+}
+
+/* hook */
+static int sunxi_get_key_det_hook_min_mode(struct snd_kcontrol *kcontrol,
+					   struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct ac101_data *pdata = &ac101->pdata;
+	struct sunxi_jack_adv_priv *jack_adv_priv = &pdata->jack_adv_priv;
+
+	ucontrol->value.integer.value[0] = jack_adv_priv->key_det_vol[0][0];
+
+	return 0;
+}
+
+static int sunxi_put_key_det_hook_min_mode(struct snd_kcontrol *kcontrol,
+					   struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct ac101_data *pdata = &ac101->pdata;
+	struct sunxi_jack_adv_priv *jack_adv_priv = &pdata->jack_adv_priv;
+
+	jack_adv_priv->key_det_vol[0][0] = ucontrol->value.integer.value[0];
+
+	return 0;
+}
+
+static int sunxi_get_key_det_hook_max_mode(struct snd_kcontrol *kcontrol,
+					   struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct ac101_data *pdata = &ac101->pdata;
+	struct sunxi_jack_adv_priv *jack_adv_priv = &pdata->jack_adv_priv;
+
+	ucontrol->value.integer.value[0] = jack_adv_priv->key_det_vol[0][1];
+
+	return 0;
+}
+
+static int sunxi_put_key_det_hook_max_mode(struct snd_kcontrol *kcontrol,
+					   struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct ac101_data *pdata = &ac101->pdata;
+	struct sunxi_jack_adv_priv *jack_adv_priv = &pdata->jack_adv_priv;
+
+	jack_adv_priv->key_det_vol[0][1] = ucontrol->value.integer.value[0];
+
+	return 0;
+}
+
+/* vol+ */
+static int sunxi_get_key_det_vol_add_min_mode(struct snd_kcontrol *kcontrol,
+					      struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct ac101_data *pdata = &ac101->pdata;
+	struct sunxi_jack_adv_priv *jack_adv_priv = &pdata->jack_adv_priv;
+
+	ucontrol->value.integer.value[0] = jack_adv_priv->key_det_vol[1][0];
+
+	return 0;
+}
+
+static int sunxi_put_key_det_vol_add_min_mode(struct snd_kcontrol *kcontrol,
+					      struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct ac101_data *pdata = &ac101->pdata;
+	struct sunxi_jack_adv_priv *jack_adv_priv = &pdata->jack_adv_priv;
+
+	jack_adv_priv->key_det_vol[1][0] = ucontrol->value.integer.value[0];
+
+	return 0;
+}
+
+static int sunxi_get_key_det_vol_add_max_mode(struct snd_kcontrol *kcontrol,
+					      struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct ac101_data *pdata = &ac101->pdata;
+	struct sunxi_jack_adv_priv *jack_adv_priv = &pdata->jack_adv_priv;
+
+	ucontrol->value.integer.value[0] = jack_adv_priv->key_det_vol[1][1];
+
+	return 0;
+}
+
+static int sunxi_put_key_det_vol_add_max_mode(struct snd_kcontrol *kcontrol,
+					      struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct ac101_data *pdata = &ac101->pdata;
+	struct sunxi_jack_adv_priv *jack_adv_priv = &pdata->jack_adv_priv;
+
+	jack_adv_priv->key_det_vol[1][1] = ucontrol->value.integer.value[0];
+
+	return 0;
+}
+
+/* vol- */
+static int sunxi_get_key_det_vol_sub_min_mode(struct snd_kcontrol *kcontrol,
+					      struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct ac101_data *pdata = &ac101->pdata;
+	struct sunxi_jack_adv_priv *jack_adv_priv = &pdata->jack_adv_priv;
+
+	ucontrol->value.integer.value[0] = jack_adv_priv->key_det_vol[2][0];
+
+	return 0;
+}
+
+static int sunxi_put_key_det_vol_sub_min_mode(struct snd_kcontrol *kcontrol,
+					      struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct ac101_data *pdata = &ac101->pdata;
+	struct sunxi_jack_adv_priv *jack_adv_priv = &pdata->jack_adv_priv;
+
+	jack_adv_priv->key_det_vol[2][0] = ucontrol->value.integer.value[0];
+
+	return 0;
+}
+
+static int sunxi_get_key_det_vol_sub_max_mode(struct snd_kcontrol *kcontrol,
+					      struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct ac101_data *pdata = &ac101->pdata;
+	struct sunxi_jack_adv_priv *jack_adv_priv = &pdata->jack_adv_priv;
+
+	ucontrol->value.integer.value[0] = jack_adv_priv->key_det_vol[2][1];
+
+	return 0;
+}
+
+static int sunxi_put_key_det_vol_sub_max_mode(struct snd_kcontrol *kcontrol,
+					      struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct ac101_data *pdata = &ac101->pdata;
+	struct sunxi_jack_adv_priv *jack_adv_priv = &pdata->jack_adv_priv;
+
+	jack_adv_priv->key_det_vol[2][1] = ucontrol->value.integer.value[0];
+
+	return 0;
+}
+
+/* sample sel */
+static int sunxi_get_sample_sel_mode(struct snd_kcontrol *kcontrol,
+				     struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct regmap *regmap = ac101->regmap;
+	unsigned int reg_val;
+
+	regmap_read(regmap, HMIC_CTRL2, &reg_val);
+
+	ucontrol->value.integer.value[0] =  (reg_val >> SAMPLE_SEL) & 0x3;
+
+	return 0;
+}
+
+static int sunxi_put_sample_sel_mode(struct snd_kcontrol *kcontrol,
+				     struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct regmap *regmap = ac101->regmap;
+	unsigned int reg_val;
+
+	reg_val = ucontrol->value.integer.value[0];
+
+	regmap_update_bits(regmap, HMIC_CTRL2, 0x3 << SAMPLE_SEL, reg_val << SAMPLE_SEL);
+
+	return 0;
+}
+
+/* smooth filter */
+static int sunxi_get_smooth_filter_mode(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct regmap *regmap = ac101->regmap;
+	unsigned int reg_val;
+
+	regmap_read(regmap, HMIC_CTRL2, &reg_val);
+
+	ucontrol->value.integer.value[0] =  (reg_val >> HMIC_SF) & 0x3;
+
+	return 0;
+}
+
+static int sunxi_put_smooth_filter_mode(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct regmap *regmap = ac101->regmap;
+	unsigned int reg_val;
+
+	reg_val = ucontrol->value.integer.value[0];
+
+	regmap_update_bits(regmap, HMIC_CTRL2, 0x3 << HMIC_SF, reg_val << HMIC_SF);
+
+	return 0;
+}
+
+static const struct snd_kcontrol_new ac101_jack_controls[] = {
+	/* hmic sample sel*/
+	SOC_SINGLE_EXT("hmic sample sel", HMIC_CTRL2, SAMPLE_SEL, 3, 0,
+		       sunxi_get_sample_sel_mode,
+		       sunxi_put_sample_sel_mode),
+	/* hmic smooth filter setting */
+	SOC_SINGLE_EXT("hmic smooth filter", HMIC_CTRL2, HMIC_SF, 3, 0,
+		       sunxi_get_smooth_filter_mode,
+		       sunxi_put_smooth_filter_mode),
+	/* plug in/out */
+	SOC_SINGLE_EXT("plug det threshold", HMIC_CTRL2, HMIC_TH1, 31, 0,
+		       sunxi_get_plug_det_thr_mode,
+		       sunxi_put_plug_det_thr_mode),
+	SOC_SINGLE_EXT("plug det debouce time", HMIC_CTRL1, HMIC_N, 15, 0,
+		       sunxi_get_plug_det_debounce_time_mode,
+		       sunxi_put_plug_det_debounce_time_mode),
+	/* headphone, headset */
+	SOC_SINGLE_EXT("key det threshold", HMIC_CTRL2, HMIC_TH2, 31, 0,
+		       sunxi_get_key_det_thr_mode,
+		       sunxi_put_key_det_thr_mode),
+	SOC_SINGLE_EXT("key det debouce time", HMIC_CTRL1, HMIC_M, 15, 0,
+		       sunxi_get_key_det_debounce_time_mode,
+		       sunxi_put_key_det_debounce_time_mode),
+	/* vol+ */
+	SOC_SINGLE_EXT("key det vol+ min", SND_SOC_NOPM, 0, 31, 0,
+		       sunxi_get_key_det_vol_add_min_mode,
+		       sunxi_put_key_det_vol_add_min_mode),
+	SOC_SINGLE_EXT("key det vol+ max", SND_SOC_NOPM, 0, 31, 0,
+		       sunxi_get_key_det_vol_add_max_mode,
+		       sunxi_put_key_det_vol_add_max_mode),
+	/* vol- */
+	SOC_SINGLE_EXT("key det vol- min", SND_SOC_NOPM, 0, 31, 0,
+		       sunxi_get_key_det_vol_sub_min_mode,
+		       sunxi_put_key_det_vol_sub_min_mode),
+	SOC_SINGLE_EXT("key det vol- max", SND_SOC_NOPM, 0, 31, 0,
+		       sunxi_get_key_det_vol_sub_max_mode,
+		       sunxi_put_key_det_vol_sub_max_mode),
+	/* hook */
+	SOC_SINGLE_EXT("key det hook min", SND_SOC_NOPM, 0, 31, 0,
+		       sunxi_get_key_det_hook_min_mode,
+		       sunxi_put_key_det_hook_min_mode),
+	SOC_SINGLE_EXT("key det hook max", SND_SOC_NOPM, 0, 31, 0,
+		       sunxi_get_key_det_hook_max_mode,
+		       sunxi_put_key_det_hook_max_mode),
+};
+
 static int ac101_probe(struct snd_soc_component *component)
 {
 	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
 	struct ac101_data *pdata = &ac101->pdata;
 	struct regmap *regmap = ac101->regmap;
+	struct sunxi_jack_adv_priv *jack_adv_priv = &pdata->jack_adv_priv;
 	unsigned int reg_val;
+	int ret;
 
 	SND_LOG_DEBUG("\n");
 
@@ -1309,9 +1626,24 @@ static int ac101_probe(struct snd_soc_component *component)
 
 	regmap_update_bits(regmap, I2S_CLK_CTRL, 0x1 << TDM_EN, 0x1 << TDM_EN);
 
+	regmap_update_bits(regmap, SPKOUT_CTRL, 0x7 << CLK_ADJUST, 0x7 << CLK_ADJUST);
+
+	ret = snd_soc_add_component_controls(component, ac101_jack_controls,
+					     ARRAY_SIZE(ac101_jack_controls));
+	if (ret)
+		SND_LOG_ERR("add ac101_jack_controls failed\n");
+
+	/* component kcontrols -> pa */
+	ret = snd_sunxi_pa_pin_probe(jack_adv_priv->pa_cfg,
+				     jack_adv_priv->pa_pin_max,
+				     component);
+	if (ret)
+		SND_LOG_ERR("register pa kcontrols failed\n");
+
 	pdata->jack_adv_priv.regmap = regmap;
 	pdata->jack_adv_priv.dev = ac101->dev;
 	sunxi_jack_adv.data = (void *)(&pdata->jack_adv_priv);
+	sunxi_jack_adv.dev = ac101->dev;
 	snd_sunxi_jack_init(&sunxi_jack_port);
 
 	return 0;
@@ -1373,7 +1705,6 @@ static int ac101_resume(struct snd_soc_component *component)
 
 	return 0;
 }
-
 
 static int ac101_get_hpl_src(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
 {
@@ -1645,19 +1976,11 @@ static int ac101_lineoutl_event(struct snd_soc_dapm_widget *w, struct snd_kcontr
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
-		/* adc Analog left */
-		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0x1 << DACALEN, 0x1 << DACALEN);
-		/* left Analog output Mixer */
-		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0x1 << LMIXEN, 0x1 << LMIXEN);
 		/* spkl en */
 		regmap_update_bits(regmap, SPKOUT_CTRL, 0x1 << LSPK_EN, 0x1 << LSPK_EN);
 		msleep(100);
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
-		/* adc Analog left */
-		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0x1 << DACALEN, 0x0 << DACALEN);
-		/* left Analog output Mixer */
-		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0x1 << LMIXEN, 0x0 << LMIXEN);
 		/* spkl en */
 		regmap_update_bits(regmap, SPKOUT_CTRL, 0x1 << LSPK_EN, 0x0 << LSPK_EN);
 		break;
@@ -1678,19 +2001,11 @@ static int ac101_lineoutr_event(struct snd_soc_dapm_widget *w, struct snd_kcontr
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
-		/* adc Analog right */
-		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0x1 << DACAREN, 0x1 << DACAREN);
-		/* right Analog output Mixer */
-		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0x1 << RMIXEN, 0x1 << RMIXEN);
 		/* spkr en */
 		regmap_update_bits(regmap, SPKOUT_CTRL, 0x1 << RSPK_EN, 0x1 << RSPK_EN);
 		msleep(100);
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
-		/* adc Analog right */
-		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0x1 << DACAREN, 0x0 << DACAREN);
-		/* right Analog output Mixer */
-		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0x1 << RMIXEN, 0x0 << RMIXEN);
 		/* spkr en */
 		regmap_update_bits(regmap, SPKOUT_CTRL, 0x1 << RSPK_EN, 0x0 << RSPK_EN);
 		break;
@@ -1711,20 +2026,23 @@ static int ac101_hpoutl_event(struct snd_soc_dapm_widget *w, struct snd_kcontrol
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
-		/* adc Analog left */
-		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0x1 << DACALEN, 0x1 << DACALEN);
-		/* left Analog output Mixer */
-		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0x1 << LMIXEN, 0x1 << LMIXEN);
-		/* hp da offset, 0xf before hp pa enable */
+		/* hp dc offset, 0xf before hp pa enable */
 		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0xf << HP_DCRM_EN, 0xf << HP_DCRM_EN);
-		/* hpl enable */
-		regmap_update_bits(regmap, HPOUT_CTRL, 0x1 << MUTE_L, 0x1 << MUTE_L);
 		/* hp pa */
 		regmap_update_bits(regmap, HPOUT_CTRL, 0x1 << HPPA_EN, 0x1 << HPPA_EN);
+		msleep(10);
+		/* hpl enable */
+		regmap_update_bits(regmap, HPOUT_CTRL, 0x1 << MUTE_L, 0x1 << MUTE_L);
+		/* wait for stable */
+		msleep(4);
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
-		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0x1 << DACALEN, 0x0 << DACALEN);
-		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0x1 << LMIXEN, 0x0 << LMIXEN);
+		/* hpl disable */
+		regmap_update_bits(regmap, HPOUT_CTRL, 0x1 << MUTE_L, 0x0 << MUTE_L);
+		/* hp dc offset, 0x0 before hp pa disable */
+		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0xf << HP_DCRM_EN, 0x0 << HP_DCRM_EN);
+		/* hp pa */
+		regmap_update_bits(regmap, HPOUT_CTRL, 0x1 << HPPA_EN, 0x0 << HPPA_EN);
 
 		break;
 	default:
@@ -1744,21 +2062,23 @@ static int ac101_hpoutr_event(struct snd_soc_dapm_widget *w, struct snd_kcontrol
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
-		/* adc Analog left */
-		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0x1 << DACAREN, 0x1 << DACAREN);
-		/* left Analog output Mixer */
-		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0x1 << RMIXEN, 0x1 << RMIXEN);
-		/* hp da offset, 0xf before hp pa enable */
+		/* hp dc offset, 0xf before hp pa enable */
 		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0xf << HP_DCRM_EN, 0xf << HP_DCRM_EN);
-		/* hpl enable */
-		regmap_update_bits(regmap, HPOUT_CTRL, 0x1 << MUTE_R, 0x1 << MUTE_R);
 		/* hp pa */
 		regmap_update_bits(regmap, HPOUT_CTRL, 0x1 << HPPA_EN, 0x1 << HPPA_EN);
-
+		msleep(10);
+		/* hpl enable */
+		regmap_update_bits(regmap, HPOUT_CTRL, 0x1 << MUTE_R, 0x1 << MUTE_R);
+		/* wait for stable */
+		msleep(4);
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
-		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0x1 << DACAREN, 0x0 << DACAREN);
-		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0x1 << RMIXEN, 0x0 << RMIXEN);
+		/* hpl disable */
+		regmap_update_bits(regmap, HPOUT_CTRL, 0x1 << MUTE_R, 0x0 << MUTE_R);
+		/* hp da offset, 0x0 before hp pa disable */
+		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0xf << HP_DCRM_EN, 0x0 << HP_DCRM_EN);
+		/* hp pa */
+		regmap_update_bits(regmap, HPOUT_CTRL, 0x1 << HPPA_EN, 0x0 << HPPA_EN);
 
 		break;
 	default:
@@ -1779,14 +2099,12 @@ static int ac101_mic1_event(struct snd_soc_dapm_widget *w, struct snd_kcontrol *
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		regmap_update_bits(regmap, ADC_SRCBST_CTRL, 0x1 << MIC1AMPEN, 0x1 << MIC1AMPEN);
-		regmap_update_bits(regmap, ADC_APC_CTRL, 0x1 << ADCLEN, 0x1 << ADCLEN);
 
 		atomic_sub(1, &adc_a_cnt);
 		if ((!atomic_read(&adc_a_cnt)))
 			msleep(250);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		regmap_update_bits(regmap, ADC_APC_CTRL, 0x1 << ADCLEN, 0x0 << ADCLEN);
 		regmap_update_bits(regmap, ADC_SRCBST_CTRL, 0x1 << MIC1AMPEN, 0x0 << MIC1AMPEN);
 		break;
 	default:
@@ -1808,14 +2126,11 @@ static int ac101_mic2_event(struct snd_soc_dapm_widget *w, struct snd_kcontrol *
 	case SND_SOC_DAPM_PRE_PMU:
 		regmap_update_bits(regmap, ADC_SRCBST_CTRL, 0x1 << MIC2PIN_EN, 0x1 << MIC2PIN_EN);
 		regmap_update_bits(regmap, ADC_SRCBST_CTRL, 0x1 << MIC2AMPEN, 0x1 << MIC2AMPEN);
-		regmap_update_bits(regmap, ADC_APC_CTRL, 0x1 << ADCREN, 0x1 << ADCREN);
-
 		atomic_sub(1, &adc_a_cnt);
 		if ((!atomic_read(&adc_a_cnt)))
 			msleep(250);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		regmap_update_bits(regmap, ADC_APC_CTRL, 0x1 << ADCREN, 0x0 << ADCREN);
 		regmap_update_bits(regmap, ADC_SRCBST_CTRL, 0x1 << MIC2AMPEN, 0x0 << MIC2AMPEN);
 		regmap_update_bits(regmap, ADC_SRCBST_CTRL, 0x1 << MIC2PIN_EN, 0x0 << MIC2PIN_EN);
 		break;
@@ -1847,20 +2162,19 @@ static int ac101_dmic_event(struct snd_soc_dapm_widget *w, struct snd_kcontrol *
 	return 0;
 }
 
-static int ac101_lineinl_event(struct snd_soc_dapm_widget *w, struct snd_kcontrol *k, int event)
+static int ac101_linein_event(struct snd_soc_dapm_widget *w, struct snd_kcontrol *k, int event)
 {
-	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
-	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
-	struct regmap *regmap = ac101->regmap;
-
 	SND_LOG_DEBUG("\n");
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
-		regmap_update_bits(regmap, ADC_APC_CTRL, 0x1 << ADCLEN, 0x1 << ADCLEN);
+		if (atomic_read(&adc_a_cnt)) {
+			atomic_sub(1, &adc_a_cnt);
+			if ((!atomic_read(&adc_a_cnt)))
+				msleep(250);
+		}
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
-		regmap_update_bits(regmap, ADC_APC_CTRL, 0x1 << ADCLEN, 0x0 << ADCLEN);
 		break;
 	default:
 		break;
@@ -1869,29 +2183,7 @@ static int ac101_lineinl_event(struct snd_soc_dapm_widget *w, struct snd_kcontro
 	return 0;
 }
 
-static int ac101_lineinr_event(struct snd_soc_dapm_widget *w, struct snd_kcontrol *k, int event)
-{
-	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
-	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
-	struct regmap *regmap = ac101->regmap;
-
-	SND_LOG_DEBUG("\n");
-
-	switch (event) {
-	case SND_SOC_DAPM_POST_PMU:
-		regmap_update_bits(regmap, ADC_APC_CTRL, 0x1 << ADCREN, 0x1 << ADCREN);
-		break;
-	case SND_SOC_DAPM_PRE_PMD:
-		regmap_update_bits(regmap, ADC_APC_CTRL, 0x1 << ADCREN, 0x0 << ADCREN);
-		break;
-	default:
-		break;
-	}
-
-	return 0;
-}
-
-static int ac101_playback_event(struct snd_soc_dapm_widget *w, struct snd_kcontrol *k, int event)
+static int ac101_playbackl_event(struct snd_soc_dapm_widget *w, struct snd_kcontrol *k, int event)
 {
 	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
 	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
@@ -1901,10 +2193,16 @@ static int ac101_playback_event(struct snd_soc_dapm_widget *w, struct snd_kcontr
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
-		regmap_update_bits(regmap, DAC_DIG_CTRL, 0x1 << ENDA, 0x1 << ENDA);
+		/* adc Analog left */
+		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0x1 << DACALEN, 0x1 << DACALEN);
+		/* left Analog output Mixer */
+		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0x1 << LMIXEN, 0x1 << LMIXEN);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		regmap_update_bits(regmap, DAC_DIG_CTRL, 0x1 << ENDA, 0x0 << ENDA);
+		/* adc Analog left */
+		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0x1 << DACALEN, 0x0 << DACALEN);
+		/* left Analog output Mixer */
+		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0x1 << LMIXEN, 0x0 << LMIXEN);
 		break;
 	default:
 		break;
@@ -1913,7 +2211,35 @@ static int ac101_playback_event(struct snd_soc_dapm_widget *w, struct snd_kcontr
 	return 0;
 }
 
-static int ac101_capture_event(struct snd_soc_dapm_widget *w, struct snd_kcontrol *k, int event)
+static int ac101_playbackr_event(struct snd_soc_dapm_widget *w, struct snd_kcontrol *k, int event)
+{
+	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct regmap *regmap = ac101->regmap;
+
+	SND_LOG_DEBUG("event:%d\n", event);
+
+	switch (event) {
+	case SND_SOC_DAPM_POST_PMU:
+		/* adc Analog right */
+		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0x1 << DACAREN, 0x1 << DACAREN);
+		/* right Analog output Mixer */
+		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0x1 << RMIXEN, 0x1 << RMIXEN);
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		/* adc Analog right */
+		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0x1 << DACAREN, 0x0 << DACAREN);
+		/* right Analog output Mixer */
+		regmap_update_bits(regmap, OMIXER_DACA_CTRL, 0x1 << RMIXEN, 0x0 << RMIXEN);
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static int ac101_capturel_event(struct snd_soc_dapm_widget *w, struct snd_kcontrol *k, int event)
 {
 	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
 	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
@@ -1924,10 +2250,33 @@ static int ac101_capture_event(struct snd_soc_dapm_widget *w, struct snd_kcontro
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		atomic_add(1, &adc_a_cnt);
-		regmap_update_bits(regmap, ADC_DIG_CTRL, 0x1 << ADC_DIG_EN, 0x1 << ADC_DIG_EN);
+		regmap_update_bits(regmap, ADC_APC_CTRL, 0x1 << ADCLEN, 0x1 << ADCLEN);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		regmap_update_bits(regmap, ADC_DIG_CTRL, 0x1 << ADC_DIG_EN, 0x0 << ADC_DIG_EN);
+		regmap_update_bits(regmap, ADC_APC_CTRL, 0x1 << ADCLEN, 0x0 << ADCLEN);
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static int ac101_capturer_event(struct snd_soc_dapm_widget *w, struct snd_kcontrol *k, int event)
+{
+	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
+	struct ac101_priv *ac101 = snd_soc_component_get_drvdata(component);
+	struct regmap *regmap = ac101->regmap;
+
+	SND_LOG_DEBUG("\n");
+
+	switch (event) {
+	case SND_SOC_DAPM_POST_PMU:
+		atomic_add(1, &adc_a_cnt);
+		regmap_update_bits(regmap, ADC_APC_CTRL, 0x1 << ADCREN, 0x1 << ADCREN);
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		regmap_update_bits(regmap, ADC_APC_CTRL, 0x1 << ADCREN, 0x0 << ADCREN);
 		break;
 	default:
 		break;
@@ -1953,18 +2302,18 @@ static const struct snd_soc_dapm_widget ac101_dapm_widgets[] = {
 	SND_SOC_DAPM_OUTPUT("HPOUTL_PIN"),
 	SND_SOC_DAPM_OUTPUT("HPOUTR_PIN"),
 
-	SND_SOC_DAPM_AIF_OUT_E("ADCL", "Capture", 0, SND_SOC_NOPM, 0, 0,
-			       ac101_capture_event,
+	SND_SOC_DAPM_AIF_OUT_E("ADCL", "Capture", 0, ADC_DIG_CTRL, ADC_DIG_EN, 0,
+			       ac101_capturel_event,
 			       SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_POST_PMD),
-	SND_SOC_DAPM_AIF_OUT_E("ADCR", "Capture", 0, SND_SOC_NOPM, 0, 0,
-			       ac101_capture_event,
+	SND_SOC_DAPM_AIF_OUT_E("ADCR", "Capture", 0, ADC_DIG_CTRL, ADC_DIG_EN, 0,
+			       ac101_capturer_event,
 			       SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_POST_PMD),
 
-	SND_SOC_DAPM_AIF_IN_E("DACL", "Playback", 0, OMIXER_DACA_CTRL, DACALEN, 0,
-			      ac101_playback_event,
+	SND_SOC_DAPM_AIF_IN_E("DACL", "Playback", 0, DAC_DIG_CTRL, ENDA, 0,
+			      ac101_playbackl_event,
 			      SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_POST_PMD),
-	SND_SOC_DAPM_AIF_IN_E("DACR", "Playback", 0, OMIXER_DACA_CTRL, DACAREN, 0,
-			      ac101_playback_event,
+	SND_SOC_DAPM_AIF_IN_E("DACR", "Playback", 0, DAC_DIG_CTRL, ENDA, 0,
+			      ac101_playbackr_event,
 			      SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_POST_PMD),
 
 	SND_SOC_DAPM_MIXER("InputL Mixer", SND_SOC_NOPM, 0, 0,
@@ -1993,8 +2342,8 @@ static const struct snd_soc_dapm_widget ac101_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("MIC1", ac101_mic1_event),
 	SND_SOC_DAPM_MIC("MIC2", ac101_mic2_event),
 	SND_SOC_DAPM_MIC("DMIC", ac101_dmic_event),
-	SND_SOC_DAPM_LINE("LINEINL", ac101_lineinl_event),
-	SND_SOC_DAPM_LINE("LINEINR", ac101_lineinr_event),
+	SND_SOC_DAPM_LINE("LINEINL", ac101_linein_event),
+	SND_SOC_DAPM_LINE("LINEINR", ac101_linein_event),
 };
 
 static const struct snd_soc_dapm_route ac101_dapm_routes[] = {
@@ -2192,6 +2541,7 @@ static int ac101_set_params_from_of(struct i2c_client *i2c, struct ac101_data *p
 		pdata->ecdn_mode = 0;
 	}
 
+	/* det gpio */
 	jack_adv_priv->det_gpio = of_get_named_gpio(np, "hp-det-gpio", 0);
 	if (jack_adv_priv->det_gpio == -EPROBE_DEFER) {
 		SND_LOG_ERR("get hp-det-gpio failed\n");
@@ -2199,6 +2549,17 @@ static int ac101_set_params_from_of(struct i2c_client *i2c, struct ac101_data *p
 
 	if (!gpio_is_valid(jack_adv_priv->det_gpio)) {
 		SND_LOG_ERR("jack-detgpio (%d) is invalid\n", jack_adv_priv->det_gpio);
+	}
+
+	/* plug gpio */
+	jack_adv_priv->plug_gpio = of_get_named_gpio(np, "hp-plug-gpio", 0);
+	if (jack_adv_priv->plug_gpio == -EPROBE_DEFER) {
+		SND_LOG_ERR("get hp-plug-gpio failed\n");
+	}
+
+	if (!gpio_is_valid(jack_adv_priv->plug_gpio)) {
+		jack_adv_priv->plug_gpio = 0;
+		SND_LOG_ERR("plug-gpio (%d) is invalid\n", jack_adv_priv->plug_gpio);
 	}
 
 	ret = of_property_read_u32(np, "jack-det-threshold", &temp_val);
@@ -2209,20 +2570,12 @@ static int ac101_set_params_from_of(struct i2c_client *i2c, struct ac101_data *p
 		jack_adv_priv->det_threshold = temp_val;
 	}
 
-	ret = of_property_read_u32_index(np, "jack-key-det-threshold", 0, &temp_val);
+	ret = of_property_read_u32(np, "jack-key-det-threshold", &temp_val);
 	if (ret < 0) {
 		SND_LOG_DEBUG("jack-key-det-threshold miss, default 4\n");
-		jack_adv_priv->key_threshold[0] = 4;
+		jack_adv_priv->key_threshold = 10;
 	} else {
-		jack_adv_priv->key_threshold[0] = temp_val;
-	}
-
-	ret = of_property_read_u32_index(np, "jack-key-det-threshold", 1, &temp_val);
-	if (ret < 0) {
-		SND_LOG_DEBUG("jack-key-det-threshold miss, default 10\n");
-		jack_adv_priv->key_threshold[1] = 10;
-	} else {
-		jack_adv_priv->key_threshold[1] = temp_val;
+		jack_adv_priv->key_threshold = temp_val;
 	}
 
 	ret = of_property_read_u32(np, "jack-det-debouce-time", &temp_val);
@@ -2291,12 +2644,12 @@ static int ac101_set_params_from_of(struct i2c_client *i2c, struct ac101_data *p
 		jack_adv_priv->key_det_vol[3][0] = temp_val;
 	}
 
-	SND_LOG_DEBUG("det_gpio        -> %u\n", jack_adv_priv->det_gpio);
+	SND_LOG_ERR("det_gpio        -> %u\n", jack_adv_priv->det_gpio);
+	SND_LOG_ERR("plug_gpio        -> %u\n", jack_adv_priv->plug_gpio);
 	SND_LOG_DEBUG("jack-det-threshold        -> %u\n",
 		      jack_adv_priv->det_threshold);
-	SND_LOG_DEBUG("jack-key-det-threshold    -> %u-%u\n",
-		      jack_adv_priv->key_threshold[0],
-		      jack_adv_priv->key_threshold[1]);
+	SND_LOG_DEBUG("jack-key-det-threshold    -> %u\n",
+		      jack_adv_priv->key_threshold);
 	SND_LOG_DEBUG("jack-det-debouce-time -> %u\n",
 		      jack_adv_priv->det_debounce);
 	SND_LOG_DEBUG("jack-det-key-debouce-time -> %u\n",
@@ -2365,6 +2718,28 @@ static int ac101_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *i
 	return ret;
 }
 
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+static void ac101_i2c_remove(struct i2c_client *i2c)
+#else
+static int ac101_i2c_remove(struct i2c_client *i2c)
+#endif
+{
+	struct device *dev = &i2c->dev;
+	struct device_node *np = i2c->dev.of_node;
+	struct ac101_priv *ac101 = dev_get_drvdata(dev);
+
+	snd_sunxi_regulator_exit(ac101->rglt);
+
+	devm_kfree(dev, ac101);
+	of_node_put(np);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	return;
+#else
+	return 0;
+#endif
+}
+
 static const struct of_device_id ac101_of_match[] = {
 	{ .compatible = "allwinner,sunxi-ac101", },
 	{ }
@@ -2377,6 +2752,7 @@ static struct i2c_driver ac101_i2c_driver = {
 		.of_match_table = ac101_of_match,
 	},
 	.probe = ac101_i2c_probe,
+	.remove = ac101_i2c_remove,
 };
 
 module_i2c_driver(ac101_i2c_driver);
@@ -2384,4 +2760,4 @@ module_i2c_driver(ac101_i2c_driver);
 MODULE_DESCRIPTION("ASoC AC101 driver");
 MODULE_AUTHOR("lijingpsw@allwinnertech.com");
 MODULE_LICENSE("GPL");
-MODULE_VERSION("1.0.0");
+MODULE_VERSION("1.0.1");

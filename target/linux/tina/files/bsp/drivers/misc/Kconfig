@@ -14,5 +14,6 @@ source "bsp/drivers/misc/sunxi-addr/Kconfig"
 source "bsp/drivers/misc/sunxi-bootevent/Kconfig"
 source "bsp/drivers/misc/sunxi-tvutils/Kconfig"
 source "bsp/drivers/misc/leds/Kconfig"
+source "bsp/drivers/misc/awmem/Kconfig"
 
 endmenu

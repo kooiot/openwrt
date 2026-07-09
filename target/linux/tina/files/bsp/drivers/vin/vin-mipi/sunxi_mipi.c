@@ -33,6 +33,8 @@
 
 #define IS_FLAG(x, y) (((x)&(y)) == y)
 
+/* #define MIPI_IRQ_USE */
+
 /* mipi_lane_spec[m][n]:
 * m: maximum number of mipi
 * n: fixed to 2
@@ -51,12 +53,32 @@ int mipi_lane_spec[VIN_MAX_MIPI][2] = {
 int mipi_lane_spec[VIN_MAX_MIPI][2] = {
 	{4, 4}, {2, 2},
 };
+#elif IS_ENABLED(CONFIG_ARCH_SUN60IW2)
+int mipi_lane_spec[VIN_MAX_MIPI][2] = {
+	{4, 4}, {4, 4}, {2, 2},
+};
+#elif IS_ENABLED(CONFIG_ARCH_SUN65IW1)
+int mipi_lane_spec[VIN_MAX_MIPI][2] = {
+	{4, 4}, {2, 4}, {2, 2},
+};
+#elif IS_ENABLED(CONFIG_ARCH_SUN8IW22)
+int mipi_lane_spec[VIN_MAX_MIPI][2] = {
+	{2, 4}, {2, 2}, {1, 1},
+};
+int mipi_is_virtual[VIN_MAX_MIPI] = {0, 0, 1};
+#elif IS_ENABLED(CONFIG_ARCH_SUN20IW1) || IS_ENABLED(CONFIG_ARCH_SUN8IW20)
+int mipi_lane_spec[0][0] = {
+};
 #else
 int mipi_lane_spec[VIN_MAX_MIPI][2] = {
 };
 #endif
 
+#if IS_ENABLED(CONFIG_ARCH_SUN20IW1) || IS_ENABLED(CONFIG_ARCH_SUN8IW20)
+struct mipi_dev *glb_mipi[VIN_MAX_MIPI + 1];
+#else
 struct mipi_dev *glb_mipi[VIN_MAX_MIPI];
+#endif
 
 #define MIPI_DEBUGFS_BUF_SIZE 768
 struct mipi_debugfs_buffer {
@@ -68,7 +90,7 @@ struct dentry *mipi_debugfs_root, *mipi_node;
 size_t mipi_status_size[VIN_MAX_DEV];
 size_t mipi_status_size_sum;
 
-static void mipi_set_st_time(int id, unsigned int time)
+static void mipi_set_st_time(unsigned int id, unsigned int time)
 {
 	struct mipi_dev *mipi;
 
@@ -321,6 +343,134 @@ static unsigned int data_formats_type(u32 code)
 }
 
 #if defined MIPI_PING_CONFIG
+#if defined MIPI_SUPPORT_MULTIPLEX
+static bool check_mipi_is_available(struct mipi_dev *mipi)
+{
+	int link_mode_cur;
+	int num_of_lanes_cur = 0;
+	bool other_mipi_used = 0;
+	int i;
+
+// before call function 'sunxi_mipi_subdev_s_stream', mipi stream_count has been +1, so compare with 1 here
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	if (mipi->stream_count > 1) {
+#else
+	if (mipi->subdev.entity.stream_count > 1) {
+#endif
+		vin_err("mipi%d is working, it is not available!!!\n", mipi->id);
+		return false;
+	}
+
+	for (i = 0; i < VIN_MAX_MIPI; i++) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+		if (glb_mipi[i]->stream_count > 1)
+#else
+		if (glb_mipi[i]->subdev.entity.stream_count > 1)
+#endif
+			other_mipi_used = true;
+	}
+	if (!other_mipi_used) {
+		if (mipi->cmb_csi_cfg.lane_num <= mipi_lane_spec[mipi->id][1])
+			return true;
+		else {
+			vin_err("mipi%d supports up to %d lane mode\n", mipi->id, mipi_lane_spec[mipi->id][1]);
+			return false;
+		}
+	}
+
+	cmb_phy_link_mode_get(&link_mode_cur);
+	switch (link_mode_cur) {
+	case TWO_2LANE:
+		num_of_lanes_cur = 2;
+		break;
+	case ONE_4LANE:
+		num_of_lanes_cur = 4;
+		break;
+	case THREE_1LANE:
+		num_of_lanes_cur = 1;
+		break;
+	default:
+		break;
+	}
+	if (mipi->cmb_csi_cfg.lane_num != num_of_lanes_cur) {
+		vin_err("mipi%d only support %d lane mode now\n", mipi->id, num_of_lanes_cur);
+		return false;
+	}
+
+	return true;
+}
+
+static int __mcsi_pin_config(struct mipi_dev *dev, int enable)
+{
+#ifndef FPGA_VER
+	char pinctrl_names_0lane[32] = "";
+	char pinctrl_names_1lane[32] = "";
+	char pinctrl_names_2lane[32] = "";
+	char pinctrl_names_4lane[32] = "";
+
+	if (!IS_ERR_OR_NULL(dev->pctrl))
+		devm_pinctrl_put(dev->pctrl);
+
+	switch (dev->cmb_csi_cfg.lane_num) {
+	case 4:
+	case 3:
+		sprintf(pinctrl_names_4lane, "mipi%d-4lane-%s", dev->id, enable ? "default" : "sleep");
+		sprintf(pinctrl_names_2lane, "mipi%d-2lane-%s", dev->id, enable ? "default" : "sleep");
+		sprintf(pinctrl_names_1lane, "mipi%d-1lane-%s", dev->id, enable ? "default" : "sleep");
+		break;
+	case 2:
+		sprintf(pinctrl_names_2lane, "mipi%d-2lane-%s", dev->id, enable ? "default" : "sleep");
+		sprintf(pinctrl_names_1lane, "mipi%d-1lane-%s", dev->id, enable ? "default" : "sleep");
+		break;
+	case 1:
+		sprintf(pinctrl_names_1lane, "mipi%d-1lane-%s", dev->id, enable ? "default" : "sleep");
+		sprintf(pinctrl_names_0lane, "mipi%d-0lane-%s", dev->id, enable ? "default" : "sleep");
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	if (mipi_is_virtual[dev->id] && pinctrl_names_0lane[0] != '\0') {
+		dev->pctrl = devm_pinctrl_get_select(&dev->pdev->dev, pinctrl_names_0lane);
+		if (IS_ERR_OR_NULL(dev->pctrl)) {
+			vin_err("mipi%d request pinctrl handle failed! pinctrl-names: %s\n",
+				dev->id, pinctrl_names_0lane);
+			return -EINVAL;
+		}
+		usleep_range(100, 120);
+	}
+	if (pinctrl_names_1lane[0] != '\0') {
+		dev->pctrl = devm_pinctrl_get_select(&dev->pdev->dev, pinctrl_names_1lane);
+		if (IS_ERR_OR_NULL(dev->pctrl)) {
+			vin_err("mipi%d request pinctrl handle failed! pinctrl-names: %s\n",
+				dev->id, pinctrl_names_1lane);
+			return -EINVAL;
+		}
+		usleep_range(100, 120);
+	}
+	if (pinctrl_names_2lane[0] != '\0') {
+		dev->pctrl = devm_pinctrl_get_select(&dev->pdev->dev, pinctrl_names_2lane);
+		if (IS_ERR_OR_NULL(dev->pctrl)) {
+			vin_err("mipi%d request pinctrl handle failed! pinctrl-names: %s\\n",
+				dev->id, pinctrl_names_2lane);
+			return -EINVAL;
+		}
+		usleep_range(100, 120);
+	}
+	if (pinctrl_names_4lane[0] != '\0') {
+		dev->pctrl = devm_pinctrl_get_select(&dev->pdev->dev, pinctrl_names_4lane);
+		if (IS_ERR_OR_NULL(dev->pctrl)) {
+			vin_err("mipi%d request pinctrl handle failed! pinctrl-names: %s\n",
+				dev->id, pinctrl_names_4lane);
+			return -EINVAL;
+		}
+		usleep_range(100, 120);
+	}
+#endif
+	return 0;
+}
+
+#else	// !MIPI_SUPPORT_MULTIPLEX
 static int __mcsi_pin_config(struct mipi_dev *dev, int enable)
 {
 #ifndef FPGA_VER
@@ -369,6 +519,7 @@ static int __mcsi_pin_config(struct mipi_dev *dev, int enable)
 #endif
 	return 0;
 }
+#endif	// MIPI_SUPPORT_MULTIPLEX
 
 static int __mcsi_pin_release(struct mipi_dev *dev)
 {
@@ -378,7 +529,7 @@ static int __mcsi_pin_release(struct mipi_dev *dev)
 #endif
 	return 0;
 }
-#endif
+#endif	// MIPI_PING_CONFIG
 
 #if IS_ENABLED(CONFIG_ARCH_SUN8IW16P1)
 void combo_rx_mipi_init(struct v4l2_subdev *sd)
@@ -577,7 +728,7 @@ void cmb_phy_init(struct mipi_dev *mipi)
 	cmb_mipirx_ctl(mipi->id + mipi->phy_offset, mipi->cmb_csi_cfg.phy_lane_cfg);
 	cmb_phy0_en(mipi->id + mipi->phy_offset, 1);
 	cmb_phy0_freq_en(mipi->id, 1);
-	cmb_phy_deskew1_cfg(mipi->id + mipi->phy_offset, mipi->deskew);
+	cmb_phy_deskew1_cfg(mipi->id + mipi->phy_offset, mipi->deskew, mipi->cmb_mode == MIPI_VC_WDR_MODE ? true : false);
 }
 
 static void combo_csi_link_mode_set(struct v4l2_subdev *sd)
@@ -605,8 +756,26 @@ static void combo_csi_link_mode_set(struct v4l2_subdev *sd)
 	} else {
 		vin_err("phy link mode set error, mipi sel set error!\n");
 	}
+#elif IS_ENABLED(CONFIG_ARCH_SUN65IW1)
+	cmb_phy_link_mode_set(TWO_4LANE);
 #elif IS_ENABLED(CONFIG_ARCH_SUN300IW1)
 	cmb_phy_link_mode_set(ONE_2LANE);
+#elif IS_ENABLED(CONFIG_ARCH_SUN8IW22)
+	switch (mipi->cmb_csi_cfg.lane_num) {
+	case 1:
+		cmb_phy_link_mode_set(THREE_1LANE);
+		break;
+	case 2:
+		cmb_phy_link_mode_set(TWO_2LANE);
+		break;
+	case 3:
+	case 4:
+		cmb_phy_link_mode_set(ONE_4LANE);
+		break;
+	default:
+		vin_err("cmb phy set link mode error!\n");
+		break;
+	}
 #endif
 }
 
@@ -625,7 +794,10 @@ static void combo_csi_mipi_init(struct v4l2_subdev *sd)
 	mipi->cmb_csi_cfg.phy_lane_cfg.phy_hsdt_en = HSDT_CLOSE;
 
 	cmb_phy_init(mipi);
-
+#if defined MIPI_SUPPORT_MULTIPLEX
+	if (!check_mipi_is_available(mipi))
+		vin_err("%s mipi%d is not available!\n", __func__, mipi->id);
+#endif
 	/* if need two mipi dev,needs set it */
 	if (mipi->cmb_csi_cfg.lane_num > mipi_lane_spec[mipi->id][0]) {
 		mipi->cmb_csi_cfg.phy_lane_cfg.phy_mipi_lpck_en = LPCK_CLOSE;
@@ -647,6 +819,10 @@ static void combo_csi_mipi_init(struct v4l2_subdev *sd)
 			cmb_port_mipi_raw_extend_en(mipi->id, i, 1);
 			mipi->cmb_csi_cfg.mipi_datatype[i] = MIPI_RAW8;
 		}
+#ifdef MIPI_IRQ_USE
+		cmb_port_int_enable(mipi->id, i, MIPI_FRAME_SYNC_ERR | MIPI_LINE_SYNC_ERR |
+				MIPI_ECC_WRN | MIPI_ECC_ERR | MIPI_CHKSUM_ERR |	MIPI_EOT_ERR);
+#endif
 	}
 
 	cmb_port_lane_num(mipi->id, mipi->cmb_csi_cfg.lane_num);
@@ -665,6 +841,23 @@ static void combo_csi_mipi_init(struct v4l2_subdev *sd)
 	if (mipi->cmb_mode == MIPI_DOL_WDR_MODE)
 		cmb_port_set_mipi_wdr(mipi->id, 0, 2);
 	cmb_port_enable(mipi->id);
+}
+
+static int combo_top_s_stream(struct v4l2_subdev *sd, int on)
+{
+	struct vin_md *vind = dev_get_drvdata(sd->v4l2_dev->dev);
+
+	if (on && (vind->mipi_top_stream_count)++ > 0)
+		return 0;
+	else if (!on && (vind->mipi_top_stream_count == 0 || --(vind->mipi_top_stream_count) > 0))
+		return 0;
+
+	if (on)
+		cmb_phy_top_enable();
+	else
+		cmb_phy_top_disable();
+
+	return 0;
 }
 
 void combo_csi_init(struct v4l2_subdev *sd)
@@ -696,6 +889,25 @@ void combo_csi_init(struct v4l2_subdev *sd)
 }
 #endif
 
+/* PHY_S2P_DLY = 145 * CSICLK(MHZ) / 1000 + PHY_FREQ_CNT / 800 -10 */
+static int sunxi_mipi_cal_time_hs(struct mipi_dev *mipi)
+{
+#if defined MIPI_COMBO_CSI
+	unsigned int csi_clk;
+	unsigned int phy_freq_cnt;
+	unsigned int phy_s2p_dly;
+	struct vin_md *vind = dev_get_drvdata(mipi->subdev.v4l2_dev->dev);
+
+	csi_clk = clk_get_rate(vind->clk[VIN_TOP_CLK].clock) / 1000000;
+	phy_freq_cnt = cmb_phy_freq_cnt_get(mipi->id);
+	phy_s2p_dly = 145 * csi_clk / 1000 + phy_freq_cnt / 800 - 10;
+
+	return phy_s2p_dly;
+#else
+	return 0x30;
+#endif
+}
+
 static int sunxi_mipi_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 {
 	struct mipi_dev *mipi = v4l2_get_subdevdata(sd);
@@ -722,13 +934,8 @@ static int sunxi_mipi_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 		mipi->time_hs = mipi->settle_time;
 	} else if (res->res_time_hs)
 		mipi->time_hs = res->res_time_hs;
-	else {
-#if IS_ENABLED(CONFIG_ARCH_SUN8IW16P1)
-		mipi->time_hs = 0x30;
-#else
-		mipi->time_hs = 0x28;
-#endif
-	}
+	else
+		mipi->time_hs = sunxi_mipi_cal_time_hs(mipi);
 	if (res->res_deskew)
 		mipi->deskew = res->res_deskew;
 
@@ -740,6 +947,7 @@ static int sunxi_mipi_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 #if  IS_ENABLED(CONFIG_ARCH_SUN8IW16P1)
 		combo_rx_init(sd);
 #elif defined MIPI_COMBO_CSI
+		combo_top_s_stream(sd, enable);
 		combo_csi_init(sd);
 #else
 		bsp_mipi_csi_dphy_init(mipi->id);
@@ -762,6 +970,7 @@ static int sunxi_mipi_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 		cmb_port_disable(mipi->id);
 		cmb_phy0_en(mipi->id, 0);
 		cmb_phy0_freq_en(mipi->id, 0);
+		combo_top_s_stream(sd, enable);
 #else
 		bsp_mipi_csi_dphy_disable(mipi->id, mipi->sensor_flags);
 		bsp_mipi_csi_protocol_disable(mipi->id);
@@ -917,11 +1126,13 @@ static int sunxi_mipi_g_mbus_config(struct v4l2_subdev *sd, unsigned int pad,
 			mipi->cmb_csi_cfg.phy_lane_cfg.phy_mipi_lpdt_en = LPDT_4LANE;
 			mipi->cmb_csi_cfg.phy_lane_cfg.phy_deskew_en = DK_4LANE;
 			mipi->cmb_csi_cfg.lane_num = 4;
+#if !IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 			if (mipi->cmb_csi_cfg.lane_num > mipi_lane_spec[mipi->id][1])
 				vin_err("PORT%d supports a maximum of %dlane!\n", mipi->id, mipi_lane_spec[mipi->id][1]);
-			if (mipi->id < (VIN_MAX_MIPI - 1) && glb_mipi[mipi->id + 1]->stream_flag)
+			if (mipi->id < (VIN_MAX_MIPI - 1) && mipi->cmb_csi_cfg.lane_num > mipi_lane_spec[mipi->id][0] && glb_mipi[mipi->id + 1]->stream_flag)
 				vin_err("PORT%d in using, PORT%d cannot %dlane!\n", mipi->id + 1, mipi->id, mipi->cmb_csi_cfg.lane_num);
 			mipi->set_lane_choice[mipi->id] = 4;
+#endif
 		} else if (IS_FLAG(cfg->bus.mipi_csi2.num_data_lanes, V4L2_MBUS_CSI2_3_LANE)) {
 			mipi->csi2_cfg.lane_num = 3;
 			mipi->cmb_cfg.lane_num = 3;
@@ -930,11 +1141,13 @@ static int sunxi_mipi_g_mbus_config(struct v4l2_subdev *sd, unsigned int pad,
 			mipi->cmb_csi_cfg.phy_lane_cfg.phy_mipi_lpdt_en = LPDT_3LANE;
 			mipi->cmb_csi_cfg.phy_lane_cfg.phy_deskew_en = DK_3LANE;
 			mipi->cmb_csi_cfg.lane_num = 3;
+#if !IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 			if (mipi->cmb_csi_cfg.lane_num > mipi_lane_spec[mipi->id][1])
 				vin_err("PORT%d supports a maximum of %dlane!\n", mipi->id, mipi_lane_spec[mipi->id][1]);
-			if (mipi->id < (VIN_MAX_MIPI - 1) && glb_mipi[mipi->id + 1]->stream_flag)
+			if (mipi->id < (VIN_MAX_MIPI - 1) && mipi->cmb_csi_cfg.lane_num > mipi_lane_spec[mipi->id][0] && glb_mipi[mipi->id + 1]->stream_flag)
 				vin_err("PORT%d in using, PORT%d cannot %dlane!\n", mipi->id + 1, mipi->id, mipi->cmb_csi_cfg.lane_num);
 			mipi->set_lane_choice[mipi->id] = 4;
+#endif
 		} else if (IS_FLAG(cfg->bus.mipi_csi2.num_data_lanes, V4L2_MBUS_CSI2_2_LANE)) {
 			mipi->csi2_cfg.lane_num = 2;
 			mipi->cmb_cfg.lane_num = 2;
@@ -1056,11 +1269,14 @@ static int sunxi_mipi_s_mbus_config(struct v4l2_subdev *sd, unsigned int pad,
 			mipi->cmb_csi_cfg.phy_lane_cfg.phy_mipi_lpdt_en = LPDT_4LANE;
 			mipi->cmb_csi_cfg.phy_lane_cfg.phy_deskew_en = DK_4LANE;
 			mipi->cmb_csi_cfg.lane_num = 4;
+#if !IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 			if (mipi->cmb_csi_cfg.lane_num > mipi_lane_spec[mipi->id][1])
 				vin_err("PORT%d supports a maximum of %dlane!\n", mipi->id, mipi_lane_spec[mipi->id][1]);
-			if (mipi->id < (VIN_MAX_MIPI - 1) && glb_mipi[mipi->id + 1]->stream_flag)
+			if (mipi->id < (VIN_MAX_MIPI - 1) && mipi->cmb_csi_cfg.lane_num > mipi_lane_spec[mipi->id][0] && glb_mipi[mipi->id + 1]->stream_flag)
 				vin_err("PORT%d in using, PORT%d cannot %dlane!\n", mipi->id + 1, mipi->id, mipi->cmb_csi_cfg.lane_num);
+
 			mipi->set_lane_choice[mipi->id] = 4;
+#endif
 		} else if (IS_FLAG(cfg->flags, V4L2_MBUS_CSI2_3_LANE)) {
 			mipi->csi2_cfg.lane_num = 3;
 			mipi->cmb_cfg.lane_num = 3;
@@ -1069,11 +1285,13 @@ static int sunxi_mipi_s_mbus_config(struct v4l2_subdev *sd, unsigned int pad,
 			mipi->cmb_csi_cfg.phy_lane_cfg.phy_mipi_lpdt_en = LPDT_3LANE;
 			mipi->cmb_csi_cfg.phy_lane_cfg.phy_deskew_en = DK_3LANE;
 			mipi->cmb_csi_cfg.lane_num = 3;
+#if !IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 			if (mipi->cmb_csi_cfg.lane_num > mipi_lane_spec[mipi->id][1])
 				vin_err("PORT%d supports a maximum of %dlane!\n", mipi->id, mipi_lane_spec[mipi->id][1]);
-			if (mipi->id < (VIN_MAX_MIPI - 1) && glb_mipi[mipi->id + 1]->stream_flag)
+			if (mipi->id < (VIN_MAX_MIPI - 1) && mipi->cmb_csi_cfg.lane_num > mipi_lane_spec[mipi->id][0] && glb_mipi[mipi->id + 1]->stream_flag)
 				vin_err("PORT%d in using, PORT%d cannot %dlane!\n", mipi->id + 1, mipi->id, mipi->cmb_csi_cfg.lane_num);
 			mipi->set_lane_choice[mipi->id] = 4;
+#endif
 		} else if (IS_FLAG(cfg->flags, V4L2_MBUS_CSI2_2_LANE)) {
 			mipi->csi2_cfg.lane_num = 2;
 			mipi->cmb_cfg.lane_num = 2;
@@ -1192,11 +1410,14 @@ static int sunxi_mipi_s_mbus_config(struct v4l2_subdev *sd,
 			mipi->cmb_csi_cfg.phy_lane_cfg.phy_mipi_lpdt_en = LPDT_4LANE;
 			mipi->cmb_csi_cfg.phy_lane_cfg.phy_deskew_en = DK_4LANE;
 			mipi->cmb_csi_cfg.lane_num = 4;
+#if !IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 			if (mipi->cmb_csi_cfg.lane_num > mipi_lane_spec[mipi->id][1])
 				vin_err("PORT%d supports a maximum of %dlane!\n", mipi->id, mipi_lane_spec[mipi->id][1]);
-			if (mipi->id < (VIN_MAX_MIPI - 1) && glb_mipi[mipi->id + 1]->stream_flag)
+			if (mipi->id < (VIN_MAX_MIPI - 1) && mipi->cmb_csi_cfg.lane_num > mipi_lane_spec[mipi->id][0] && glb_mipi[mipi->id + 1]->stream_flag)
 				vin_err("PORT%d in using, PORT%d cannot %dlane!\n", mipi->id + 1, mipi->id, mipi->cmb_csi_cfg.lane_num);
+
 			mipi->set_lane_choice[mipi->id] = 4;
+#endif
 		} else if (IS_FLAG(cfg->flags, V4L2_MBUS_CSI2_3_LANE)) {
 			mipi->csi2_cfg.lane_num = 3;
 			mipi->cmb_cfg.lane_num = 3;
@@ -1205,11 +1426,13 @@ static int sunxi_mipi_s_mbus_config(struct v4l2_subdev *sd,
 			mipi->cmb_csi_cfg.phy_lane_cfg.phy_mipi_lpdt_en = LPDT_3LANE;
 			mipi->cmb_csi_cfg.phy_lane_cfg.phy_deskew_en = DK_3LANE;
 			mipi->cmb_csi_cfg.lane_num = 3;
+#if !IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 			if (mipi->cmb_csi_cfg.lane_num > mipi_lane_spec[mipi->id][1])
 				vin_err("PORT%d supports a maximum of %dlane!\n", mipi->id, mipi_lane_spec[mipi->id][1]);
-			if (mipi->id < (VIN_MAX_MIPI - 1) && glb_mipi[mipi->id + 1]->stream_flag)
+			if (mipi->id < (VIN_MAX_MIPI - 1) && mipi->cmb_csi_cfg.lane_num > mipi_lane_spec[mipi->id][0] && glb_mipi[mipi->id + 1]->stream_flag)
 				vin_err("PORT%d in using, PORT%d cannot %dlane!\n", mipi->id + 1, mipi->id, mipi->cmb_csi_cfg.lane_num);
 			mipi->set_lane_choice[mipi->id] = 4;
+#endif
 		} else if (IS_FLAG(cfg->flags, V4L2_MBUS_CSI2_2_LANE)) {
 			mipi->csi2_cfg.lane_num = 2;
 			mipi->cmb_cfg.lane_num = 2;
@@ -1435,6 +1658,76 @@ static int __mipi_init_subdev(struct mipi_dev *mipi)
 	return 0;
 }
 
+#ifdef MIPI_IRQ_USE
+#if IS_ENABLED(CONFIG_ARCH_SUN50IW10P1) || IS_ENABLED(CONFIG_ARCH_SUN8IW21P1)
+static irqreturn_t mipi_isr(int irq, void *priv)
+{
+	struct mipi_dev *mipi = (struct mipi_dev *)priv;
+	struct mipi_int_status status[VIN_MAX_MIPI][MAX_MIPI_CH];
+	unsigned int i, j;
+	unsigned long flags;
+
+	if (!mipi->subdev.entity.stream_count) {
+		return IRQ_HANDLED;
+	}
+
+	for (i = 0; i < VIN_MAX_MIPI; i++) {
+		for (j = 0; j < MAX_MIPI_CH; j++) {
+			memset(&status[i][j], 0, sizeof(struct mipi_int_status));
+			cmb_port_int_status_get(i, j, &status[i][j]);
+		}
+	}
+
+	spin_lock_irqsave(&mipi->slock, flags);
+
+	for (i = 0; i < VIN_MAX_MIPI; i++) {
+		for (j = 0; j < MAX_MIPI_CH; j++) {
+			if (status[i][j].mask) {
+				if (status[i][j].frame_sync_err) {
+					cmb_port_int_clear_status(i, j, MIPI_FRAME_SYNC_ERR);
+					vin_err("mipi%d vc%d frame sync err\n", i, j);
+				}
+				if (status[i][j].line_sync_err) {
+					cmb_port_int_clear_status(i, j, MIPI_LINE_SYNC_ERR);
+					vin_err("mipi%d vc%d line sync err\n", i, j);
+				}
+				if (status[i][j].ecc_warn) {
+					cmb_port_int_clear_status(i, j, MIPI_ECC_WRN);
+					vin_err("mipi%d vc%d ecc warn\n", i, j);
+				}
+				if (status[i][j].ecc_err) {
+					cmb_port_int_clear_status(i, j, MIPI_ECC_ERR);
+					vin_err("mipi%d vc%d ecc err\n", i, j);
+				}
+				if (status[i][j].ecc_err) {
+					cmb_port_int_clear_status(i, j, MIPI_CHKSUM_ERR);
+					vin_err("mipi%d vc%d checksum err\n", i, j);
+				}
+				if (status[i][j].ecc_err) {
+					cmb_port_int_clear_status(i, j, MIPI_EOT_ERR);
+					vin_err("mipi%d vc%d EOT err\n", i, j);
+				}
+#if VIN_FALSE
+				if (status[i][j].frame_start_sync) {
+					cmb_port_int_clear_status(i, j, MIPI_FRAME_START_SYNC);
+					vin_print("mipi%d vc%d frame start\n", i, j);
+				}
+				if (status[i][j].frame_end_sync) {
+					cmb_port_int_clear_status(i, j, MIPI_FRAME_END_SYNC);
+					vin_print("mipi%d vc%d frame end\n", i, j);
+				}
+#endif
+			}
+		}
+	}
+
+	spin_unlock_irqrestore(&mipi->slock, flags);
+
+	return IRQ_HANDLED;
+}
+#endif
+#endif
+
 static int mipi_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
@@ -1488,6 +1781,25 @@ static int mipi_probe(struct platform_device *pdev)
 		goto unmap;
 	}
 
+#ifdef MIPI_IRQ_USE
+#if IS_ENABLED(CONFIG_ARCH_SUN50IW10P1) || IS_ENABLED(CONFIG_ARCH_SUN8IW21P1)
+	if (mipi->id == 0) {
+		mipi->irq = irq_of_parse_and_map(np, 0);
+		if (mipi->irq <= 0) {
+			vin_err("failed to get mipi IRQ resource\n");
+			goto unmap;
+		}
+		ret = request_irq(mipi->irq, mipi_isr, IRQF_SHARED, mipi->pdev->name, mipi);
+		if (ret) {
+			vin_err("mipi%d request irq failed\n", mipi->id);
+			goto unmap;
+		}
+	}
+#endif
+#endif
+
+	spin_lock_init(&mipi->slock);
+
 	platform_set_drvdata(pdev, mipi);
 	glb_mipi[mipi->id] = mipi;
 	ret = device_create_file(&pdev->dev, &dev_attr_settle_time);
@@ -1518,8 +1830,12 @@ static int mipi_remove(struct platform_device *pdev)
 #if defined MIPI_PING_CONFIG
 	__mcsi_pin_release(mipi);
 #endif
+	if (mipi->port_base)
+		iounmap(mipi->port_base);
 	if (mipi->base)
 		iounmap(mipi->base);
+	if (mipi->irq > 0)
+		free_irq(mipi->irq, mipi);
 	media_entity_cleanup(&mipi->subdev.entity);
 	kfree(mipi);
 	return 0;
@@ -1550,6 +1866,11 @@ static size_t phy_common_status_dump(char *buf, size_t size)
 	case TWO_4LANE:
 		count += scnprintf(buf + count, size - count,
 				"phy_link_mode:\t 2'b11 (2x4-lane(phya+phyb), phyc+phyd))\n");
+		break;
+#elif IS_ENABLED(CONFIG_ARCH_SUN60IW2)
+	case TWO_4LANE_ONE_2LANE:
+		count += scnprintf(buf + count, size - count,
+				"phy_link_mode:\t 0x%x (2x4-lane(phya+phyb) + 1x2-lane))\n", cur_phy_link);
 		break;
 #endif
 	default:
@@ -1604,6 +1925,14 @@ static size_t phy_digital_status_dump(struct mipi_dev *mipi, char *buf, size_t s
 	case DT_2LANE:
 		count += scnprintf(buf + count, size - count,
 					"data_lane_en:\t 0x%x (lane0/1 enabled)\n", phy_lanedt_en_status);
+		break;
+	case DT_3LANE:
+		count += scnprintf(buf + count, size - count,
+					"data_lane_en:\t 0x%x (lane0/1/2 enabled)\n", phy_lanedt_en_status);
+		break;
+	case DT_4LANE:
+		count += scnprintf(buf + count, size - count,
+					"data_lane_en:\t 0x%x (lane0/1/2/3 enabled)\n", phy_lanedt_en_status);
 		break;
 	default:
 		count += scnprintf(buf + count, size - count,
@@ -2035,7 +2364,38 @@ void sunxi_combo_wdr_config(struct v4l2_subdev *sd,
 	combo->wdr_cfg = *wdr;
 }
 
-struct v4l2_subdev *sunxi_mipi_get_subdev(int id)
+#if defined MIPI_COMBO_CSI
+int sunxi_mipi_get_deskew(struct v4l2_subdev *sd)
+{
+	struct mipi_dev *mipi = v4l2_get_subdevdata(sd);
+	unsigned int deskew_laneck;
+
+	deskew_laneck = cmb_phy_deskew_laneck0_get(mipi->id);
+	return deskew_laneck;
+}
+
+int sunxi_mipi_set_deskew(struct v4l2_subdev *sd, unsigned int delay)
+{
+	struct mipi_dev *mipi = v4l2_get_subdevdata(sd);
+
+	cmb_phy_set_deskew_laneck0(mipi->id, delay);
+	return 0;
+}
+
+int sunxi_mipi_get_error(struct v4l2_subdev *sd)
+{
+	struct mipi_dev *mipi = v4l2_get_subdevdata(sd);
+	unsigned int mipi_err;
+
+	cmb_port_clr_ch0_int_status(mipi->id);
+	/* It takes about a second for the register to regain value */
+	usleep_range(1000000, 1100000);
+	mipi_err = cmb_port_check_ch0_int_status(mipi->id, MIPI_INT_ALL);
+	return mipi_err;
+}
+#endif
+
+struct v4l2_subdev *sunxi_mipi_get_subdev(unsigned int id)
 {
 	if (id < VIN_MAX_MIPI && glb_mipi[id])
 		return &glb_mipi[id]->subdev;

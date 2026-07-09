@@ -205,7 +205,6 @@ static long sensor_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 		}
 		break;
 	case SET_PTN:
-		printk("############### pattern_source SET_PTN\n");
 		ret = sensor_ptn_init(sd, (struct vin_pattern_config *)arg);
 		break;
 	case VIDIOC_VIN_SENSOR_EXP_GAIN:
@@ -265,7 +264,21 @@ static struct sensor_win_size sensor_win_sizes[] = {
 
 #define N_WIN_SIZES (ARRAY_SIZE(sensor_win_sizes))
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 static int sensor_g_mbus_config(struct v4l2_subdev *sd, unsigned int pad,
+				struct v4l2_mbus_config *cfg)
+{
+	cfg->type = V4L2_MBUS_PARALLEL;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	cfg->bus.parallel.flags = V4L2_MBUS_MASTER | VREF_POL | HREF_POL | CLK_POL;
+#else
+	cfg->flags = V4L2_MBUS_MASTER | VREF_POL | HREF_POL | CLK_POL;
+#endif
+
+	return 0;
+}
+#else
+static int sensor_g_mbus_config(struct v4l2_subdev *sd,
 				struct v4l2_mbus_config *cfg)
 {
 	cfg->type = V4L2_MBUS_PARALLEL;
@@ -273,6 +286,7 @@ static int sensor_g_mbus_config(struct v4l2_subdev *sd, unsigned int pad,
 
 	return 0;
 }
+#endif
 
 static int sensor_g_ctrl(struct v4l2_ctrl *ctrl)
 {
@@ -341,13 +355,16 @@ static const struct v4l2_subdev_core_ops sensor_core_ops = {
 	.init = sensor_init,
 	.s_power = sensor_power,
 	.ioctl = sensor_ioctl,
-#ifdef CONFIG_COMPAT
+#if IS_ENABLED(CONFIG_COMPAT)
 	.compat_ioctl32 = sensor_compat_ioctl32,
 #endif
 };
 
 static const struct v4l2_subdev_video_ops sensor_video_ops = {
 	.s_stream = sensor_s_stream,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
+	.g_mbus_config = sensor_g_mbus_config,
+#endif
 };
 
 static const struct v4l2_subdev_pad_ops sensor_pad_ops = {
@@ -355,7 +372,9 @@ static const struct v4l2_subdev_pad_ops sensor_pad_ops = {
 	.enum_frame_size = sensor_enum_frame_size,
 	.get_fmt = sensor_get_fmt,
 	.set_fmt = sensor_set_fmt,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 	.get_mbus_config = sensor_g_mbus_config,
+#endif
 };
 
 static const struct v4l2_subdev_ops sensor_ops = {
@@ -405,8 +424,12 @@ static int sensor_init_controls(struct v4l2_subdev *sd, const struct v4l2_ctrl_o
 
 static int sensor_dev_id;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
+static int sensor_probe(struct i2c_client *client)
+#else
 static int sensor_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
+#endif
 {
 	struct v4l2_subdev *sd;
 	struct sensor_info *info;
@@ -444,7 +467,11 @@ static int sensor_probe(struct i2c_client *client,
 	return 0;
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)
 static int sensor_remove(struct i2c_client *client)
+#else
+static void sensor_remove(struct i2c_client *client)
+#endif
 {
 	struct v4l2_subdev *sd;
 	int i;
@@ -459,7 +486,9 @@ static int sensor_remove(struct i2c_client *client)
 		sd = cci_dev_remove_helper(client, &cci_drv[sensor_dev_id++]);
 	}
 	kfree(to_state(sd));
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)
 	return 0;
+#endif
 }
 
 static const struct i2c_device_id sensor_id[] = {

@@ -52,4 +52,6 @@ void sunxi_unregister_memory_fw(const char *name);
 int sunxi_request_firmware_from_partition(const struct firmware **fw, const char *name,
 					  size_t fw_size, struct device *dev);
 
+int sunxi_firmware_unpack(struct firmware *fw, struct device *dev);
+
 #endif /* SUNXI_RPROC_FIRMWARE_H */

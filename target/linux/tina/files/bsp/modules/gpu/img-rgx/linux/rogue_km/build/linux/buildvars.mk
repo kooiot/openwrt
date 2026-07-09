@@ -204,6 +204,15 @@ TESTED_HOST_USER_FLAGS += \
 KBUILD_FLAGS := \
  -Wno-unused-parameter -Wno-sign-compare
 
+# Add '-g' for the case where CONFIG_DEBUG_INFO isn't enabled in the kernel config.
+# Although this means the kernel won't contain symbols, the driver module will.
+# This is useful for matching up stack traces to source lines in the driver code.
+# To get full symbols (kernel and driver), the kernel will need to be configured
+# and built with CONFIG_DEBUG_INFO enabled.
+ifeq ($(BUILD),debug)
+KBUILD_FLAGS += -g
+endif
+
 TESTED_KBUILD_FLAGS := \
  $(call kernel-cc-option,-Wmissing-include-dirs) \
  $(call kernel-cc-option,-Wno-type-limits) \
@@ -231,7 +240,6 @@ TESTED_KBUILD_FLAGS := \
  $(call kernel-cc-optional-warning,-Wredundant-decls) \
  $(call kernel-cc-optional-warning,-Wshadow) \
  $(call kernel-cc-optional-warning,-Wswitch-default) \
- $(call kernel-cc-optional-warning,-Wvla) \
  $(call kernel-cc-optional-warning,-Wwrite-strings)
 
 # Force no-pie, for compilers that enable pie by default
@@ -247,8 +255,24 @@ ifeq ($(kernel-cc-is-clang),true)
 TESTED_KBUILD_FLAGS := \
  $(call kernel-cc-option,-Wno-address-of-packed-member) \
  $(call kernel-cc-option,-Wno-unneeded-internal-declaration) \
+ $(call kernel-cc-option,-Wno-unused-function) \
+ $(call kernel-cc-option,-Wno-frame-address) \
  $(call kernel-cc-optional-warning,-Wno-typedef-redefinition) \
+ $(call kernel-cc-optional-warning,-Wno-sometimes-uninitialized) \
  $(TESTED_KBUILD_FLAGS)
+endif
+
+# Enable clang's integrated assembler for kbuild
+ifeq ($(shell test "$(kernel-cc-is-clang)" = true  -a  \
+                   "$(LLVM_IAS)" = 1 && printf "true"),true)
+ TESTED_KBUILD_FLAGS += $(call kernel-cc-option,-integrated-as)
+endif
+
+ifeq ($(SUPPORT_ANDROID_PLATFORM),1)
+# Detect clang and lld version.
+CLANG_LLD_VERSION_CHECK := $(TOP)/build/linux/tools/clang-ld-version.sh
+KBUILD_CLANG_VERSION    := $(shell $(CLANG_LLD_VERSION_CHECK) --$(KERNEL_CC))
+KBUILD_LLD_VERSION      := $(shell $(CLANG_LLD_VERSION_CHECK) --$(KERNEL_LD))
 endif
 
 # User C only
@@ -264,12 +288,12 @@ ALL_HOST_CFLAGS := \
 # User C++ only
 #
 ALL_CXXFLAGS := \
- -std=gnu++11 \
+ -std=gnu++1y \
  -fno-rtti -fno-exceptions \
  $(COMMON_USER_FLAGS) $(COMMON_FLAGS) $(TESTED_TARGET_USER_FLAGS) \
  $(SYS_CXXFLAGS)
 ALL_HOST_CXXFLAGS := \
- -std=gnu++11 \
+ -std=gnu++1y \
  -fno-rtti -fno-exceptions \
  $(COMMON_USER_FLAGS) $(COMMON_FLAGS) $(TESTED_HOST_USER_FLAGS)
 
@@ -281,10 +305,12 @@ endif
 # Applies only for clang < 3.8
 #
 ifeq ($(cc-is-clang),true)
+__clang_bindir  := $(dir $(shell which clang))
+__clang_major := $(shell $$CC -dM -E - < /dev/null | grep __clang_major__ | cut -d' ' -f3)
+__clang_minor := $(shell $$CC -dM -E - < /dev/null | grep __clang_minor__ | cut -d' ' -f3)
+__clang_patchlevel__:= $(shell $$CC -dM -E - < /dev/null | grep __clang_patchlevel__ | cut -d' ' -f3)
+__clang_version := $(__clang_major).$(__clang_minor).$(__clang_patchlevel__)
 ifneq ($(filter -O0,$(ALL_CFLAGS)),)
-__clang_version := $(shell clang --version | grep -P -o '(?<=clang version )([0-9][^ ]+)')
-__clang_major := $(shell echo $(__clang_version) | cut -f1 -d'.')
-__clang_minor := $(shell echo $(__clang_version) | cut -f2 -d'.')
 __clang_lt_3.8 := \
 	$(shell ((test $(__clang_major) -lt 3) || \
 	        ((test $(__clang_major) -eq 3) && (test $(__clang_minor) -lt 8))) && echo 1 || echo 0)
@@ -293,6 +319,8 @@ ALL_CFLAGS := $(patsubst -O0,-O1,$(ALL_CFLAGS))
 ALL_CXXFLAGS := $(patsubst -O0,-O1,$(ALL_CXXFLAGS))
 endif
 endif
+# Add check for clang >= 13
+__clang_ge_13 := $(shell ((test $(__clang_major) -ge 13) && echo 1 || echo 0))
 endif
 
 # Add GCOV_DIR just for target
@@ -322,6 +350,14 @@ ALL_KBUILD_CFLAGS := $(COMMON_CFLAGS) $(KBUILD_FLAGS) $(TESTED_KBUILD_FLAGS)
 ALL_HOST_LDFLAGS :=
 ALL_LDFLAGS := -Wl,--warn-shared-textrel
 
+ifneq ($(USE_GOLD_LINKER),)
+ALL_HOST_LDFLAGS += -fuse-ld=gold
+ALL_LDFLAGS +=-fuse-ld=gold
+else ifeq ($(USE_LLD_LINKER),1)
+ALL_HOST_LDFLAGS += -fuse-ld=lld
+ALL_LDFLAGS += -fuse-ld=lld
+endif
+
 ifeq ($(GCOV_BUILD),on)
 ALL_LDFLAGS += -fprofile-arcs
 ALL_HOST_LDFLAGS += -fprofile-arcs
@@ -332,9 +368,18 @@ ALL_LDFLAGS += $(SYS_LDFLAGS)
 # Optional security hardening features.
 # Roughly matches Android's default security build options.
 ifneq ($(FORTIFY),)
-ALL_CFLAGS   += -fstack-protector -Wa,--noexecstack -D_FORTIFY_SOURCE=2
-ALL_CXXFLAGS += -fstack-protector -Wa,--noexecstack -D_FORTIFY_SOURCE=2
-ALL_LDFLAGS  += -Wl,-z,noexecstack -Wl,-z,relro -Wl,-z,now
+ ALL_CFLAGS   += -fstack-protector -Wa,--noexecstack
+ ALL_CXXFLAGS += -fstack-protector -Wa,--noexecstack
+ ALL_LDFLAGS  += -Wl,-z,noexecstack -Wl,-z,relro -Wl,-z,now
+
+ # Vanilla versions of glibc >= 2.16 print a warning if _FORTIFY_SOURCE is
+ # defined but compiler optimisations are disabled.
+ ifneq ($(BUILD),debug)
+  ifneq ($(filter-out -O -O0,$(OPTIM)),)
+   ALL_CFLAGS   += -D_FORTIFY_SOURCE=2
+   ALL_CXXFLAGS += -D_FORTIFY_SOURCE=2
+  endif
+ endif
 endif
 
 # Sanitiser support
@@ -350,6 +395,9 @@ ifneq ($(USE_SANITISER),)
  ALL_HOST_CFLAGS   += -fsanitize=$(USE_SANITISER)
  ALL_HOST_CXXFLAGS += -fsanitize=$(USE_SANITISER)
  ALL_HOST_LDFLAGS  += -fsanitize=$(USE_SANITISER)
+ ifeq ($(cc-is-clang),false)
+  ALL_HOST_LDFLAGS  += -static-libasan
+ endif
 endif
 
 # This variable contains a list of all modules built by kbuild
@@ -365,8 +413,5 @@ $(warning  you have it set (via $(origin TOOLCHAIN)))
 $(warning **********************************************)
 endif
 
-# We need the glibc version to generate the cache names for LLVM and XOrg components.
-ifeq ($(CROSS_COMPILE),)
-LIBC_VERSION_PROBE := $(shell ldd  $(shell which true) | awk '/libc.so/{print $$3'} )
-LIBC_VERSION := $(shell $(LIBC_VERSION_PROBE)| tr -d '(),' | head -1)
-endif
+# We need the glibc version to generate the cached file name.
+LIBC_VERSION := $(shell ldd --version | head -1 | awk '{print $$NF}')

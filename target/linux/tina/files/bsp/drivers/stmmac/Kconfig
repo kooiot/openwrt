@@ -24,13 +24,6 @@ config AW_DWMAC_SUNXI
 	help
 	  Support stmmac device driver for Allwinner GMAC-200/GMAC-300.
 
-config AW_DWMAC_ETHERCAT_SUNXI
-	tristate "Allwinner STMMAC ethercat support"
-	depends on OF && (ARCH_SUNXI || COMPILE_TEST)
-	help
-	  Support stmmac device driver for Allwinner GMAC-200/GMAC-300.
-	  
-
 config AW_STMMAC_SELFTESTS
 	bool "Support for STMMAC Selftests"
 	depends on AW_STMMAC_ETH

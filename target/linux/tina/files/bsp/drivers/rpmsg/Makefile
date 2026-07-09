@@ -10,3 +10,4 @@ obj-$(CONFIG_AW_RPMSG_HEARTBEAT)	+= rpmsg_heartbeat.o
 obj-$(CONFIG_AW_RPMSG_NOTIFY) += rpmsg_notify.o
 obj-$(CONFIG_AW_RPMSG_VIRTIO) += aw_virtio_rpmsg_bus.o
 obj-$(CONFIG_AW_RPMSG_PERF_TRACE) += rpmsg_perf.o
+obj-$(CONFIG_AW_RPMSG_LITE_TEST) += rpmsg_lite_test.o

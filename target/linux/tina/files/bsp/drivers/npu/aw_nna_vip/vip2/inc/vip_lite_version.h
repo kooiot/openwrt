@@ -81,7 +81,7 @@ VIPLite driver version number defines.
 #define VERSION_PATCH 		"0-AW-2024-05-28"
 #else
 /* use npu mmu. */
-#define VERSION_PATCH 		"1-AW-2024-11-07"
+#define VERSION_PATCH 		"4-AW-2025-06-12"
 #endif
 
 #endif

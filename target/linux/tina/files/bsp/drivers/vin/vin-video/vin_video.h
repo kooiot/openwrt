@@ -32,8 +32,14 @@
 #include "../vin-vipp/sunxi_scaler.h"
 #if defined CSIC_DMA_VER_140_000
 #include "dma140/dma140_reg.h"
+#elif defined CSIC_DMA_VER_150_000
+#include "dma150/dma150_reg.h"
 #else
 #include "dma130/dma_reg.h"
+#endif
+
+#if defined OUTPUT_EMBED_DATA
+#include "embed_data/embed_data_reg_cfg.h"
 #endif
 
 #if IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
@@ -49,11 +55,13 @@
 #if IS_ENABLED(CONFIG_ARCH_SUN55IW3)
 #define VIN_SENSOR0_RESERVE_ADDR 0x613FE000 /*104~110 sector, size is 4k - 512b, boot0 read it and write to 0x613FE000*/
 #define VIN_SENSOR1_RESERVE_ADDR 0x613FF000 /*112~118 sector, size is 4k - 512b, boot0 read it and write to 0x613FF000*/
-#define GET_RV_YUV 0
+#elif IS_ENABLED(CONFIG_ARCH_SUN300IW1)
+#define VIN_SENSOR0_RESERVE_ADDR 0x81CEE000 /*104~110 sector, size is 4k - 512b, boot0 read it and write to 0x613FE000*/
+#define VIN_SENSOR1_RESERVE_ADDR 0x81CEF000 /*112~118 sector, size is 4k - 512b, boot0 read it and write to 0x613FF000*/
 #endif
 #define VIN_RESERVE_SIZE (0x1000 - 0x200) /* 4k - 512 */
-
-#if defined GET_RV_YUV
+#define GET_RV_YUV 0
+#if GET_RV_YUV
 #define YUV_MEMRESERVE 0x61400000
 #define YUV_MEMRESERVE_SIZE 0x02000000
 #endif
@@ -115,12 +123,18 @@ typedef struct tagsensor_isp_config_s {
 } SENSOR_ISP_CONFIG_S; //size is 3563 < 3584(3.5k)
 #pragma pack()
 
-/* kenel auto save isp parameter to flash, in order to use in next time */
-#define ISP0_NORFLASH_SAVE (VIN_SENSOR0_RESERVE_ADDR + 512 * 7) /*111 sector, size is 512b, kernel write to flash and boot0 read it and write to ISP0_NORFLASH_SAVE*/
-#define ISP1_NORFLASH_SAVE (VIN_SENSOR1_RESERVE_ADDR + 512 * 7) /*119 sector, size is 512b, kernel write to flash and boot0 read it and write to ISP1_NORFLASH_SAVE*/
-#define ISP0_THRESHOLD_PARAM_OFFSET 111  /*111 sector, size is 512b*/
-#define ISP1_THRESHOLD_PARAM_OFFSET 119  /*119 sector, size is 512b*/
-#define VIN_THRESHOLD_PARAM_SIZE (0x200) /* 512 */
+/*
+ * kenel auto save isp parameter to flash, in order to use in next timeval
+ * NOTE: This section is located between boot0 and uboot.
+ *       Must ensure that the offset of this section is not less than the size of boot0.
+ *       The sizeof of the boot0&uboot reserved section is defined at the 'flashmap'
+ *          dts node in uboot-board.dts.
+ * */
+#define ISP0_NORFLASH_SAVE (VIN_SENSOR0_RESERVE_ADDR + 512 * 7) /*8 sector, size is 512b, kernel write to flash and boot0 read it and write to ISP0_NORFLASH_SAVE*/
+#define ISP1_NORFLASH_SAVE (VIN_SENSOR1_RESERVE_ADDR + 512 * 7) /*8 sector, size is 512b, kernel write to flash and boot0 read it and write to ISP1_NORFLASH_SAVE*/
+#define ISP0_THRESHOLD_PARAM_OFFSET CONFIG_ISP0_THRESHOLD_PARAM_OFFSET
+#define ISP1_THRESHOLD_PARAM_OFFSET CONFIG_ISP1_THRESHOLD_PARAM_OFFSET
+#define VIN_THRESHOLD_PARAM_SIZE (CONFIG_VIN_THRESHOLD_PARAM_SIZE) /* default: 512 */
 
 #pragma pack(1)
 struct isp_autoflash_config_s {
@@ -160,6 +174,8 @@ struct vin_buffer {
 	unsigned int first_qbuf;
 	bool qbufed;
 	void *vir_addr;
+	u32 embed_dma_addr;
+	void *embed_vir_addr;
 #if IS_ENABLED(CONFIG_VIDEO_SUNXI_VIN_SPECIAL)
 	/* append for dmabuf mapping */
 	struct dma_buf *dmabuf;
@@ -174,7 +190,11 @@ struct vin_buffer {
 #define VIN_SD_PAD_SOURCE	1
 #define VIN_SD_PADS_NUM		2
 
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW22)
+#define VIN_STORED_FRM_CNT 63
+#else
 #define VIN_STORED_FRM_CNT 255
+#endif
 
 enum bk_work_mode {
 	BK_ONLINE = 0,
@@ -248,6 +268,10 @@ struct vin_addr {
 	u32	y;
 	u32	cb;
 	u32	cr;
+
+	void	*y_vir_addr;
+	void	*cb_vir_addr;
+	void	*cr_vir_addr;
 };
 
 struct vin_frame {
@@ -280,17 +304,26 @@ struct vin_osd {
 	u8 global_alpha[MAX_OVERLAY_NUM + 1];
 	u8 y_bmp_avp[MAX_OVERLAY_NUM + 1];
 	u8 yuv_cover[3][MAX_COVER_NUM + 1];
-	u8 yuv_orl[3][MAX_ORL_NUM];
+	u8 yuv_orl[3][MAX_ORL_NUM + 1];
 	u8 orl_width;
 	int chromakey;
 	enum vipp_osd_argb overlay_fmt;
 	struct vin_mm ov_mask[2];	/* bitmap addr */
 	struct v4l2_rect ov_win[MAX_OVERLAY_NUM + 1];	/* position */
 	struct v4l2_rect cv_win[MAX_COVER_NUM + 1];	/* position */
-	struct v4l2_rect orl_win[MAX_ORL_NUM];	/* position */
+	struct v4l2_rect orl_win[MAX_ORL_NUM + 1];	/* position */
 	int rgb_cover[MAX_COVER_NUM + 1];
 	int rgb_orl[MAX_ORL_NUM];
 	struct vin_fmt *fmt;
+};
+
+struct dma_overlay_ctx {
+	unsigned char enable;
+	unsigned int width;
+	unsigned int height;
+	int overlay_offset;
+	int length;
+	unsigned char *logo_data;
 };
 
 struct vin_vid_cap {
@@ -327,8 +360,14 @@ struct vin_vid_cap {
 	struct work_struct pipeline_reset_task;
 	unsigned long state;
 	unsigned int frame_delay_cnt;
+	bool lbc_align_en;
+	bool yuv_align_en;
+	bool width_stride_en;
 	struct dma_lbc_cmp lbc_cmp;
 	struct dma_bufa_threshold threshold;
+	struct dma_overlay_ctx dma_overlay;
+	enum tdm_isp_mode tdm_isp_mode;
+	enum aiisp_switch_mode aiisp_switch;
 	void (*vin_buffer_process)(int id);
 	void (*online_csi_reset_callback)(int id);
 };
@@ -359,6 +398,32 @@ static inline int vin_unique(int *a, int number)
 	return k + 1;
 }
 #endif
+
+#if defined CONFIG_ISP_SERVER_MELIS
+typedef enum {
+	ISPInfoType_Level1 = 1 << 0,
+	ISPInfoType_Level2 = 1 << 1,
+	ISPInfoType_Level3 = 1 << 2,
+	ISPInfoType_Level4 = 1 << 3,
+} ISPInfoType;
+
+#define SEI_LEVEL1_LEN (40)
+#define SEI_LEVEL2_LEN (48)
+#define SEI_LEVEL3_LEN (7008)
+#define SEI_LEVEL4_LEN (176)
+typedef struct isp_sei_info {
+	int nInfoBitFlags; // ISPInfoType_exp | ISPInfoType_colortemp | ISPInfoType_awb | ISPInfoType_version
+	char mInfoLevel1[SEI_LEVEL1_LEN];
+	char mInfoLevel2[SEI_LEVEL2_LEN];
+	char mInfoLevel3[SEI_LEVEL3_LEN];
+	char mInfoLevel4[SEI_LEVEL4_LEN];
+} ISPSeiInfo;
+
+int vin_get_isp_sei_info_special(int id, void *value);
+
+int vin_get_sensor_info_special(int id, struct sensor_config *sensor_cfg);
+#endif
+
 int vin_set_addr(struct vin_core *vinc, struct vb2_buffer *vb,
 		      struct vin_frame *frame, struct vin_addr *paddr);
 int vin_timer_init(struct vin_core *vinc);

@@ -63,8 +63,8 @@ static INLINE PVRSRV_ERROR DevmemCPUCacheMode(PVRSRV_DEVICE_NODE *psDeviceNode,
 			ui32Ret = PVRSRV_MEMALLOCFLAG_CPU_UNCACHED;
 			break;
 
-		case PVRSRV_MEMALLOCFLAG_CPU_WRITE_COMBINE:
-			ui32Ret = PVRSRV_MEMALLOCFLAG_CPU_WRITE_COMBINE;
+		case PVRSRV_MEMALLOCFLAG_CPU_UNCACHED_WC:
+			ui32Ret = PVRSRV_MEMALLOCFLAG_CPU_UNCACHED_WC;
 			break;
 
 		case PVRSRV_MEMALLOCFLAG_CPU_CACHE_INCOHERENT:
@@ -75,22 +75,19 @@ static INLINE PVRSRV_ERROR DevmemCPUCacheMode(PVRSRV_DEVICE_NODE *psDeviceNode,
 
 			/*
 			 * If system has no coherency but coherency has been requested for CPU
-			 * and GPU we currently have to fall back to uncached.
-			 *
-			 * Usually the first case here should return an error but as long as a lot
-			 * of services allocations using both CPU/GPU coherency flags and rely on
-			 * the UNCACHED fallback we have to leave it here.
-			*/
+			 * and GPU we currently fall back to write-combine.
+			 * This avoids errors on arm64 when uncached is turned into ordered device memory
+			 * and suffers from problems with unaligned access.
+			 */
 			if ( (PVRSRV_GPU_CACHE_MODE(ulFlags) == PVRSRV_MEMALLOCFLAG_GPU_CACHE_COHERENT) &&
 				!(PVRSRVSystemSnoopingOfCPUCache(psDeviceNode->psDevConfig) && PVRSRVSystemSnoopingOfDeviceCache(psDeviceNode->psDevConfig)) )
 			{
-				ui32Ret = PVRSRV_MEMALLOCFLAG_CPU_UNCACHED;
+				ui32Ret = PVRSRV_MEMALLOCFLAG_CPU_UNCACHED_WC;
 			}
 			else
 			{
 				ui32Ret = PVRSRV_MEMALLOCFLAG_CPU_CACHED;
 			}
-
 			break;
 
 		default:
@@ -126,8 +123,8 @@ static INLINE PVRSRV_ERROR DevmemDeviceCacheMode(PVRSRV_DEVICE_NODE *psDeviceNod
 			ui32Ret = PVRSRV_MEMALLOCFLAG_GPU_UNCACHED;
 			break;
 
-		case PVRSRV_MEMALLOCFLAG_GPU_WRITE_COMBINE:
-			ui32Ret = PVRSRV_MEMALLOCFLAG_GPU_WRITE_COMBINE;
+		case PVRSRV_MEMALLOCFLAG_GPU_UNCACHED_WC:
+			ui32Ret = PVRSRV_MEMALLOCFLAG_GPU_UNCACHED_WC;
 			break;
 
 		case PVRSRV_MEMALLOCFLAG_GPU_CACHE_INCOHERENT:
@@ -138,22 +135,19 @@ static INLINE PVRSRV_ERROR DevmemDeviceCacheMode(PVRSRV_DEVICE_NODE *psDeviceNod
 
 			/*
 			 * If system has no coherency but coherency has been requested for CPU
-			 * and GPU we currently have to fall back to uncached.
-			 *
-			 * Usually the first case here should return an error but as long as a lot
-			 * of services allocations using both CPU/GPU coherency flags and rely on
-			 * the UNCACHED fallback we have to leave it here.
-			*/
+			 * and GPU we currently fall back to write-combine.
+			 * This avoids errors on arm64 when uncached is turned into ordered device memory
+			 * and suffers from problems with unaligned access.
+			 */
 			if ( (PVRSRV_CPU_CACHE_MODE(ulFlags) == PVRSRV_MEMALLOCFLAG_CPU_CACHE_COHERENT) &&
 				!(PVRSRVSystemSnoopingOfCPUCache(psDeviceNode->psDevConfig) && PVRSRVSystemSnoopingOfDeviceCache(psDeviceNode->psDevConfig)) )
 			{
-				ui32Ret = PVRSRV_MEMALLOCFLAG_GPU_UNCACHED;
+				ui32Ret = PVRSRV_MEMALLOCFLAG_GPU_UNCACHED_WC;
 			}
 			else
 			{
 				ui32Ret = PVRSRV_MEMALLOCFLAG_GPU_CACHED;
 			}
-
 			break;
 
 		default:

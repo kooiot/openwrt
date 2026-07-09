@@ -21,6 +21,10 @@ typedef bool (*fifo_status_check_callback_t)(void *);
 typedef bool (*is_sync_time_enough_callback_t)(void *);
 typedef int (*get_cur_line_callback_t)(void *);
 typedef void (*connector_atomic_flush)(void *);
+// backlight
+typedef bool (*is_support_backlight_callback_t)(void *);
+typedef void (*set_backlight_value_callback_t)(void *, int);
+typedef int (*get_backlight_value_callback_t)(void *);
 
 struct sunxi_drm_crtc;
 
@@ -41,16 +45,21 @@ struct sunxi_crtc_state {
 	struct drm_property_blob *sunxi_ctm;
 	unsigned int tcon_id;
 	unsigned long clk_freq;
+	unsigned int pixel_mode;
 	struct de_out_exconfig excfg;
 	bool bcsh_changed;
 	bool sunxi_ctm_changed;
 	bool frame_rate_change;
+	bool smc_master_enabled;
 	bool sw_enable;
 	vblank_enable_callback_t enable_vblank;
 	fifo_status_check_callback_t check_status;
 	is_sync_time_enough_callback_t is_sync_time_enough;
 	get_cur_line_callback_t get_cur_line;
 	connector_atomic_flush  atomic_flush;
+	is_support_backlight_callback_t is_support_backlight;
+	set_backlight_value_callback_t set_backlight_value;
+	get_backlight_value_callback_t get_backlight_value;
 	void *output_dev_data;
 	struct sunxi_drm_wb *wb;
 };
@@ -69,13 +78,24 @@ struct fbdev_config {
 
 irqreturn_t sunxi_crtc_event_proc(int irq, void *crtc);
 int sunxi_drm_crtc_get_hw_id(struct drm_crtc *crtc);
+unsigned int sunxi_drm_crtc_get_clk_freq(struct drm_crtc *crtc);
 void sunxi_plane_print_state(struct drm_printer *p,
 				   const struct drm_plane_state *state, bool state_only);
+int sunxi_drm_crtc_get_offline_mode_info(struct drm_crtc *crtc,
+		struct sunxi_de_offline_buf_info *offline_buf);
+int sunxi_drm_crtc_offline_mode_pre_init(struct drm_crtc *crtc,
+		unsigned int width, unsigned int height);
+enum de_offline_mode_status sunxi_de_query_clear_offline_mode_status(struct sunxi_de_out *hwde,
+		enum de_offline_mode_status status);
 
 int sunxi_fbdev_plane_update(struct fbdev_config *config);
 
+void sunxi_drm_crtc_prepare_vblank_event(struct sunxi_drm_crtc *scrtc);
 void sunxi_drm_crtc_wait_one_vblank(struct sunxi_drm_crtc *scrtc);
 int sunxi_drm_crtc_get_output_current_line(struct sunxi_drm_crtc *scrtc);
+bool sunxi_drm_crtc_is_support_backlight(struct sunxi_drm_crtc *scrtc);
+int sunxi_drm_crtc_get_backlight(struct sunxi_drm_crtc *scrtc);
+void sunxi_drm_crtc_set_backlight_value(struct sunxi_drm_crtc *scrtc, int backlight);
 
 int sunxi_drm_crtc_pq_proc(struct drm_device *dev, int disp, enum sunxi_pq_type, void *data);
 

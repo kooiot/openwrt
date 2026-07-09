@@ -40,8 +40,8 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
-#ifndef _TUTILS_KM_H_
-#define _TUTILS_KM_H_
+#ifndef TUTILS_KM_H
+#define TUTILS_KM_H
 
 #include "img_defs.h"
 #include "img_types.h"
@@ -75,11 +75,23 @@ PVRSRV_ERROR SyncCheckpointTestIoctlKM(CONNECTION_DATA *psConnection,
 				  IMG_UINT32  *puiOut2,
 				  IMG_UINT8   *puiOut3);
 
-PVRSRV_ERROR PowerTestIoctlKM(IMG_UINT32  uiCmd,
-				  IMG_UINT32  uiIn1,
-				  IMG_UINT32  uiIn2,
-				  IMG_UINT32  *puiOut1,
-				  IMG_UINT32  *puiOut2);
+IMG_EXPORT
+PVRSRV_ERROR DevmemIntAllocHostMemKM(IMG_DEVMEM_SIZE_T ui32Size,
+                                     PVRSRV_MEMALLOCFLAGS_T uiFlags,
+                                     IMG_UINT32 ui32LabelLength,
+                                     const IMG_CHAR *pszAllocLabel,
+                                     PMR **ppsPMR);
+
+PVRSRV_ERROR DevmemIntFreeHostMemKM(PMR *psPMR);
+
+IMG_EXPORT
+PVRSRV_ERROR PowerTestIoctlKM(CONNECTION_DATA *psConnection,
+							  PVRSRV_DEVICE_NODE *psDeviceNode,
+							  IMG_UINT32  uiCmd,
+							  IMG_UINT32  uiIn1,
+							  IMG_UINT32  uiIn2,
+							  IMG_UINT32  *puiOut1,
+							  IMG_UINT32  *puiOut2);
 
 PVRSRV_ERROR TestIOCTLSyncFbFenceSignalPVR(CONNECTION_DATA * psConnection,
                                            PVRSRV_DEVICE_NODE *psDevNode,
@@ -107,13 +119,6 @@ PVRSRV_ERROR TestIOCTLSyncFbSWFenceCreate(CONNECTION_DATA * psConnection,
                                           PVRSRV_FENCE *piFence);
 
 
-PVRSRV_ERROR DevmemIntAllocHostMemKM(IMG_DEVMEM_SIZE_T ui32Size,
-                                     IMG_UINT32 ui32Flags,
-                                     IMG_UINT32 ui32LableLength,
-                                     IMG_PCHAR pszAllocLabel,
-                                     PMR **ppsPMR);
-
-PVRSRV_ERROR DevmemIntFreeHostMemKM(PMR *psPMR);
 
 PVRSRV_ERROR TestIOCTLSyncSWTimelineFenceCreateKM(CONNECTION_DATA * psConnection,
                                                   PVRSRV_DEVICE_NODE *psDevNode,
@@ -144,7 +149,26 @@ PVRSRV_ERROR TestIOCTLSyncCheckpointCreateFenceKM(CONNECTION_DATA *psConnection,
                                                   PVRSRV_FENCE *phOutFence,
                                                   IMG_UINT64 *puiUpdateFenceUID);
 
-PVRSRV_ERROR TestIOCTLWriteByteKM(IMG_BYTE *pui8WriteData);
+PVRSRV_ERROR TestIOCTLWriteByteKM(IMG_BYTE ui8WriteData);
 
 PVRSRV_ERROR TestIOCTLReadByteKM(IMG_BYTE *pui8ReadData);
-#endif	/* _TUTILS_KM_H_ */
+
+typedef IMG_UINT32 DI_CONTEXT;
+PVRSRV_ERROR TestIOCTLHandleArray2CreateKM(DI_CONTEXT **ppsTestResources);
+PVRSRV_ERROR TestIOCTLHandleArray10CreateKM(DI_CONTEXT **ppsTestResources);
+PVRSRV_ERROR TestIOCTLHandleCleanupDestroy(DI_CONTEXT *psTestResource);
+PVRSRV_ERROR TestIOCTLHandleArray2CreateCPKM(DI_CONTEXT **ppsTestResources);
+PVRSRV_ERROR TestIOCTLHandleCleanupDestroyCP(DI_CONTEXT *psTestResource);
+PVRSRV_ERROR TestIOCTLHandleArray2CreatePPKM(CONNECTION_DATA    *psConnection,
+                                             PVRSRV_DEVICE_NODE *psDeviceNode,
+                                             DI_CONTEXT **ppsTestResources);
+PVRSRV_ERROR TestIOCTLHandleArray2CreateLUKM(DI_CONTEXT *psLookedup,
+                                             DI_CONTEXT **ppsTestResources);
+PVRSRV_ERROR TestIOCTLHandleArrayNCreate(IMG_UINT32 ui32NumResourcesRequested,
+                                         IMG_UINT32 *pui32NumResourcesCreated,
+                                         DI_CONTEXT **ppsTestResources);
+PVRSRV_ERROR TestIOCTLHandleArrayNCreateCP(IMG_UINT32 ui32NumResourcesRequested,
+                                           IMG_UINT32 *pui32NumResourcesCreated,
+                                           DI_CONTEXT **ppsTestResources);
+
+#endif	/* TUTILS_KM_H */

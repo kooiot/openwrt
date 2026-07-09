@@ -38,53 +38,12 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### ###########################################################################
 
+RGX_BVNC ?= 1.82.4.5
+
 include ../config/preconfig.mk
 include ../config/window_system.mk
 
-RGX_BVNC ?= 1.82.4.5
-
-NO_HARDWARE := 0
-TC_MEMORY_CONFIG ?= TC_MEMORY_HYBRID
-KERNEL_COMPONENTS := srvkm
-
-ifeq ($(SUPPORT_KMS),1)
- PVR_SYSTEM := rgx_linux_tc
- PVR_LDM_PLATFORM_PRE_REGISTERED := 1
- TC_DISPLAY_MEM_SIZE := 383
- ifeq ($(PVR_REMVIEW),1)
-  DISPLAY_CONTROLLER := "drm_nulldisp"
-  PVR_DRM_MODESET_DRIVER_NAME := "nulldisp"
- else
-  DISPLAY_CONTROLLER ?= drm_pdp
-  PVR_DRM_MODESET_DRIVER_NAME ?= pdp
- endif
- KERNEL_COMPONENTS += tc $(DISPLAY_CONTROLLER)
-else
- PVR_SYSTEM := rgx_tc
- PVR_LOADER := pvr_pci_drv
-
- ifeq ($(SUPPORT_DISPLAY_CLASS),1)
-  TC_DISPLAY_MEM_SIZE := 32
-  ifeq ($(TC_MEMORY_CONFIG),TC_MEMORY_HOST)
-   DISPLAY_CONTROLLER ?= dc_example
-  else
-   DISPLAY_CONTROLLER ?= dc_pdp
-  endif
-  KERNEL_COMPONENTS += $(DISPLAY_CONTROLLER)
- endif
-endif
-
-ifeq ($(DISPLAY_CONTROLLER),)
- # No display driver support so set to 0
- #
- TC_DISPLAY_MEM_SIZE := 0
-endif
-
-ifeq ($(ARCH)$(CROSS_COMPILE),)
-XORG_PVR_SKIP_CONSOLE ?= 1
-else
-XORG_PVR_SKIP_CONSOLE ?= 0
-endif
+include tc_common.mk
 
 # Should be last
 include ../config/core.mk
@@ -92,9 +51,6 @@ include ../config/core.mk
 include ../common/3rdparty.mk
 include ../common/testchip.mk
 
-ifneq ($(SUPPORT_ANDROID_PLATFORM),1)
-$(eval $(call TunableUserConfigC,SUPPORT_RSVIEW,))
-$(eval $(call TunableUserConfigMake,SUPPORT_RSVIEW,))
+ifeq ($(VIRTUAL_PLATFORM),1)
+ $(eval $(call BothConfigC,VIRTUAL_PLATFORM,1))
 endif
-
-$(eval $(call TunableKernelConfigC,VIRTUAL_PLATFORM,))

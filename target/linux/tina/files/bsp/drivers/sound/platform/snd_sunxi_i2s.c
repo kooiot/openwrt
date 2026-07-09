@@ -175,8 +175,8 @@ static void sunxi_i2s_get_hdmi_fmt(struct snd_notifier_block *snd_nb)
 	hdmi_fmt = (enum HDMI_FORMAT *)snd_nb->tx_data;
 
 	if (i2s->dts.dai_type == SUNXI_DAI_HDMI_TYPE) {
-		i2s->hdmi_fmt = *hdmi_fmt;
-		SND_LOG_DEBUG("hdmi fmt -> %d\n", i2s->hdmi_fmt);
+		i2s->playback_dma_param.hdmi_fmt = *hdmi_fmt;
+		SND_LOG_DEBUG("hdmi fmt -> %d\n", i2s->playback_dma_param.hdmi_fmt);
 	}
 }
 
@@ -1210,6 +1210,9 @@ static int sunxi_i2s_dai_hw_params(struct snd_pcm_substream *substream,
 	const struct sunxi_i2s_quirks *quirks = i2s->quirks;
 	struct sunxi_i2s_dts *dts = &i2s->dts;
 	struct regmap *regmap = i2s->mem.regmap;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct sunxi_dma_params *dma_params = snd_soc_dai_get_dma_data(sunxi_adpt_rtd_cpu_dai(rtd),
+								       substream);
 	int ret;
 
 	SND_LOG_DEBUG("\n");
@@ -1219,7 +1222,7 @@ static int sunxi_i2s_dai_hw_params(struct snd_pcm_substream *substream,
 	case SNDRV_PCM_FORMAT_S16_LE:
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			if (i2s->dts.dai_type == SUNXI_DAI_HDMI_TYPE &&
-			    i2s->hdmi_fmt > HDMI_FMT_PCM) {
+			    dma_params->hdmi_fmt > HDMI_FMT_PCM) {
 				regmap_update_bits(regmap, SUNXI_I2S_FMT0,
 						   0x7 << I2S_SAMPLE_RESOLUTION,
 						   0x5 << I2S_SAMPLE_RESOLUTION);
@@ -1847,7 +1850,7 @@ static int sunxi_i2s_component_probe(struct snd_soc_component *component)
 		}
 	}
 
-	/* component kcontrols -> tx_trigger_bypass*/
+	/* component kcontrols -> tx_trigger_bypass */
 	ret = snd_soc_add_component_controls(component, sunxi_tx_tirgger_controls,
 					     ARRAY_SIZE(sunxi_tx_tirgger_controls));
 	if (ret)
@@ -2279,6 +2282,7 @@ static void snd_sunxi_dma_params_init(struct sunxi_i2s *i2s)
 	i2s->playback_dma_param.dma_addr = res->start + SUNXI_I2S_TXFIFO;
 	i2s->playback_dma_param.cma_kbytes = dts->playback_cma;
 	i2s->playback_dma_param.fifo_size = dts->playback_fifo_size;
+	i2s->playback_dma_param.hdmi_fmt = HDMI_FMT_PCM;
 
 	i2s->capture_dma_param.src_maxburst = 8;
 	i2s->capture_dma_param.dst_maxburst = 8;
@@ -2295,6 +2299,7 @@ static void snd_sunxi_pin_exit(struct platform_device *pdev, struct sunxi_i2s_pi
 		devm_pinctrl_put(pin->pinctrl);
 }
 
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 /* sysfs debug */
 static void snd_sunxi_dump_version(void *priv, char *buf, size_t *count)
 {
@@ -2397,6 +2402,7 @@ static int snd_sunxi_dump_store(void *priv, const char *buf, size_t count)
 
 	return 0;
 }
+#endif
 
 static int sunxi_i2s_dev_probe(struct platform_device *pdev)
 {
@@ -2440,7 +2446,7 @@ static int sunxi_i2s_dev_probe(struct platform_device *pdev)
 	/* pa_pin init */
 	i2s->pa_cfg = snd_sunxi_pa_pin_init(pdev, &i2s->pa_pin_max);
 
-	reg_label = devm_kzalloc(dev, sizeof(struct audio_reg_label) * quirks->audio_reg_size,
+	reg_label = devm_kzalloc(dev, sizeof(*reg_label) * quirks->audio_reg_size,
 				 GFP_KERNEL);
 	if (IS_ERR_OR_NULL(reg_label)) {
 		SND_LOG_ERR("alloc reg_label failed\n");
@@ -2505,6 +2511,7 @@ static int sunxi_i2s_dev_probe(struct platform_device *pdev)
 		goto err_snd_sunxi_platform_register;
 	}
 
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 	snprintf(i2s->module_name, 32, "%s%u", "I2S", dts->tdm_num);
 	dump->name = i2s->module_name;
 	dump->priv = i2s;
@@ -2515,6 +2522,7 @@ static int sunxi_i2s_dev_probe(struct platform_device *pdev)
 	ret = snd_sunxi_dump_register(dump);
 	if (ret)
 		SND_LOG_WARN("snd_sunxi_dump_register failed\n");
+#endif
 
 	SND_LOG_DEBUG("register i2s platform success\n");
 
@@ -2548,12 +2556,17 @@ static int sunxi_i2s_dev_remove(struct platform_device *pdev)
 	struct sunxi_i2s_mem *mem = &i2s->mem;
 	struct sunxi_i2s_pinctl *pin = &i2s->pin;
 	struct sunxi_i2s_dts *dts = &i2s->dts;
+
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 	struct snd_sunxi_dump *dump = &i2s->dump;
+#endif
 
 	SND_LOG_DEBUG("\n");
 
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 	/* remove components */
 	snd_sunxi_dump_unregister(dump);
+#endif
 	if (dts->rx_sync_en)
 		sunxi_rx_sync_remove(dts->rx_sync_domain);
 

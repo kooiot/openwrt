@@ -110,6 +110,23 @@ int drm_mode_to_sunxi_video_timings(struct drm_display_mode *mode,
 	return 0;
 }
 
+struct drm_connector *drm_device_to_connector(struct drm_device *dev, int drm_mode_connector)
+{
+	struct drm_connector_list_iter conn_iter;
+	struct drm_connector *connector = NULL;
+
+	drm_connector_list_iter_begin(dev, &conn_iter);
+	drm_for_each_connector_iter(connector, &conn_iter) {
+		if (connector->connector_type == drm_mode_connector) {
+			DRM_ERROR("Get connector_type:%d\n", drm_mode_connector);
+			break;
+		}
+	}
+
+	drm_connector_list_iter_end(&conn_iter);
+	return connector;
+}
+
 int sunxi_parse_dump_string(const char *buf, size_t size,
 		unsigned long *start, unsigned long *end)
 {

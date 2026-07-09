@@ -134,6 +134,22 @@ static int sunxi_aaudio_parse_dma_param(struct device_node *np, struct sunxi_cpu
 		sunxi_cpudai->capture_dma_param.fifo_size = temp_val;
 	}
 
+	ret = of_property_read_u32(np, "dma-buf-mode", &temp_val);
+	if (ret != 0) {
+		sunxi_cpudai->playback_dma_param.dma_buf_mode = 0;
+		sunxi_cpudai->capture_dma_param.dma_buf_mode = 0;
+		SND_LOG_DEBUG("dma-buf-mode miss,using default value\n");
+	} else {
+		if (temp_val != 1 && temp_val != 0) {
+			sunxi_cpudai->playback_dma_param.dma_buf_mode = 0;
+			sunxi_cpudai->capture_dma_param.dma_buf_mode = 0;
+			SND_LOG_WARN("invalid dma-buf-mode value, using default value\n");
+		} else {
+			sunxi_cpudai->playback_dma_param.dma_buf_mode = temp_val;
+			sunxi_cpudai->capture_dma_param.dma_buf_mode = temp_val;
+		}
+	}
+
 	/* set data register */
 	ret = of_property_read_u32(np, "dac-txdata", &temp_val);
 	if (ret != 0) {

@@ -38,10 +38,10 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### ###########################################################################
 
+RGX_BVNC ?= 6.34.4.35
+
 include ../config/preconfig.mk
 include ../config/window_system.mk
-
-RGX_BVNC ?= 6.34.4.35
 
 NO_HARDWARE := 0
 KERNEL_COMPONENTS := srvkm
@@ -61,8 +61,7 @@ EMULATOR ?= 0
 HDMI_FORCE_MODE ?= 0
 PVRSRV_FORCE_UNLOAD_IF_BAD_STATE := 1
 PLATO_PDP_MAX_RELOADS ?= 15
-PLATO_MEMORY_600MHZ ?= 0
-SUPPORT_PLATO_DMA ?= 0
+ZEUS_SUPPORT_DEVICE_LOCAL_HEAP ?= 1
 
 PLATO_DDR_BDLR_TRAINING ?= 1
 
@@ -119,23 +118,17 @@ endif
 
 ifeq ($(PDUMP),1)
  PLATO_DISPLAY_PDUMP ?= 0
- PLATO_SYSTEM_PDUMP ?= 0
 endif
 
 ifeq ($(SUPPORT_GIGACLUSTER),1)
 	GC_SINGLE_DEVICE_MODE ?= 0
 	GC_PERF_OVERLAY ?= 0
-	GC_DEBUG_TASKS ?= 0
-	GC_DEBUG_THREADS ?= 0
 	GC_ENABLE_LIBAV ?= 0
 	GC_STREAM_X11 ?= 0
 	GC_STREAM_GL_PLATO_DEDICATED ?= 1
 endif
 
 KERNEL_COMPONENTS += $(DISPLAY_CONTROLLER) $(HDMI_CONTROLLER)
-
-GLES_DEFAULT_MAX_SH_PARAMETER_BUFFER_SIZE := 1024*1024*1024
-VK_DEFAULT_MAX_SH_PARAMETER_BUFFER_SIZE := 1024*1024*1024
 
 # Should be last
 include ../config/core.mk
@@ -144,15 +137,13 @@ include ../common/3rdparty.mk
 
 ifeq ($(PLATO_MEMORY_CONFIG),PLATO_MEMORY_LOCAL)
  $(eval $(call BothConfigC,LMA,))
- $(eval $(call KernelConfigMake,LMA,))
+ $(eval $(call KernelConfigMake,LMA,1))
 endif
 
 ifeq ($(SUPPORT_GIGACLUSTER), 1)
 $(eval $(call TunableUserConfigC,GC_STREAM_GL_PLATO_DEDICATED,1))
 $(eval $(call TunableUserConfigC,GC_STREAM_X11,1))
 $(eval $(call TunableUserConfigMake,GC_STREAM_X11,1))
-$(eval $(call TunableUserConfigC,GC_DEBUG_THREADS,1))
-$(eval $(call TunableUserConfigC,GC_DEBUG_TASKS,1))
 $(eval $(call TunableUserConfigC,GC_ENABLE_LIBAV,1))
 $(eval $(call TunableUserConfigC,GC_PERF_OVERLAY,1))
 endif
@@ -162,14 +153,10 @@ $(eval $(call TunableKernelConfigC,PLATO_MEMORY_CONFIG,$(PLATO_MEMORY_CONFIG)))
 $(eval $(call TunableKernelConfigC,PLATO_DDR_BDLR_TRAINING,$(PLATO_DDR_BDLR_TRAINING)))
 $(eval $(call TunableKernelConfigC,SUPPORT_PLATO_DISPLAY,$(SUPPORT_PLATO_DISPLAY)))
 
-$(eval $(call TunableKernelConfigC,SUPPORT_PLATO_DMA,$(SUPPORT_PLATO_DMA)))
-$(eval $(call KernelConfigMake,SUPPORT_PLATO_DMA,$(SUPPORT_PLATO_DMA)))
-
 $(eval $(call TunableKernelConfigC,PLATO_PDP_RELOADS_MAX,$(PLATO_PDP_MAX_RELOADS)))
 
 $(eval $(call TunableKernelConfigC,VIRTUAL_PLATFORM,))
 $(eval $(call TunableKernelConfigC,EMULATOR,))
-$(eval $(call TunableKernelConfigC,PDP_ARTIFICIAL_KICK,))
 $(eval $(call TunableKernelConfigC,PLATO_DUAL_CHANNEL_DDR,))
 $(eval $(call TunableKernelConfigC,HDMI_FORCE_MODE,$(HDMI_FORCE_MODE)))
 
@@ -178,7 +165,6 @@ $(eval $(call BothConfigC,HDMI_CONTROLLER,$(HDMI_CONTROLLER)))
 $(eval $(call BothConfigMake,HDMI_CONTROLLER,$(HDMI_CONTROLLER)))
 endif
 $(eval $(call TunableKernelConfigC,ENABLE_PLATO_HDMI,))
-$(eval $(call TunableKernelConfigC,PLATO_MEMORY_600MHZ,))
 
 $(eval $(call TunableKernelConfigC,PDP_DEBUG,))
 $(eval $(call TunableBothConfigC,HDMI_DEBUG,))
@@ -186,7 +172,6 @@ $(eval $(call TunableBothConfigC,HDMI_EXPERIMENTAL_CLOCKS,))
 $(eval $(call TunableBothConfigC,HDMI_PDUMP,))
 ifeq ($(PDUMP), 1)
 $(eval $(call TunableKernelConfigC,PLATO_DISPLAY_PDUMP,))
-$(eval $(call TunableKernelConfigC,PLATO_SYSTEM_PDUMP,))
 endif
 
 $(eval $(call TunableKernelConfigC,PLATO_DC_MEM_SIZE_MB,))

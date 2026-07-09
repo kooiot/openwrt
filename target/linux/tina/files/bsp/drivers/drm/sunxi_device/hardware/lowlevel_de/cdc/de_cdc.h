@@ -19,6 +19,14 @@
 #include "../csc/de_csc.h"
 #include "../csc/de_csc_table.h"
 
+enum de_cdc_type {
+	CHANNEL_CDC,
+	DEVICE_CDC,
+};
+struct cdc_extra_create_info {
+	enum de_cdc_type type;
+	unsigned int extra_id;
+};
 struct de_cdc_handle {
 	struct module_create_info cinfo;
 	unsigned int block_num;

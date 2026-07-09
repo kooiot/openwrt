@@ -55,10 +55,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "physheap.h"
 #include "pci_support.h"
 #include "interrupt_support.h"
-#if defined(SUPPORT_PLATO_DMA)
-#include "plato_dma.h"
-#endif
-#if defined(LINUX)
+#if defined(__linux__)
 #include <linux/dma-mapping.h>
 #endif
 
@@ -77,23 +74,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define PLATO_CHECKPOINT
 #endif
 
-#if defined(LMA)
+#if (PLATO_MEMORY_CONFIG == PLATO_MEMORY_LOCAL)
 #define	HOST_PCI_INIT_FLAGS	0
 #else
 #define	HOST_PCI_INIT_FLAGS	HOST_PCI_INIT_FLAG_BUS_MASTER
 #endif
-
-/* BIF Tiling mode configuration */
-static RGXFWIF_BIFTILINGMODE geBIFTilingMode = RGXFWIF_BIFTILINGMODE_256x16;
-
-/* default BIF tiling heap x-stride configurations. */
-static IMG_UINT32 gauiBIFTilingHeapXStrides[RGXFWIF_NUM_BIF_TILING_CONFIGS] =
-{
-	0, /* BIF tiling heap 1 x-stride */
-	1, /* BIF tiling heap 2 x-stride */
-	2, /* BIF tiling heap 3 x-stride */
-	3  /* BIF tiling heap 4 x-stride */
-};
 
 #if (PLATO_MEMORY_CONFIG == PLATO_MEMORY_LOCAL) || (PLATO_MEMORY_CONFIG == PLATO_MEMORY_HYBRID)
 static PHYS_HEAP_FUNCTIONS gsLocalPhysHeapFuncs =
@@ -102,8 +87,6 @@ static PHYS_HEAP_FUNCTIONS gsLocalPhysHeapFuncs =
 	PlatoLocalCpuPAddrToDevPAddr,
 	/* pfnDevPAddrToCpuPAddr */
 	PlatoLocalDevPAddrToCpuPAddr,
-	/* pfnGetRegionId */
-	PlatoLocalGetRegionId,
 };
 #endif
 
@@ -114,8 +97,6 @@ static PHYS_HEAP_FUNCTIONS gsHostPhysHeapFuncs =
 	PlatoSystemCpuPAddrToDevPAddr,
 	/* pfnDevPAddrToCpuPAddr */
 	PlatoSystemDevPAddrToCpuPAddr,
-	/* pfnGetRegionId */
-	PlatoSystemGetRegionId,
 };
 #endif
 
@@ -184,7 +165,7 @@ IMG_UINT32 SysGetPlatoPLLClockSpeed(IMG_UINT32 ui32ClockSpeed)
     return ((((IMG_UINT64)ui32PLLClockSpeed << 32) / ui32AccClockSpeed) >> 32) * ui32ClockSpeed;
 }
 
-#if defined(LINUX)
+#if defined(__linux__)
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 module_param_named(sys_mem_clk_speed,  ui32MemClockSpeed,  uint, S_IRUGO | S_IWUSR);
@@ -199,36 +180,9 @@ EXPORT_SYMBOL(SysGetPlatoPLLClockSpeed);
 
 #define PLATO_HAS_NON_MAPPABLE(dev) (dev->ui64MappedMemSize < SYS_DEV_MEM_REGION_SIZE)
 
-#if defined(PLATO_SYSTEM_PDUMP)
-#include "plato_pdump.h"
-extern void * pvSystemRegCpuVBase;
-
-static void PlatoOSWriteHWReg32(void *pvLinRegBaseAddr, IMG_UINT32 ui32Offset, IMG_UINT32 ui32Value)
-{
-	OSWriteHWReg32(pvLinRegBaseAddr,  ui32Offset,  ui32Value);
-	plato_pdump_reg32(pvLinRegBaseAddr, ui32Offset, ui32Value, PLATO_SYSTEM_NAME);
-}
-
-static void PlatoOSSleepms(IMG_UINT32 intrvl)
-{
-	OSSleepms(intrvl);
-	plato_pdump_idl(intrvl);
-}
-#undef OSWriteHWReg32
-#undef OSSleepms
-
-#define OSWriteHWReg32 PlatoOSWriteHWReg32
-#define OSSleepms PlatoOSSleepms
-
-#endif
-
 static IMG_BOOL PollPr(IMG_UINT32* base, IMG_UINT32 reg, IMG_UINT32 val, IMG_UINT32 msk, IMG_UINT32 cnt, IMG_UINT32 intrvl)
 {
 	IMG_UINT32 polnum;
-
-#if defined(PLATO_SYSTEM_PDUMP)
-	plato_pdump_pol(base, reg, val, msk, PLATO_SYSTEM_NAME);
-#endif
 
 	for (polnum = 0; polnum < cnt; polnum++)
 	{
@@ -248,73 +202,6 @@ static IMG_BOOL PollPr(IMG_UINT32* base, IMG_UINT32 reg, IMG_UINT32 val, IMG_UIN
 }
 
 #define Poll(base,reg,val,msk) PollPr(base,reg,val,msk,10,10)
-
-
-#if defined(PDP_ARTIFICIAL_KICK)
-#include "plato_get_regs.h"
-static void *g_pvSystemRegCpuVBase = NULL;
-long PlatoGetRegs(RegInfo *info)
-{
-	RegRange reg_range;
-	void *pvRegRange;
-	int i;
-
-	if (g_pvSystemRegCpuVBase == NULL)
-		return kRegRangeError_NullRegPointer;
-
-	if (info->mode != kRegRangeMode_Interleaved)
-		return kRegRangeError_UnsupportedMode;
-
-
-	for (reg_range = 0; reg_range < kRegRange_Size; ++reg_range)
-	{
-		int unsupported = 0;
-		//	printk("plato reg: info %p indo->mode %u info->data[%u]->val_buf %p info->data[%u]->val_buf_size %zu info->data[%u]->reg_buf %p info->data[%u]->reg_buf_size %zu\n", info, info->mode,
-		//	reg_range, info->data[reg_range].val_buf, reg_range, info->data[reg_range].val_buf_size, reg_range, info->data[reg_range].reg_buf, reg_range, info->data[reg_range].reg_buf_size);
-		switch (reg_range)
-		{
-			case kRegRange_TOP:
-				pvRegRange = g_pvSystemRegCpuVBase + DBG_PERIP_REG_OFFSET;
-				break;
-			case kRegRange_AON:
-				pvRegRange = g_pvSystemRegCpuVBase + DBG_AON_OFFSET;
-				break;
-			case kRegRange_DDR_A_CTRL:
-				pvRegRange = g_pvSystemRegCpuVBase + DBG_DDR_A_CTRL_OFFSET;
-				break;
-			case kRegRange_DDR_B_CTRL:
-				pvRegRange = g_pvSystemRegCpuVBase + DBG_DDR_B_CTRL_OFFSET;
-				break;
-			case kRegRange_RGX:
-				pvRegRange = g_pvSystemRegCpuVBase + SYS_PLATO_REG_RGX_OFFSET;
-				break;
-			case kRegRange_DDR_A_PUBL:
-			case kRegRange_DDR_B_PUBL:
-			case kRegRange_PDP:
-				unsupported = 1;
-				break;
-			default:
-				return kRegRangeError_UnsupportedRange;
-		}
-
-		if (unsupported)
-		{
-			continue;
-		}
-
-		if (info->data[reg_range].reg_buf_size > info->data[reg_range].val_buf_size)
-			return kRegRangeError_InvalidBufSizes;
-
-		for (i = 0; i < info->data[reg_range].reg_buf_size; ++i)
-		{
-			info->data[reg_range].val_buf[i] = OSReadHWReg32(pvRegRange, info->data[reg_range].reg_buf[i]);
-		}
-	}
-
-	return kRegRangeError_Success;
-}
-#endif /* (PDP_ARTIFICIAL_KICK) */
-
 static IMG_CHAR *GetDeviceVersionString(SYS_DATA *psSysData)
 {
 	return NULL;
@@ -440,7 +327,7 @@ PVRSRV_ERROR SysDebugInfo(PVRSRV_DEVICE_CONFIG *psDevConfig,
 	IMG_UINT32 i;
 	IMG_UINT32 ui32GPUTemp;
 
-	PVR_DUMPDEBUG_LOG("------[ System Debug ]------");
+	PVR_DUMPDEBUG_LOG("------[ System Debug - Device ID:%u ]------", psDevConfig->psDevNode->sDevId.ui32InternalID);
 
 	if ((eError = SysGetPlatoGPUTemp(psDevData, &ui32GPUTemp)) != PVRSRV_OK)
 	{
@@ -532,7 +419,7 @@ ErrorReturn:
 
 void PlatoUnmapRegisters(SYS_DATA * psDevData, void * pvBase, IMG_UINT32 ui32BaseNum, IMG_UINT32 ui32Offset, IMG_UINT32 ui32Size)
 {
-	OSUnMapPhysToLin(pvBase, ui32Size, PVRSRV_MEMALLOCFLAG_CPU_UNCACHED);
+	OSUnMapPhysToLin(pvBase, ui32Size);
 	OSPCIReleaseAddrRegion(psDevData->hRGXPCI, ui32BaseNum, ui32Offset, ui32Size);
 }
 
@@ -553,7 +440,7 @@ static PVRSRV_ERROR ConfigPlatoDram(void * pvPublRegs, void * pvCtrlRegs, void *
 	OSWaitus(100);
 
 	/*refresh timings*/
-#if defined (PLATO_DDR_KINGSTON)
+#if defined(PLATO_DDR_KINGSTON)
 	OSWriteHWReg32(pvCtrlRegs, PLATO_DDR_CTRL_RFSHTMG, 0x0081008B);
 #else
 	OSWriteHWReg32(pvCtrlRegs, PLATO_DDR_CTRL_RFSHTMG, 0x006100BB);
@@ -563,7 +450,7 @@ static PVRSRV_ERROR ConfigPlatoDram(void * pvPublRegs, void * pvCtrlRegs, void *
 	OSWriteHWReg32(pvCtrlRegs, PLATO_DDR_CTRL_INIT0, 0x00020100);
 	OSWriteHWReg32(pvCtrlRegs, PLATO_DDR_CTRL_INIT1, 0x00010000);
 
-#if defined (PLATO_DDR_KINGSTON)
+#if defined(PLATO_DDR_KINGSTON)
 	/*write recovery */
 	OSWriteHWReg32(pvCtrlRegs, PLATO_DDR_CTRL_INIT3, 0x01700000);
 	OSWriteHWReg32(pvCtrlRegs, PLATO_DDR_CTRL_INIT4, 0x00280000);
@@ -785,22 +672,22 @@ static PVRSRV_ERROR ConfigPlatoDram(void * pvPublRegs, void * pvCtrlRegs, void *
 	//OSWriteHWReg32(pvPublRegs, PLATO_DDR_PUBL_PGCR1_OFFSET, 0x020046A0);
 #endif
 
-    /* DISABLE VT COMPENSATION */
-    //OSWriteHWReg32(pvPublRegs, PLATO_DDR_PUBL_PGCR6_OFFSET, 0x00013001);
-    //OSWriteHWReg32(pvPublRegs, PLATO_DDR_PUBL_PGCR4_OFFSET, 0x40000000);
-    OSWriteHWReg32(pvPublRegs, PLATO_DDR_PUBL_DXCCR_OFFSET, 0x20C01884);
+	/* DISABLE VT COMPENSATION */
+	//OSWriteHWReg32(pvPublRegs, PLATO_DDR_PUBL_PGCR6_OFFSET, 0x00013001);
+	//OSWriteHWReg32(pvPublRegs, PLATO_DDR_PUBL_PGCR4_OFFSET, 0x40000000);
+	OSWriteHWReg32(pvPublRegs, PLATO_DDR_PUBL_DXCCR_OFFSET, 0x20C01884);
 
-    /* VREF CHANGE */
-    /*
-    OSWriteHWReg32(pvPublRegs, 0x0710, 0x0E00083C);
-    OSWriteHWReg32(pvPublRegs, 0x0810, 0x0E00083C);
-    OSWriteHWReg32(pvPublRegs, 0x0910, 0x0E00083C);
-    OSWriteHWReg32(pvPublRegs, 0x0A10, 0x0E00083C);
-    OSWriteHWReg32(pvPublRegs, 0x0B10, 0x0E00083C);
-    OSWriteHWReg32(pvPublRegs, 0x0C10, 0x0E00083C);
-    OSWriteHWReg32(pvPublRegs, 0x0D10, 0x0E00083C);
-    OSWriteHWReg32(pvPublRegs, 0x0E10, 0x0E00083C);
-    */
+	/* VREF CHANGE */
+	/*
+	OSWriteHWReg32(pvPublRegs, 0x0710, 0x0E00083C);
+	OSWriteHWReg32(pvPublRegs, 0x0810, 0x0E00083C);
+	OSWriteHWReg32(pvPublRegs, 0x0910, 0x0E00083C);
+	OSWriteHWReg32(pvPublRegs, 0x0A10, 0x0E00083C);
+	OSWriteHWReg32(pvPublRegs, 0x0B10, 0x0E00083C);
+	OSWriteHWReg32(pvPublRegs, 0x0C10, 0x0E00083C);
+	OSWriteHWReg32(pvPublRegs, 0x0D10, 0x0E00083C);
+	OSWriteHWReg32(pvPublRegs, 0x0E10, 0x0E00083C);
+	*/
 
 	PLATO_CHECKPOINT;
 	/*
@@ -814,7 +701,6 @@ static PVRSRV_ERROR ConfigPlatoDram(void * pvPublRegs, void * pvCtrlRegs, void *
 
 	Phase 5: Monitor PHY initialization status by polling the PUB register PGSR0
 
-	(not done on emu, TODO: check on HW)
 	*/
 	Poll(pvPublRegs, PLATO_DDR_PUBL_PGSR0_OFFSET, 0xF, 0xF);
 
@@ -924,10 +810,6 @@ static PVRSRV_ERROR ConfigPlatoEmu(SYS_DATA *psDevData)
 	void* pvSystemDbgDdrBCtrlRegs	= psDevData->pvSystemRegCpuVBase + SYS_PLATO_REG_DDR_B_CTRL_OFFSET;
 	void* pvSystemDbgDdrBPublRegs	= psDevData->pvSystemRegCpuVBase + SYS_PLATO_REG_DDR_B_PUBL_OFFSET;
 	void* pvSystemDbgNocRegs		= psDevData->pvSystemRegCpuVBase + SYS_PLATO_REG_NOC_OFFSET;
-
-#if defined(PDP_ARTIFICIAL_KICK)
-	g_pvSystemRegCpuVBase = psDevData->pvSystemRegCpuVBase;
-#endif
 
 #if defined(ENABLE_PLATO_HDMI)
 	OSWriteHWReg32(pvSystemDbgPeripRegs, PLATO_TOP_CR_HDMI_CEC_CLK_CTRL, 0x3370A03);
@@ -1333,7 +1215,6 @@ static PVRSRV_ERROR ConfigPlatoEmu(SYS_DATA *psDevData)
 
 	Phase 5: Monitor PHY initialization status by polling the PUB register PGSR0
 
-	(not done on emu, TODO: check on HW)
 	*/
 	OSWriteHWReg32(pvSystemDbgDdrACtrlRegs, PLATO_DDR_CTRL_SWCTL, 0x00000000);
 	OSWriteHWReg32(pvSystemDbgDdrBCtrlRegs, PLATO_DDR_CTRL_SWCTL, 0x00000000);
@@ -1487,6 +1368,7 @@ static IMG_UINT32 GetPlatoPDPV1Div0(IMG_UINT32 ui32PLLClock)
 			(PLATO_CR_PDPV1_DIV_0_MASK >> PLATO_CR_PDPV1_DIV_0_SHIFT) : ret;
 }
 
+#if defined(ENABLE_PLATO_HDMI)
 /*
  * Helpers for getting values of integer dividers for HDMICEC clocks.
  *
@@ -1566,6 +1448,7 @@ static IMG_UINT32 GetPlatoHDMICECV2Div0(IMG_UINT32 ui32PLLClock)
     return (div > 1) && (ret != (div - (div > 0))) ?
             (PLATO_CR_HDMICECV2_DIV_0_MASK >> PLATO_CR_HDMICECV2_DIV_0_SHIFT) : ret;
 }
+#endif
 
 #if defined(PLATO_DUAL_CHANNEL_DDR)
 
@@ -1927,7 +1810,6 @@ static PVRSRV_ERROR ConfigPlatoSingleChannel(SYS_DATA *psDevData)
 	OSWaitus(100);
 
 	/* Enabling gated clock output for DDR A/B */
-	/* TODO: is DDRB necessary? */
 	ui32MemClockCtrl = (1 << PLATO_CR_DDRAG_GATE_EN_SHIFT) | (1 << PLATO_CR_DDRBG_GATE_EN_SHIFT);
 
 	OSWriteHWReg32(pvSystemDbgPeripRegs, PLATO_TOP_CR_DDR_CLK_CTRL, ui32MemClockCtrl);
@@ -2017,10 +1899,6 @@ static PVRSRV_ERROR ConfigPlatoHw(SYS_DATA *psDevData)
 
 	PLATO_CHECKPOINT;
 
-#if defined(PDP_ARTIFICIAL_KICK)
-	g_pvSystemRegCpuVBase = psDevData->pvSystemRegCpuVBase;
-#endif
-
 	/* Config Plato until PDP registers become accessible */
 	do
 	{
@@ -2077,11 +1955,8 @@ static PVRSRV_ERROR PlatoLocalMemoryTest(PVRSRV_DEVICE_CONFIG *psDevConfig)
 	IMG_UINT32 tmp = 0;
 	IMG_UINT32 chunk = sizeof(IMG_UINT32) * 10;
 
-	PHYS_HEAP_REGION* psRegion =
-		&psDevConfig->pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL].pasRegions[0];
-
-	IMG_UINT64 ui64TestMemoryBase = psRegion->sStartAddr.uiAddr;
-	IMG_UINT64 ui64TestMemorySize = psRegion->uiSize;
+	IMG_UINT64 ui64TestMemoryBase = psDevConfig->pasPhysHeaps[PHYS_HEAP_ID_GPU_LOCAL].sStartAddr.uiAddr;
+	IMG_UINT64 ui64TestMemorySize = psDevConfig->pasPhysHeaps[PHYS_HEAP_ID_GPU_LOCAL].uiSize;
 
 	PVR_LOG(("- %s: Starting Local memory test from "
 			 "0x%llx to 0x%llx (in CPU space)",
@@ -2099,7 +1974,7 @@ static PVRSRV_ERROR PlatoLocalMemoryTest(PVRSRV_DEVICE_CONFIG *psDevConfig)
 		for (i = 0; i < chunk/sizeof(IMG_UINT32); i++)
 		{
 			*(pui32Virt + i) = 0xdeadbeef;
-			OSWriteMemoryBarrier();
+			OSWriteMemoryBarrier(pui32Virt);
 			tmp = *(pui32Virt + i);
 			if (tmp != 0xdeadbeef)
 			{
@@ -2107,12 +1982,12 @@ static PVRSRV_ERROR PlatoLocalMemoryTest(PVRSRV_DEVICE_CONFIG *psDevConfig)
 						"Local memory read-write test failed at address=0x%llx: written 0x%x, read 0x%x",
 						ui64TestMemoryBase + ((i * sizeof(IMG_UINT32)) + j) , (IMG_UINT32) 0xdeadbeef, tmp));
 
-				OSUnMapPhysToLin(pui32Virt, chunk, PVRSRV_MEMALLOCFLAG_CPU_UNCACHED);
+				OSUnMapPhysToLin(pui32Virt, chunk);
 				return PVRSRV_ERROR_SYSTEM_LOCAL_MEMORY_INIT_FAIL;
 			}
 		}
 
-		OSUnMapPhysToLin(pui32Virt, chunk, PVRSRV_MEMALLOCFLAG_CPU_UNCACHED);
+		OSUnMapPhysToLin(pui32Virt, chunk);
 
 		j+= (1024 * 1024 * 500);
 	}
@@ -2184,43 +2059,42 @@ static INLINE void ReleaseLocalMappableMemory(IMG_HANDLE hPCI,
 #if (PLATO_MEMORY_CONFIG == PLATO_MEMORY_LOCAL) || (PLATO_MEMORY_CONFIG == PLATO_MEMORY_HYBRID)
 
 static PVRSRV_ERROR InitLocalMemory(SYS_DATA *psDevData,
-									IMG_UINT32 uiHeapIDBase,
 									PHYS_HEAP_CONFIG *pasPhysHeaps,
 									IMG_UINT32 uiPhysHeapCount,
-									IMG_HANDLE hPhysHeapPrivData,
-									IMG_UINT32 *puiGPULocalHeapIDOut,
-									IMG_UINT32 *puiCPULocalHeapIDOut,
-									IMG_UINT32 *puiFWLocalHeapIDOut)
+									IMG_HANDLE hPhysHeapPrivData)
 {
 	IMG_UINT64 ui64MappedMemSize = psDevData->ui64MappedMemSize;
 	IMG_UINT64 ui64MappedMemCpuPAddr = psDevData->ui64MappedMemCpuPAddr;
 	IMG_UINT64 ui64MappedMemDevPAddr;
 	PHYS_HEAP_CONFIG *psPhysHeap;
-	PHYS_HEAP_REGION *psHeapRegion;
 
-	psPhysHeap = &pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL];
-	psPhysHeap->ui32PhysHeapID = uiHeapIDBase + PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL;
+#if (RGX_NUM_DRIVERS_SUPPORTED > 1)
+	IMG_UINT64 uiFwCarveoutSize;
+#if defined(SUPPORT_AUTOVZ)
+	/* Carveout out enough LMA memory to hold the heaps of
+	 * all supported OSIDs and the FW page tables */
+	uiFwCarveoutSize = (RGX_NUM_DRIVERS_SUPPORTED * RGX_FIRMWARE_RAW_HEAP_SIZE) +
+						RGX_FIRMWARE_MAX_PAGETABLE_SIZE;
+#elif defined(RGX_VZ_STATIC_CARVEOUT_FW_HEAPS)
+	/* Carveout out enough LMA memory to hold the heaps of all supported OSIDs */
+	uiFwCarveoutSize = (RGX_NUM_DRIVERS_SUPPORTED * RGX_FIRMWARE_RAW_HEAP_SIZE);
+#else
+	/* Create a memory carveout just for the Host's Firmware heap.
+	 * Guests will allocate their own physical memory. */
+	uiFwCarveoutSize = RGX_FIRMWARE_RAW_HEAP_SIZE;
+#endif
+#endif /* (RGX_NUM_DRIVERS_SUPPORTED > 1) */
+
+
+	psPhysHeap = &pasPhysHeaps[PHYS_HEAP_ID_GPU_LOCAL];
 	psPhysHeap->eType = PHYS_HEAP_TYPE_LMA;
 	psPhysHeap->pszPDumpMemspaceName = "LMA";
 	psPhysHeap->psMemFuncs = &gsLocalPhysHeapFuncs;
 	psPhysHeap->hPrivData = hPhysHeapPrivData;
-	psPhysHeap->ui32NumOfRegions = 1;
-
-	if (PLATO_HAS_NON_MAPPABLE(psDevData))
-	{
-		psPhysHeap->ui32NumOfRegions++;
-	}
-
-	psPhysHeap->pasRegions = OSAllocZMem(sizeof(*psPhysHeap->pasRegions) *
-										 psPhysHeap->ui32NumOfRegions);
-	if (!psPhysHeap->pasRegions)
-	{
-		return PVRSRV_ERROR_OUT_OF_MEMORY;
-	}
+	psPhysHeap->ui32UsageFlags = PHYS_HEAP_USAGE_GPU_LOCAL;
 
 	/* Configure mappable heap region */
-	psHeapRegion = &psPhysHeap->pasRegions[PLATO_LMA_HEAP_REGION_MAPPABLE];
-	psHeapRegion->sCardBase.uiAddr = PLATO_DDR_DEV_PHYSICAL_BASE;
+	psPhysHeap->sCardBase.uiAddr = PLATO_DDR_DEV_PHYSICAL_BASE;
 
 	if (!PLATO_HAS_NON_MAPPABLE(psDevData))
 	{
@@ -2284,18 +2158,17 @@ static PVRSRV_ERROR InitLocalMemory(SYS_DATA *psDevData,
 		}
 	}
 
-	/* Sanity check on mapped device physical address */
+	/* Confidence check on mapped device physical address */
 	PVR_ASSERT(ui64MappedMemDevPAddr >= PLATO_DDR_ALIASED_DEV_PHYSICAL_BASE && ui64MappedMemDevPAddr < PLATO_DDR_ALIASED_DEV_PHYSICAL_END);
 
-	psHeapRegion->sStartAddr.uiAddr = ui64MappedMemCpuPAddr;
-	psHeapRegion->sCardBase.uiAddr = ui64MappedMemDevPAddr;
-	psHeapRegion->uiSize = ui64MappedMemSize;
-#if defined(SUPPORT_DISPLAY_CLASS)
-	psHeapRegion->uiSize -= RGX_PLATO_RESERVE_DC_MEM_SIZE;
+	psPhysHeap->sStartAddr.uiAddr = ui64MappedMemCpuPAddr;
+	psPhysHeap->sCardBase.uiAddr = ui64MappedMemDevPAddr;
+	psPhysHeap->uiSize = ui64MappedMemSize;
+#if (RGX_NUM_DRIVERS_SUPPORTED > 1)
+	psPhysHeap->uiSize -= uiFwCarveoutSize;
 #endif
-
-#if defined(SUPPORT_PLATO_DMA)
-	psHeapRegion->uiSize -= RGX_PLATO_RESERVE_DMA_MEM_SIZE;
+#if defined(SUPPORT_DISPLAY_CLASS)
+	psPhysHeap->uiSize -= RGX_PLATO_RESERVE_DC_MEM_SIZE;
 #endif
 
 	/* Setup non-mappable region if BAR size is less than actual memory size (8GB) */
@@ -2306,8 +2179,13 @@ static PVRSRV_ERROR InitLocalMemory(SYS_DATA *psDevData,
 		IMG_UINT64 ui64FollowingRegionBase = 0;
 		IMG_UINT64 ui64FollowingRegionSize = 0;
 
-		psHeapRegion = &psPhysHeap->pasRegions[PLATO_LMA_HEAP_REGION_NONMAPPABLE];
-		psHeapRegion->sCardBase.uiAddr = PLATO_DDR_DEV_PHYSICAL_BASE;
+		psPhysHeap = &pasPhysHeaps[PHYS_HEAP_ID_NON_MAPPABLE];
+		psPhysHeap->eType = PHYS_HEAP_TYPE_LMA;
+		psPhysHeap->pszPDumpMemspaceName = "LMA";
+		psPhysHeap->psMemFuncs = &gsLocalPhysHeapFuncs;
+		psPhysHeap->hPrivData = hPhysHeapPrivData;
+		psPhysHeap->ui32UsageFlags = PHYS_HEAP_USAGE_GPU_PRIVATE;
+		psPhysHeap->sCardBase.uiAddr = PLATO_DDR_DEV_PHYSICAL_BASE;
 
 		/*
 		 * If mapped region is not at the base of memory,
@@ -2327,80 +2205,62 @@ static PVRSRV_ERROR InitLocalMemory(SYS_DATA *psDevData,
 		/* Use only bigger region for now */
 		if (ui64FollowingRegionSize > ui64PrecedingRegionSize)
 		{
-			psHeapRegion->sCardBase.uiAddr = ui64FollowingRegionBase;
-			psHeapRegion->uiSize = ui64FollowingRegionSize;
+			psPhysHeap->sCardBase.uiAddr = ui64FollowingRegionBase;
+			psPhysHeap->uiSize = ui64FollowingRegionSize;
 		}
 		else
 		{
-			psHeapRegion->sCardBase.uiAddr = ui64PrecedingRegionBase;
-			psHeapRegion->uiSize = ui64PrecedingRegionSize;
+			psPhysHeap->sCardBase.uiAddr = ui64PrecedingRegionBase;
+			psPhysHeap->uiSize = ui64PrecedingRegionSize;
 		}
 
-		psHeapRegion->sStartAddr.uiAddr = 0;
+		psPhysHeap->sStartAddr.uiAddr = 0;
 
 		PVR_LOG(("Added non-mappable local memory region. Base = 0x%016llx, Size=0x%016llx",
-					psHeapRegion->sCardBase.uiAddr,
-					psHeapRegion->uiSize));
+					psPhysHeap->sCardBase.uiAddr,
+					psPhysHeap->uiSize));
 
-		PVR_ASSERT(psHeapRegion->uiSize < SYS_DEV_MEM_REGION_SIZE);
+		PVR_ASSERT(psPhysHeap->uiSize < SYS_DEV_MEM_REGION_SIZE);
 	}
 
-#if defined(SUPPORT_DISPLAY_CLASS)
-	psPhysHeap = &pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_PDP_LOCAL];
-	psPhysHeap->ui32PhysHeapID = uiHeapIDBase + PVRSRV_DEVICE_PHYS_HEAP_PDP_LOCAL;
+#if (RGX_NUM_DRIVERS_SUPPORTED > 1)
+	psPhysHeap = &pasPhysHeaps[PHYS_HEAP_ID_FW_LOCAL];
 	psPhysHeap->eType = PHYS_HEAP_TYPE_LMA;
 	psPhysHeap->pszPDumpMemspaceName = "LMA";
 	psPhysHeap->psMemFuncs = &gsLocalPhysHeapFuncs;
 	psPhysHeap->hPrivData = hPhysHeapPrivData;
-	psPhysHeap->ui32NumOfRegions = 1;
+	psPhysHeap->ui32UsageFlags = PHYS_HEAP_USAGE_FW_SHARED;
 
-	psPhysHeap->pasRegions = OSAllocZMem(sizeof(*psPhysHeap->pasRegions));
-	if (!psPhysHeap->pasRegions)
-	{
-		OSFreeMem(pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL].pasRegions);
-		return PVRSRV_ERROR_OUT_OF_MEMORY;
-	}
+	psPhysHeap->sCardBase.uiAddr =
+		pasPhysHeaps[PHYS_HEAP_ID_GPU_LOCAL].sCardBase.uiAddr +
+		pasPhysHeaps[PHYS_HEAP_ID_GPU_LOCAL].uiSize;
 
-	psHeapRegion = &psPhysHeap->pasRegions[0];
-	psHeapRegion->sCardBase.uiAddr = PLATO_DDR_DEV_PHYSICAL_BASE;
-
-	psHeapRegion->sStartAddr.uiAddr =
-		pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL].pasRegions[0].sStartAddr.uiAddr +
-		pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL].pasRegions[0].uiSize;
-	psHeapRegion->uiSize = RGX_PLATO_RESERVE_DC_MEM_SIZE;
+	psPhysHeap->sStartAddr.uiAddr =
+		pasPhysHeaps[PHYS_HEAP_ID_GPU_LOCAL].sStartAddr.uiAddr +
+		pasPhysHeaps[PHYS_HEAP_ID_GPU_LOCAL].uiSize;
+	psPhysHeap->uiSize = RGX_FIRMWARE_RAW_HEAP_SIZE;
 #endif
 
-#if defined(SUPPORT_PLATO_DMA)
-	psPhysHeap = &pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_DMA_LOCAL];
-	psPhysHeap->ui32PhysHeapID = uiHeapIDBase + PVRSRV_DEVICE_PHYS_HEAP_DMA_LOCAL;
+#if defined(SUPPORT_DISPLAY_CLASS)
+	psPhysHeap = &pasPhysHeaps[PHYS_HEAP_ID_PDP_LOCAL];
 	psPhysHeap->eType = PHYS_HEAP_TYPE_LMA;
 	psPhysHeap->pszPDumpMemspaceName = "LMA";
 	psPhysHeap->psMemFuncs = &gsLocalPhysHeapFuncs;
 	psPhysHeap->hPrivData = hPhysHeapPrivData;
-	psPhysHeap->ui32NumOfRegions = 1;
+	psPhysHeap->ui32UsageFlags = PHYS_HEAP_USAGE_DISPLAY;
 
-	psPhysHeap->pasRegions = OSAllocZMem(sizeof(*psPhysHeap->pasRegions));
-	if (!psPhysHeap->pasRegions)
-	{
-		OSFreeMem(pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL].pasRegions);
-#if defined(SUPPORT_DISPLAY_CLASS)
-		OSFreeMem(pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_PDP_LOCAL].pasRegions);
+	psPhysHeap->sCardBase.uiAddr = PLATO_DDR_DEV_PHYSICAL_BASE;
+
+	psPhysHeap->sStartAddr.uiAddr =
+#if (RGX_NUM_DRIVERS_SUPPORTED > 1)
+		pasPhysHeaps[PHYS_HEAP_ID_FW_LOCAL].sStartAddr.uiAddr +
+		pasPhysHeaps[PHYS_HEAP_ID_FW_LOCAL].uiSize;
+#else
+		pasPhysHeaps[PHYS_HEAP_ID_GPU_LOCAL].sStartAddr.uiAddr +
+		pasPhysHeaps[PHYS_HEAP_ID_GPU_LOCAL].uiSize;
 #endif
-		return PVRSRV_ERROR_OUT_OF_MEMORY;
-	}
-
-	psHeapRegion = &psPhysHeap->pasRegions[0];
-	psHeapRegion->sCardBase.uiAddr = PLATO_DDR_DEV_PHYSICAL_BASE;
-
-	psHeapRegion->sStartAddr.uiAddr =
-		pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_PDP_LOCAL].pasRegions[0].sStartAddr.uiAddr +
-		pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_PDP_LOCAL].pasRegions[0].uiSize;
-	psHeapRegion->uiSize = RGX_PLATO_RESERVE_DMA_MEM_SIZE;
+	psPhysHeap->uiSize = RGX_PLATO_RESERVE_DC_MEM_SIZE;
 #endif
-
-	*puiGPULocalHeapIDOut = pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL].ui32PhysHeapID;
-	*puiCPULocalHeapIDOut = pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL].ui32PhysHeapID;
-	*puiFWLocalHeapIDOut = pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL].ui32PhysHeapID;
 
 	return PVRSRV_OK;
 }
@@ -2408,37 +2268,27 @@ static PVRSRV_ERROR InitLocalMemory(SYS_DATA *psDevData,
 
 #if (PLATO_MEMORY_CONFIG == PLATO_MEMORY_HOST) || (PLATO_MEMORY_CONFIG == PLATO_MEMORY_HYBRID)
 static PVRSRV_ERROR InitHostMemory(SYS_DATA *psDevData,
-								   IMG_UINT32 uiHeapIDBase,
 								   PHYS_HEAP_CONFIG *pasPhysHeaps,
 								   IMG_UINT32 uiPhysHeapCount,
-								   IMG_HANDLE hPhysHeapPrivData,
-								   IMG_UINT32 *puiGPULocalHeapIDOut,
-								   IMG_UINT32 *puiCPULocalHeapIDOut,
-								   IMG_UINT32 *puiFWLocalHeapIDOut)
+								   IMG_HANDLE hPhysHeapPrivData)
 {
 	PHYS_HEAP_CONFIG *psPhysHeap;
 
 	PVR_ASSERT(uiPhysHeapCount == 1);
 
-	psPhysHeap = &pasPhysHeaps[0];
-	psPhysHeap->ui32PhysHeapID = uiHeapIDBase;
+	psPhysHeap = &pasPhysHeaps[PHYS_HEAP_ID_CPU_LOCAL];
 	psPhysHeap->eType = PHYS_HEAP_TYPE_UMA;
 	psPhysHeap->pszPDumpMemspaceName = "SYSMEM";
 	psPhysHeap->psMemFuncs = &gsHostPhysHeapFuncs;
 	psPhysHeap->hPrivData = hPhysHeapPrivData;
-	psPhysHeap->ui32NumOfRegions = 1;
+#if (PLATO_MEMORY_CONFIG == PLATO_MEMORY_HOST)
+	psPhysHeap->ui32UsageFlags = PHYS_HEAP_USAGE_GPU_LOCAL;
+#elif (PLATO_MEMORY_CONFIG == PLATO_MEMORY_HYBRID)
+	psPhysHeap->ui32UsageFlags = PHYS_HEAP_USAGE_CPU_LOCAL;
+	PVR_DPF((PVR_DBG_WARNING, "Initialising CPU_LOCAL UMA Host PhysHeaps"));
+#endif
 
-	psPhysHeap->pasRegions = OSAllocZMem(sizeof(*psPhysHeap->pasRegions));
-	if (!psPhysHeap->pasRegions)
-	{
-		return PVRSRV_ERROR_OUT_OF_MEMORY;
-	}
-
-	psPhysHeap->pasRegions[0].sCardBase.uiAddr = PLATO_HOSTRAM_DEV_PHYSICAL_BASE;
-
-	*puiGPULocalHeapIDOut = psPhysHeap->ui32PhysHeapID;
-	*puiCPULocalHeapIDOut = psPhysHeap->ui32PhysHeapID;
-	*puiFWLocalHeapIDOut = psPhysHeap->ui32PhysHeapID;
+	psPhysHeap->sCardBase.uiAddr = PLATO_HOSTRAM_DEV_PHYSICAL_BASE;
 
 	return PVRSRV_OK;
 }
@@ -2446,23 +2296,16 @@ static PVRSRV_ERROR InitHostMemory(SYS_DATA *psDevData,
 
 #if (PLATO_MEMORY_CONFIG == PLATO_MEMORY_HYBRID)
 static PVRSRV_ERROR InitHybridMemory(SYS_DATA *psDevData,
-									 IMG_UINT32 uiHeapIDBase,
 									 PHYS_HEAP_CONFIG *pasPhysHeaps,
 									 IMG_UINT32 uiPhysHeapCount,
-									 IMG_HANDLE hPhysHeapPrivData,
-									 IMG_UINT32 *puiGPULocalHeapIDOut,
-									 IMG_UINT32 *puiCPULocalHeapIDOut,
-									 IMG_UINT32 *puiFWLocalHeapIDOut)
+									 IMG_HANDLE hPhysHeapPrivData)
 {
 	PVRSRV_ERROR eError;
 
-	PVR_ASSERT(uiPhysHeapCount >= PVRSRV_DEVICE_PHYS_HEAP_PDP_LOCAL);
+	PVR_ASSERT(uiPhysHeapCount >= PHYS_HEAP_ID_PDP_LOCAL);
 
-	eError = InitHostMemory(psDevData,
-							uiHeapIDBase + PVRSRV_DEVICE_PHYS_HEAP_CPU_LOCAL,
-							&pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_CPU_LOCAL], 1,
-							hPhysHeapPrivData,puiGPULocalHeapIDOut,
-							puiCPULocalHeapIDOut, puiFWLocalHeapIDOut);
+	eError = InitHostMemory(psDevData, pasPhysHeaps,
+							1, hPhysHeapPrivData);
 	if (eError != PVRSRV_OK)
 	{
 		return eError;
@@ -2472,29 +2315,16 @@ static PVRSRV_ERROR InitHybridMemory(SYS_DATA *psDevData,
 	 * InitLocalMemory should set up the correct heaps regardless of whether the
 	 * memory configuration is 'local' or 'hybrid'.
 	 */
-	eError = InitLocalMemory(psDevData, uiHeapIDBase, pasPhysHeaps,
-							 uiPhysHeapCount, hPhysHeapPrivData,
-							 puiGPULocalHeapIDOut, puiCPULocalHeapIDOut,
-							 puiFWLocalHeapIDOut);
+	eError = InitLocalMemory(psDevData, pasPhysHeaps,
+							 uiPhysHeapCount, hPhysHeapPrivData);
 	if (eError != PVRSRV_OK)
 	{
-		OSFreeMem(pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_CPU_LOCAL].pasRegions);
-		pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_CPU_LOCAL].pasRegions = NULL;
-		pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_CPU_LOCAL].ui32NumOfRegions = 0;
-
 		return eError;
 	}
 
 	/* Adjust the pdump memory space names */
-	pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL].pszPDumpMemspaceName = "LMA";
-	pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_PDP_LOCAL].pszPDumpMemspaceName = "LMA";
-#if defined(SUPPORT_PLATO_DMA)
-	pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_DMA_LOCAL].pszPDumpMemspaceName = "LMA";
-#endif
-
-	*puiGPULocalHeapIDOut = pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL].ui32PhysHeapID;
-	*puiCPULocalHeapIDOut = pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_CPU_LOCAL].ui32PhysHeapID;
-	*puiFWLocalHeapIDOut = pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL].ui32PhysHeapID;
+	pasPhysHeaps[PHYS_HEAP_ID_GPU_LOCAL].pszPDumpMemspaceName = "LMA";
+	pasPhysHeaps[PHYS_HEAP_ID_PDP_LOCAL].pszPDumpMemspaceName = "LMA";
 
 	return PVRSRV_OK;
 }
@@ -2503,12 +2333,8 @@ static PVRSRV_ERROR InitHybridMemory(SYS_DATA *psDevData,
 static PVRSRV_ERROR InitMemory(SYS_DATA *psDevData,
 							   PVRSRV_DEVICE_CONFIG *psDevConfig,
 							   PHYS_HEAP_CONFIG **ppasPhysHeapsOut,
-							   IMG_UINT32 *puiPhysHeapCountOut,
-							   IMG_UINT32 *puiGPULocalHeapIDOut,
-							   IMG_UINT32 *puiCPULocalHeapIDOut,
-							   IMG_UINT32 *puiFWLocalHeapIDOut)
+							   IMG_UINT32 *puiPhysHeapCountOut)
 {
-	static IMG_UINT32 uiHeapIDBase = 0;
 	IMG_UINT32 uiHeapCount = 1;
 	PHYS_HEAP_CONFIG *pasPhysHeaps;
 	PVRSRV_ERROR eError;
@@ -2521,9 +2347,17 @@ static PVRSRV_ERROR InitMemory(SYS_DATA *psDevData,
 	uiHeapCount++;
 #endif
 
-#if defined(SUPPORT_PLATO_DMA)
+#if (RGX_NUM_DRIVERS_SUPPORTED > 1)
+#if (PLATO_MEMORY_CONFIG != PLATO_MEMORY_HYBRID)
+#error "VZ support implemented only hybrid memory configuration (PLATO_MEMORY_HYBRID)"
+#endif
 	uiHeapCount++;
 #endif
+
+	if (PLATO_HAS_NON_MAPPABLE(psDevData))
+	{
+		uiHeapCount++;
+	}
 
 	pasPhysHeaps = OSAllocZMem(sizeof(*pasPhysHeaps) * uiHeapCount);
 	if (!pasPhysHeaps)
@@ -2532,25 +2366,20 @@ static PVRSRV_ERROR InitMemory(SYS_DATA *psDevData,
 	}
 
 #if (PLATO_MEMORY_CONFIG == PLATO_MEMORY_LOCAL)
-	eError = InitLocalMemory(psDevData, uiHeapIDBase, pasPhysHeaps,
-							 uiHeapCount, psDevConfig, puiGPULocalHeapIDOut,
-							 puiCPULocalHeapIDOut, puiFWLocalHeapIDOut);
+	eError = InitLocalMemory(psDevData, pasPhysHeaps,
+							 uiHeapCount, psDevConfig);
 #elif (PLATO_MEMORY_CONFIG == PLATO_MEMORY_HOST)
-	eError = InitHostMemory(psDevData, uiHeapIDBase, pasPhysHeaps,
-							uiHeapCount, psDevConfig, puiGPULocalHeapIDOut,
-							puiCPULocalHeapIDOut, puiFWLocalHeapIDOut);
+	eError = InitHostMemory(psDevData, pasPhysHeaps,
+							uiHeapCount, psDevConfig);
 #elif (PLATO_MEMORY_CONFIG == PLATO_MEMORY_HYBRID)
-	eError = InitHybridMemory(psDevData, uiHeapIDBase, pasPhysHeaps,
-							  uiHeapCount, psDevConfig, puiGPULocalHeapIDOut,
-							  puiCPULocalHeapIDOut, puiFWLocalHeapIDOut);
+	eError = InitHybridMemory(psDevData, pasPhysHeaps,
+							  uiHeapCount, psDevConfig);
 #endif
 	if (eError != PVRSRV_OK)
 	{
 		OSFreeMem(pasPhysHeaps);
 		return eError;
 	}
-
-	uiHeapIDBase += uiHeapCount;
 
 	*ppasPhysHeapsOut = pasPhysHeaps;
 	*puiPhysHeapCountOut = uiHeapCount;
@@ -2561,15 +2390,6 @@ static PVRSRV_ERROR InitMemory(SYS_DATA *psDevData,
 static INLINE void DeInitMemory(PHYS_HEAP_CONFIG *pasPhysHeaps,
 								IMG_UINT32 uiPhysHeapCount)
 {
-	IMG_UINT32 i;
-
-	for (i = 0; i < uiPhysHeapCount; i++)
-	{
-		OSFreeMem(pasPhysHeaps[i].pasRegions);
-		pasPhysHeaps[i].pasRegions = NULL;
-		pasPhysHeaps[i].ui32NumOfRegions = 0;
-	}
-
 	OSFreeMem(pasPhysHeaps);
 }
 
@@ -2583,8 +2403,8 @@ void PlatoLocalCpuPAddrToDevPAddr(IMG_HANDLE hPrivData,
 
 	/* Optimise common case */
 	psDevPAddr[0].uiAddr = psCpuPAddr[0].uiAddr -
-		psDevConfig->pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL].pasRegions[0].sStartAddr.uiAddr +
-		psDevConfig->pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL].pasRegions[0].sCardBase.uiAddr;
+		psDevConfig->pasPhysHeaps[PHYS_HEAP_ID_GPU_LOCAL].sStartAddr.uiAddr +
+		psDevConfig->pasPhysHeaps[PHYS_HEAP_ID_GPU_LOCAL].sCardBase.uiAddr;
 
 	if (ui32NumOfAddr > 1)
 	{
@@ -2592,8 +2412,8 @@ void PlatoLocalCpuPAddrToDevPAddr(IMG_HANDLE hPrivData,
 		for (ui32Idx = 1; ui32Idx < ui32NumOfAddr; ++ui32Idx)
 		{
 			psDevPAddr[ui32Idx].uiAddr = psCpuPAddr[ui32Idx].uiAddr -
-				psDevConfig->pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL].pasRegions[0].sStartAddr.uiAddr +
-				psDevConfig->pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL].pasRegions[0].sCardBase.uiAddr;
+				psDevConfig->pasPhysHeaps[PHYS_HEAP_ID_GPU_LOCAL].sStartAddr.uiAddr +
+				psDevConfig->pasPhysHeaps[PHYS_HEAP_ID_GPU_LOCAL].sCardBase.uiAddr;
 		}
 	}
 }
@@ -2603,45 +2423,70 @@ void PlatoLocalDevPAddrToCpuPAddr(IMG_HANDLE hPrivData,
 					  IMG_CPU_PHYADDR *psCpuPAddr,
 					  IMG_DEV_PHYADDR *psDevPAddr)
 {
+	IMG_BOOL bInvalidAddress=IMG_FALSE;
+	IMG_DEV_PHYADDR sMappableRegionCardBase;
+	IMG_UINT64	uiMaxSize;
 	PVRSRV_DEVICE_CONFIG *psDevConfig = (PVRSRV_DEVICE_CONFIG *)hPrivData;
+
+	sMappableRegionCardBase = psDevConfig->pasPhysHeaps[PHYS_HEAP_ID_GPU_LOCAL].sCardBase;
+	uiMaxSize = psDevConfig->pasPhysHeaps[PHYS_HEAP_ID_GPU_LOCAL].uiSize;
+
+#if defined(SUPPORT_DISPLAY_CLASS)
+	uiMaxSize += RGX_PLATO_RESERVE_DC_MEM_SIZE;
+#endif
+
+	if (psDevPAddr[0].uiAddr > (sMappableRegionCardBase.uiAddr + uiMaxSize) ||
+	    psDevPAddr[0].uiAddr < sMappableRegionCardBase.uiAddr)
+	{
+		bInvalidAddress = IMG_TRUE;
+	}
 
 	/* Optimise common case */
 	psCpuPAddr[0].uiAddr = psDevPAddr[0].uiAddr -
-		psDevConfig->pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL].pasRegions[0].sCardBase.uiAddr +
-		psDevConfig->pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL].pasRegions[0].sStartAddr.uiAddr;
+		psDevConfig->pasPhysHeaps[PHYS_HEAP_ID_GPU_LOCAL].sCardBase.uiAddr +
+		psDevConfig->pasPhysHeaps[PHYS_HEAP_ID_GPU_LOCAL].sStartAddr.uiAddr;
 
 	if (ui32NumOfAddr > 1)
 	{
 		IMG_UINT32 ui32Idx;
 		for (ui32Idx = 1; ui32Idx < ui32NumOfAddr; ++ui32Idx)
 		{
+			if (psDevPAddr[ui32Idx].uiAddr > (sMappableRegionCardBase.uiAddr + uiMaxSize) ||
+			    psDevPAddr[ui32Idx].uiAddr < sMappableRegionCardBase.uiAddr)
+			{
+				bInvalidAddress = IMG_TRUE;
+			}
+
 			psCpuPAddr[ui32Idx].uiAddr = psDevPAddr[ui32Idx].uiAddr -
-				psDevConfig->pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL].pasRegions[0].sCardBase.uiAddr +
-				psDevConfig->pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL].pasRegions[0].sStartAddr.uiAddr;
+				psDevConfig->pasPhysHeaps[PHYS_HEAP_ID_GPU_LOCAL].sCardBase.uiAddr +
+				psDevConfig->pasPhysHeaps[PHYS_HEAP_ID_GPU_LOCAL].sStartAddr.uiAddr;
 		}
 	}
-}
 
-IMG_UINT32 PlatoLocalGetRegionId(IMG_HANDLE hPrivData,
-										PVRSRV_MEMALLOCFLAGS_T uiAllocationFlags)
-{
-	PVRSRV_DEVICE_CONFIG *psDevConfig = (PVRSRV_DEVICE_CONFIG *)hPrivData;
-
-	if (!(uiAllocationFlags & PVRSRV_MEMALLOCFLAG_CPU_READABLE) &&
-		!(uiAllocationFlags & PVRSRV_MEMALLOCFLAG_CPU_WRITEABLE) &&
-		!(uiAllocationFlags & PVRSRV_MEMALLOCFLAG_ZERO_ON_ALLOC) &&
-		!(uiAllocationFlags & PVRSRV_MEMALLOCFLAG_POISON_ON_ALLOC) &&
-		!(uiAllocationFlags & PVRSRV_MEMALLOCFLAG_KERNEL_CPU_MAPPABLE))
+	if (bInvalidAddress)
 	{
-		if (psDevConfig->pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL].ui32NumOfRegions > 1)
+		PVR_DPF((PVR_DBG_ERROR,"/*****************************WARNING**********************************************/"));
+		PVR_DPF((PVR_DBG_ERROR,"%s: Given Device Physical Address belongs to non-mappable region",__func__));
+		PVR_DPF((PVR_DBG_ERROR,"Accessing the buffer may lead to unexpected behaviour"));
+#if defined(DEBUG)
+		PVR_DPF((PVR_DBG_ERROR,"Input Device Physical Address count: %d", ui32NumOfAddr));
 		{
-			return PLATO_LMA_HEAP_REGION_NONMAPPABLE;
+			IMG_UINT32 ui32Idx;
+			for (ui32Idx = 0; ui32Idx < ui32NumOfAddr; ++ui32Idx)
+			{
+				if (psDevPAddr[ui32Idx].uiAddr > (sMappableRegionCardBase.uiAddr + uiMaxSize) ||
+				    psDevPAddr[ui32Idx].uiAddr < sMappableRegionCardBase.uiAddr)
+				{
+					PVR_DPF((PVR_DBG_ERROR,"Device Physical Address : 0x%llx", psDevPAddr[ui32Idx].uiAddr));
+				}
+			}
 		}
+		dump_stack();
+#endif
+		PVR_DPF((PVR_DBG_ERROR,"/**********************************************************************************/"));
 	}
 
-	return PLATO_LMA_HEAP_REGION_MAPPABLE;
 }
-
 #endif
 
 #if (PLATO_MEMORY_CONFIG == PLATO_MEMORY_HOST) || (PLATO_MEMORY_CONFIG == PLATO_MEMORY_HYBRID)
@@ -2682,26 +2527,6 @@ void PlatoSystemDevPAddrToCpuPAddr(IMG_HANDLE hPrivData,
 		}
 	}
 }
-
-IMG_UINT32 PlatoSystemGetRegionId(IMG_HANDLE hPrivData,
-										PVRSRV_MEMALLOCFLAGS_T uiAllocationFlags)
-{
-	PVRSRV_DEVICE_CONFIG *psDevConfig = (PVRSRV_DEVICE_CONFIG *)hPrivData;
-
-	if (!(uiAllocationFlags & PVRSRV_MEMALLOCFLAG_CPU_READABLE) &&
-		!(uiAllocationFlags & PVRSRV_MEMALLOCFLAG_CPU_WRITEABLE) &&
-		!(uiAllocationFlags & PVRSRV_MEMALLOCFLAG_ZERO_ON_ALLOC) &&
-		!(uiAllocationFlags & PVRSRV_MEMALLOCFLAG_POISON_ON_ALLOC) &&
-		!(uiAllocationFlags & PVRSRV_MEMALLOCFLAG_KERNEL_CPU_MAPPABLE))
-	{
-		if (psDevConfig->pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL].ui32NumOfRegions > 1)
-		{
-			return 1;
-		}
-	}
-
-	return 0;
-}
 #endif /* (PLATO_MEMORY_CONFIG == PLATO_MEMORY_HOST) || (PLATO_MEMORY_CONFIG == PLATO_MEMORY_HYBRID) */
 
 static PVRSRV_ERROR DeviceConfigCreate(void *pvOSDevice,
@@ -2735,10 +2560,7 @@ static PVRSRV_ERROR DeviceConfigCreate(void *pvOSDevice,
 
 	/* Set up the device config */
 	eError = InitMemory(psDevData, psDevConfig, &psDevConfig->pasPhysHeaps,
-						&psDevConfig->ui32PhysHeapCount,
-						&psDevConfig->aui32PhysHeapID[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL],
-						&psDevConfig->aui32PhysHeapID[PVRSRV_DEVICE_PHYS_HEAP_CPU_LOCAL],
-						&psDevConfig->aui32PhysHeapID[PVRSRV_DEVICE_PHYS_HEAP_FW_LOCAL]);
+						&psDevConfig->ui32PhysHeapCount);
 	if (eError != PVRSRV_OK)
 	{
 		OSFreeMem(psDevConfig);
@@ -2755,20 +2577,19 @@ static PVRSRV_ERROR DeviceConfigCreate(void *pvOSDevice,
 	psDevConfig->sRegsCpuPBase.uiAddr += SYS_PLATO_REG_RGX_OFFSET;
 
 	psDevConfig->ui32RegsSize = SYS_PLATO_REG_RGX_SIZE;
+	psDevConfig->eDefaultHeap = PVRSRV_PHYS_HEAP_GPU_LOCAL;
 
 	psDevConfig->eCacheSnoopingMode = PVRSRV_DEVICE_SNOOP_NONE;
 	psDevConfig->bHasNonMappableLocalMemory = PLATO_HAS_NON_MAPPABLE(psDevData);
 	psDevConfig->bHasFBCDCVersion31 = IMG_FALSE;
 
-	psDevConfig->eBIFTilingMode = geBIFTilingMode;
-	psDevConfig->pui32BIFTilingHeapConfigs = &gauiBIFTilingHeapXStrides[0],
-	psDevConfig->ui32BIFTilingHeapCount = ARRAY_SIZE(gauiBIFTilingHeapXStrides),
-
 	psDevConfig->hDevData = psRGXData;
 	psDevConfig->hSysData = psDevData;
 
 	psDevConfig->pfnSysDevFeatureDepInit = NULL;
-	psDevConfig->pfnSysDriverMode = NULL;
+
+	/* device error notify callback function */
+	psDevConfig->pfnSysDevErrorNotify = NULL;
 
 	*ppsDevConfigOut = psDevConfig;
 
@@ -2799,7 +2620,7 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 
 	PVR_ASSERT(pvOSDevice);
 
-#if defined(LINUX)
+#if defined(__linux__)
 	dma_set_mask(pvOSDevice, DMA_BIT_MASK(40));
 #endif
 
@@ -2895,16 +2716,6 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 	}
 #endif
 
-#if defined(SUPPORT_PLATO_DMA)
-	eError = DMAInit(psDevConfig);
-	if (eError != PVRSRV_OK)
-	{
-		PVR_DPF((PVR_DBG_ERROR, "%s: Failed to initialize DMA engine",
-				 __func__));
-		goto ErrorDeviceConfigDestroy;
-	}
-#endif
-
 	*ppsDevConfig = psDevConfig;
 
 	return PVRSRV_OK;
@@ -2942,10 +2753,6 @@ ErrorFreeDevData:
 void SysDevDeInit(PVRSRV_DEVICE_CONFIG *psDevConfig)
 {
 	SYS_DATA *psDevData = (SYS_DATA *)psDevConfig->hSysData;
-
-#if defined(SUPPORT_PLATO_DMA)
-	DMADeInit(psDevConfig);
-#endif
 
 	DeviceConfigDestroy(psDevConfig);
 

@@ -133,7 +133,7 @@
 #define VRA1SPEEDUP_DOWN_CTL		1
 #define VRA1SPEEDUP_DOWN_RST_CTL	0
 /* SUNXI_AN_DEBUG1:0x58 */
-#define DAC_MUTE_EN		17
+#define DAC_MUTE_EN		18
 /* SUNXI_AN_DEBUG2:0x5C */
 #define DACR_DATA		23
 #define DACR_DBG_DATA		16
@@ -246,9 +246,12 @@
 #define HPR_CALI_VERIFY		24
 #define HPL_CALI_VERIFY		16
 #define HPPA_EN			15
+#define CP_EN			14
+#define HP_EN			13
 #define HP_INPUT_EN		11
 #define HP_OUTPUT_EN		10
 #define HPPA_DELAY		8
+#define HP_CHOPPER_EN		7
 #define CP_CLK_SEL		6
 #define HP_CALI_MODE_SEL	5
 #define HP_CALI_VERIFY_EN	4
@@ -297,13 +300,17 @@ struct sunxi_codec_mem {
 
 struct sunxi_codec_clk {
 	/* parent */
-	struct clk *clk_pll_xxx;
+	struct clk *clk_pll_audio0;
+	struct clk *clk_pll_audio1_5x;
 	/* module */
-	struct clk *clk_audio_dac;
-	struct clk *clk_audio_adc;
+	struct clk *clk_adda_dac;
+	struct clk *clk_adda_adc;
 	/* bus & reset */
 	struct clk *clk_bus;
 	struct reset_control *clk_rst;
+	/* record current clk */
+	struct clk *clk_pll_play;
+	struct clk *clk_pll_cap;
 };
 
 struct sunxi_codec_dts {
@@ -409,7 +416,8 @@ struct sunxi_codec {
 	struct sunxi_codec_dts dts;
 	struct snd_sunxi_rglt *rglt;
 	struct sunxi_audio_status audio_sta;
-	enum SND_SUNXI_CLK_STATUS clk_sta;
+	enum SND_SUNXI_CLK_STATUS clk_play_sta;
+	enum SND_SUNXI_CLK_STATUS clk_cap_sta;
 
 	struct sunxi_jack_codec_priv jack_codec_priv;
 	struct sunxi_jack_extcon_priv jack_extcon_priv;

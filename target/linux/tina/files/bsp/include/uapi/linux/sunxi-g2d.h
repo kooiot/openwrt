@@ -27,7 +27,7 @@
 
 /* g2d data format for interface 2.0 */
 typedef enum {
-	G2D_FORMAT_ARGB8888,
+	G2D_FORMAT_ARGB8888, /* MSB A_R_G_B LSB */
 	G2D_FORMAT_ABGR8888,
 	G2D_FORMAT_RGBA8888,
 	G2D_FORMAT_BGRA8888,
@@ -47,10 +47,14 @@ typedef enum {
 	G2D_FORMAT_ABGR1555,
 	G2D_FORMAT_RGBA5551,
 	G2D_FORMAT_BGRA5551,
-	G2D_FORMAT_ARGB2101010,
+	G2D_FORMAT_ARGB2101010 = 0x14,
 	G2D_FORMAT_ABGR2101010,
 	G2D_FORMAT_RGBA1010102,
 	G2D_FORMAT_BGRA1010102,
+	G2D_FORMAT_ARGB8685 = 0x18,
+	G2D_FORMAT_ABGR8565,
+	G2D_FORMAT_RGBA5658,
+	G2D_FORMAT_BGRA5658,
 
 	/* invailed for UI channel */
 	G2D_FORMAT_IYUV422_V0Y1U0Y0 = 0x20,
@@ -58,13 +62,13 @@ typedef enum {
 	G2D_FORMAT_IYUV422_U0Y1V0Y0,
 	G2D_FORMAT_IYUV422_Y1U0Y0V0,
 
-	G2D_FORMAT_YUV422UVC_V1U1V0U0,
-	G2D_FORMAT_YUV422UVC_U1V1U0V0,
-	G2D_FORMAT_YUV422_PLANAR,
+	G2D_FORMAT_YUV422UVC_V1U1V0U0, /* nv16 when LSB, nv61 when MSB */
+	G2D_FORMAT_YUV422UVC_U1V1U0V0, /* nv61 when LSB, nv16 when MSB */
+	G2D_FORMAT_YUV422_PLANAR, /* I422 */
 
-	G2D_FORMAT_YUV420UVC_V1U1V0U0 = 0x28,
-	G2D_FORMAT_YUV420UVC_U1V1U0V0,
-	G2D_FORMAT_YUV420_PLANAR,
+	G2D_FORMAT_YUV420UVC_V1U1V0U0 = 0x28, /* nv12 when LSB, nv21 when MSB */
+	G2D_FORMAT_YUV420UVC_U1V1U0V0, /* nv21 when LSB, nv12 when MSB */
+	G2D_FORMAT_YUV420_PLANAR, /* I420 */
 
 	G2D_FORMAT_YUV411UVC_V1U1V0U0 = 0x2c,
 	G2D_FORMAT_YUV411UVC_U1V1U0V0,
@@ -72,14 +76,22 @@ typedef enum {
 
 	G2D_FORMAT_Y8 = 0x30,
 
-	/* YUV 10bit format */
+	/* YUV 10bit format , only for rotate/flip*/
+	G2D_FORMAT_YUV444UVC_V1U1V0U0 = 0x31, /* NV24 */
+	G2D_FORMAT_YUV444UVC_U1V1U0V0 = 0x32, /* NV42 */
+	G2D_FORMAT_YUV444_PLANAR = 0x33, /* I444 Y...U...V... */
 	G2D_FORMAT_YVU10_P010 = 0x34,
+	G2D_FORMAT_YUV444_PACKED = 0x35, /* V1U1Y1V0U0Y0 */
 
 	G2D_FORMAT_YVU10_P210 = 0x36,
 
 	G2D_FORMAT_YVU10_444 = 0x38,
 	G2D_FORMAT_YUV10_444 = 0x39,
-	G2D_FORMAT_MAX,
+
+	/* YUV444 format, only for g2d200-mixer */
+	G2D_FORMAT_YVU444_PLANAR = 0x40, /* YV24 Y...V...U... */
+
+	G2D_FORMAT_MAX = 0xff,
 } g2d_fmt_enh;
 
 /* g2d data format for interface 1.0 */
@@ -237,6 +249,9 @@ typedef enum {
 	G2D_ROT_V = 0x00002000,
 	G2D_ROT_90_H  = 0x00001100,
 	G2D_ROT_90_V  = 0x00002100,
+
+	/* record special flag bit16 ~ 23(0x00ff0000) */
+	G2D_BUF_PROTECT = 0x00010000,
 
 /*	G2D_SM_TDLR_1  =    0x10000000, */
 	G2D_SM_DTLR_1 = 0x10000000,
@@ -413,6 +428,13 @@ typedef struct {
 } g2d_blt_h;
 
 typedef struct {
+	bool    is_lbc;
+	__u32	lbc_cmp_ratio;
+	bool	enc_is_lossy;
+	bool	dec_is_lossy;
+} g2d_lbc_para;
+
+typedef struct {
 	g2d_blt_h blt;
 	__u32	lbc_cmp_ratio;
 	bool	enc_is_lossy;
@@ -503,6 +525,7 @@ typedef enum {
 	OP_BLEND = 0x4,
 	OP_MASK = 0x8,
 	OP_SPLIT_MEM = 0x10,
+	OP_ROTATE = 0x20,
 } g2d_operation_flag;
 
 /**
@@ -519,6 +542,7 @@ typedef struct mixer_para{
 	g2d_image_enh ptn_image_h;
 	g2d_image_enh mask_image_h;
 	g2d_ck ck_para;
+	g2d_lbc_para lbc_para;
 } mixer_para;
 
 struct g2d_hardware_version {

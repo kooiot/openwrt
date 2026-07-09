@@ -27,6 +27,10 @@
 #include "linux/pm_runtime.h"
 #include "linux/pm_domain.h"
 #include "linux/hwspinlock.h"
+#if IS_ENABLED(CONFIG_AW_DRM_HEAP)
+#include "sunxi-drm-heap.h"
+#endif
+#include "../g2d_buf_cache.h"
 
 #if IS_ENABLED(CONFIG_PM_GENERIC_DOMAINS)
 #define PM_ARRAY_SIZE  8
@@ -36,6 +40,11 @@
 static int g2d_hwspinlock_id = 23;
 struct hwspinlock *hwlock;
 unsigned long hwspinlock_flag;
+#endif
+
+#if IS_ENABLED(CONFIG_G2D_SYNCFENCE)
+extern int syncfence_init(void);
+extern void syncfence_exit(void);
 #endif
 
 /* alloc based on 4K byte */
@@ -49,8 +58,9 @@ static struct cdev *g2d_cdev;
 static dev_t devid;
 static struct device *g2d_dev;
 static struct device *dmabuf_dev;
+
 u32 g_time_info;
-u32 g_func_runtime;
+struct g2d_time_info g2d_time_inf;
 
 __g2d_drv_t g2d_ext_hd;
 __g2d_info_t para;
@@ -104,6 +114,24 @@ format  bits hor_rsample(u,v) ver_rsample(u,v) uvc interleave factor div
 	{ G2D_FORMAT_YVU10_P210, 10, 2, 2, 1, 1, 0, 0, 4, 1},
 	{ G2D_FORMAT_YVU10_P010, 10, 2, 2, 2, 2, 0, 0, 3, 1},
 };
+
+static __u32 g2d_time_count(bool if_start)
+{
+	if (g_time_info == 1) {
+		if (if_start) {
+			memset(&g2d_time_inf, 0, sizeof(struct g2d_time_info));
+			ktime_get_real_ts64(&(g2d_time_inf.time_start));
+			return 0;
+		} else {
+			__u32 func_runtime;
+			ktime_get_real_ts64(&(g2d_time_inf.time_end));
+			func_runtime = (g2d_time_inf.time_end.tv_sec - g2d_time_inf.time_start.tv_sec) * 1000000 +
+				(g2d_time_inf.time_end.tv_nsec - g2d_time_inf.time_start.tv_nsec) / NSEC_PER_USEC;
+			return func_runtime;
+		}
+	}
+	return 0;
+}
 
 void *g2d_malloc(__u32 bytes_num, __u32 *phy_addr)
 {
@@ -172,6 +200,50 @@ void g2d_free(void *virt_addr, uintptr_t phy_addr, unsigned int size)
 #endif
 }
 
+
+#if IS_ENABLED(CONFIG_G2D_BUF_CACHED)
+
+int g2d_dma_map(int fd, struct dmabuf_item *item)
+{
+	int ret = 0;
+
+	if (fd < 0 || !item) {
+		G2D_ERR("g2d_dma_map error, invalid dma-buf fd or param\n");
+		return -EINVAL;
+	}
+
+	ret = g2d_buf_cached_map(fd, &item->dma_addr);
+	if (ret == 0) {
+		item->fd = fd;
+		item->buf = NULL;
+		item->sgt = NULL;
+		item->attachment = NULL;
+		return 0;
+	}
+
+	G2D_ERR("g2d_buf_cached_map error, ret=%d\n", ret);
+	return ret;
+}
+
+void g2d_dma_unmap(struct dmabuf_item *item)
+{
+	int ret = 0;
+
+	if (!item || item->fd < 0) {
+		G2D_ERR("g2d_dma_unmap error, invalid dma-buf fd or param\n");
+		return;
+	}
+
+	ret = g2d_buf_cached_unmap(item->fd, item->dma_addr);
+	if (ret != 0) {
+		G2D_ERR("g2d_buf_cached_unmap error, ret=%d\n", ret);
+	}
+
+	return;
+}
+
+#else
+
 int g2d_dma_map(int fd, struct dmabuf_item *item)
 {
 	struct dma_buf *dmabuf;
@@ -179,6 +251,7 @@ int g2d_dma_map(int fd, struct dmabuf_item *item)
 	struct sg_table *sgt;
 	int ret = -1;
 
+	g2d_time_inf.dma_map_start = g2d_time_count(false);
 	if (fd < 0) {
 		G2D_WARN("dma_buf_id %d is invalid\n", fd);
 		goto exit;
@@ -213,15 +286,20 @@ err_buf_detach:
 err_buf_put:
 	dma_buf_put(dmabuf);
 exit:
+	g2d_time_inf.dma_map_end = g2d_time_count(false);
 	return ret;
 }
 
 void g2d_dma_unmap(struct dmabuf_item *item)
 {
+	g2d_time_inf.dma_unmap_start = g2d_time_count(false);
 	dma_buf_unmap_attachment(item->attachment, item->sgt, DMA_BIDIRECTIONAL);
 	dma_buf_detach(item->buf, item->attachment);
 	dma_buf_put(item->buf);
+	g2d_time_inf.dma_unmap_end = g2d_time_count(false);
 }
+
+#endif // CONFIG_G2D_BUF_CACHED
 
 __s32 g2d_set_info(g2d_image_enh *g2d_img, struct dmabuf_item *item)
 {
@@ -434,6 +512,24 @@ OUT:
 
 }
 
+static void g2d_dump_time_info(void)
+{
+	if (g_time_info == 1) {
+		G2D_INFO("g2d unlock use           %u us\n",
+			g2d_time_inf.waiting_runtime);
+		G2D_INFO("g2d dma_map use       %u us\n",
+			g2d_time_inf.dma_map_end - g2d_time_inf.dma_map_start);
+		G2D_INFO("g2d para_config use      %u us\n",
+			g2d_time_inf.para_config_runtime - g2d_time_inf.waiting_runtime);
+		G2D_INFO("g2d hardware_process use %u us\n",
+			g2d_time_inf.hardware_process_runtime - g2d_time_inf.para_config_runtime);
+		G2D_INFO("g2d dma_unmap use       %u us\n",
+			g2d_time_inf.dma_unmap_end - g2d_time_inf.dma_unmap_start);
+		G2D_INFO("g2d total_time use       %u us\n",
+			g2d_time_inf.total_runtime);
+	}
+}
+
 static int g2d_clock_prepare(const __g2d_info_t *info)
 {
 	int ret = 0;
@@ -455,6 +551,12 @@ static int g2d_clock_prepare(const __g2d_info_t *info)
 	if (info->mbus_vo_clk) {
 		ret |= clk_prepare(info->mbus_vo_clk);
 	}
+	if (info->mbus_desys_clk) {
+		ret |= clk_prepare(info->mbus_desys_clk);
+	}
+	if (info->ahb_de_clk) {
+		ret |= clk_prepare(info->ahb_de_clk);
+	}
 	if (info->vo_clk) {
 		ret |= clk_prepare(info->vo_clk);
 	}
@@ -471,13 +573,6 @@ static int g2d_clock_enable(__g2d_info_t *info)
 {
 	int ret = 0;
 
-	if (info->reset) {
-		ret = reset_control_deassert(info->reset);
-		if (ret != 0) {
-			G2D_ERR("deassert error\n");
-			return ret;
-		}
-	}
 	if (info->vo_reset) {
 		ret |= reset_control_deassert(info->vo_reset);
 		if (ret != 0) {
@@ -485,20 +580,39 @@ static int g2d_clock_enable(__g2d_info_t *info)
 			return ret;
 		}
 	}
+	if (info->reset) {
+		ret = reset_control_deassert(info->reset);
+		if (ret != 0) {
+			G2D_ERR("deassert error\n");
+			return ret;
+		}
+	}
+	if (info->desys_reset) {
+		ret |= reset_control_deassert(info->desys_reset);
+		if (ret != 0) {
+			G2D_ERR("deassert desys_reset error\n");
+			return ret;
+		}
+	}
+
 	if (info->mbus_vo_clk)
 		ret |= clk_enable(info->mbus_vo_clk);
 	if (info->vo_clk)
 		ret |= clk_enable(info->vo_clk);
+	if (info->mbus_desys_clk)
+		ret |= clk_enable(info->mbus_desys_clk);
+	if (info->ahb_de_clk)
+		ret |= clk_enable(info->ahb_de_clk);
+	if (info->ahb_clk)
+		ret |= clk_enable(info->ahb_clk);
 	if (info->hb_clk)
 		ret |= clk_enable(info->hb_clk);
+	if (info->mbus_clk)
+		ret |= clk_enable(info->mbus_clk);
 	if (info->bus_clk)
 		ret |=  clk_enable(info->bus_clk);
 	if (info->clk)
 		ret |= clk_enable(info->clk);
-	if (info->mbus_clk)
-		ret |= clk_enable(info->mbus_clk);
-	if (info->ahb_clk)
-		ret |= clk_enable(info->ahb_clk);
 	if (ret != 0)
 		G2D_ERR("clock enable error\n");
 
@@ -513,14 +627,18 @@ static int g2d_clock_unprepare(const __g2d_info_t *info)
 		clk_unprepare(info->bus_clk);
 	if (info->mbus_clk)
 		clk_unprepare(info->mbus_clk);
+	if (info->hb_clk)
+		clk_unprepare(info->hb_clk);
 	if (info->ahb_clk)
 		clk_unprepare(info->ahb_clk);
 	if (info->vo_clk)
 		clk_unprepare(info->vo_clk);
 	if (info->mbus_vo_clk)
 		clk_unprepare(info->mbus_vo_clk);
-	if (info->hb_clk)
-		clk_unprepare(info->hb_clk);
+	if (info->mbus_desys_clk)
+		clk_unprepare(info->mbus_desys_clk);
+	if (info->ahb_de_clk)
+		clk_unprepare(info->ahb_de_clk);
 	return 0;
 }
 
@@ -540,10 +658,17 @@ static int g2d_clock_disable(const __g2d_info_t *info)
 		clk_disable(info->vo_clk);
 	if (info->mbus_vo_clk)
 		clk_disable(info->mbus_vo_clk);
+	if (info->mbus_desys_clk)
+		clk_disable(info->mbus_desys_clk);
+	if (info->ahb_de_clk)
+		clk_disable(info->ahb_de_clk);
+
 	if (info->reset)
 		reset_control_assert(info->reset);
 	if (info->vo_reset)
 		reset_control_assert(info->vo_reset);
+	if (info->desys_reset)
+		reset_control_assert(info->desys_reset);
 	return 0;
 }
 
@@ -596,6 +721,18 @@ int g2d_blit_h(g2d_blt_h *para)
 {
 	int ret = -1;
 #if IS_ENABLED(CONFIG_G2D_ROTATE)
+#if IS_ENABLED(CONFIG_AW_DRM_HEAP)
+	if (!g2d_ext_hd.drm_master_enable && (para->flag_h & G2D_BUF_PROTECT)) {
+		sunxi_drm_master_enable_by_type(DRM_MASTER_TYPE_G2D);
+		g2d_ext_hd.drm_master_enable = true;
+	}
+
+	if (g2d_ext_hd.drm_master_enable && !(para->flag_h & G2D_BUF_PROTECT)) {
+		sunxi_drm_master_disable_by_type(DRM_MASTER_TYPE_G2D);
+		g2d_ext_hd.drm_master_enable = false;
+	}
+#endif
+
 	ret = g2d_rotate_set_para(&para->src_image_h,
 			    &para->dst_image_h,
 			    para->flag_h);
@@ -649,21 +786,23 @@ int g2d_mmap(struct file *file, struct vm_area_struct *vma)
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_ARCH_SUN8IW20) || defined(CONFIG_ARCH_SUN20IW1)
+#if IS_ENABLED(CONFIG_AW_IOMMU) && (IS_ENABLED(CONFIG_ARCH_SUN8IW20) || IS_ENABLED(CONFIG_ARCH_SUN20IW1))
 extern void sunxi_reset_device_iommu(unsigned int master_id);
 #endif
 
 int g2d_wait_cmd_finish(unsigned int timeout)
 {
+	g2d_time_inf.para_config_runtime = g2d_time_count(false);
 	timeout = wait_event_timeout(g2d_ext_hd.queue,
 				     g2d_ext_hd.finish_flag == 1,
 				     msecs_to_jiffies(timeout));
+	g2d_time_inf.hardware_process_runtime = g2d_time_count(false);
 	if (timeout == 0) {
 		g2d_bsp_reset();
 		G2D_ERR("G2D irq pending flag timeout\n");
 
 		/* reset iommu */
-#if IS_ENABLED(CONFIG_ARCH_SUN8IW20) || defined(CONFIG_ARCH_SUN20IW1)
+#if IS_ENABLED(CONFIG_AW_IOMMU) && (IS_ENABLED(CONFIG_ARCH_SUN8IW20) || IS_ENABLED(CONFIG_ARCH_SUN20IW1))
 		sunxi_reset_device_iommu(G2D_IOMMU_MASTER_ID);
 #endif
 		g2d_ext_hd.finish_flag = 1;
@@ -707,14 +846,54 @@ irqreturn_t g2d_handle_irq(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+int g2d_get_layout_version(void)
+{
+#ifdef G2D_V2X_SUPPORT
+	return 2;
+#else
+	return 1;
+#endif
+}
+EXPORT_SYMBOL(g2d_get_layout_version);
+
+void g2d_query_hardware_version(struct g2d_hardware_version *v)
+{
+
+#if IS_ENABLED(CONFIG_ARCH_SUN50IW10P1)
+#define SYS_CFG_BASE 0x03000000
+#define VER_REG_OFFS 0x00000024
+	void __iomem *io = NULL;
+	io = ioremap(SYS_CFG_BASE, 0x100);
+	if (io == NULL) {
+		G2D_WARN("ioremap of sys_cfg register failed\n");
+		return;
+	}
+	v->chip_version = readl(io + VER_REG_OFFS);
+	iounmap(io);
+#else
+	v->chip_version = 0;
+#endif
+
+	v->g2d_version = g2d_ip_version();
+	G2D_INFO("g2d version: %08x chip version: %08x", v->g2d_version, v->chip_version);
+}
+
 int g2d_ioctl_mutex_lock(void)
 {
 #if IS_ENABLED(CONFIG_G2D_USE_HWSPINLOCK)
 	int ret;
+	int i;
 	if (hwlock) {
-		ret =  __hwspin_lock_timeout(hwlock, 500, HWLOCK_RAW, &hwspinlock_flag);
+		for (i = 0; i < 200; i++) {
+			ret =  __hwspin_trylock(hwlock, HWLOCK_RAW, &hwspinlock_flag);
+			if (ret != 0) {
+				msleep(3);
+				continue;
+			} else
+				break;
+		}
 		if (ret != 0) {
-			pr_err("G2D: Hwspinlock is already taken \n");
+			G2D_ERR("try to get hwspinlock filed 200 times\n");
 			return -1;
 		}
 	}
@@ -741,13 +920,11 @@ EXPORT_SYMBOL_GPL(g2d_ioctl_mutex_unlock);
 long g2d_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	int ret = -1;
-	struct timespec64 test_start, test_end;
 
-
-	if (g_time_info == 1)
-		ktime_get_real_ts64(&test_start);
-
+	g2d_time_count(true);
 	ret = g2d_ioctl_mutex_lock();
+	g2d_time_inf.waiting_runtime = g2d_time_count(false);
+
 	if (ret < 0)
 		return -EFAULT;
 
@@ -774,8 +951,12 @@ long g2d_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		ubuffer[0] = *(unsigned long *)karg;
 		ubuffer[1] = (*(unsigned long *)(karg + 1));
 
-		p_mixer_para = kmalloc(sizeof(*p_mixer_para) * ubuffer[1],
-			       GFP_KERNEL | __GFP_ZERO);
+		if (ubuffer[1] == 1)
+			p_mixer_para = kmalloc(sizeof(*p_mixer_para) * ubuffer[1],
+						   GFP_KERNEL | __GFP_ZERO);
+		else
+			p_mixer_para = vzalloc(sizeof(*p_mixer_para) * ubuffer[1]);
+
 		if (!p_mixer_para)
 			goto err_noput;
 		if (copy_from_user(p_mixer_para, (void __user *)ubuffer[0],
@@ -789,7 +970,10 @@ long g2d_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			}
 		}
 		ret  = mixer_task_process(&para, p_mixer_para, ubuffer[1]);
-		kfree(p_mixer_para);
+		if (ubuffer[1] == 1)
+			kfree(p_mixer_para);
+		else
+			vfree(p_mixer_para);
 #endif
 		break;
 		}
@@ -808,8 +992,13 @@ long g2d_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			}
 			ubuffer[0] = *(unsigned long *)karg;
 			ubuffer[1] = (*(unsigned long *)(karg + 1));
-			p_mixer_para = kmalloc(sizeof(*p_mixer_para) * ubuffer[1],
-					       GFP_KERNEL | __GFP_ZERO);
+
+			if (ubuffer[1] == 1)
+				p_mixer_para = kmalloc(sizeof(*p_mixer_para) * ubuffer[1],
+							   GFP_KERNEL | __GFP_ZERO);
+			else
+				p_mixer_para = vzalloc(sizeof(*p_mixer_para) * ubuffer[1]);
+
 			if (!p_mixer_para)
 				goto err_noput;
 			if (copy_from_user(p_mixer_para, (void __user *)ubuffer[0],
@@ -828,7 +1017,10 @@ long g2d_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				G2D_WARN("copy_to_user fail\n");
 				return  -EFAULT;
 			}
-			kfree(p_mixer_para);
+			if (ubuffer[1] == 1)
+				kfree(p_mixer_para);
+			else
+				vfree(p_mixer_para);
 #endif
 			break;
 		}
@@ -967,31 +1159,48 @@ long g2d_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 	case G2D_CMD_BLD_H:{
 #if IS_ENABLED(CONFIG_G2D_MIXER)
-			g2d_bld bld_para;
-			struct mixer_para mixer_bld_para;
+			g2d_bld *bld_para = NULL;
+			struct mixer_para *mixer_bld_para = NULL;
 
-			if (copy_from_user(&bld_para, (g2d_bld *) arg,
-					   sizeof(g2d_bld))) {
+			bld_para = kmalloc(sizeof(*bld_para), GFP_KERNEL);
+			if (!bld_para) {
+				G2D_WARN("bld_para kmalloc failed\n");
 				ret = -EFAULT;
 				goto err_noput;
 			}
-			if (dbg_info) {
-				dump_g2d_bld_info(&bld_para);
+			mixer_bld_para = kmalloc(sizeof(*mixer_bld_para), GFP_KERNEL);
+			if (!mixer_bld_para) {
+				G2D_WARN("mixer_bld_para kmalloc failed\n");
+				ret = -EFAULT;
+				kfree(bld_para);
+				goto err_noput;
 			}
-			memset(&mixer_bld_para, 0, sizeof(mixer_bld_para));
-			memcpy(&mixer_bld_para.dst_image_h,
-			       &bld_para.dst_image, sizeof(g2d_image_enh));
-			memcpy(&mixer_bld_para.src_image_h,
-			       &bld_para.src_image[0], sizeof(g2d_image_enh));
+			if (copy_from_user(bld_para, (g2d_bld *) arg,
+					   sizeof(g2d_bld))) {
+				ret = -EFAULT;
+				kfree(bld_para);
+				kfree(mixer_bld_para);
+				goto err_noput;
+			}
+			if (dbg_info) {
+				dump_g2d_bld_info(bld_para);
+			}
+			memset(mixer_bld_para, 0, sizeof(*mixer_bld_para));
+			memcpy(&mixer_bld_para->dst_image_h,
+			       &bld_para->dst_image, sizeof(g2d_image_enh));
+			memcpy(&mixer_bld_para->src_image_h,
+			       &bld_para->src_image[0], sizeof(g2d_image_enh));
 			/* ptn use as src */
-			memcpy(&mixer_bld_para.ptn_image_h,
-			       &bld_para.src_image[1], sizeof(g2d_image_enh));
-			memcpy(&mixer_bld_para.ck_para, &bld_para.ck_para,
+			memcpy(&mixer_bld_para->ptn_image_h,
+			       &bld_para->src_image[1], sizeof(g2d_image_enh));
+			memcpy(&mixer_bld_para->ck_para, &bld_para->ck_para,
 			       sizeof(g2d_ck));
-			mixer_bld_para.bld_cmd = bld_para.bld_cmd;
-			mixer_bld_para.op_flag = OP_BLEND;
+			mixer_bld_para->bld_cmd = bld_para->bld_cmd;
+			mixer_bld_para->op_flag = OP_BLEND;
 
-			ret  = mixer_task_process(&para, &mixer_bld_para, 1);
+			ret  = mixer_task_process(&para, mixer_bld_para, 1);
+			kfree(bld_para);
+			kfree(mixer_bld_para);
 #endif
 			break;
 		}
@@ -1061,6 +1270,20 @@ long g2d_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			break;
 		}
 
+	case G2D_CMD_QUERY_VERSION:
+		{
+			struct g2d_hardware_version version;
+			g2d_query_hardware_version(&version);
+
+			if (copy_to_user((struct g2d_hardware_version *)arg, &version,
+						sizeof(struct g2d_hardware_version))) {
+				ret = -EFAULT;
+				goto err_noput;
+			}
+
+			break;
+		}
+
 	default:
 		goto err_noput;
 		break;
@@ -1072,11 +1295,8 @@ err_noput:
 	pm_runtime_put_sync(para.dev);
 #endif
 	g2d_ioctl_mutex_unlock();
-	if (g_time_info == 1) {
-		ktime_get_real_ts64(&test_end);
-		g_func_runtime += (test_end.tv_sec - test_start.tv_sec) * 1000000 +
-			(test_end.tv_nsec - test_start.tv_nsec) / NSEC_PER_USEC;
-	}
+	g2d_time_inf.total_runtime = g2d_time_count(false);
+	g2d_dump_time_info();
 	return ret;
 }
 
@@ -1093,9 +1313,16 @@ __s32 drv_g2d_init(void)
 }
 
 static ssize_t g2d_debug_show(struct device *dev,
-			     struct device_attribute *attr, char *buf)
+							  struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "debug=%d\n", dbg_info);
+	ssize_t wc = 0;
+	wc += sprintf(buf + wc, "debug=%d\n\n", dbg_info);
+
+#if IS_ENABLED(CONFIG_G2D_BUF_CACHED)
+	wc += g2d_buf_cache_debug_show(buf + wc);
+#endif
+
+	return wc;
 }
 
 static ssize_t g2d_debug_store(struct device *dev,
@@ -1118,16 +1345,15 @@ static DEVICE_ATTR(debug, 0660,
 		   g2d_debug_show, g2d_debug_store);
 
 static ssize_t g2d_func_runtime_show(struct device *dev,
-			     struct device_attribute *attr, char *buf)
+									 struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "func_runtime = %d us\n", g_func_runtime);
+	return sprintf(buf, "func_runtime = %d us\n", g2d_time_inf.total_runtime);
 }
 
 static ssize_t g2d_func_runtime_store(struct device *dev,
 			      struct device_attribute *attr,
 			      const char *buf, size_t count)
 {
-	g_func_runtime = 0;
 	if (strncasecmp(buf, "1", 1) == 0)
 		g_time_info = 1;
 	else if (strncasecmp(buf, "0", 1) == 0)
@@ -1280,6 +1506,12 @@ static int g2d_probe(struct platform_device *pdev)
 		info->mbus_vo_clk = devm_clk_get(&pdev->dev, "mbus_vo");
 		if (IS_ERR(info->mbus_vo_clk))
 			info->mbus_vo_clk = NULL;
+		info->mbus_desys_clk = devm_clk_get(&pdev->dev, "mbus_desys");
+		if (IS_ERR(info->mbus_desys_clk))
+			info->mbus_desys_clk = NULL;
+		info->ahb_de_clk = devm_clk_get(&pdev->dev, "ahb_de");
+		if (IS_ERR(info->ahb_de_clk))
+			info->ahb_de_clk = NULL;
 		info->hb_clk = devm_clk_get(&pdev->dev, "g2d_hb");
 		if (IS_ERR(info->hb_clk))
 			info->hb_clk = NULL;
@@ -1288,16 +1520,25 @@ static int g2d_probe(struct platform_device *pdev)
 			G2D_WARN("reset get failed\n");
 			info->reset = NULL;
 		}
-		info->vo_reset = devm_reset_control_get(&pdev->dev, "rst_bus_vo");
+		info->vo_reset = devm_reset_control_get_optional_shared(&pdev->dev, "rst_bus_vo");
 		if (IS_ERR(info->vo_reset)) {
 			G2D_WARN("vo_reset get failed\n");
 			info->vo_reset = NULL;
+		}
+		info->desys_reset = devm_reset_control_get_optional_shared(&pdev->dev, "rst_bus_desys");
+		if (IS_ERR(info->desys_reset)) {
+			G2D_WARN("desys_reset get failed\n");
+			info->desys_reset = NULL;
 		}
 	}
 
 	drv_g2d_init();
 	mutex_init(&info->mutex);
 	mutex_init(&global_lock);
+
+#if IS_ENABLED(CONFIG_G2D_BUF_CACHED)
+	g2d_buf_cache_init(dmabuf_dev, 32);
+#endif
 
 	ret = sysfs_create_group(&g2d_dev->kobj, &g2d_attribute_group);
 	if (ret < 0)
@@ -1340,6 +1581,10 @@ static int g2d_remove(struct platform_device *pdev)
 
 #if IS_ENABLED(CONFIG_PM_GENERIC_DOMAINS)
 	pm_runtime_disable(para.dev);
+#endif
+
+#if IS_ENABLED(CONFIG_G2D_BUF_CACHED)
+	g2d_buf_cache_exit();
 #endif
 
 	free_irq(para.irq, NULL);
@@ -1455,6 +1700,10 @@ int __init g2d_module_init(void)
 	if (ret == 0)
 		ret = platform_driver_register(&g2d_driver);
 
+#if IS_ENABLED(CONFIG_G2D_SYNCFENCE)
+	syncfence_init();
+#endif
+
 	G2D_INFO("rcq version initialized.major:%d\n", MAJOR(devid));
 	G2D_INFO("g2d_module_init\n");
 	return ret;
@@ -1462,6 +1711,10 @@ int __init g2d_module_init(void)
 
 static void __exit g2d_module_exit(void)
 {
+
+#if IS_ENABLED(CONFIG_G2D_SYNCFENCE)
+	syncfence_exit();
+#endif
 
 	platform_driver_unregister(&g2d_driver);
 	device_destroy(g2d_class, devid);

@@ -174,46 +174,46 @@ $(MODULE_CXX) -shared -Wl,-Bsymbolic \
 endef
 
 define host-copy-debug-information
-$(HOST_OBJCOPY) --only-keep-debug $@ $(basename $@).dbg
+$(MODULE_OBJCOPY) --only-keep-debug $@ $(basename $@).dbg
 endef
 
 define host-strip-debug-information
-$(HOST_STRIP) --strip-unneeded $@
+$(MODULE_STRIP) --strip-unneeded $@
 endef
 
 define host-add-debuglink
 $(if $(V),,@echo "  DBGLINK " $(call relative-to-top,$(basename $@).dbg))
-$(HOST_OBJCOPY) --add-gnu-debuglink=$(basename $@).dbg $@
+$(MODULE_OBJCOPY) --add-gnu-debuglink=$(basename $@).dbg $@
 endef
 
 define target-copy-debug-information
-$(OBJCOPY) --only-keep-debug $@ $(basename $@).dbg
+$(MODULE_OBJCOPY) --only-keep-debug $@ $(basename $@).dbg
 endef
 
 define target-strip-debug-information
-$(STRIP) --strip-unneeded $@
+$(MODULE_STRIP) --strip-unneeded $@
 endef
 
 define target-add-debuglink
 $(if $(V),,@echo "  DBGLINK " $(call relative-to-top,$(basename $@).dbg))
-$(OBJCOPY) --add-gnu-debuglink=$(basename $@).dbg $@
+$(MODULE_OBJCOPY) --add-gnu-debuglink=$(basename $@).dbg $@
 endef
 
 define target-compress-debug-information
-$(OBJCOPY) --compress-debug-sections $@ $@.compressed_debug
+$(MODULE_OBJCOPY) --compress-debug-sections $@ $@.compressed_debug
 $(MV) $@.compressed_debug $@
 endef
 
 define host-static-library-from-o
 $(if $(V),,@echo "  HOST_AR " $(call relative-to-top,$@))
 $(RM) $@
-$(HOST_AR) crD $@ $(sort $(MODULE_ALL_OBJECTS))
+$(MODULE_AR) crD $@ $(sort $(MODULE_ALL_OBJECTS))
 endef
 
 define target-static-library-from-o
 $(if $(V),,@echo "  AR      " $(call relative-to-top,$@))
 $(RM) $@
-$(AR) crD $@ $(sort $(MODULE_ALL_OBJECTS))
+$(MODULE_AR) crD $@ $(sort $(MODULE_ALL_OBJECTS))
 endef
 
 define tab-c-from-y
@@ -278,6 +278,8 @@ endif
 
 # Programs used in recipes
 
+AR ?= ar
+AR_SECONDARY ?= $(AR)
 BISON ?= bison
 CC ?= gcc
 CC_SECONDARY ?= $(CC)
@@ -285,15 +287,46 @@ CROSS_COMPILE_SECONDARY ?= $(CROSS_COMPILE)
 CXX ?= g++
 CXX_SECONDARY ?= $(CXX)
 GLSLC ?= glslc
+HOST_AR ?= ar
+HOST_AS ?= as
 HOST_CC ?= gcc
 HOST_CXX ?= g++
+HOST_LD ?= ld
+HOST_NM ?= nm
+HOST_OBJCOPY ?= objcopy
+HOST_OBJDUMP ?= objdump
+HOST_RANLIB ?= ranlib
+HOST_READELF ?= readelf
+HOST_STRIP ?= strip
 INDENT ?= indent
 JAR ?= jar
 JAVA ?= java
 JAVAC ?= javac
+M4 ?= m4
+NM ?= nm
+NM_SECONDARY ?= $(NM)
+OBJCOPY ?= objcopy
+OBJCOPY_SECONDARY ?= $(OBJCOPY)
 PKG_CONFIG ?= pkg-config
-PYTHON ?= python
+PYTHON3 ?= python3
+RANLIB ?= ranlib
+RANLIB_SECONDARY ?= $(RANLIB)
+STRIP ?= strip
+STRIP_SECONDARY ?= $(STRIP)
 ZIP ?= zip
+
+ifneq ($(shell which python3),)
+PYTHON ?= python3
+else
+PYTHON ?= python2
+
+$(warning ******************************************************)
+$(warning WARNING: Python 3 not found so falling back to Python)
+$(warning 2, which is deprecated. See here for Python 2 end of)
+$(warning life information:)
+$(warning https://www.python.org/dev/peps/pep-0373/#id4)
+$(warning ******************************************************)
+endif
 
 ifneq ($(SUPPORT_BUILD_LWS),)
 WAYLAND_SCANNER := `$(PKG_CONFIG) --variable=wayland_scanner wayland-scanner`
@@ -365,11 +398,51 @@ ifneq ($(CROSS_COMPILE_SECONDARY),)
    override CXX_SECONDARY := $(CROSS_COMPILE_SECONDARY)$(CXX_SECONDARY)
   endif
  endif
+
+ # To determine secondary toolchain prefix.
+ __secondary_toolchain_prefix := $(CROSS_COMPILE_SECONDARY)
+ ifeq ($(SUPPORT_NEUTRINO_PLATFORM),)
+  ifeq ($(LIBGCC),)
+   __secondary_toolchain_prefix := llvm-
+  endif
+ endif
+
+ ifeq ($(origin AR_SECONDARY),file)
+  override AR_SECONDARY  := $(__secondary_toolchain_prefix)$(AR_SECONDARY)
+ endif
+ ifeq ($(origin NM_SECONDARY),file)
+  override NM_SECONDARY  := $(__secondary_toolchain_prefix)$(NM_SECONDARY)
+ endif
+ ifeq ($(origin OBJCOPY_SECONDARY),file)
+  override OBJCOPY_SECONDARY  := $(__secondary_toolchain_prefix)$(OBJCOPY_SECONDARY)
+ endif
+ ifeq ($(origin RANLIB_SECONDARY),file)
+  override RANLIB_SECONDARY  := $(__secondary_toolchain_prefix)$(RANLIB_SECONDARY)
+ endif
+ ifeq ($(origin STRIP_SECONDARY),file)
+  override STRIP_SECONDARY  := $(__secondary_toolchain_prefix)$(STRIP_SECONDARY)
+ endif
+endif
+
+# Vanilla versions of glibc >= 2.16 print a warning if _FORTIFY_SOURCE is
+# defined but compiler optimisations are disabled. In this case, make sure it's
+# not being defined as part of CC/CXX, as is the case for at least Yocto Poky
+# 3.0.
+ifeq ($(filter $(OPTIM),-O -O0),$(OPTIM))
+ override CC_SECONDARY := $(filter-out -D_FORTIFY_SOURCE%,$(CC_SECONDARY))
+ override CXX_SECONDARY := $(filter-out -D_FORTIFY_SOURCE%,$(CXX_SECONDARY))
+else ifeq ($(BUILD),debug)
+ override CC_SECONDARY := $(filter-out -D_FORTIFY_SOURCE%,$(CC_SECONDARY))
+ override CXX_SECONDARY := $(filter-out -D_FORTIFY_SOURCE%,$(CXX_SECONDARY))
 endif
 
 # Apply compiler wrappers and V=1 handling
-override CC_SECONDARY     := $(if $(V),,@)$(strip $(CCACHE)$(DISTCC) $(CC_SECONDARY))
-override CXX_SECONDARY    := $(if $(V),,@)$(strip $(CCACHE)$(DISTCC) $(CXX_SECONDARY))
+override AR_SECONDARY      := $(if $(V),,@)$(AR_SECONDARY)
+override CC_SECONDARY      := $(if $(V),,@)$(strip $(CCACHE)$(DISTCC) $(CC_SECONDARY))
+override CXX_SECONDARY     := $(if $(V),,@)$(strip $(CCACHE)$(DISTCC) $(CXX_SECONDARY))
+override NM_SECONDARY      := $(if $(V),,@)$(NM_SECONDARY)
+override OBJCOPY_SECONDARY := $(if $(V),,@)$(OBJCOPY_SECONDARY)
+override RANLIB_SECONDARY  := $(if $(V),,@)$(RANLIB_SECONDARY)
 
 ifneq ($(CROSS_COMPILE),)
  ifeq ($(cc-is-clang),true)
@@ -397,56 +470,110 @@ ifneq ($(CROSS_COMPILE),)
    override CXX := $(CROSS_COMPILE)$(CXX)
   endif
  endif
+
+ # To determine toolchain prefix.
+ __toolchain_prefix := $(CROSS_COMPILE)
+ ifeq ($(SUPPORT_NEUTRINO_PLATFORM),)
+  ifeq ($(LIBGCC),)
+   __toolchain_prefix := llvm-
+  endif
+ endif
+
+ ifeq ($(origin AR),file)
+  override AR  := $(__toolchain_prefix)$(AR)
+ endif
+ ifeq ($(origin NM),file)
+  override NM  := $(__toolchain_prefix)$(NM)
+ endif
+ ifeq ($(origin OBJCOPY),file)
+  override OBJCOPY  := $(__toolchain_prefix)$(OBJCOPY)
+ endif
+ ifeq ($(origin RANLIB),file)
+  override RANLIB  := $(__toolchain_prefix)$(RANLIB)
+ endif
+ ifeq ($(origin STRIP),file)
+  override STRIP  := $(__toolchain_prefix)$(STRIP)
+ endif
 else
  $(if $(CROSS_COMPILE_SECONDARY),$(warning CROSS_COMPILE_SECONDARY is set but CROSS_COMPILE is empty))
 endif
 
-# Apply compiler wrappers and V=1 handling
-override CC     := $(if $(V),,@)$(strip $(CCACHE)$(DISTCC) $(CC))
-override CXX    := $(if $(V),,@)$(strip $(CCACHE)$(DISTCC) $(CXX))
+# Vanilla versions of glibc >= 2.16 print a warning if _FORTIFY_SOURCE is
+# defined but compiler optimisations are disabled. In this case, make sure it's
+# not being defined as part of CC/CXX, as is the case for at least Yocto Poky
+# 3.0.
+ifeq ($(filter $(OPTIM),-O -O0),$(OPTIM))
+ override CC := $(filter-out -D_FORTIFY_SOURCE%,$(CC))
+ override CXX := $(filter-out -D_FORTIFY_SOURCE%,$(CXX))
+else ifeq ($(BUILD),debug)
+ override CC := $(filter-out -D_FORTIFY_SOURCE%,$(CC))
+ override CXX := $(filter-out -D_FORTIFY_SOURCE%,$(CXX))
+endif
 
-override AR				 := $(if $(V),,@)$(CROSS_COMPILE)ar
-override BISON			 := $(if $(V),,@)$(BISON)
-override BZIP2			 := $(if $(V),,@)bzip2 -9
-override CAT			 := $(if $(V),,@)cat
-override CHECK			 := $(if $(CHECK),$(if $(V),,@)$(CHECK),)
-override CP				 := $(if $(V),,@)cp
-override ECHO			 := $(if $(V),,@)$(shell which echo) -e
-override FLEX			 := $(if $(V),,@)flex
-override FLEXXX			 := $(if $(V),,@)flex++
-override FWINFO			 := $(if $(V),,@)$(HOST_OUT)/fwinfo
-override GLSLC			 := $(if $(V),,@)$(GLSLC)
-override GREP			 := $(if $(V),,@)grep
-override HOST_AR		 := $(if $(V),,@)ar
-override HOST_CC		 := $(if $(V),,@)$(strip $(CCACHE) $(HOST_CC))
-override HOST_CXX		 := $(if $(V),,@)$(strip $(CCACHE) $(HOST_CXX))
-override HOST_OBJCOPY	 := $(if $(V),,@)objcopy
-override HOST_STRIP		 := $(if $(V),,@)strip
-override INSTALL		 := $(if $(V),,@)install
-override JAR			 := $(if $(V),,@)$(JAR)
-override JAVA			 := $(if $(V),,@)$(JAVA)
-override JAVAC			 := $(if $(V),,@)$(JAVAC)
-override LN				 := $(if $(V),,@)ln -f -s
-override M4				 := $(if $(V),,@)m4
-override MKDIR			 := $(if $(V),,@)mkdir
-override MV				 := $(if $(V),,@)mv
-override OBJCOPY		 := $(if $(V),,@)$(CROSS_COMPILE)objcopy
-override OD              := $(if $(V),,@)od
-override PERL			 := $(if $(V),,@)perl
-override PSC			 := $(if $(V),,@)$(HOST_OUT)/psc_standalone
-override PYTHON			 := $(if $(V),,@)$(PYTHON)
-override RANLIB			 := $(if $(V),,@)$(CROSS_COMPILE)ranlib
-override RM				 := $(if $(V),,@)rm -f
-override ROGUEASM		 := $(if $(V),,@)$(HOST_OUT)/rogueasm
-override SED			 := $(if $(V),,@)sed
-override SIGNFW			 := $(if $(V),,@)$(HOST_OUT)/signfw
-override STRIP			 := $(if $(V),,@)$(CROSS_COMPILE)strip
-override TAR			 := $(if $(V),,@)tar
-override TEST			 := $(if $(V),,@)test
-override TOUCH			 := $(if $(V),,@)touch
-override WAYLAND_SCANNER := $(if $(V),,@)$(WAYLAND_SCANNER)
-override ZIP			 := $(if $(V),,@)$(ZIP)
+# Apply tool wrappers and V=1 handling.
+#
+# This list should be kept in alphabetical order.
+#
+override AR                := $(if $(V),,@)$(AR)
+override BISON             := $(if $(V),,@)$(BISON)
+override BZIP2             := $(if $(V),,@)bzip2 -9
+override CAT               := $(if $(V),,@)cat
+override CC                := $(if $(V),,@)$(strip $(CCACHE)$(DISTCC) $(CC))
+override CHECK             := $(if $(CHECK),$(if $(V),,@)$(CHECK),)
+override CP                := $(if $(V),,@)cp
+override CXX               := $(if $(V),,@)$(strip $(CCACHE)$(DISTCC) $(CXX))
+override ECHO              := $(if $(V),,@)$(shell which echo) -e
+override FLEX              := $(if $(V),,@)flex
+override FLEXXX            := $(if $(V),,@)flex++
+override FWINFO            := $(if $(V),,@)$(HOST_OUT)/fwinfo
+override FWINFO_64K        := $(if $(V),,@)$(HOST_OUT)/fwinfo_64k
+override GLSLC             := $(if $(V),,@)$(GLSLC)
+override GREP              := $(if $(V),,@)grep
+override GUNZIP            := $(if $(V),,@)gunzip
+override HOST_AR           := $(if $(V),,@)$(HOST_AR)
+override HOST_AS           := $(if $(V),,@)$(HOST_AS)
+override HOST_CC           := $(if $(V),,@)$(strip $(CCACHE) $(HOST_CC))
+override HOST_CXX          := $(if $(V),,@)$(strip $(CCACHE) $(HOST_CXX))
+override HOST_LD           := $(if $(V),,@)$(HOST_LD)
+override HOST_NM           := $(if $(V),,@)$(HOST_NM)
+override HOST_OBJCOPY      := $(if $(V),,@)$(HOST_OBJCOPY)
+override HOST_OBJDUMP      := $(if $(V),,@)$(HOST_OBJDUMP)
+override HOST_RANLIB       := $(if $(V),,@)$(HOST_RANLIB)
+override HOST_READELF      := $(if $(V),,@)$(HOST_READELF)
+override HOST_STRIP        := $(if $(V),,@)$(HOST_STRIP)
+override INSTALL           := $(if $(V),,@)install
+override JAR               := $(if $(V),,@)$(JAR)
+override JAVA              := $(if $(V),,@)$(JAVA)
+override JAVAC             := $(if $(V),,@)$(JAVAC)
+override LN                := $(if $(V),,@)ln -f -s
+override M4                := $(if $(V),,@)$(M4)
+override MKDIR             := $(if $(V),,@)mkdir
+override MV                := $(if $(V),,@)mv
+override NM                := $(if $(V),,@)$(NM)
+override OBJCOPY           := $(if $(V),,@)$(OBJCOPY)
+override OD                := $(if $(V),,@)od
+override PERL              := $(if $(V),,@)perl
+override PSC               := $(if $(V),,@)$(HOST_OUT)/psc_standalone
+override PYTHON            := $(if $(V),,@)$(PYTHON)
+override PYTHON3           := $(if $(V),,@)$(PYTHON3)
+override RANLIB            := $(if $(V),,@)$(RANLIB)
+override RM                := $(if $(V),,@)rm -f
+override SED               := $(if $(V),,@)sed
+override SIGNFILE          := $(if $(V),,@)$(KERNELDIR)/scripts/sign-file
+override STRIP             := $(if $(V),,@)$(STRIP)
+override STRIP_SECONDARY   := $(if $(V),,@)$(STRIP_SECONDARY)
+override TAR               := $(if $(V),,@)tar
+override TEST              := $(if $(V),,@)test
+override TOUCH             := $(if $(V),,@)touch
+override UNIFLEXC          := $(if $(V),,@)$(HOST_OUT)/usc
+override USCASM            := $(if $(V),,@)$(HOST_OUT)/uscasm
+override WAYLAND_SCANNER   := $(if $(V),,@)$(WAYLAND_SCANNER)
+override ZIP               := $(if $(V),,@)$(ZIP)
 
 ifeq ($(SUPPORT_NEUTRINO_PLATFORM),1)
 include $(MAKE_TOP)/common/neutrino/commands_neutrino.mk
+endif
+
+ifneq ($(filter darwin,$(HOST_OS) $(TARGET_OS)),)
+include $(MAKE_TOP)/common/darwin/commands_darwin.mk
 endif

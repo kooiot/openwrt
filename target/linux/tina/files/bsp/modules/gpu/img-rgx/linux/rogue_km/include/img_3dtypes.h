@@ -41,8 +41,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#ifndef __IMG_3DTYPES_H__
-#define __IMG_3DTYPES_H__
+#ifndef IMG_3DTYPES_H
+#define IMG_3DTYPES_H
 
 #include <powervr/buffer_attribs.h>
 #include "img_types.h"
@@ -188,6 +188,7 @@ typedef enum _IMG_FILTER_
  */
 typedef enum _IMG_ADDRESSMODE_
 {
+	IMG_ADDRESSMODE_DONTCARE,
 	IMG_ADDRESSMODE_REPEAT,	/**< Texture repeats continuously */
 	IMG_ADDRESSMODE_FLIP, /**< Texture flips on odd integer part */
 	IMG_ADDRESSMODE_CLAMP, /**< Texture clamped at 0 or 1 */
@@ -195,7 +196,6 @@ typedef enum _IMG_ADDRESSMODE_
 	IMG_ADDRESSMODE_CLAMPBORDER,
 	IMG_ADDRESSMODE_OGL_CLAMP,
 	IMG_ADDRESSMODE_OVG_TILEFILL,
-	IMG_ADDRESSMODE_DONTCARE,
 } IMG_ADDRESSMODE;
 
 /**
@@ -209,13 +209,13 @@ typedef enum _IMG_CULLMODE_
 } IMG_CULLMODE;
 
 /**
-  Colour for clearing surfaces.
-  The four elements of the 4 x 32 bit array will map to colour
-  R,G,B,A components, in order.
-  For YUV colour space the order is Y,U,V.
-  For Depth and Stencil formats D maps to R and S maps to G.
-*/
-typedef union _IMG_CLEAR_COLOUR_ {
+ * Colour for clearing surfaces.
+ *  The four elements of the 4 x 32 bit array will map to colour
+ *  R,G,B,A components, in order.
+ *  For YUV colour space the order is Y,U,V.
+ *  For Depth and Stencil formats D maps to R and S maps to G.
+ */
+typedef union IMG_CLEAR_COLOUR_TAG {
 	IMG_UINT32        aui32[4];
 	IMG_INT32         ai32[4];
 	IMG_FLOAT         af32[4];
@@ -242,7 +242,7 @@ typedef enum _IMG_RESOLVE_OP_
 } IMG_RESOLVE_OP;
 
 
-#endif /* __IMG_3DTYPES_H__ */
+#endif /* IMG_3DTYPES_H */
 /******************************************************************************
  End of file (img_3dtypes.h)
 ******************************************************************************/

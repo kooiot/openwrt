@@ -39,11 +39,20 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### ###########################################################################
 
+MODULE_AR := $(AR_SECONDARY)
 MODULE_CC := $(CC_SECONDARY)
 MODULE_CXX := $(CXX_SECONDARY)
+MODULE_NM := $(NM_SECONDARY)
+MODULE_OBJCOPY := $(OBJCOPY_SECONDARY)
+MODULE_RANLIB := $(RANLIB_SECONDARY)
+MODULE_STRIP := $(STRIP_SECONDARY)
 
 MODULE_CFLAGS := $(ALL_CFLAGS) $($(THIS_MODULE)_cflags)
 MODULE_CXXFLAGS := $(ALL_CXXFLAGS) $($(THIS_MODULE)_cxxflags)
+ifeq ($(SUPPORT_ANDROID_PLATFORM),)
+LIBGCC_VERSION := $(lastword $(filter-out libgcc.a,$(subst /, ,$(LIBGCC))))
+MODULE_CXXFLAGS += -isystem /usr/arm-linux-gnueabihf/include/c++/$(LIBGCC_VERSION)/arm-linux-gnueabihf/
+endif
 MODULE_LDFLAGS := $($(THIS_MODULE)_ldflags) -L$(MODULE_OUT) -Xlinker -rpath-link=$(MODULE_OUT) $(ALL_LDFLAGS)
 
 # Since this is a target module, add system-specific include flags.
@@ -59,17 +68,12 @@ endif
 ifneq ($(BUILD),debug)
 ifeq ($(USE_LTO),1)
 MODULE_LDFLAGS := \
- $(sort $(filter-out -W% -D%,$(ALL_CFLAGS) $(ALL_CXXFLAGS))) \
+ $(sort $(filter-out -W% -D% -isystem /%,$(ALL_CFLAGS) $(ALL_CXXFLAGS))) \
  $(MODULE_LDFLAGS)
 endif
 endif
 
 MODULE_ARCH_BITNESS := 32
-
-# Neutrino qcc requires "-Wc," prefix for compiler flags
-ifeq ($(SUPPORT_NEUTRINO_PLATFORM),1)
-include $(MAKE_TOP)/common/neutrino/modify_moduledefs.mk
-endif
 
 MESON_CROSS_CPU_SECONDARY ?= armv7-a
 

@@ -28,6 +28,7 @@ enum scaler_type {
 	DE_SCALER_TYPE_VSU_ED,
 	DE_SCALER_TYPE_GSU,
 	DE_SCALER_TYPE_ASU,
+	DE_SCALER_TYPE_SHARE,
 };
 
 struct de_scaler_dsc {
@@ -36,6 +37,7 @@ struct de_scaler_dsc {
 	unsigned int offset;
 	unsigned int linebuff_share_ids;
 	bool need_switch_en;
+	enum scaler_type share_type;
 	enum scaler_type type;
 	unsigned int line_buffer_yuv;
 	unsigned int line_buffer_rgb;

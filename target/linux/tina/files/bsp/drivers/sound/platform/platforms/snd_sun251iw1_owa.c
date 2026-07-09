@@ -24,8 +24,9 @@
 
 struct sunxi_owa_clk {
 	/* parent clk */
-	struct clk *clk_pll_audio1;
-	struct clk *clk_pll_peri_800m;
+	struct clk *clk_pll_audio1_div5;
+	struct clk *clk_pll_audio0_4x;
+	struct clk *clk_pll_peri_1x;
 	/* module clk */
 	struct clk *clk_owa_tx;
 	struct clk *clk_owa_rx;
@@ -65,18 +66,25 @@ sunxi_owa_clk_t *snd_owa_clk_init(struct platform_device *pdev)
 	}
 
 	/* get parent clk */
-	clk->clk_pll_audio1 = of_clk_get_by_name(np, "clk_pll_audio1");
-	if (IS_ERR_OR_NULL(clk->clk_pll_audio1)) {
-		SND_LOG_ERR("clk_pll_audio1 get failed\n");
-		ret = PTR_ERR(clk->clk_pll_audio1);
-		goto err_get_pll_audio1;
+	clk->clk_pll_audio1_div5 = of_clk_get_by_name(np, "clk_pll_audio1_div5");
+	if (IS_ERR_OR_NULL(clk->clk_pll_audio1_div5)) {
+		SND_LOG_ERR("clk_pll_audio1_div5 get failed\n");
+		ret = PTR_ERR(clk->clk_pll_audio1_div5);
+		goto err_get_clk_pll_audio1_div5;
 	}
 
-	clk->clk_pll_peri_800m = of_clk_get_by_name(np, "clk_pll_peri_800m");
-	if (IS_ERR_OR_NULL(clk->clk_pll_peri_800m)) {
+	clk->clk_pll_audio0_4x = of_clk_get_by_name(np, "clk_pll_audio0_4x");
+	if (IS_ERR_OR_NULL(clk->clk_pll_audio0_4x)) {
+		SND_LOG_ERR("clk_pll_audio1_div5 get failed\n");
+		ret = PTR_ERR(clk->clk_pll_audio0_4x);
+		goto err_get_clk_clk_pll_audio0_4x;
+	}
+
+	clk->clk_pll_peri_1x = of_clk_get_by_name(np, "clk_pll_peri_1x");
+	if (IS_ERR_OR_NULL(clk->clk_pll_peri_1x)) {
 		SND_LOG_ERR_STD(E_OWA_SWDEP_CLK_INIT, "clk_pll_peri0_300 get failed\n");
-		ret = PTR_ERR(clk->clk_pll_peri_800m);
-		goto err_get_clk_pll_peri_800m;
+		ret = PTR_ERR(clk->clk_pll_peri_1x);
+		goto err_get_clk_pll_peri_1x;
 	}
 
 	/* get module clk */
@@ -99,10 +107,12 @@ sunxi_owa_clk_t *snd_owa_clk_init(struct platform_device *pdev)
 err_get_clk_owa_rx:
 	clk_put(clk->clk_owa_tx);
 err_get_clk_owa_tx:
-	clk_put(clk->clk_pll_peri_800m);
-err_get_clk_pll_peri_800m:
-	clk_put(clk->clk_pll_audio1);
-err_get_pll_audio1:
+	clk_put(clk->clk_pll_peri_1x);
+err_get_clk_pll_peri_1x:
+	clk_put(clk->clk_pll_audio0_4x);
+err_get_clk_clk_pll_audio0_4x:
+	clk_put(clk->clk_pll_audio1_div5);
+err_get_clk_pll_audio1_div5:
 	clk_put(clk->clk_bus);
 err_get_clk_bus:
 err_get_clk_rst:
@@ -118,8 +128,9 @@ void snd_owa_clk_exit(void *clk_orig)
 
 	clk_put(clk->clk_owa_rx);
 	clk_put(clk->clk_owa_tx);
-	clk_put(clk->clk_pll_peri_800m);
-	clk_put(clk->clk_pll_audio1);
+	clk_put(clk->clk_pll_peri_1x);
+	clk_put(clk->clk_pll_audio0_4x);
+	clk_put(clk->clk_pll_audio1_div5);
 	clk_put(clk->clk_bus);
 
 	kfree(clk);
@@ -160,16 +171,22 @@ int snd_owa_clk_enable(void *clk_orig)
 
 	SND_LOG_DEBUG("\n");
 
-	if (clk_prepare_enable(clk->clk_pll_audio1)) {
+	if (clk_prepare_enable(clk->clk_pll_audio1_div5)) {
 		SND_LOG_ERR("clk_pll_audio1 enable failed\n");
 		ret = -EINVAL;
-		goto err_enable_clk_pll_audio1;
+		goto err_enable_clk_pll_audio1_div5;
 	}
 
-	if (clk_prepare_enable(clk->clk_pll_peri_800m)) {
-		SND_LOG_ERR_STD(E_OWA_SWDEP_CLK_EN, "clk_pll_peri_800m enable failed\n");
+	if (clk_prepare_enable(clk->clk_pll_audio0_4x)) {
+		SND_LOG_ERR("clk_pll_audio1 enable failed\n");
 		ret = -EINVAL;
-		goto err_enable_clk_pll_peri_800m;
+		goto err_enable_clk_pll_audio0_4x;
+	}
+
+	if (clk_prepare_enable(clk->clk_pll_peri_1x)) {
+		SND_LOG_ERR_STD(E_OWA_SWDEP_CLK_EN, "clk_pll_peri_1x enable failed\n");
+		ret = -EINVAL;
+		goto err_enable_clk_pll_peri_1x;
 	}
 
 	if (clk_prepare_enable(clk->clk_owa_tx)) {
@@ -189,10 +206,12 @@ int snd_owa_clk_enable(void *clk_orig)
 err_enable_clk_owa_rx:
 	clk_disable_unprepare(clk->clk_owa_tx);
 err_enable_clk_owa_tx:
-	clk_disable_unprepare(clk->clk_pll_peri_800m);
-err_enable_clk_pll_peri_800m:
-	clk_disable_unprepare(clk->clk_pll_audio1);
-err_enable_clk_pll_audio1:
+	clk_disable_unprepare(clk->clk_pll_peri_1x);
+err_enable_clk_pll_peri_1x:
+	clk_disable_unprepare(clk->clk_pll_audio0_4x);
+err_enable_clk_pll_audio0_4x:
+	clk_disable_unprepare(clk->clk_pll_audio1_div5);
+err_enable_clk_pll_audio1_div5:
 	return ret;
 }
 
@@ -214,8 +233,9 @@ void snd_owa_clk_disable(void *clk_orig)
 
 	clk_disable_unprepare(clk->clk_owa_rx);
 	clk_disable_unprepare(clk->clk_owa_tx);
-	clk_disable_unprepare(clk->clk_pll_peri_800m);
-	clk_disable_unprepare(clk->clk_pll_audio1);
+	clk_disable_unprepare(clk->clk_pll_peri_1x);
+	clk_disable_unprepare(clk->clk_pll_audio0_4x);
+	clk_disable_unprepare(clk->clk_pll_audio1_div5);
 }
 
 int snd_owa_clk_rate(void *clk_orig, unsigned int freq_in, unsigned int freq_out)
@@ -225,21 +245,13 @@ int snd_owa_clk_rate(void *clk_orig, unsigned int freq_in, unsigned int freq_out
 	SND_LOG_DEBUG("\n");
 
 	if (freq_in % 24576000 == 0) {
-		if (clk_set_parent(clk->clk_owa_tx, clk->clk_pll_audio1)) {
+		if (clk_set_parent(clk->clk_owa_tx, clk->clk_pll_audio1_div5)) {
 			SND_LOG_ERR("set owa parent clk failed\n");
-			return -EINVAL;
-		}
-		if (clk_set_rate(clk->clk_pll_audio1, 614400000)) {
-			SND_LOG_ERR("set clk_pll_audio1 rate failed\n");
 			return -EINVAL;
 		}
 	} else {
-		if (clk_set_parent(clk->clk_owa_tx, clk->clk_pll_audio1)) {
+		if (clk_set_parent(clk->clk_owa_tx, clk->clk_pll_audio0_4x)) {
 			SND_LOG_ERR("set owa parent clk failed\n");
-			return -EINVAL;
-		}
-		if (clk_set_rate(clk->clk_pll_audio1, 22579200)) {
-			SND_LOG_ERR("set clk_pll_audio1 rate failed\n");
 			return -EINVAL;
 		}
 	}
@@ -248,7 +260,7 @@ int snd_owa_clk_rate(void *clk_orig, unsigned int freq_in, unsigned int freq_out
 		return -EINVAL;
 	}
 
-	if (clk_set_parent(clk->clk_owa_rx, clk->clk_pll_peri_800m)) {
+	if (clk_set_parent(clk->clk_owa_rx, clk->clk_pll_peri_1x)) {
 		SND_LOG_ERR_STD(E_OWA_SWDEP_CLK_SET, "set clk_owa_rx parent clk failed\n");
 		return -EINVAL;
 	}

@@ -45,4 +45,27 @@
 
 $(foreach _m,$(modules),$(if $(filter $(_m),$(ALL_MODULES)),$(error In makefile $(THIS_MAKEFILE): Duplicate module $(_m) (first seen in $(INTERNAL_MAKEFILE_FOR_MODULE_$(_m))) listed in $$(modules)),$(eval $(call register-module,$(_m)))))
 
+_doc_modules :=
+_other_modules :=
+
+$(foreach _m,$(modules),\
+ $(if $(filter $(doc_types),$($(_m)_type)),\
+  $(eval _doc_modules += $(_m)),$(eval _other_modules += $(_m))))
+
+# Strip leading space added when appending to an existing variable and sort the
+# result for nicer output.
+#
+_doc_modules := $(sort $(strip $(_doc_modules)))
+_other_modules := $(sort $(strip $(_other_modules)))
+
+ifneq ($(_doc_modules),)
+ ifneq ($(_other_modules),)
+  $(error In makefile $(THIS_MAKEFILE): Document modules cannot be defined in the same file as other module types. \
+   $(newline)$(newline)Document modules:$(newline) \
+   $(subst $(space),$(newline)$(space),$(_doc_modules)) \
+   $(newline)$(newline)Other modules:$(newline) \
+   $(subst $(space),$(newline)$(space),$(_other_modules)))
+ endif
+endif
+
 ALL_MODULES += $(modules)

@@ -28,13 +28,13 @@ THE SOFTWARE.
 #ifndef POWERVR_TYPES_H
 #define POWERVR_TYPES_H
 
-#if defined (__cplusplus)
+#if defined(__cplusplus)
 extern "C" {
 #endif
 
 #if defined(_MSC_VER)
 	#include "msvc_types.h"
-#elif defined(LINUX) && defined(__KERNEL__)
+#elif defined(__linux__) && defined(__KERNEL__)
 	#include <linux/types.h>
 	#include <linux/compiler.h>
 #else
@@ -47,7 +47,7 @@ typedef void *IMG_CPU_VIRTADDR;
 /* device virtual address */
 typedef struct
 {
-	uint64_t  uiAddr;
+	uint64_t uiAddr;
 #define IMG_CAST_TO_DEVVADDR_UINT(var)		(uint64_t)(var)
 
 } IMG_DEV_VIRTADDR;
@@ -57,7 +57,7 @@ typedef uint64_t IMG_DEVMEM_ALIGN_T;
 typedef uint64_t IMG_DEVMEM_OFFSET_T;
 typedef uint32_t IMG_DEVMEM_LOG2ALIGN_T;
 
-#if defined (__cplusplus)
+#if defined(__cplusplus)
 }
 #endif
 

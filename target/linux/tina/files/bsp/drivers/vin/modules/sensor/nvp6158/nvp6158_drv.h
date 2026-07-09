@@ -21,3 +21,8 @@ int nvp6158_init_hardware(int video_mode);
 int check_nvp6158_novid(unsigned int dec);
 void nvp6158_dump_bank(int bank);
 int nvp6158_init_ch_hardware(struct tvin_init_info *info);
+
+#if IS_ENABLED(CONFIG_NVP6158C_ONE_TIME_SETTING)
+int sensor_720p25_2ch_reg_setting(void);
+
+#endif

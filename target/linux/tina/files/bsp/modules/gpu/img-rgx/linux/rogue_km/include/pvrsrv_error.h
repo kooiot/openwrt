@@ -41,14 +41,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#if !defined (PVRSRV_ERROR_H)
+#if !defined(PVRSRV_ERROR_H)
 #define PVRSRV_ERROR_H
 
 /*!
  *****************************************************************************
  * Error values
  *****************************************************************************/
-typedef enum PVRSRV_ERROR
+typedef enum PVRSRV_ERROR_TAG
 {
 	PVRSRV_OK,
 #define PVRE(x) x,
@@ -58,4 +58,16 @@ typedef enum PVRSRV_ERROR
 
 } PVRSRV_ERROR;
 
-#endif /* !defined (PVRSRV_ERROR_H) */
+/*!
+ * @Function PVRSRVIsRetryError
+ * @Description Checks if error code is one of the errors that require retry
+ *              from the caller.
+ * @Input eError Error code.
+ * @Return IMG_TRUE if eError is one of the error codes that require the caller
+ *         to retry.
+ */
+#define PVRSRVIsRetryError(eError) \
+	(((eError == PVRSRV_ERROR_RETRY) || (eError == PVRSRV_ERROR_KERNEL_CCB_FULL)) ? \
+	 IMG_TRUE : IMG_FALSE)
+
+#endif /* !defined(PVRSRV_ERROR_H) */

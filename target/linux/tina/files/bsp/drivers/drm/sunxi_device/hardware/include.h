@@ -15,6 +15,8 @@
 
 #include <linux/types.h>
 
+#define LCD_REG_COUNT 27
+
 enum disp_color_space {
 	DISP_UNDEF = 0x00,
 	DISP_UNDEF_F = 0x01,
@@ -217,6 +219,12 @@ struct disp_video_timings {
 	unsigned long      dclk_rate_set; /* unit: hz */
 	unsigned long long frame_period; /* unit: ns */
 	int                start_delay; /* unit: line */
+};
+
+struct lcd_timing {
+	int id;
+	unsigned int lcd_node;
+	unsigned int value[LCD_REG_COUNT];
 };
 
 enum __lcd_irq_id_t {

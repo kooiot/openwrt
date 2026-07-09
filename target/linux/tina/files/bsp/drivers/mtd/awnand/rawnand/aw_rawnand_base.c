@@ -1806,27 +1806,45 @@ static int aw_rawnand_mtd_block_markbad(struct mtd_info *mtd, loff_t ofs)
 	return ret;
 }
 
-/*
- *#ifdef CONFIG_PM_SLEEP
- *static int aw_rawnand_mtd_suspend (struct mtd_info *mtd)
- *{
- *        int ret = 0;
- *
- *        return ret;
- *}
- *
- *static void aw_rawnand_mtd_resume(struct mtd_info *mtd)
- *{
- *
- *}
- *
- *static void aw_rawnand_mtd_reboot(struct mtd_info *mtd)
- *{
- *
- *
- *}
- *#endif
- */
+#ifdef CONFIG_PM_SLEEP
+struct nfc_reg_save_val g_nfc_reg_save_val;
+static int aw_rawnand_mtd_suspend (struct mtd_info *mtd)
+{
+	struct aw_nand_chip *chip = awnand_mtd_to_chip(mtd);
+	struct aw_nand_host *host = awnand_chip_to_host(chip);
+	int rb_no = aw_host_nfc_get_selected_rb_no(&host->nfc_reg);
+
+	mutex_lock(&chip->lock);
+	chip->select_chip(mtd, rb_no);
+	aw_rawnand_dev_ready_wait(mtd);
+	aw_rawnand_chip_reset(mtd, rb_no);
+	aw_nfc_reg_save(&host->nfc_reg, &g_nfc_reg_save_val);
+	aw_host_set_interface(host);
+	aw_host_clk_deinit(host);
+	aw_host_release_pin(host);
+	aw_host_requlator_release(host);
+	return 0;
+}
+
+static void aw_rawnand_mtd_resume(struct mtd_info *mtd)
+{
+	struct aw_nand_chip *chip = awnand_mtd_to_chip(mtd);
+	struct aw_nand_host *host = awnand_chip_to_host(chip);
+	int rb_no = aw_host_nfc_get_selected_rb_no(&host->nfc_reg);
+
+	aw_host_requlator_request(host);
+	aw_host_set_pin(host);
+	aw_host_clk_init(host);
+	aw_host_nfc_reset(&host->nfc_reg);
+	aw_nfc_reg_recover(&host->nfc_reg, &g_nfc_reg_save_val);
+	aw_rawnand_chip_reset(mtd, rb_no);
+	aw_host_init_tail(host);
+	chip->select_chip(mtd, rb_no);
+	aw_rawnand_dev_ready_wait(mtd);
+	chip->select_chip(mtd, -1);
+	mutex_unlock(&chip->lock);
+}
+#endif
 
 
 static enum rawnand_data_interface_type aw_rawnand_get_itf_type(struct aw_nand_chip *chip)
@@ -2074,13 +2092,11 @@ static int aw_rawnand_mtd_info_init(struct mtd_info *mtd)
 	mtd->_block_isbad = aw_rawnand_mtd_block_isbad;
 	mtd->_block_markbad = aw_rawnand_mtd_block_markbad;
 	mtd->_panic_write = aw_rawnand_mtd_panic_write;
-/*
- *#ifdef CONFIG_PM_SLEEP
- *        mtd->_suspend = aw_rawnand_mtd_suspend;
- *        mtd->_resume = aw_rawnand_mtd_resume;
- *        mtd->_reboot = aw_rawnand_mtd_reboot;
- *#endif
- */
+
+#ifdef CONFIG_PM_SLEEP
+	mtd->_suspend = aw_rawnand_mtd_suspend;
+	mtd->_resume = aw_rawnand_mtd_resume;
+#endif
 
 	awrawnand_info("mtd : type@%s\n", mtd->type == MTD_MLCNANDFLASH ? "MLCNAND" : "SLCNAND");
 	awrawnand_info("mtd : flags@nand flash\n");

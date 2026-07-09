@@ -58,6 +58,7 @@ struct vin_status_info {
 	unsigned int max_internal;
 	unsigned int min_internal;
 	struct prs_input_para prs_in;
+	struct isp_debug_info isp_debug_param_info;
 };
 
 struct vin_coor {
@@ -103,7 +104,7 @@ struct vinc_tvin {
 
 struct vin_core {
 	unsigned char is_empty;
-	unsigned char id;
+	unsigned int id;
 	unsigned char support_raw;
 	unsigned char total_rx_ch;
 	unsigned char hflip;
@@ -149,7 +150,19 @@ struct vin_core {
 	unsigned char noneed_register;
 	unsigned char logic_top_stream_count;
 	unsigned char ve_ol_ch;
+	bool once_resume;
+	void *frame_vaddr_to_ldci;
 	struct csi_ve_online_cfg ve_online_cfg;
+	struct work_struct set_sensor_oneframe_task;
+	struct work_struct set_ldci_frame_task;
+#ifdef OUTPUT_EMBED_DATA
+	bool time_embed_en;
+	bool ispbe_info_embed_en;
+#endif
+#ifdef VIPP_ALLMASK_BK
+	bool vipp_cascade_en;
+	unsigned int vipp_cascade_id;
+#endif
 #ifdef CSIC_SDRAM_DFS
 	struct vin_sdram_dfs vin_dfs;
 #endif
@@ -160,7 +173,8 @@ struct vin_core {
 #if IS_ENABLED(CONFIG_RV_RUN_CAR_REVERSE)
 	struct rpmsg_vinc rpmsg;
 #endif
-
+	struct list_head frame_buffer_list;
+	const char *rpmsg_ser_name;
 };
 
 static inline struct sensor_instance *get_valid_sensor(struct vin_core *vinc)
@@ -175,8 +189,13 @@ static inline struct sensor_instance *get_valid_sensor(struct vin_core *vinc)
 
 	return &vind->modules[vinc->sensor_sel].sensors.inst[valid_idx];
 }
+int vin_get_frame_to_ldci(struct vin_core *vinc, struct vb2_buffer *vb);
 int sunxi_vin_debug_register_driver(void);
 void sunxi_vin_debug_unregister_driver(void);
+int sunxi_isp_debug_register_driver(void);
+void sunxi_isp_debug_unregister_driver(void);
+int sunxi_isp_reg_debug_register_driver(void);
+void sunxi_isp_reg_debug_unregister_driver(void);
 int sunxi_vin_core_register_driver(void);
 void sunxi_vin_core_unregister_driver(void);
 struct vin_core *sunxi_vin_core_get_dev(int index);

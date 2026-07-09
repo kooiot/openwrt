@@ -40,12 +40,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#ifndef _PVR_DVFS_H_
-#define _PVR_DVFS_H_
+#ifndef PVR_DVFS_H
+#define PVR_DVFS_H
 
 #include <linux/version.h>
 
-#if defined(PVR_DVFS)
+#if defined(SUPPORT_LINUX_DVFS)
  #include <linux/devfreq.h>
  #include <linux/thermal.h>
 
@@ -62,8 +62,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "img_types.h"
 
-typedef void (*PFN_SYS_DEV_DVFS_SET_FREQUENCY)(IMG_UINT32 ui32Freq);
-typedef void (*PFN_SYS_DEV_DVFS_SET_VOLTAGE)(IMG_UINT32 ui32Volt);
+typedef void (*PFN_SYS_DEV_DVFS_SET_FREQUENCY)(IMG_HANDLE hSysData, IMG_UINT32 ui32Freq);
+typedef void (*PFN_SYS_DEV_DVFS_SET_VOLTAGE)(IMG_HANDLE hSysData, IMG_UINT32 ui32Volt);
 
 typedef struct _IMG_OPP_
 {
@@ -78,19 +78,19 @@ typedef struct _IMG_DVFS_DEVICE_CFG_
 {
 	const IMG_OPP  *pasOPPTable;
 	IMG_UINT32      ui32OPPTableSize;
-#if defined(PVR_DVFS)
+#if defined(SUPPORT_LINUX_DVFS)
 	IMG_UINT32      ui32PollMs;
 #endif
 	IMG_BOOL        bIdleReq;
 	PFN_SYS_DEV_DVFS_SET_FREQUENCY  pfnSetFrequency;
 	PFN_SYS_DEV_DVFS_SET_VOLTAGE    pfnSetVoltage;
 
-#if defined(CONFIG_DEVFREQ_THERMAL) && defined(PVR_DVFS)
+#if defined(CONFIG_DEVFREQ_THERMAL) && defined(SUPPORT_LINUX_DVFS)
 	struct devfreq_cooling_power *psPowerOps;
 #endif
 } IMG_DVFS_DEVICE_CFG;
 
-#if defined(PVR_DVFS)
+#if defined(SUPPORT_LINUX_DVFS)
 typedef struct _IMG_DVFS_GOVERNOR_
 {
 	IMG_BOOL			bEnabled;
@@ -104,7 +104,7 @@ typedef struct _IMG_DVFS_GOVERNOR_CFG_
 #endif
 
 #if defined(__linux__)
-#if defined(PVR_DVFS)
+#if defined(SUPPORT_LINUX_DVFS)
 typedef struct _IMG_DVFS_DEVICE_
 {
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 13, 0))
@@ -113,6 +113,8 @@ typedef struct _IMG_DVFS_DEVICE_
 	struct dev_pm_opp		*psOPP;
 #endif
 	struct devfreq			*psDevFreq;
+	IMG_BOOL			bInitPending;
+	IMG_BOOL			bReady;
 	IMG_BOOL			bEnabled;
 	IMG_HANDLE			hGpuUtilUserDVFS;
 	struct devfreq_simple_ondemand_data data;
@@ -122,26 +124,15 @@ typedef struct _IMG_DVFS_DEVICE_
 } IMG_DVFS_DEVICE;
 #endif
 
-#if defined(SUPPORT_PDVFS)
-typedef struct _PDVFS_DATA_
-{
-	IMG_HANDLE hReactiveTimer;
-	IMG_BOOL bWorkInFrame;
-} PDVFS_DATA;
-#endif
-
 typedef struct _IMG_DVFS_
 {
-#if defined(PVR_DVFS)
+#if defined(SUPPORT_LINUX_DVFS)
 	IMG_DVFS_DEVICE			sDVFSDevice;
 	IMG_DVFS_GOVERNOR		sDVFSGovernor;
 	IMG_DVFS_GOVERNOR_CFG	sDVFSGovernorCfg;
-#endif
-#if defined(SUPPORT_PDVFS)
-	PDVFS_DATA				sPDVFSData;
 #endif
 	IMG_DVFS_DEVICE_CFG		sDVFSDeviceCfg;
 } PVRSRV_DVFS;
 #endif/* (__linux__) */
 
-#endif /* _PVR_DVFS_H_ */
+#endif /* PVR_DVFS_H */

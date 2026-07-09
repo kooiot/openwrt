@@ -41,14 +41,25 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#if !defined (__PHYSMEM_HOSTMEM_H__)
-#define __PHYSMEM_HOSTMEM_H__
+#if !defined(PHYSMEM_HOSTMEM_H)
+#define PHYSMEM_HOSTMEM_H
 
 #include "pvrsrv_device.h"
+#include "device.h"
 
-/*! Heap ID of the host driver's device heap */
-#define PHYS_HEAP_ID_HOSTMEM (~((IMG_UINT32)0))
+/*************************************************************************/ /*!
+@Function       HostMemDeviceCreate
+@Description    Allocate memory for and create host memory device node.
+@Output         ppsDeviceNode Pointer to device node pointer.
+@Return         PVRSRV_ERROR  PVRSRV_OK or error code
+*/ /**************************************************************************/
+PVRSRV_ERROR HostMemDeviceCreate(PVRSRV_DEVICE_NODE **ppsDeviceNode);
 
-PVRSRV_DEVICE_CONFIG* HostMemGetDeviceConfig(void);
+/*************************************************************************/ /*!
+@Function       HostMemDeviceDestroy
+@Description    Destroy host memory device node.
+@Input          psDeviceNode  Pointer to device node.
+*/ /**************************************************************************/
+void HostMemDeviceDestroy(PVRSRV_DEVICE_NODE *psDeviceNode);
 
-#endif /* !defined (__PHYSMEM_HOSTMEM_H__) */
+#endif /* !defined(PHYSMEM_HOSTMEM_H) */

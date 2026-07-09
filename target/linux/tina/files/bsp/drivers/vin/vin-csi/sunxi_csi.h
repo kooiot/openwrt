@@ -81,6 +81,8 @@ int sunxi_csi_set_ch_fps_mode(struct v4l2_subdev *sd);
 int sunxi_csi_subdev_s_parm(struct v4l2_subdev *sd,
 				   struct v4l2_streamparm *param);
 struct v4l2_subdev *sunxi_csi_get_subdev(int id);
+int sunxi_dvp_debug_register_driver(void);
+void sunxi_dvp_debug_unregister_driver(void);
 int sunxi_csi_platform_register(void);
 void sunxi_csi_platform_unregister(void);
 

@@ -23,11 +23,18 @@
 #include <linux/types.h>
 #include "../../platform/platform_cfg.h"
 
-/* A523 vipp feature */
 #define MAX_OVERLAY_NUM 0
 #define MAX_COVER_NUM 0
+#if IS_ENABLED(CONFIG_ARCH_SUN300IW1P1)
+#define MAX_OSD_NUM 2 //decide by which bk support lbc
+#define MAX_ORL_NUM 16
+#elif IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN60IW2)
 #define MAX_OSD_NUM 0
 #define MAX_ORL_NUM 16
+#else
+#define MAX_OSD_NUM 0
+#define MAX_ORL_NUM 0
+#endif
 
 #define VIPP_REG_SIZE 0x400
 #define VIPP_VIRT_NUM 4
@@ -118,6 +125,20 @@ enum vipp_en_sel {
 	VIPP_EN_ALL = 0xffffff03,
 };
 
+enum vipp_sub_status {
+	VIPP_STATUS_IDLE = 0,
+	VIPP_STATUS_WAIT_ID_RDY = (1 << 0),
+	VIPP_STATUS_INIT0 = (1 << 1),
+	VIPP_STATUS_READ_SDRAM_FST = (1 << 2),
+	VIPP_STATUS_READ_SDRAM = (1 << 3),
+	VIPP_STATUS_WRITE_SDRAM = (1 << 4),
+	VIPP_STATUS_VIPP_PRO_J = (1 << 5),
+	VIPP_STATUS_VIPP_PRO0 = (1 << 6),
+	VIPP_STATUS_VIPP_PRO1 = (1 << 7),
+	VIPP_STATUS_BYPASS_J = (1 << 8),
+	VIPP_STATUS_BYPASS_0 = (1 << 9),
+	VIPP_STATUS_FINISH_END_WAIT = (1 << 10),
+};
 
 /*register data struct for vipp100*/
 enum vipp_update_flag {
@@ -214,11 +235,23 @@ struct vipp_scaler_config {
 	unsigned int sc_x_ratio;
 	unsigned int sc_y_ratio;
 	unsigned int sc_w_shift;
+	unsigned int sc_ratio_precision;
 };
 
 struct vipp_scaler_size {
 	unsigned int sc_width;
 	unsigned int sc_height;
+};
+
+struct vipp_ds_config {
+	unsigned int ds_phase;
+	unsigned int ds_h_num;
+	unsigned int ds_w_num;
+};
+
+struct vipp_ds_size {
+	unsigned int ds_width;
+	unsigned int ds_height;
 };
 
 struct vipp_osd_config {
@@ -258,8 +291,8 @@ struct vipp_osd_para_config {
 	struct vipp_osd_overlay_cfg overlay_cfg[MAX_OVERLAY_NUM + 1];
 	struct vipp_osd_cover_cfg cover_cfg[MAX_COVER_NUM + 1];
 	struct vipp_osd_cover_data cover_data[MAX_COVER_NUM + 1];
-	struct vipp_osd_cover_cfg orl_cfg[MAX_ORL_NUM];
-	struct vipp_osd_cover_data orl_data[MAX_ORL_NUM];
+	struct vipp_osd_cover_cfg orl_cfg[MAX_ORL_NUM + 1];
+	struct vipp_osd_cover_data orl_data[MAX_ORL_NUM + 1];
 };
 
 /*
@@ -278,6 +311,8 @@ void vipp_irq_disable(unsigned int id, unsigned int irq_flag);
 unsigned int vipp_get_irq_en(unsigned int id, unsigned int irq_flag);
 void vipp_get_status(unsigned int id, struct vipp_status *status);
 void vipp_clear_status(unsigned int id, enum vipp_status_sel sel);
+unsigned int vipp_get_sub_id(unsigned int id);
+unsigned int vipp_get_sub_st(unsigned int id);
 
 /*
  * Detail information of chn function
@@ -303,6 +338,9 @@ void vipp_chroma_ds_en(unsigned int id, unsigned int en);
 void vipp_scaler_cfg(unsigned int id, struct vipp_scaler_config *cfg);
 void vipp_scaler_output_fmt(unsigned int id, enum vipp_format);
 void vipp_scaler_output_size(unsigned int id, struct vipp_scaler_size *size);
+void vipp_downsample_en(unsigned int id, unsigned int en);
+void vipp_downsample_cfg(unsigned int id, struct vipp_ds_config *cfg);
+void vipp_downsample_output_size(unsigned int id, struct vipp_ds_size *size);
 
 void vipp_output_fmt_cfg(unsigned int id, enum vipp_format fmt);
 void vipp_osd_cfg(unsigned int id, struct vipp_osd_config *cfg);

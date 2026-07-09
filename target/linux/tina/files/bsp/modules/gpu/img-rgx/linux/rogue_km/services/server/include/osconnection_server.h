@@ -41,12 +41,16 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /***************************************************************************/
-#ifndef _OSCONNECTION_SERVER_H_
-#define _OSCONNECTION_SERVER_H_
+#ifndef OSCONNECTION_SERVER_H
+#define OSCONNECTION_SERVER_H
 
 #include "handle.h"
 #include "osfunc.h"
 
+/*! Function not implemented definition. */
+#define OSCONNECTION_SERVER_NOT_IMPLEMENTED 0
+/*! Assert used for OSCONNECTION_SERVER_NOT_IMPLEMENTED. */
+#define OSCONNECTION_SERVER_NOT_IMPLEMENTED_ASSERT() PVR_ASSERT(OSCONNECTION_SERVER_NOT_IMPLEMENTED)
 
 #if defined(__linux__) || defined(__QNXNTO__) || defined(INTEGRITY_OS)
 PVRSRV_ERROR OSConnectionPrivateDataInit(IMG_HANDLE *phOsPrivateData, void *pvOSData);
@@ -54,7 +58,7 @@ PVRSRV_ERROR OSConnectionPrivateDataDeInit(IMG_HANDLE hOsPrivateData);
 
 PVRSRV_ERROR OSConnectionSetHandleOptions(PVRSRV_HANDLE_BASE *psHandleBase);
 
-PVRSRV_DEVICE_NODE* OSGetDevData(CONNECTION_DATA *psConnection);
+PVRSRV_DEVICE_NODE* OSGetDevNode(CONNECTION_DATA *psConnection);
 
 #else	/* defined(__linux__) || defined(__QNXNTO__) || defined(INTEGRITY_OS) */
 #ifdef INLINE_IS_PRAGMA
@@ -64,7 +68,7 @@ PVRSRV_DEVICE_NODE* OSGetDevData(CONNECTION_DATA *psConnection);
 @Function       OSConnectionPrivateDataInit
 @Description    Allocates and initialises any OS-specific private data
                 relating to a connection.
-                Called from PVRSRVConnectionConnect().
+                Called from PVRSRVCommonConnectionConnect().
 @Input          pvOSData            pointer to any OS private data
 @Output         phOsPrivateData     handle to the created connection
                                     private data
@@ -75,7 +79,9 @@ static INLINE PVRSRV_ERROR OSConnectionPrivateDataInit(IMG_HANDLE *phOsPrivateDa
 	PVR_UNREFERENCED_PARAMETER(phOsPrivateData);
 	PVR_UNREFERENCED_PARAMETER(pvOSData);
 
-	return PVRSRV_OK;
+	OSCONNECTION_SERVER_NOT_IMPLEMENTED_ASSERT();
+
+	return PVRSRV_ERROR_NOT_IMPLEMENTED;
 }
 
 #ifdef INLINE_IS_PRAGMA
@@ -93,7 +99,9 @@ static INLINE PVRSRV_ERROR OSConnectionPrivateDataDeInit(IMG_HANDLE hOsPrivateDa
 {
 	PVR_UNREFERENCED_PARAMETER(hOsPrivateData);
 
-	return PVRSRV_OK;
+	OSCONNECTION_SERVER_NOT_IMPLEMENTED_ASSERT();
+
+	return PVRSRV_ERROR_NOT_IMPLEMENTED;
 }
 
 #ifdef INLINE_IS_PRAGMA
@@ -103,19 +111,23 @@ static INLINE PVRSRV_ERROR OSConnectionSetHandleOptions(PVRSRV_HANDLE_BASE *psHa
 {
 	PVR_UNREFERENCED_PARAMETER(psHandleBase);
 
-	return PVRSRV_OK;
+	OSCONNECTION_SERVER_NOT_IMPLEMENTED_ASSERT();
+
+	return PVRSRV_ERROR_NOT_IMPLEMENTED;
 }
 
 #ifdef INLINE_IS_PRAGMA
-#pragma inline(OSGetDevData)
+#pragma inline(OSGetDevNode)
 #endif
-static INLINE PVRSRV_DEVICE_NODE* OSGetDevData(CONNECTION_DATA *psConnection)
+static INLINE PVRSRV_DEVICE_NODE* OSGetDevNode(CONNECTION_DATA *psConnection)
 {
 	PVR_UNREFERENCED_PARAMETER(psConnection);
+
+	OSCONNECTION_SERVER_NOT_IMPLEMENTED_ASSERT();
 
 	return NULL;
 }
 #endif	/* defined(__linux__) || defined(__QNXNTO__) || defined(INTEGRITY_OS) */
 
 
-#endif /* _OSCONNECTION_SERVER_H_ */
+#endif /* OSCONNECTION_SERVER_H */

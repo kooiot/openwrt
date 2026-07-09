@@ -42,6 +42,24 @@
 
 WINDOW_SYSTEM ?= nullws
 
+ifneq ($(MESA_EGL),)
+ $(warning ******************************************************)
+ $(warning WARNING: You have tried to set MESA_EGL but this)
+ $(warning is not supported and will be ignored.)
+ $(warning ******************************************************)
+
+ override undefine MESA_EGL
+endif
+
+ifneq ($(MESA_WSI),)
+ $(warning ******************************************************)
+ $(warning WARNING: You have tried to set MESA_WSI but this)
+ $(warning is not supported and will be ignored.)
+ $(warning ******************************************************)
+
+ override undefine MESA_WSI
+endif
+
 ifneq ($(SUPPORT_BUILD_LWS),)
  $(warning ******************************************************)
  $(warning WARNING: You have enabled SUPPORT_BUILD_LWS but this)

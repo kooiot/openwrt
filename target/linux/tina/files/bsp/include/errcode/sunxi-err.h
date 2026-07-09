@@ -131,6 +131,9 @@ enum sunxi_err_code {
 	E_WDT_HW_ERR0		= E_MOD(E_MOD_WDT) | E_TYPE(E_TYPE_HW) | 0x0,
 
 	E_DMA_HW_ERR0		= E_MOD(E_MOD_DMA) | E_TYPE(E_TYPE_HW) | 0x0,
+	E_DMA_SW_DEP_ERR0	= E_MOD(E_MOD_DMA) | E_TYPE(E_TYPE_SW_DEP) | 0x0,
+	E_DMA_SW_SYS_ERR0     = E_MOD(E_MOD_DMA) | E_TYPE(E_TYPE_SW_SYS) | 0x0,
+	E_DMA_SW_ARG_ERR0     = E_MOD(E_MOD_DMA) | E_TYPE(E_TYPE_SW_ARG) | 0x0,
 
 	E_RTC_HW_ERR0		= E_MOD(E_MOD_RTC) | E_TYPE(E_TYPE_HW) | 0x0,
 
@@ -204,5 +207,6 @@ enum sunxi_err_code {
 
 #include "sunxi-err-audio.h"
 #include "sunxi-err-uart-ng.h"
+#include "sunxi-err-dma.h"
 
 #endif

@@ -372,9 +372,9 @@ static SOC_ENUM_SINGLE_EXT_DECL(sunxi_rx_sync_mode_enum, sunxi_switch_text);
 
 static SOC_ENUM_SINGLE_DECL(sunxi_lineoutl_enum, SUNXI_DAC_REG, LINEOUTLDIFFEN, sunxi_differ_text);
 static SOC_ENUM_SINGLE_DECL(sunxi_lineoutr_enum, SUNXI_DAC_REG, LINEOUTRDIFFEN, sunxi_differ_text);
-static SOC_ENUM_SINGLE_DECL(sunxi_mic1_enum, SUNXI_ADC1_REG, MIC1_SIN_EN, sunxi_differ_text);
-static SOC_ENUM_SINGLE_DECL(sunxi_mic2_enum, SUNXI_ADC2_REG, MIC2_SIN_EN, sunxi_differ_text);
-static SOC_ENUM_SINGLE_DECL(sunxi_mic3_enum, SUNXI_ADC3_REG, MIC3_SIN_EN, sunxi_differ_text);
+static SOC_ENUM_SINGLE_DECL(sunxi_mic1_enum, SND_SOC_NOPM, MIC1SIN_SHIFT, sunxi_differ_text);
+static SOC_ENUM_SINGLE_DECL(sunxi_mic2_enum, SND_SOC_NOPM, MIC2SIN_SHIFT, sunxi_differ_text);
+static SOC_ENUM_SINGLE_DECL(sunxi_mic3_enum, SND_SOC_NOPM, MIC3SIN_SHIFT, sunxi_differ_text);
 
 static SOC_ENUM_SINGLE_DECL(sunxi_dacdrc_sta_enum, SND_SOC_NOPM, DACDRC_SHIFT, sunxi_switch_text);
 static SOC_ENUM_SINGLE_DECL(sunxi_dachpf_sta_enum, SND_SOC_NOPM, DACHPF_SHIFT, sunxi_switch_text);
@@ -620,6 +620,83 @@ static int sunxi_codec_set_dap_status(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+/* MIC SINGLE/DIFFER FUNC */
+static int sunxi_codec_get_adc_status(struct snd_kcontrol *kcontrol,
+				      struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct sunxi_codec *codec = snd_soc_component_get_drvdata(component);
+	struct regmap *regmap = codec->mem.regmap;
+	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
+	unsigned int shift = e->shift_l;
+	unsigned int reg_val;
+
+	switch (shift) {
+	case MIC1SIN_SHIFT:
+		regmap_read(regmap, SUNXI_ADC1_REG, &reg_val);
+		ucontrol->value.integer.value[0] =
+			(reg_val & 0x1 << MIC1_SIN_EN) ? 0 : 1;
+		break;
+	case MIC2SIN_SHIFT:
+		regmap_read(regmap, SUNXI_ADC2_REG, &reg_val);
+		ucontrol->value.integer.value[0] =
+			(reg_val & 0x1 << MIC2_SIN_EN) ? 0 : 1;
+		break;
+	case MIC3SIN_SHIFT:
+		regmap_read(regmap, SUNXI_ADC3_REG, &reg_val);
+		ucontrol->value.integer.value[0] =
+			(reg_val & 0x1 << MIC3_SIN_EN) ? 0 : 1;
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static int sunxi_codec_set_adc_status(struct snd_kcontrol *kcontrol,
+				      struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct sunxi_codec *codec = snd_soc_component_get_drvdata(component);
+	struct regmap *regmap = codec->mem.regmap;
+	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
+	unsigned int shift = e->shift_l;
+
+	switch (shift) {
+	case MIC1SIN_SHIFT:
+		if (ucontrol->value.integer.value[0]) {
+			regmap_update_bits(regmap, SUNXI_ADC1_REG,
+					   0x1 << MIC1_SIN_EN, 0x0 << MIC1_SIN_EN);
+		} else {
+			regmap_update_bits(regmap, SUNXI_ADC1_REG,
+					   0x1 << MIC1_SIN_EN, 0x1 << MIC1_SIN_EN);
+		}
+		break;
+	case MIC2SIN_SHIFT:
+		if (ucontrol->value.integer.value[0]) {
+			regmap_update_bits(regmap, SUNXI_ADC2_REG,
+					   0x1 << MIC2_SIN_EN, 0x0 << MIC2_SIN_EN);
+		} else {
+			regmap_update_bits(regmap, SUNXI_ADC2_REG,
+					   0x1 << MIC2_SIN_EN, 0x1 << MIC2_SIN_EN);
+		}
+		break;
+	case MIC3SIN_SHIFT:
+		if (ucontrol->value.integer.value[0]) {
+			regmap_update_bits(regmap, SUNXI_ADC3_REG,
+					   0x1 << MIC3_SIN_EN, 0x0 << MIC3_SIN_EN);
+		} else {
+			regmap_update_bits(regmap, SUNXI_ADC3_REG,
+					   0x1 << MIC3_SIN_EN, 0x1 << MIC3_SIN_EN);
+		}
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 /* ADDA LOOP FUNC */
 static int sunxi_codec_get_adda_loop_mode(struct snd_kcontrol *kcontrol,
 					  struct snd_ctl_elem_value *ucontrol)
@@ -703,9 +780,12 @@ static const struct snd_kcontrol_new sunxi_codec_controls[] = {
 
 	SOC_ENUM("LINEOUTL Output Select", sunxi_lineoutl_enum),
 	SOC_ENUM("LINEOUTR Output Select", sunxi_lineoutr_enum),
-	SOC_ENUM("MIC1 Input Select", sunxi_mic1_enum),
-	SOC_ENUM("MIC2 Input Select", sunxi_mic2_enum),
-	SOC_ENUM("MIC3 Input Select", sunxi_mic3_enum),
+	SOC_ENUM_EXT("MIC1 Input Select", sunxi_mic1_enum,
+		     sunxi_codec_get_adc_status, sunxi_codec_set_adc_status),
+	SOC_ENUM_EXT("MIC2 Input Select", sunxi_mic2_enum,
+		     sunxi_codec_get_adc_status, sunxi_codec_set_adc_status),
+	SOC_ENUM_EXT("MIC3 Input Select", sunxi_mic3_enum,
+		     sunxi_codec_get_adc_status, sunxi_codec_set_adc_status),
 
 	/* Volume */
 	SOC_SINGLE_TLV("DAC Digital Volume", SUNXI_DAC_DPC, DVOL, 0x3F, 1, digital_tlv),
@@ -2641,6 +2721,7 @@ static void snd_sunxi_dts_params_init(struct platform_device *pdev, struct sunxi
 	return;
 }
 
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 /* sysfs debug */
 static void snd_sunxi_dump_version(void *priv, char *buf, size_t *count)
 {
@@ -2742,6 +2823,7 @@ static int snd_sunxi_dump_store(void *priv, const char *buf, size_t count)
 
 	return 0;
 }
+#endif
 
 static int sunxi_codec_dev_probe(struct platform_device *pdev)
 {
@@ -2752,7 +2834,9 @@ static int sunxi_codec_dev_probe(struct platform_device *pdev)
 	struct sunxi_codec_mem *mem;
 	struct sunxi_codec_clk *clk;
 	struct sunxi_codec_dts *dts;
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 	struct snd_sunxi_dump *dump;
+#endif
 
 	SND_LOG_DEBUG("\n");
 
@@ -2768,7 +2852,9 @@ static int sunxi_codec_dev_probe(struct platform_device *pdev)
 	mem = &codec->mem;
 	clk = &codec->clk;
 	dts = &codec->dts;
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 	dump = &codec->dump;
+#endif
 	codec->pdev = pdev;
 
 	/* memio init */
@@ -2820,6 +2906,7 @@ static int sunxi_codec_dev_probe(struct platform_device *pdev)
 		goto err_register_component;
 	}
 
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 	snprintf(codec->module_name, 32, "%s", "AudioCodec");
 	dump->name = codec->module_name;
 	dump->priv = codec;
@@ -2830,6 +2917,7 @@ static int sunxi_codec_dev_probe(struct platform_device *pdev)
 	ret = snd_sunxi_dump_register(dump);
 	if (ret)
 		SND_LOG_WARN("snd_sunxi_dump_register failed\n");
+#endif
 
 	SND_LOG_DEBUG("register internal-codec codec success\n");
 
@@ -2857,11 +2945,16 @@ static int sunxi_codec_dev_remove(struct platform_device *pdev)
 	struct sunxi_codec_mem *mem = &codec->mem;
 	struct sunxi_codec_clk *clk = &codec->clk;
 	struct snd_sunxi_rglt *rglt = codec->rglt;
+
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 	struct snd_sunxi_dump *dump = &codec->dump;
+#endif
 
 	SND_LOG_DEBUG("\n");
 
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 	snd_sunxi_dump_unregister(dump);
+#endif
 
 	snd_soc_unregister_component(dev);
 

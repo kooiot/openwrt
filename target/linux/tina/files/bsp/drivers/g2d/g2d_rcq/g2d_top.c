@@ -28,6 +28,13 @@ void g2d_top_set_base(unsigned long base)
 	mixer_glb = (struct g2d_mixer_glb_reg *)(base + 0x0100);
 }
 
+__u32 g2d_ip_version(void)
+{
+	__u32 reg_val;
+	reg_val = g2d_top->version.dwval;
+	return reg_val;
+}
+
 void g2d_mixer_scan_order_fun(__u32 scan_order)
 {
 	mixer_glb->mixer_ctrl.bits.scan_order = scan_order;

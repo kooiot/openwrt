@@ -15,16 +15,19 @@
 #include <linux/clkdev.h>
 #include <linux/delay.h>
 #include <sunxi-autogen.h>
+#if IS_ENABLED(CONFIG_AW_ASRM_PROVIDE_PERI_CLK_INFO)
+#include <linux/sunxi_amp_rsc.h>
+#endif
 #include "ccu_common.h"
 #include "ccu_gate.h"
 #include "ccu_reset.h"
 #include "ccu_nm.h"
 
-#define SUNXI_CCU_COMMON_VERSION	"1.2.1"
+#define SUNXI_CCU_COMMON_VERSION	"1.2.6"
 
 static DEFINE_SPINLOCK(ccu_lock);
 
-#if (defined CONFIG_AW_FPGA_S4) || (defined CONFIG_AW_FPGA_V7)
+#if (defined CONFIG_AW_FPGA_BOARD)
 void ccu_helper_wait_for_lock(struct ccu_common *common, u32 lock)
 {
 }
@@ -63,14 +66,14 @@ void ccu_helper_wait_for_lock(struct ccu_common *common, u32 lock)
 	if (lock_times == 3)
 		udelay(20);
 	else
-		sunxi_err(NULL, " %s fail to wait lock!\n", clk_hw_get_name(&common->hw));
+		WARN(1, " %s fail to wait lock, please check if pll rate in vco range!\n", clk_hw_get_name(&common->hw));
 #else
 	WARN_ON(readl_relaxed_poll_timeout(addr, reg, reg & lock, 100, 70000));
 #endif
 }
 #endif
 
-#if (defined CONFIG_AW_FPGA_S4) || (defined CONFIG_AW_FPGA_V7)
+#if (defined CONFIG_AW_FPGA_BOARD)
 void ccu_helper_wait_for_clear(struct ccu_common *common, u32 clear)
 {
 }
@@ -323,10 +326,18 @@ int sunxi_ccu_probe(struct device_node *node, void __iomem *reg,
 
 		sunxi_debug(NULL, "%s: sunxi ccu register. \n", name);
 
+#if IS_ENABLED(CONFIG_AW_ASRM_PROVIDE_PERI_CLK_INFO)
+		int is_rtos_used = sunxi_of_is_rproc_peri_clk(node, i);
+		if (!is_rtos_used || (is_rtos_used && hw->init->flags & SUNXI_CLK_IS_COMMON))
+			ret = of_clk_hw_register(node, hw);
+		else
+			continue; /* Skip register non-common clocks */
+#else
 		ret = of_clk_hw_register(node, hw);
+#endif
 
 /* add this CONFIG for clk SATA */
-#ifdef CONFIG_AW_CCU_DEBUG
+#if IS_ENABLED(CONFIG_AW_CCU_DEBUG)
 		clk_hw_register_clkdev(hw, name, NULL);
 #endif
 
@@ -427,6 +438,30 @@ int ccu_is_sdm_enabled(struct clk *clk)
 	return ccu_nm_is_sdm_enabled(parent_hw);
 }
 EXPORT_SYMBOL_GPL(ccu_is_sdm_enabled);
+
+unsigned int ccu_get_table_div(const struct clk_div_table *table,
+							unsigned int val)
+{
+	const struct clk_div_table *clkt;
+
+	for (clkt = table; clkt->div; clkt++)
+		if (clkt->val == val)
+			return clkt->div;
+	return 0;
+}
+EXPORT_SYMBOL_GPL(ccu_get_table_div);
+
+unsigned int ccu_get_table_val(const struct clk_div_table *table,
+							unsigned int div)
+{
+	const struct clk_div_table *clkt;
+
+	for (clkt = table; clkt->div; clkt++)
+		if (clkt->div == div)
+			return clkt->val;
+	return 0;
+}
+EXPORT_SYMBOL_GPL(ccu_get_table_val);
 
 MODULE_LICENSE("GPL v2");
 MODULE_VERSION(SUNXI_CCU_COMMON_VERSION);

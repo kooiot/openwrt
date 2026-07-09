@@ -40,8 +40,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#ifndef _PVR_INTRINSICS_H_
-#define _PVR_INTRINSICS_H_
+#ifndef PVR_INTRINSICS_H
+#define PVR_INTRINSICS_H
 
 /* PVR_CTZLL:
  * Count the number of trailing zeroes in a long long integer
@@ -67,4 +67,4 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 #endif
 
-#endif /* _PVR_INTRINSICS_H_ */
+#endif /* PVR_INTRINSICS_H */

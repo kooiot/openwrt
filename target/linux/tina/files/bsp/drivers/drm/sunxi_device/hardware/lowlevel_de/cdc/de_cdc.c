@@ -455,7 +455,7 @@ static int sw_highlight_ratio(u32 hw_hl, u32 width, u32 height, int th_low_pct,
 {
 	int ratio;
 	int th_low, th_high;
-	s64 tmp;
+	u64 tmp;
 	int len;
 
 	len = width * height;
@@ -466,8 +466,9 @@ static int sw_highlight_ratio(u32 hw_hl, u32 width, u32 height, int th_low_pct,
 		ratio = 0;
 	} else {
 		if (hw_hl > th_low && hw_hl < th_high) {
-			tmp = (s64)(hw_hl - th_low) * 255;
-			ratio = (int)(tmp / (th_high - th_low));
+			tmp = (u64)(hw_hl - th_low) * 255;
+			do_div(tmp, th_high - th_low);
+			ratio = (int)tmp;
 		} else if (hw_hl >= th_high) {
 			ratio = 255;
 		} else {

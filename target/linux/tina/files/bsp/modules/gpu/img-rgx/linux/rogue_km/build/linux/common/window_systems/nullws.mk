@@ -41,16 +41,20 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### ###########################################################################
 
-LWS_COMPONENTS += lws
+ifeq ($(SUPPORT_COMPUTE_ONLY),)
+ LWS_COMPONENTS += lws
 
-ifeq ($(SUPPORT_DISPLAY_CLASS),1)
- COMPONENTS += null_ws
-endif
+ ifeq ($(SUPPORT_DISPLAY_CLASS),1)
+  COMPONENTS += null_ws
+ endif
 
-ifeq ($(PVR_REMOTE),1)
- COMPONENTS += null_remote null_none
-endif
+ ifeq ($(PVR_REMOTE),1)
+  COMPONENTS += null_remote null_none
+ else ifeq ($(PVR_NONE),1)
+  COMPONENTS += null_none
+ endif
 
-ifneq ($(GBM_BACKEND),)
- COMPONENTS += gbm
+ ifneq ($(GBM_BACKEND),)
+  COMPONENTS += gbm
+ endif
 endif

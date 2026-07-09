@@ -65,9 +65,6 @@ struct sunxi_ahub {
 	unsigned int data_late;
 	bool tx_lsb_first;
 	bool rx_lsb_first;
-
-	/* for hdmi audio */
-	enum HDMI_FORMAT hdmi_fmt;
 };
 
 #endif /* __SND_SUNXI_AHUB_H */

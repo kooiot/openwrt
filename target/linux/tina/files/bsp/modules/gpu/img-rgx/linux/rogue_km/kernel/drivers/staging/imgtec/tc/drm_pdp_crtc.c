@@ -1,58 +1,61 @@
-/* -*- mode: c; indent-tabs-mode: t; c-basic-offset: 8; tab-width: 8 -*- */
-/* vi: set ts=8 sw=8 sts=8: */
-/*************************************************************************/ /*!
-@File
-@Codingstyle    LinuxKernel
-@Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
-@License        Dual MIT/GPLv2
-
-The contents of this file are subject to the MIT license as set out below.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-Alternatively, the contents of this file may be used under the terms of
-the GNU General Public License Version 2 ("GPL") in which case the provisions
-of GPL are applicable instead of those above.
-
-If you wish to allow use of your version of this file only under the terms of
-GPL, and not to allow others to use your version of this file under the terms
-of the MIT license, indicate your decision by deleting the provisions above
-and replace them with the notice and other provisions required by GPL as set
-out in the file called "GPL-COPYING" included in this distribution. If you do
-not delete the provisions above, a recipient may use your version of this file
-under the terms of either the MIT license or GPL.
-
-This License is also included in this distribution in the file called
-"MIT-COPYING".
-
-EXCEPT AS OTHERWISE STATED IN A NEGOTIATED AGREEMENT: (A) THE SOFTWARE IS
-PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
-BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE AND NONINFRINGEMENT; AND (B) IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/ /**************************************************************************/
+/*
+ * @File
+ * @Codingstyle LinuxKernel
+ * @Copyright   Copyright (c) Imagination Technologies Ltd. All Rights Reserved
+ * @License     Dual MIT/GPLv2
+ *
+ * The contents of this file are subject to the MIT license as set out below.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * Alternatively, the contents of this file may be used under the terms of
+ * the GNU General Public License Version 2 ("GPL") in which case the provisions
+ * of GPL are applicable instead of those above.
+ *
+ * If you wish to allow use of your version of this file only under the terms of
+ * GPL, and not to allow others to use your version of this file under the terms
+ * of the MIT license, indicate your decision by deleting the provisions above
+ * and replace them with the notice and other provisions required by GPL as set
+ * out in the file called "GPL-COPYING" included in this distribution. If you do
+ * not delete the provisions above, a recipient may use your version of this file
+ * under the terms of either the MIT license or GPL.
+ *
+ * This License is also included in this distribution in the file called
+ * "MIT-COPYING".
+ *
+ * EXCEPT AS OTHERWISE STATED IN A NEGOTIATED AGREEMENT: (A) THE SOFTWARE IS
+ * PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+ * BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+ * PURPOSE AND NONINFRINGEMENT; AND (B) IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 
 #include "pvr_linux_fence.h"
 #include "drm_pdp_drv.h"
 
-#include <linux/reservation.h>
 #include <linux/version.h>
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0))
+#include <drm/drm_vblank.h>
+#else
 #include <drm/drmP.h>
+#endif
+
 #include <drm/drm_crtc.h>
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_plane_helper.h>
 
+#include "pvr_dma_resv.h"
 #include "drm_pdp_gem.h"
 
 #include "pdp_apollo.h"
@@ -62,6 +65,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "plato_drv.h"
 
 #if defined(PDP_USE_ATOMIC)
+#include <drm/drm_atomic.h>
 #include <drm/drm_atomic_helper.h>
 #endif
 
@@ -94,9 +98,11 @@ static bool pdp_clocks_set(struct drm_crtc *crtc,
 		res = pdp_odin_clocks_set(crtc->dev->dev,
 				pdp_crtc->pdp_reg, pdp_crtc->pll_reg,
 				0,                       /* apollo only */
+				dev_priv->outdev - 1,
 				pdp_crtc->odn_core_reg,  /* odin only */
 				adjusted_mode->hdisplay,
-				adjusted_mode->vdisplay);
+				adjusted_mode->vdisplay,
+				dev_priv->subversion);
 		pdp_odin_set_updates_enabled(crtc->dev->dev,
 					     pdp_crtc->pdp_reg, true);
 
@@ -258,7 +264,8 @@ static void pdp_crtc_mode_set(struct drm_crtc *crtc,
 			     vbps, vt, vas,
 			     vtbs, vfps, vbbs,
 			     adjusted_mode->flags & DRM_MODE_FLAG_NHSYNC,
-			     adjusted_mode->flags & DRM_MODE_FLAG_NVSYNC);
+			     adjusted_mode->flags & DRM_MODE_FLAG_NVSYNC,
+			     pdp_crtc->pfim_reg);
 		pdp_odin_set_powerdwn_enabled(crtc->dev->dev,
 					      pdp_crtc->pdp_reg, false);
 		pdp_odin_set_updates_enabled(crtc->dev->dev,
@@ -341,9 +348,16 @@ static void pdp_crtc_helper_mode_set_nofb(struct drm_crtc *crtc)
 	pdp_crtc_mode_set(crtc, &crtc->state->adjusted_mode);
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0))
 static void pdp_crtc_helper_atomic_flush(struct drm_crtc *crtc,
 					 struct drm_crtc_state *old_crtc_state)
 {
+#else
+static void pdp_crtc_helper_atomic_flush(struct drm_crtc *crtc,
+					 struct drm_atomic_state *state)
+{
+	struct drm_crtc_state *old_crtc_state = drm_atomic_get_new_crtc_state(state, crtc);
+#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0) */
 	struct drm_crtc_state *new_crtc_state = crtc->state;
 
 	if (!new_crtc_state->active || !old_crtc_state->active)
@@ -353,9 +367,12 @@ static void pdp_crtc_helper_atomic_flush(struct drm_crtc *crtc,
 		struct pdp_crtc *pdp_crtc = to_pdp_crtc(crtc);
 		unsigned long flags;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
+		pdp_crtc->flip_async = new_crtc_state->async_flip;
+#else
 		pdp_crtc->flip_async = !!(new_crtc_state->pageflip_flags
 					  & DRM_MODE_PAGE_FLIP_ASYNC);
-
+#endif
 		if (pdp_crtc->flip_async)
 			WARN_ON(drm_crtc_vblank_get(crtc) != 0);
 
@@ -371,8 +388,13 @@ static void pdp_crtc_helper_atomic_flush(struct drm_crtc *crtc,
 	}
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0))
 static void pdp_crtc_helper_atomic_enable(struct drm_crtc *crtc,
 					  struct drm_crtc_state *old_crtc_state)
+#else
+static void pdp_crtc_helper_atomic_enable(struct drm_crtc *crtc,
+					  struct drm_atomic_state *state)
+#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0) */
 {
 	pdp_crtc_set_enabled(crtc, true);
 
@@ -391,8 +413,13 @@ static void pdp_crtc_helper_atomic_enable(struct drm_crtc *crtc,
 	}
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0))
 static void pdp_crtc_helper_atomic_disable(struct drm_crtc *crtc,
 					   struct drm_crtc_state *old_crtc_state)
+#else
+static void pdp_crtc_helper_atomic_disable(struct drm_crtc *crtc,
+					   struct drm_atomic_state *state)
+#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0) */
 {
 	pdp_crtc_set_enabled(crtc, false);
 
@@ -490,6 +517,63 @@ static void pdp_crtc_helper_disable(struct drm_crtc *crtc)
 }
 #endif /* defined(PDP_USE_ATOMIC) */
 
+static int pfim_init(struct drm_device *dev,
+		     struct pdp_crtc *pdp_crtc,
+		     const char *crtc_name)
+{
+	struct pdp_drm_private *dev_priv = dev->dev_private;
+	struct resource *regs;
+	int err;
+
+	if (!dev_priv->pfim_capable) {
+		pdp_crtc->pfim_reg = NULL;
+		return 0;
+	}
+
+	regs = platform_get_resource_byname(to_platform_device(dev->dev),
+					    IORESOURCE_MEM,
+					    "pfim-regs");
+	if (!regs) {
+		DRM_ERROR("missing pfim register info\n");
+		return -ENXIO;
+	}
+
+	pdp_crtc->pfim_reg_phys_base = regs->start;
+	pdp_crtc->pfim_reg_size = resource_size(regs);
+
+	if (!request_mem_region(pdp_crtc->pfim_reg_phys_base,
+				pdp_crtc->pfim_reg_size,
+				crtc_name)) {
+		DRM_ERROR("failed to reserve pfim registers\n");
+		return -EBUSY;
+	}
+
+	pdp_crtc->pfim_reg =
+		ioremap(pdp_crtc->pfim_reg_phys_base, pdp_crtc->pfim_reg_size);
+	if (!pdp_crtc->pfim_reg) {
+		DRM_ERROR("failed to map pfim registers\n");
+		err = -ENOMEM;
+		goto err_release_mem;
+	}
+	return 0;
+
+err_release_mem:
+	release_mem_region(pdp_crtc->pfim_reg_phys_base,
+			   pdp_crtc->pfim_reg_size);
+	pdp_crtc->pfim_reg = NULL;
+	return err;
+}
+
+static void pfim_deinit(struct pdp_crtc *pdp_crtc)
+{
+	if (pdp_crtc->pfim_reg) {
+		iounmap(pdp_crtc->pfim_reg);
+		release_mem_region(pdp_crtc->pfim_reg_phys_base,
+				   pdp_crtc->pfim_reg_size);
+		pdp_crtc->pfim_reg = NULL;
+	}
+}
+
 static void pdp_crtc_destroy(struct drm_crtc *crtc)
 {
 	struct drm_device *dev = crtc->dev;
@@ -504,6 +588,8 @@ static void pdp_crtc_destroy(struct drm_crtc *crtc)
 
 	iounmap(pdp_crtc->pdp_reg);
 	release_mem_region(pdp_crtc->pdp_reg_phys_base, pdp_crtc->pdp_reg_size);
+
+	pfim_deinit(pdp_crtc);
 
 	kfree(pdp_crtc);
 	dev_priv->crtc = NULL;
@@ -593,8 +679,8 @@ static int pdp_crtc_flip_schedule(struct drm_crtc *crtc,
 				  struct drm_gem_object *old_obj)
 {
 	struct pdp_crtc *pdp_crtc = to_pdp_crtc(crtc);
-	struct reservation_object *resv = pdp_gem_get_resv(obj);
-	struct reservation_object *old_resv = pdp_gem_get_resv(old_obj);
+	struct dma_resv *resv = pdp_gem_get_resv(obj);
+	struct dma_resv *old_resv = pdp_gem_get_resv(old_obj);
 	struct pdp_flip_data *flip_data;
 	struct dma_fence *fence;
 	int err;
@@ -607,14 +693,14 @@ static int pdp_crtc_flip_schedule(struct drm_crtc *crtc,
 
 	ww_mutex_lock(&old_resv->lock, NULL);
 	flip_data->wait_fence =
-		dma_fence_get(reservation_object_get_excl(old_resv));
+		dma_fence_get(dma_resv_get_excl(old_resv));
 
 	if (old_resv != resv) {
 		ww_mutex_unlock(&old_resv->lock);
 		ww_mutex_lock(&resv->lock, NULL);
 	}
 
-	fence = dma_fence_get(reservation_object_get_excl(resv));
+	fence = dma_fence_get(dma_resv_get_excl(resv));
 	ww_mutex_unlock(&resv->lock);
 
 	pdp_crtc->flip_data = flip_data;
@@ -732,6 +818,10 @@ static const struct drm_crtc_funcs pdp_crtc_funcs = {
 	.set_config = drm_crtc_helper_set_config,
 	.page_flip = pdp_crtc_page_flip,
 #endif
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0))
+	.enable_vblank  = pdp_enable_vblank,
+	.disable_vblank = pdp_disable_vblank,
+#endif
 };
 
 
@@ -740,7 +830,7 @@ struct drm_crtc *pdp_crtc_create(struct drm_device *dev, uint32_t number,
 {
 	struct pdp_drm_private *dev_priv = dev->dev_private;
 	struct pdp_crtc *pdp_crtc;
-	const char *crtc_name = NULL;
+	const char *crtc_name = "crtc-0";
 	int err;
 
 	pdp_crtc = kzalloc(sizeof(*pdp_crtc), GFP_KERNEL);
@@ -757,11 +847,31 @@ struct drm_crtc *pdp_crtc_create(struct drm_device *dev, uint32_t number,
 	case 0:
 	{
 		struct resource *regs;
+		const char *pdp_resname = NULL;
+
+		if (dev_priv->version == PDP_VERSION_ODIN) {
+			switch (dev_priv->outdev) {
+			case PDP_OUTPUT_PDP1: {
+				pdp_resname = "pdp-regs";
+				break;
+			}
+			case PDP_OUTPUT_PDP2: {
+				pdp_resname = "pdp2-regs";
+				break;
+			}
+			default:
+				DRM_ERROR("wrong PDP output device\n");
+				err = -ENODEV;
+				goto err_exit;
+			}
+		} else {
+			pdp_resname = "pdp-regs";
+		}
 
 		regs = platform_get_resource_byname(
 				    to_platform_device(dev->dev),
 				    IORESOURCE_MEM,
-				    "pdp-regs");
+				    pdp_resname);
 		if (!regs) {
 			DRM_ERROR("missing pdp register info\n");
 			err = -ENXIO;
@@ -786,9 +896,8 @@ struct drm_crtc *pdp_crtc_create(struct drm_device *dev, uint32_t number,
 			pdp_crtc->pll_reg_phys_base = regs->start;
 			pdp_crtc->pll_reg_size = resource_size(regs);
 
-			pdp_crtc->pll_reg =
-				ioremap_nocache(pdp_crtc->pll_reg_phys_base,
-						pdp_crtc->pll_reg_size);
+			pdp_crtc->pll_reg = ioremap(pdp_crtc->pll_reg_phys_base,
+						    pdp_crtc->pll_reg_size);
 			if (!pdp_crtc->pll_reg) {
 				DRM_ERROR("failed to map pll registers\n");
 				err = -ENOMEM;
@@ -817,8 +926,8 @@ struct drm_crtc *pdp_crtc_create(struct drm_device *dev, uint32_t number,
 			}
 
 			pdp_crtc->pdp_bif_reg =
-				ioremap_nocache(pdp_crtc->pdp_bif_reg_phys_base,
-						pdp_crtc->pdp_bif_reg_size);
+				ioremap(pdp_crtc->pdp_bif_reg_phys_base,
+					pdp_crtc->pdp_bif_reg_size);
 			if (!pdp_crtc->pdp_bif_reg) {
 				DRM_ERROR("failed to map pdp-bif registers\n");
 				err = -ENOMEM;
@@ -841,16 +950,21 @@ struct drm_crtc *pdp_crtc_create(struct drm_device *dev, uint32_t number,
 			pdp_crtc->odn_core_size = resource_size(regs);
 
 			pdp_crtc->odn_core_reg
-				= ioremap_nocache(pdp_crtc->odn_core_phys_base,
+				= ioremap(pdp_crtc->odn_core_phys_base,
 					  pdp_crtc->odn_core_size);
 			if (!pdp_crtc->odn_core_reg) {
 				DRM_ERROR("failed to map pdp reset register\n");
 				err = -ENOMEM;
 				goto err_iounmap_regs;
 			}
+
+			err = pfim_init(dev, pdp_crtc, crtc_name);
+			if (err) {
+				DRM_ERROR("failed to initialise PFIM\n");
+				goto err_iounmap_regs;
+			}
 		}
 
-		crtc_name = "crtc-0";
 		break;
 	}
 	default:
@@ -867,8 +981,8 @@ struct drm_crtc *pdp_crtc_create(struct drm_device *dev, uint32_t number,
 		goto err_crtc_free;
 	}
 
-	pdp_crtc->pdp_reg = ioremap_nocache(pdp_crtc->pdp_reg_phys_base,
-							pdp_crtc->pdp_reg_size);
+	pdp_crtc->pdp_reg = ioremap(pdp_crtc->pdp_reg_phys_base,
+				    pdp_crtc->pdp_reg_size);
 	if (!pdp_crtc->pdp_reg) {
 		DRM_ERROR("failed to map pdp registers\n");
 		err = -ENOMEM;
@@ -896,6 +1010,7 @@ err_iounmap_regs:
 		iounmap(pdp_crtc->pdp_bif_reg);
 err_release_mem_region:
 	release_mem_region(pdp_crtc->pdp_reg_phys_base, pdp_crtc->pdp_reg_size);
+	pfim_deinit(pdp_crtc);
 err_crtc_free:
 	kfree(pdp_crtc);
 err_exit:

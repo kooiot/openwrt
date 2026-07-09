@@ -48,18 +48,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "lock.h"
 #include "allocmem.h"
 #include "osfunc.h"
-#include "lists.h"
 #include "process_stats.h"
 #include "ri_server.h"
 #include "hash.h"
 #include "connection_server.h"
 #include "pvrsrv.h"
 #include "proc_stats.h"
-#include "htbuffer.h"
 #include "pvr_ricommon.h"
+#include "di_server.h"
+#include "dllist.h"
+#if defined(__linux__)
+#include "trace_events.h"
+#endif
 
- /* Enabled OS Statistics entries: DEBUGFS on Linux, undefined for other OSs */
-#if defined(LINUX) && ( \
+/* Enabled OS Statistics entries: DEBUGFS on Linux, undefined for other OSs */
+#if defined(__linux__) && ( \
 	defined(PVRSRV_ENABLE_PERPID_STATS) || \
 	defined(PVRSRV_ENABLE_CACHEOP_STATS) || \
 	defined(PVRSRV_ENABLE_MEMORY_STATS) || \
@@ -67,8 +70,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define ENABLE_DEBUGFS_PIDS
 #endif
 
+/* Enable GPU memory accounting tracepoint */
+#if defined(__linux__) && ( \
+	defined(CONFIG_TRACE_GPU_MEM) || defined(PVRSRV_ENABLE_GPU_MEM_TRACEPOINT) )
+#define ENABLE_GPU_MEM_TRACEPOINT
+#endif
+
 /*
- *  Maximum history of process statistics that will be kept.
+ * Maximum history of process statistics that will be kept.
  */
 #define MAX_DEAD_LIST_PROCESSES  (10)
 
@@ -79,91 +88,109 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #if defined(PVRSRV_ENABLE_PERPID_STATS)
 /* Array of Process stat type defined using the X-Macro */
 #define X(stat_type, stat_str) stat_str,
-const IMG_CHAR *const pszProcessStatType[PVRSRV_PROCESS_STAT_TYPE_COUNT] = { PVRSRV_PROCESS_STAT_KEY };
+static const IMG_CHAR *const pszProcessStatType[PVRSRV_PROCESS_STAT_TYPE_COUNT] = { PVRSRV_PROCESS_STAT_KEY };
+static const IMG_CHAR *const pszDeviceStatType[PVRSRV_DEVICE_STAT_TYPE_COUNT] = { PVRSRV_DEVICE_STAT_KEY };
 #undef X
 #endif
 
 /* Array of Driver stat type defined using the X-Macro */
 #define X(stat_type, stat_str) stat_str,
-const IMG_CHAR *const pszDriverStatType[PVRSRV_DRIVER_STAT_TYPE_COUNT] = { PVRSRV_DRIVER_STAT_KEY };
+static const IMG_CHAR *const pszDriverStatType[PVRSRV_DRIVER_STAT_TYPE_COUNT] = { PVRSRV_DRIVER_STAT_KEY };
 #undef X
 
 /* structure used in hash table to track statistic entries */
-typedef struct{
+typedef struct {
 	size_t	   uiSizeInBytes;
 	IMG_PID	   uiPid;
-}_PVR_STATS_TRACKING_HASH_ENTRY;
+} _PVR_STATS_TRACKING_HASH_ENTRY;
 
 /* Function used internally to decrement tracked per-process statistic entries */
 static void _StatsDecrMemTrackedStat(_PVR_STATS_TRACKING_HASH_ENTRY *psTrackingHashEntry,
-                                    PVRSRV_MEM_ALLOC_TYPE eAllocType);
+                                     PVRSRV_MEM_ALLOC_TYPE eAllocType);
 
 #if defined(PVRSRV_ENABLE_MEMTRACK_STATS_FILE)
-void RawProcessStatsPrintElements(void *pvFile,
-				  void *pvStatPtr,
-				  OS_STATS_PRINTF_FUNC* pfnOSGetStatsPrintf);
+int RawProcessStatsPrintElements(OSDI_IMPL_ENTRY *psEntry, void *pvData);
 #endif
-
-void  PowerStatsPrintElements(void *pvFile,
-							  void *pvStatPtr,
-							  OS_STATS_PRINTF_FUNC* pfnOSGetStatsPrintf);
-
-void  GlobalStatsPrintElements(void *pvFile,
-							   void *pvStatPtr,
-							   OS_STATS_PRINTF_FUNC* pfnOSGetStatsPrintf);
+int GlobalStatsPrintElements(OSDI_IMPL_ENTRY *psEntry, void *pvData);
 
 /* Note: all of the accesses to the global stats should be protected
  * by the gsGlobalStats.hGlobalStatsLock lock. This means all of the
  * invocations of macros *_GLOBAL_STAT_VALUE. */
 
-/* Macro for fetching stat values */
-#define GET_GLOBAL_STAT_VALUE(idx) gsGlobalStats.ui32StatValue[idx]
+/* Macros for fetching stat values */
+#define GET_STAT_VALUE(ptr,var) (ptr)->i64StatValue[(var)]
+#define GET_GLOBAL_STAT_VALUE(idx) gsGlobalStats.ui64StatValue[idx]
+
+#define GET_GPUMEM_GLOBAL_STAT_VALUE() \
+	GET_GLOBAL_STAT_VALUE(PVRSRV_DRIVER_STAT_TYPE_ALLOC_PT_MEMORY_UMA) + \
+	GET_GLOBAL_STAT_VALUE(PVRSRV_DRIVER_STAT_TYPE_ALLOC_PT_MEMORY_LMA) + \
+	GET_GLOBAL_STAT_VALUE(PVRSRV_DRIVER_STAT_TYPE_ALLOC_GPUMEM_LMA) + \
+	GET_GLOBAL_STAT_VALUE(PVRSRV_DRIVER_STAT_TYPE_ALLOC_GPUMEM_UMA) + \
+	GET_GLOBAL_STAT_VALUE(PVRSRV_DRIVER_STAT_TYPE_DMA_BUF_IMPORT)
+
+#define GET_GPUMEM_PERPID_STAT_VALUE(ptr) \
+	GET_STAT_VALUE((ptr), PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA) + \
+	GET_STAT_VALUE((ptr), PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA) + \
+	GET_STAT_VALUE((ptr), PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES) + \
+	GET_STAT_VALUE((ptr), PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES) + \
+	GET_STAT_VALUE((ptr), PVRSRV_PROCESS_STAT_TYPE_DMA_BUF_IMPORT)
 /*
- *  Macros for updating stat values.
+ * Macros for updating stat values.
  */
-#define UPDATE_MAX_VALUE(a,b)					do { if ((b) > (a)) {(a) = (b);} } while(0)
-#define INCREASE_STAT_VALUE(ptr,var,val)		do { (ptr)->i32StatValue[(var)] += (val); if ((ptr)->i32StatValue[(var)] > (ptr)->i32StatValue[(var##_MAX)]) {(ptr)->i32StatValue[(var##_MAX)] = (ptr)->i32StatValue[(var)];} } while(0)
-#define INCREASE_GLOBAL_STAT_VALUE(var,idx,val)		do { (var).ui32StatValue[(idx)] += (val); if ((var).ui32StatValue[(idx)] > (var).ui32StatValue[(idx##_MAX)]) {(var).ui32StatValue[(idx##_MAX)] = (var).ui32StatValue[(idx)];} } while(0)
+#define UPDATE_MAX_VALUE(a,b)					do { if ((b) > (a)) {(a) = (b);} } while (0)
+#define INCREASE_STAT_VALUE(ptr,var,val)		do { (ptr)->i64StatValue[(var)] += (IMG_INT64)(val); if ((ptr)->i64StatValue[(var)] > (ptr)->i64StatValue[(var##_MAX)]) {(ptr)->i64StatValue[(var##_MAX)] = (ptr)->i64StatValue[(var)];} } while (0)
+#define INCREASE_GLOBAL_STAT_VALUE(var,idx,val)		do { (var).ui64StatValue[(idx)] += (IMG_UINT64)(val); if ((var).ui64StatValue[(idx)] > (var).ui64StatValue[(idx##_MAX)]) {(var).ui64StatValue[(idx##_MAX)] = (var).ui64StatValue[(idx)];} } while (0)
 #if defined(PVRSRV_DEBUG_LINUX_MEMORY_STATS)
 /* Allow stats to go negative */
-#define DECREASE_STAT_VALUE(ptr,var,val)		do { (ptr)->i32StatValue[(var)] -= (val); } while(0)
-#define DECREASE_GLOBAL_STAT_VALUE(var,idx,val)		do { (var).ui32StatValue[(idx)] -= (val); } while(0)
+#define DECREASE_STAT_VALUE(ptr,var,val)		do { (ptr)->i64StatValue[(var)] -= (val); } while (0)
+#define DECREASE_GLOBAL_STAT_VALUE(var,idx,val)		do { (var).ui64StatValue[(idx)] -= (val); } while (0)
 #else
-#define DECREASE_STAT_VALUE(ptr,var,val)		do { if ((ptr)->i32StatValue[(var)] >= (val)) { (ptr)->i32StatValue[(var)] -= (val); } else { (ptr)->i32StatValue[(var)] = 0; } } while(0)
-#define DECREASE_GLOBAL_STAT_VALUE(var,idx,val)		do { if ((var).ui32StatValue[(idx)] >= (val)) { (var).ui32StatValue[(idx)] -= (val); } else { (var).ui32StatValue[(idx)] = 0; } } while(0)
+#define DECREASE_STAT_VALUE(ptr,var,val)		do { if ((ptr)->i64StatValue[(var)] >= (val)) { (ptr)->i64StatValue[(var)] -= (IMG_INT64)(val); } else { (ptr)->i64StatValue[(var)] = 0; } } while (0)
+#define DECREASE_GLOBAL_STAT_VALUE(var,idx,val)		do { if ((var).ui64StatValue[(idx)] >= (val)) { (var).ui64StatValue[(idx)] -= (IMG_UINT64)(val); } else { (var).ui64StatValue[(idx)] = 0; } } while (0)
 #endif
 #define MAX_CACHEOP_STAT 16
 #define INCREMENT_CACHEOP_STAT_IDX_WRAP(x) ((x+1) >= MAX_CACHEOP_STAT ? 0 : (x+1))
 #define DECREMENT_CACHEOP_STAT_IDX_WRAP(x) ((x-1) < 0 ? (MAX_CACHEOP_STAT-1) : (x-1))
 
 /*
+ * Track the search of one process when PVRSRV_DEBUG_LINUX_MEMORY_STATS
+ * is enabled.
+ */
+typedef enum _PVRSRV_PROC_SEARCH_STATE_
+{
+	PVRSRV_PROC_NOTFOUND,
+	PVRSRV_PROC_FOUND,
+	PVRSRV_PROC_RESURRECTED,
+} PVRSRV_PROC_SEARCH_STATE;
+
+/*
  * Structures for holding statistics...
  */
-
 #if defined(PVRSRV_ENABLE_MEMORY_STATS)
 typedef struct _PVRSRV_MEM_ALLOC_REC_
 {
 	PVRSRV_MEM_ALLOC_TYPE           eAllocType;
-	IMG_UINT64                      ui64Key;
 	void*                           pvCpuVAddr;
 	IMG_CPU_PHYADDR	                sCpuPAddr;
 	size_t                          uiBytes;
-	void*                           pvPrivateData;
-#if defined(PVRSRV_DEBUG_LINUX_MEMORY_STATS) && defined(DEBUG)
+#if defined(PVRSRV_DEBUG_LINUX_MEMORY_STATS_ON)
 	void*                           pvAllocdFromFile;
 	IMG_UINT32                      ui32AllocdFromLine;
 #endif
-	IMG_PID	                        pid;
-	struct _PVRSRV_MEM_ALLOC_REC_*  psNext;
-	struct _PVRSRV_MEM_ALLOC_REC_** ppsThis;
 } PVRSRV_MEM_ALLOC_REC;
+
+typedef struct PVRSRV_MEM_ALLOC_PRINT_DATA_TAG
+{
+	OSDI_IMPL_ENTRY *psEntry;
+	IMG_PID	        pid;
+	IMG_UINT32      ui32NumEntries;
+} PVRSRV_MEM_ALLOC_PRINT_DATA;
 #endif
 
 typedef struct _PVRSRV_PROCESS_STATS_ {
 
 	/* Linked list pointers */
-	struct _PVRSRV_PROCESS_STATS_* psNext;
-	struct _PVRSRV_PROCESS_STATS_* psPrev;
+	DLLIST_NODE                    sNode;
 
 	/* Create per process lock that need to be held
 	 * to edit of its members */
@@ -173,24 +200,21 @@ typedef struct _PVRSRV_PROCESS_STATS_ {
 	IMG_PID	                       pid;
 	IMG_UINT32                     ui32RefCount;
 
-	/* Stats... */
-	IMG_INT32                      i32StatValue[PVRSRV_PROCESS_STAT_TYPE_COUNT];
+	/* Process memory stats */
+	IMG_INT64                      i64StatValue[PVRSRV_PROCESS_STAT_TYPE_COUNT];
 	IMG_UINT32                     ui32StatAllocFlags;
 
 #if defined(PVRSRV_ENABLE_CACHEOP_STATS)
-	struct _CACHEOP_STRUCT_  {
+	struct _CACHEOP_STRUCT_ {
 		PVRSRV_CACHE_OP        uiCacheOp;
 #if defined(PVRSRV_ENABLE_GPU_MEMORY_INFO) && defined(DEBUG)
 		IMG_DEV_VIRTADDR       sDevVAddr;
 		IMG_DEV_PHYADDR        sDevPAddr;
-		RGXFWIF_DM             eFenceOpType;
 #endif
 		IMG_DEVMEM_SIZE_T      uiOffset;
 		IMG_DEVMEM_SIZE_T      uiSize;
 		IMG_UINT64             ui64ExecuteTime;
-		IMG_BOOL               bRangeBasedFlush;
 		IMG_BOOL               bUserModeFlush;
-		IMG_UINT32             ui32OpSeqNum;
 		IMG_BOOL               bIsFence;
 		IMG_PID                ownerPid;
 	}                              asCacheOp[MAX_CACHEOP_STAT];
@@ -199,63 +223,55 @@ typedef struct _PVRSRV_PROCESS_STATS_ {
 
 	/* Other statistics structures */
 #if defined(PVRSRV_ENABLE_MEMORY_STATS)
-	PVRSRV_MEM_ALLOC_REC*          psMemoryRecords;
+	HASH_TABLE* psMemoryRecords;
 #endif
+	/* Device stats */
+	IMG_UINT32                     ui32DevCount;
+	IMG_INT32                      ai32DevStats[][PVRSRV_DEVICE_STAT_TYPE_COUNT];
 } PVRSRV_PROCESS_STATS;
 
-#if defined (ENABLE_DEBUGFS_PIDS)
+#if defined(ENABLE_DEBUGFS_PIDS)
 
 typedef struct _PVRSRV_OS_STAT_ENTRY_
 {
-	void *pvOSStatsFolderData;
-	void *pvOSProcessStatsEntryData;
-	void *pvOSMemStatsEntryData;
-	void *pvOSRIMemStatsEntryData;
-	void *pvOSCacheOpStatsEntryData;
-
+	DI_GROUP *psStatsDIGroup;
+	DI_ENTRY *psProcessStatsDIEntry;
+	DI_ENTRY *psMemStatsDIEntry;
+	DI_ENTRY *psRIMemStatsDIEntry;
+	DI_ENTRY *psCacheOpStatsDIEntry;
 } PVRSRV_OS_STAT_ENTRY;
 
 static PVRSRV_OS_STAT_ENTRY gsLiveStatEntries;
 static PVRSRV_OS_STAT_ENTRY gsRetiredStatEntries;
 
-void  GenericStatsPrintElementsLive(void *pvFile,
-				    void *pvStatPtr,
-				    OS_STATS_PRINTF_FUNC* pfnOSGetStatsPrintf);
-
-void  GenericStatsPrintElementsRetired(void *pvFile,
-				       void *pvStatPtr,
-				       OS_STATS_PRINTF_FUNC* pfnOSGetStatsPrintf);
+int GenericStatsPrintElementsLive(OSDI_IMPL_ENTRY *psEntry, void *pvData);
+int GenericStatsPrintElementsRetired(OSDI_IMPL_ENTRY *psEntry, void *pvData);
 
 /*
- *  Functions for printing the information stored...
+ * Functions for printing the information stored...
  */
 #if defined(PVRSRV_ENABLE_PERPID_STATS)
-void  ProcessStatsPrintElements(void *pvFile,
-				PVRSRV_PROCESS_STATS *psProcessStats,
-				OS_STATS_PRINTF_FUNC* pfnOSGetStatsPrintf);
+void ProcessStatsPrintElements(OSDI_IMPL_ENTRY *psEntry,
+                               PVRSRV_PROCESS_STATS *psProcessStats);
 #endif
 
 #if defined(PVRSRV_ENABLE_MEMORY_STATS)
-void  MemStatsPrintElements(void *pvFile,
-			    PVRSRV_PROCESS_STATS *psProcessStats,
-			    OS_STATS_PRINTF_FUNC* pfnOSGetStatsPrintf);
+void MemStatsPrintElements(OSDI_IMPL_ENTRY *psEntry,
+                           PVRSRV_PROCESS_STATS *psProcessStats);
 #endif
 
 #if defined(PVRSRV_ENABLE_GPU_MEMORY_INFO)
-void  RIMemStatsPrintElements(void *pvFile,
-			      PVRSRV_PROCESS_STATS *psProcessStats,
-			      OS_STATS_PRINTF_FUNC* pfnOSGetStatsPrintf);
+void RIMemStatsPrintElements(OSDI_IMPL_ENTRY *psEntry,
+                             PVRSRV_PROCESS_STATS *psProcessStats);
 #endif
 
 #if defined(PVRSRV_ENABLE_CACHEOP_STATS)
-void  CacheOpStatsPrintElements(void *pvFile,
-				PVRSRV_PROCESS_STATS *psProcessStats,
-				OS_STATS_PRINTF_FUNC* pfnOSGetStatsPrintf);
+void CacheOpStatsPrintElements(OSDI_IMPL_ENTRY *psEntry,
+                               PVRSRV_PROCESS_STATS *psProcessStats);
 #endif
 
-typedef void (PVRSRV_STATS_PRINT_ELEMENTS)(void *pvFile,
-					   PVRSRV_PROCESS_STATS *psProcessStats,
-					   OS_STATS_PRINTF_FUNC* pfnOSGetStatsPrintf);
+typedef void (PVRSRV_STATS_PRINT_ELEMENTS)(OSDI_IMPL_ENTRY *psEntry,
+                                           PVRSRV_PROCESS_STATS *psProcessStats);
 
 typedef enum
 {
@@ -300,25 +316,25 @@ _prepareStatsHeaderString(IMG_CHAR *pszStatsSpecificStr, const IMG_CHAR* pszGene
 	IMG_CHAR szStatsHeaderFooterStr[75];
 
 	/* Prepare text content of the header in a local string */
-	strcpy(szStatsHeaderFooterStr, pszStatsSpecificStr);
-	strcat(szStatsHeaderFooterStr, pszGenericHeaderStr);
+	OSStringLCopy(szStatsHeaderFooterStr, pszStatsSpecificStr, ARRAY_SIZE(szStatsHeaderFooterStr));
+	OSStringLCat(szStatsHeaderFooterStr, pszGenericHeaderStr, ARRAY_SIZE(szStatsHeaderFooterStr));
 
 	/* Write all '-' characters to the header string */
 	memset(pszStatsSpecificStr, '-', SEPARATOR_STR_LEN);
 	pszStatsSpecificStr[SEPARATOR_STR_LEN] = '\0';
 
 	/* Find the spot for text content in the header string */
-	ui32NumSeparators = (SEPARATOR_STR_LEN - strlen(szStatsHeaderFooterStr)) >> 1;
+	ui32NumSeparators = (SEPARATOR_STR_LEN - OSStringLength(szStatsHeaderFooterStr)) >> 1;
 
 	/* Finally write the text content */
 	OSSNPrintf(pszStatsSpecificStr + ui32NumSeparators,
-		   strlen(szStatsHeaderFooterStr),
+		   OSStringLength(szStatsHeaderFooterStr),
 		   "%s", szStatsHeaderFooterStr);
 
 	/* Overwrite the '\0' character added by OSSNPrintf() */
-	if(strlen(szStatsHeaderFooterStr) > 0)
+	if (OSStringLength(szStatsHeaderFooterStr) > 0)
 	{
-		pszStatsSpecificStr[ui32NumSeparators + strlen(szStatsHeaderFooterStr) - 1] = ' ';
+		pszStatsSpecificStr[ui32NumSeparators + OSStringLength(szStatsHeaderFooterStr) - 1] = ' ';
 	}
 }
 
@@ -328,7 +344,7 @@ _prepareSeparatorStrings(void)
 	IMG_UINT32 i;
 
 	/* Prepare header strings for each stat type */
-	for(i = 0; i < PVRSRV_STAT_TYPE_LAST; ++i)
+	for (i = 0; i < PVRSRV_STAT_TYPE_LAST; ++i)
 	{
 		_prepareStatsHeaderString(g_StatPvDataArr[i].szLiveStatsHeaderStr, g_szLiveHeaderStr);
 		_prepareStatsHeaderString(g_StatPvDataArr[i].szRetiredStatsHeaderStr, g_szRetiredHeaderStr);
@@ -363,23 +379,18 @@ _prepareStatsPrivateData(void)
 
 #endif
 
-#if defined(PVRSRV_ENABLE_MEMORY_STATS)
-static IMPLEMENT_LIST_INSERT(PVRSRV_MEM_ALLOC_REC)
-static IMPLEMENT_LIST_REMOVE(PVRSRV_MEM_ALLOC_REC)
-#endif
-
 /*
- *  Global Boolean to flag when the statistics are ready to monitor
- *  memory allocations.
+ * Global Boolean to flag when the statistics are ready to monitor
+ * memory allocations.
  */
-static  IMG_BOOL  bProcessStatsInitialised = IMG_FALSE;
+static IMG_BOOL bProcessStatsInitialised = IMG_FALSE;
 
 /*
  * Linked lists for process stats. Live stats are for processes which are still running
  * and the dead list holds those that have exited.
  */
-static PVRSRV_PROCESS_STATS *g_psLiveList;
-static PVRSRV_PROCESS_STATS *g_psDeadList;
+static DLLIST_NODE gsLiveList;
+static DLLIST_NODE gsDeadList;
 
 static POS_LOCK g_psLinkedListLock;
 /* Lockdep feature in the kernel cannot differentiate between different instances of same lock type.
@@ -388,32 +399,29 @@ static POS_LOCK g_psLinkedListLock;
  * a false warning message about the possible occurrence of deadlock due to recursive lock acquisition.
  * Hence we create the following sub classes to explicitly appraise Lockdep of such safe lock nesting */
 #define PROCESS_LOCK_SUBCLASS_CURRENT	1
-#define PROCESS_LOCK_SUBCLASS_PREV 		2
-#define PROCESS_LOCK_SUBCLASS_NEXT 		3
 #if defined(ENABLE_DEBUGFS_PIDS)
 /*
  * Pointer to OS folder to hold PID folders.
  */
-static void *pvOSProcStatsFolder;
+static DI_GROUP *psProcStatsDIGroup;
 #endif
 #if defined(PVRSRV_ENABLE_MEMTRACK_STATS_FILE)
-static void *pvOSProcStats;
+static DI_ENTRY *psProcStatsDIEntry;
 #endif
 
 #if defined(PVRSRV_ENABLE_GPU_MEMORY_INFO)
-/* global driver PID stats registration handle */
+/* Global driver PID stats registration handle */
 static IMG_HANDLE g_hDriverProcessStats;
 #endif
 
-/* global driver-data folders */
+/* Global driver-data folders */
 typedef struct _GLOBAL_STATS_
 {
-	IMG_UINT32  ui32StatValue[PVRSRV_DRIVER_STAT_TYPE_COUNT];
+	IMG_UINT64 ui64StatValue[PVRSRV_DRIVER_STAT_TYPE_COUNT];
 	POS_LOCK   hGlobalStatsLock;
 } GLOBAL_STATS;
 
-static void *pvOSGlobalMemEntryRef;
-static IMG_CHAR* const pszDriverStatFilename = "driver_stats";
+static DI_ENTRY *psGlobalMemDIEntry;
 static GLOBAL_STATS gsGlobalStats;
 
 #define HASH_INITIAL_SIZE 5
@@ -424,128 +432,11 @@ static POS_LOCK	 gpsSizeTrackingHashTableLock;
 
 static PVRSRV_ERROR _RegisterProcess(IMG_HANDLE *phProcessStats, IMG_PID ownerPid);
 
-static void _AddProcessStatsToFrontOfDeadList(PVRSRV_PROCESS_STATS* psProcessStats);
-static void _AddProcessStatsToFrontOfLiveList(PVRSRV_PROCESS_STATS* psProcessStats);
-static void _RemoveProcessStatsFromList(PVRSRV_PROCESS_STATS* psProcessStats);
-
 static void _DestroyProcessStat(PVRSRV_PROCESS_STATS* psProcessStats);
 
 static void _DecreaseProcStatValue(PVRSRV_MEM_ALLOC_TYPE eAllocType,
                                    PVRSRV_PROCESS_STATS* psProcessStats,
-                                   IMG_UINT32 uiBytes);
-/*
- * Power statistics related definitions
- */
-
-/* For the mean time, use an exponentially weighted moving average with a
- * 1/4 weighting for the new measurement.
- */
-#define MEAN_TIME(A, B)     ( ((3*(A))/4) + ((1 * (B))/4) )
-
-#define UPDATE_TIME(time, newtime) \
-	((time) > 0 ? MEAN_TIME((time),(newtime)) : (newtime))
-
-/* Enum to be used as input to GET_POWER_STAT_INDEX */
-typedef enum
-{
-	DEVICE     = 0,
-	SYSTEM     = 1,
-	POST_POWER = 0,
-	PRE_POWER  = 2,
-	POWER_OFF  = 0,
-	POWER_ON   = 4,
-	NOT_FORCED = 0,
-	FORCED     = 8,
-} PVRSRV_POWER_STAT_TYPE;
-
-/* Macro used to access one of the power timing statistics inside an array */
-#define GET_POWER_STAT_INDEX(forced,powon,prepow,system) \
-	((forced) + (powon) + (prepow) + (system))
-
-/* For the power timing stats we need 16 variables to store all the
- * combinations of forced/not forced, power-on/power-off, pre-power/post-power
- * and device/system statistics
- */
-#define NUM_POWER_STATS        (16)
-static IMG_UINT32 aui32PowerTimingStats[NUM_POWER_STATS];
-
-static void *pvOSPowerStatsEntryData;
-
-typedef struct _EXTRA_POWER_STATS_
-{
-	IMG_UINT64	ui64PreClockSpeedChangeDuration;
-	IMG_UINT64	ui64BetweenPreEndingAndPostStartingDuration;
-	IMG_UINT64	ui64PostClockSpeedChangeDuration;
-} EXTRA_POWER_STATS;
-
-#define NUM_EXTRA_POWER_STATS	10
-
-static EXTRA_POWER_STATS asClockSpeedChanges[NUM_EXTRA_POWER_STATS];
-static IMG_UINT32 ui32ClockSpeedIndexStart, ui32ClockSpeedIndexEnd;
-
-
-#if defined(PVRSRV_ENABLE_PROCESS_STATS)
-void InsertPowerTimeStatistic(IMG_UINT64 ui64SysStartTime, IMG_UINT64 ui64SysEndTime,
-                              IMG_UINT64 ui64DevStartTime, IMG_UINT64 ui64DevEndTime,
-                              IMG_BOOL bForced, IMG_BOOL bPowerOn, IMG_BOOL bPrePower)
-{
-	IMG_UINT32 *pui32Stat;
-	IMG_UINT64 ui64DeviceDiff = ui64DevEndTime - ui64DevStartTime;
-	IMG_UINT64 ui64SystemDiff = ui64SysEndTime - ui64SysStartTime;
-	IMG_UINT32 ui32Index;
-
-	if (bPrePower)
-	{
-		HTBLOGK(HTB_SF_MAIN_PRE_POWER, bPowerOn, ui64DeviceDiff, ui64SystemDiff);
-	}
-	else
-	{
-		HTBLOGK(HTB_SF_MAIN_POST_POWER, bPowerOn, ui64SystemDiff,ui64DeviceDiff);
-	}
-
-	ui32Index = GET_POWER_STAT_INDEX(bForced ? FORCED : NOT_FORCED,
-	                                 bPowerOn ? POWER_ON : POWER_OFF,
-	                                 bPrePower ? PRE_POWER : POST_POWER,
-	                                 DEVICE);
-	pui32Stat = &aui32PowerTimingStats[ui32Index];
-	*pui32Stat = UPDATE_TIME(*pui32Stat, ui64DeviceDiff);
-
-	ui32Index = GET_POWER_STAT_INDEX(bForced ? FORCED : NOT_FORCED,
-	                                 bPowerOn ? POWER_ON : POWER_OFF,
-	                                 bPrePower ? PRE_POWER : POST_POWER,
-	                                 SYSTEM);
-	pui32Stat = &aui32PowerTimingStats[ui32Index];
-	*pui32Stat = UPDATE_TIME(*pui32Stat, ui64SystemDiff);
-}
-
-static IMG_UINT64 ui64PreClockSpeedChangeMark;
-
-void InsertPowerTimeStatisticExtraPre(IMG_UINT64 ui64StartTimer, IMG_UINT64 ui64Stoptimer)
-{
-	asClockSpeedChanges[ui32ClockSpeedIndexEnd].ui64PreClockSpeedChangeDuration = ui64Stoptimer - ui64StartTimer;
-
-	ui64PreClockSpeedChangeMark = OSClockus();
-}
-
-void InsertPowerTimeStatisticExtraPost(IMG_UINT64 ui64StartTimer, IMG_UINT64 ui64StopTimer)
-{
-	IMG_UINT64 ui64Duration = ui64StartTimer - ui64PreClockSpeedChangeMark;
-
-	PVR_ASSERT(ui64PreClockSpeedChangeMark > 0);
-
-	asClockSpeedChanges[ui32ClockSpeedIndexEnd].ui64BetweenPreEndingAndPostStartingDuration = ui64Duration;
-	asClockSpeedChanges[ui32ClockSpeedIndexEnd].ui64PostClockSpeedChangeDuration = ui64StopTimer - ui64StartTimer;
-
-	ui32ClockSpeedIndexEnd = (ui32ClockSpeedIndexEnd + 1) % NUM_EXTRA_POWER_STATS;
-
-	if (ui32ClockSpeedIndexEnd == ui32ClockSpeedIndexStart)
-	{
-		ui32ClockSpeedIndexStart = (ui32ClockSpeedIndexStart + 1) % NUM_EXTRA_POWER_STATS;
-	}
-
-	ui64PreClockSpeedChangeMark = 0;
-}
-#endif
+                                   IMG_UINT64 uiBytes);
 
 /*************************************************************************/ /*!
 @Function       _FindProcessStatsInLiveList
@@ -557,18 +448,18 @@ void InsertPowerTimeStatisticExtraPost(IMG_UINT64 ui64StartTimer, IMG_UINT64 ui6
 static PVRSRV_PROCESS_STATS*
 _FindProcessStatsInLiveList(IMG_PID pid)
 {
-	PVRSRV_PROCESS_STATS* psProcessStats = g_psLiveList;
+	DLLIST_NODE *psNode, *psNext;
 
-	while (psProcessStats != NULL)
+	dllist_foreach_node(&gsLiveList, psNode, psNext)
 	{
+		PVRSRV_PROCESS_STATS* psProcessStats;
+		psProcessStats = IMG_CONTAINER_OF(psNode, PVRSRV_PROCESS_STATS, sNode);
+
 		if (psProcessStats->pid == pid)
 		{
 			return psProcessStats;
 		}
-
-		psProcessStats = psProcessStats->psNext;
 	}
-
 	return NULL;
 } /* _FindProcessStatsInLiveList */
 
@@ -582,18 +473,18 @@ _FindProcessStatsInLiveList(IMG_PID pid)
 static PVRSRV_PROCESS_STATS*
 _FindProcessStatsInDeadList(IMG_PID pid)
 {
-	PVRSRV_PROCESS_STATS* psProcessStats = g_psDeadList;
+	DLLIST_NODE *psNode, *psNext;
 
-	while (psProcessStats != NULL)
+	dllist_foreach_node(&gsDeadList, psNode, psNext)
 	{
+		PVRSRV_PROCESS_STATS* psProcessStats;
+		psProcessStats = IMG_CONTAINER_OF(psNode, PVRSRV_PROCESS_STATS, sNode);
+
 		if (psProcessStats->pid == pid)
 		{
 			return psProcessStats;
 		}
-
-		psProcessStats = psProcessStats->psNext;
 	}
-
 	return NULL;
 } /* _FindProcessStatsInDeadList */
 
@@ -625,9 +516,10 @@ _FindProcessStats(IMG_PID pid)
 static void
 _CompressMemoryUsage(void)
 {
-	PVRSRV_PROCESS_STATS* psProcessStats;
 	PVRSRV_PROCESS_STATS* psProcessStatsToBeFreed;
-	IMG_UINT32 ui32ItemsRemaining;
+	IMG_INT32 i32ItemsRemaining;
+	DLLIST_NODE *psNode, *psNext;
+	DLLIST_NODE sToBeFreedHead;
 
 	/*
 	 * We hold the lock whilst checking the list, but we'll release it
@@ -636,220 +528,120 @@ _CompressMemoryUsage(void)
 	OSLockAcquire(g_psLinkedListLock);
 
 	/* Check that the dead list is not bigger than the max size... */
-	psProcessStats          = g_psDeadList;
 	psProcessStatsToBeFreed = NULL;
-	ui32ItemsRemaining      = MAX_DEAD_LIST_PROCESSES;
+	i32ItemsRemaining      = MAX_DEAD_LIST_PROCESSES;
 
-	while (psProcessStats != NULL  &&  ui32ItemsRemaining > 0)
+	dllist_init(&sToBeFreedHead);
+
+	dllist_foreach_node(&gsDeadList, psNode, psNext)
 	{
-		ui32ItemsRemaining--;
-		if (ui32ItemsRemaining == 0)
+		i32ItemsRemaining--;
+		if (i32ItemsRemaining < 0)
 		{
 			/* This is the last allowed process, cut the linked list here! */
-			psProcessStatsToBeFreed = psProcessStats->psNext;
-			psProcessStats->psNext  = NULL;
-		}
-		else
-		{
-			psProcessStats = psProcessStats->psNext;
+			dllist_remove_node(psNode);
+			dllist_add_to_tail(&sToBeFreedHead, psNode);
 		}
 	}
 
 	OSLockRelease(g_psLinkedListLock);
 
-	/* Any processes stats remaining will need to be destroyed... */
-	while (psProcessStatsToBeFreed != NULL)
+	dllist_foreach_node(&sToBeFreedHead, psNode, psNext)
 	{
-		PVRSRV_PROCESS_STATS* psNextProcessStats = psProcessStatsToBeFreed->psNext;
-
-		psProcessStatsToBeFreed->psNext = NULL;
+		psProcessStatsToBeFreed = IMG_CONTAINER_OF(psNode, PVRSRV_PROCESS_STATS, sNode);
 		_DestroyProcessStat(psProcessStatsToBeFreed);
-		psProcessStatsToBeFreed = psNextProcessStats;
 	}
 } /* _CompressMemoryUsage */
 
 /* These functions move the process stats from the live to the dead list.
  * _MoveProcessToDeadList moves the entry in the global lists and
  * it needs to be protected by g_psLinkedListLock.
- * _MoveProcessToDeadListDebugFS performs the OS calls and it
+ * _MoveProcessToDeadList performs the OS calls and it
  * shouldn't be used under g_psLinkedListLock because this could generate a
  * lockdep warning. */
 static void
 _MoveProcessToDeadList(PVRSRV_PROCESS_STATS* psProcessStats)
 {
 	/* Take the element out of the live list and append to the dead list... */
-	_RemoveProcessStatsFromList(psProcessStats);
-	_AddProcessStatsToFrontOfDeadList(psProcessStats);
+	PVR_ASSERT(psProcessStats != NULL);
+	dllist_remove_node(&psProcessStats->sNode);
+	dllist_add_to_head(&gsDeadList, &psProcessStats->sNode);
 } /* _MoveProcessToDeadList */
 
-#if defined(PVRSRV_DEBUG_LINUX_MEMORY_STATS)
 /* These functions move the process stats from the dead to the live list.
  * _MoveProcessToLiveList moves the entry in the global lists and
  * it needs to be protected by g_psLinkedListLock.
- * _MoveProcessToLiveListDebugFS performs the OS calls and it
+ * _MoveProcessToLiveList performs the OS calls and it
  * shouldn't be used under g_psLinkedListLock because this could generate a
  * lockdep warning. */
 static void
 _MoveProcessToLiveList(PVRSRV_PROCESS_STATS* psProcessStats)
 {
 	/* Take the element out of the live list and append to the dead list... */
-	_RemoveProcessStatsFromList(psProcessStats);
-	_AddProcessStatsToFrontOfLiveList(psProcessStats);
+	PVR_ASSERT(psProcessStats != NULL);
+	dllist_remove_node(&psProcessStats->sNode);
+	dllist_add_to_head(&gsLiveList, &psProcessStats->sNode);
 } /* _MoveProcessToLiveList */
-#endif
-
-/*************************************************************************/ /*!
-@Function       _AddProcessStatsToFrontOfLiveList
-@Description    Add a statistic to the live list head.
-@Input          psProcessStats  Process stats to add.
-*/ /**************************************************************************/
-static void
-_AddProcessStatsToFrontOfLiveList(PVRSRV_PROCESS_STATS* psProcessStats)
-{
-	/* This function should always be called under global list lock g_psLinkedListLock.
-	 */
-	PVR_ASSERT(psProcessStats != NULL);
-
-	OSLockAcquireNested(psProcessStats->hLock, PROCESS_LOCK_SUBCLASS_CURRENT);
-
-	if (g_psLiveList != NULL)
-	{
-		PVR_ASSERT(psProcessStats != g_psLiveList);
-		OSLockAcquireNested(g_psLiveList->hLock, PROCESS_LOCK_SUBCLASS_PREV);
-		g_psLiveList->psPrev = psProcessStats;
-		OSLockRelease(g_psLiveList->hLock);
-		psProcessStats->psNext = g_psLiveList;
-	}
-
-	g_psLiveList = psProcessStats;
-
-	OSLockRelease(psProcessStats->hLock);
-} /* _AddProcessStatsToFrontOfLiveList */
-
-/*************************************************************************/ /*!
-@Function       _AddProcessStatsToFrontOfDeadList
-@Description    Add a statistic to the dead list head.
-@Input          psProcessStats  Process stats to add.
-*/ /**************************************************************************/
-static void
-_AddProcessStatsToFrontOfDeadList(PVRSRV_PROCESS_STATS* psProcessStats)
-{
-	PVR_ASSERT(psProcessStats != NULL);
-	OSLockAcquireNested(psProcessStats->hLock, PROCESS_LOCK_SUBCLASS_CURRENT);
-
-	if (g_psDeadList != NULL)
-	{
-		PVR_ASSERT(psProcessStats != g_psDeadList);
-		OSLockAcquireNested(g_psDeadList->hLock, PROCESS_LOCK_SUBCLASS_PREV);
-		g_psDeadList->psPrev = psProcessStats;
-		OSLockRelease(g_psDeadList->hLock);
-		psProcessStats->psNext = g_psDeadList;
-	}
-
-	g_psDeadList = psProcessStats;
-
-	OSLockRelease(psProcessStats->hLock);
-} /* _AddProcessStatsToFrontOfDeadList */
-
-/*************************************************************************/ /*!
-@Function       _RemoveProcessStatsFromList
-@Description    Detaches a process from either the live or dead list.
-@Input          psProcessStats  Process stats to remove.
-*/ /**************************************************************************/
-static void
-_RemoveProcessStatsFromList(PVRSRV_PROCESS_STATS* psProcessStats)
-{
-	PVR_ASSERT(psProcessStats != NULL);
-
-	OSLockAcquireNested(psProcessStats->hLock, PROCESS_LOCK_SUBCLASS_CURRENT);
-
-	/* Remove the item from the linked lists... */
-	if (g_psLiveList == psProcessStats)
-	{
-		g_psLiveList = psProcessStats->psNext;
-
-		if (g_psLiveList != NULL)
-		{
-			PVR_ASSERT(psProcessStats != g_psLiveList);
-			OSLockAcquireNested(g_psLiveList->hLock, PROCESS_LOCK_SUBCLASS_PREV);
-			g_psLiveList->psPrev = NULL;
-			OSLockRelease(g_psLiveList->hLock);
-
-		}
-	}
-	else if (g_psDeadList == psProcessStats)
-	{
-		g_psDeadList = psProcessStats->psNext;
-
-		if (g_psDeadList != NULL)
-		{
-			PVR_ASSERT(psProcessStats != g_psDeadList);
-			OSLockAcquireNested(g_psDeadList->hLock, PROCESS_LOCK_SUBCLASS_PREV);
-			g_psDeadList->psPrev = NULL;
-			OSLockRelease(g_psDeadList->hLock);
-		}
-	}
-	else
-	{
-		PVRSRV_PROCESS_STATS* psNext = psProcessStats->psNext;
-		PVRSRV_PROCESS_STATS* psPrev = psProcessStats->psPrev;
-
-		if (psProcessStats->psNext != NULL)
-		{
-			PVR_ASSERT(psProcessStats != psNext);
-			OSLockAcquireNested(psNext->hLock, PROCESS_LOCK_SUBCLASS_NEXT);
-			psProcessStats->psNext->psPrev = psPrev;
-			OSLockRelease(psNext->hLock);
-		}
-		if (psProcessStats->psPrev != NULL)
-		{
-			PVR_ASSERT(psProcessStats != psPrev);
-			OSLockAcquireNested(psPrev->hLock, PROCESS_LOCK_SUBCLASS_PREV);
-			psProcessStats->psPrev->psNext = psNext;
-			OSLockRelease(psPrev->hLock);
-		}
-	}
-
-
-	/* Reset the pointers in this cell, as it is not attached to anything */
-	psProcessStats->psNext = NULL;
-	psProcessStats->psPrev = NULL;
-
-	OSLockRelease(psProcessStats->hLock);
-
-} /* _RemoveProcessStatsFromList */
 
 static PVRSRV_ERROR
 _AllocateProcessStats(PVRSRV_PROCESS_STATS **ppsProcessStats, IMG_PID ownerPid)
 {
 	PVRSRV_ERROR eError;
 	PVRSRV_PROCESS_STATS *psProcessStats;
+	PVRSRV_DATA	*psPVRSRVData = PVRSRVGetPVRSRVData();
+	IMG_UINT32 ui32DevCount = 0;
 
-	psProcessStats = OSAllocZMemNoStats(sizeof(PVRSRV_PROCESS_STATS));
-	if (psProcessStats == NULL)
+	if (psPVRSRVData != NULL)
 	{
-		return PVRSRV_ERROR_OUT_OF_MEMORY;
+		ui32DevCount = psPVRSRVData->ui32RegisteredDevices;
 	}
+
+	psProcessStats = OSAllocZMemNoStats(sizeof(PVRSRV_PROCESS_STATS) +
+	                                    ui32DevCount * PVRSRV_DEVICE_STAT_TYPE_COUNT * sizeof(IMG_INT32));
+	PVR_RETURN_IF_NOMEM(psProcessStats);
 
 	psProcessStats->pid             = ownerPid;
 	psProcessStats->ui32RefCount    = 1;
-
-	psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_CONNECTIONS]     = 1;
-	psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAX_CONNECTIONS] = 1;
+	psProcessStats->ui32DevCount    = ui32DevCount;
+#if defined(PVRSRV_ENABLE_MEMORY_STATS)
+	psProcessStats->psMemoryRecords = HASH_Create(HASH_INITIAL_SIZE);
+	PVR_GOTO_IF_NOMEM(psProcessStats->psMemoryRecords, eError, free_process_stats);
+#endif
 
 	eError = OSLockCreateNoStats(&psProcessStats->hLock);
-	if (eError != PVRSRV_OK)
-	{
-		goto e0;
-	}
+	PVR_GOTO_IF_ERROR(eError, destroy_mem_recs);
 
 	*ppsProcessStats = psProcessStats;
 	return PVRSRV_OK;
 
-e0:
+destroy_mem_recs:
+#if defined(PVRSRV_ENABLE_MEMORY_STATS)
+	HASH_Delete(psProcessStats->psMemoryRecords);
+free_process_stats:
+#endif
 	OSFreeMemNoStats(psProcessStats);
 	return PVRSRV_ERROR_OUT_OF_MEMORY;
 }
+
+#if defined(PVRSRV_ENABLE_MEMORY_STATS)
+static PVRSRV_ERROR _FreeMemStatsEntry(uintptr_t k, uintptr_t v, void* pvPriv)
+{
+	PVRSRV_MEM_ALLOC_REC *psRecord = (PVRSRV_MEM_ALLOC_REC *)(uintptr_t)v;
+
+	PVR_UNREFERENCED_PARAMETER(pvPriv);
+
+#if defined(PVRSRV_DEBUG_LINUX_MEMORY_STATS_ON)
+	PVR_DPF((PVR_DBG_WARNING, "Mem Stats Record not freed: 0x%" IMG_UINT64_FMTSPECx " %p, size="IMG_SIZE_FMTSPEC", %s:%d",
+			 (IMG_UINT64)(k), psRecord, psRecord->uiBytes,
+			 (IMG_CHAR*)psRecord->pvAllocdFromFile, psRecord->ui32AllocdFromLine));
+#else
+	PVR_UNREFERENCED_PARAMETER(k);
+#endif
+	OSFreeMemNoStats(psRecord);
+
+	return PVRSRV_OK;
+}
+#endif
 
 /*************************************************************************/ /*!
 @Function       _DestroyProcessStat
@@ -863,12 +655,10 @@ _DestroyProcessStat(PVRSRV_PROCESS_STATS* psProcessStats)
 
 	OSLockAcquireNested(psProcessStats->hLock, PROCESS_LOCK_SUBCLASS_CURRENT);
 
-	/* Free the memory statistics... */
 #if defined(PVRSRV_ENABLE_MEMORY_STATS)
-	while (psProcessStats->psMemoryRecords)
-	{
-		List_PVRSRV_MEM_ALLOC_REC_Remove(psProcessStats->psMemoryRecords);
-	}
+	/* Free the memory statistics... */
+	HASH_Iterate(psProcessStats->psMemoryRecords, (HASH_pfnCallback)_FreeMemStatsEntry, NULL);
+	HASH_Delete(psProcessStats->psMemoryRecords);
 #endif
 	OSLockRelease(psProcessStats->hLock);
 
@@ -879,46 +669,64 @@ _DestroyProcessStat(PVRSRV_PROCESS_STATS* psProcessStats)
 	OSFreeMemNoStats(psProcessStats);
 } /* _DestroyProcessStat */
 
-#if defined (ENABLE_DEBUGFS_PIDS)
+#if defined(ENABLE_DEBUGFS_PIDS)
 static inline void
 _createStatsFiles(PVRSRV_OS_STAT_ENTRY* psStatsEntries,
-		  OS_STATS_PRINT_FUNC* pfnStatsPrint)
+                  DI_PFN_SHOW pfnStatsShow)
 {
+	PVRSRV_ERROR eError;
+	DI_ITERATOR_CB sIterator = {.pfnShow = pfnStatsShow};
+
 #if defined(PVRSRV_ENABLE_PERPID_STATS)
-	psStatsEntries->pvOSProcessStatsEntryData = OSCreateStatisticEntry("process_stats",
-									  psStatsEntries->pvOSStatsFolderData,
-									  pfnStatsPrint,
-									  GET_STAT_ENTRY_ID(PVRSRV_STAT_TYPE_PROCESS));
+	eError = DICreateEntry("process_stats", psStatsEntries->psStatsDIGroup,
+	                       &sIterator,
+	                       GET_STAT_ENTRY_ID(PVRSRV_STAT_TYPE_PROCESS),
+	                       DI_ENTRY_TYPE_GENERIC,
+	                       &psStatsEntries->psProcessStatsDIEntry);
+	PVR_LOG_IF_ERROR(eError, "DICreateEntry (1)");
 #endif
 
 #if defined(PVRSRV_ENABLE_CACHEOP_STATS)
-	psStatsEntries->pvOSCacheOpStatsEntryData = OSCreateStatisticEntry("cache_ops_exec",
-									  psStatsEntries->pvOSStatsFolderData,
-									  pfnStatsPrint,
-									  GET_STAT_ENTRY_ID(PVRSRV_STAT_TYPE_CACHEOP));
+	eError = DICreateEntry("cache_ops_exec", psStatsEntries->psStatsDIGroup,
+	                       &sIterator,
+	                       GET_STAT_ENTRY_ID(PVRSRV_STAT_TYPE_CACHEOP),
+	                       DI_ENTRY_TYPE_GENERIC,
+	                       &psStatsEntries->psCacheOpStatsDIEntry);
+	PVR_LOG_IF_ERROR(eError, "DICreateEntry (2)");
 #endif
 
 #if defined(PVRSRV_ENABLE_MEMORY_STATS)
-	psStatsEntries->pvOSMemStatsEntryData = OSCreateStatisticEntry("mem_area",
-								      psStatsEntries->pvOSStatsFolderData,
-								      pfnStatsPrint,
-								      GET_STAT_ENTRY_ID(PVRSRV_STAT_TYPE_MEMORY));
+	eError = DICreateEntry("mem_area", psStatsEntries->psStatsDIGroup,
+	                       &sIterator,
+	                       GET_STAT_ENTRY_ID(PVRSRV_STAT_TYPE_MEMORY),
+	                       DI_ENTRY_TYPE_GENERIC,
+	                       &psStatsEntries->psMemStatsDIEntry);
+	PVR_LOG_IF_ERROR(eError, "DICreateEntry (3)");
 #endif
 
 #if defined(PVRSRV_ENABLE_GPU_MEMORY_INFO)
-	psStatsEntries->pvOSRIMemStatsEntryData = OSCreateStatisticEntry("gpu_mem_area",
-									psStatsEntries->pvOSStatsFolderData,
-									pfnStatsPrint,
-									GET_STAT_ENTRY_ID(PVRSRV_STAT_TYPE_RIMEMORY));
+	eError = DICreateEntry("gpu_mem_area", psStatsEntries->psStatsDIGroup,
+	                       &sIterator,
+	                       GET_STAT_ENTRY_ID(PVRSRV_STAT_TYPE_RIMEMORY),
+	                       DI_ENTRY_TYPE_GENERIC,
+	                       &psStatsEntries->psRIMemStatsDIEntry);
+	PVR_LOG_IF_ERROR(eError, "DICreateEntry (4)");
 #endif
 }
 
 static inline void
 _createStatisticsEntries(void)
 {
-	pvOSProcStatsFolder                     = OSCreateStatisticFolder("proc_stats", NULL);
-	gsLiveStatEntries.pvOSStatsFolderData    = OSCreateStatisticFolder("live_pids_stats", pvOSProcStatsFolder);
-	gsRetiredStatEntries.pvOSStatsFolderData = OSCreateStatisticFolder("retired_pids_stats", pvOSProcStatsFolder);
+	PVRSRV_ERROR eError;
+
+	eError = DICreateGroup("proc_stats", NULL, &psProcStatsDIGroup);
+	PVR_LOG_IF_ERROR(eError, "DICreateGroup (1)");
+	eError = DICreateGroup("live_pids_stats", psProcStatsDIGroup,
+                           &gsLiveStatEntries.psStatsDIGroup);
+	PVR_LOG_IF_ERROR(eError, "DICreateGroup (2)");
+	eError = DICreateGroup("retired_pids_stats", psProcStatsDIGroup,
+                           &gsRetiredStatEntries.psStatsDIGroup);
+	PVR_LOG_IF_ERROR(eError, "DICreateGroup (3)");
 
 	_createStatsFiles(&gsLiveStatEntries, GenericStatsPrintElementsLive);
 	_createStatsFiles(&gsRetiredStatEntries, GenericStatsPrintElementsRetired);
@@ -930,19 +738,23 @@ static inline void
 _removeStatsFiles(PVRSRV_OS_STAT_ENTRY* psStatsEntries)
 {
 #if defined(PVRSRV_ENABLE_PERPID_STATS)
-	OSRemoveStatisticEntry(&psStatsEntries->pvOSProcessStatsEntryData);
+	DIDestroyEntry(psStatsEntries->psProcessStatsDIEntry);
+	psStatsEntries->psProcessStatsDIEntry = NULL;
 #endif
 
 #if defined(PVRSRV_ENABLE_CACHEOP_STATS)
-	OSRemoveStatisticEntry(&psStatsEntries->pvOSCacheOpStatsEntryData);
+	DIDestroyEntry(psStatsEntries->psCacheOpStatsDIEntry);
+    psStatsEntries->psCacheOpStatsDIEntry = NULL;
 #endif
 
 #if defined(PVRSRV_ENABLE_MEMORY_STATS)
-	OSRemoveStatisticEntry(&psStatsEntries->pvOSMemStatsEntryData);
+	DIDestroyEntry(psStatsEntries->psMemStatsDIEntry);
+	psStatsEntries->psMemStatsDIEntry = NULL;
 #endif
 
 #if defined(PVRSRV_ENABLE_GPU_MEMORY_INFO)
-	OSRemoveStatisticEntry(&psStatsEntries->pvOSRIMemStatsEntryData);
+	DIDestroyEntry(psStatsEntries->psRIMemStatsDIEntry);
+	psStatsEntries->psRIMemStatsDIEntry = NULL;
 #endif
 }
 
@@ -952,9 +764,12 @@ _removeStatisticsEntries(void)
 	_removeStatsFiles(&gsLiveStatEntries);
 	_removeStatsFiles(&gsRetiredStatEntries);
 
-	OSRemoveStatisticFolder(&(gsLiveStatEntries.pvOSStatsFolderData));
-	OSRemoveStatisticFolder(&(gsRetiredStatEntries.pvOSStatsFolderData));
-	OSRemoveStatisticFolder(&pvOSProcStatsFolder);
+	DIDestroyGroup(gsLiveStatEntries.psStatsDIGroup);
+	gsLiveStatEntries.psStatsDIGroup = NULL;
+	DIDestroyGroup(gsRetiredStatEntries.psStatsDIGroup);
+	gsRetiredStatEntries.psStatsDIGroup = NULL;
+	DIDestroyGroup(psProcStatsDIGroup);
+	psProcStatsDIGroup = NULL;
 }
 #endif
 
@@ -968,75 +783,111 @@ PVRSRVStatsInitialise(void)
 {
 	PVRSRV_ERROR error;
 
-	PVR_ASSERT(g_psLiveList == NULL);
-	PVR_ASSERT(g_psDeadList == NULL);
 	PVR_ASSERT(g_psLinkedListLock == NULL);
 	PVR_ASSERT(gpsSizeTrackingHashTable == NULL);
 	PVR_ASSERT(bProcessStatsInitialised == IMG_FALSE);
 
 	/* We need a lock to protect the linked lists... */
+#if defined(__linux__) && defined(__KERNEL__)
+	error = OSLockCreateNoStats(&g_psLinkedListLock);
+#else
 	error = OSLockCreate(&g_psLinkedListLock);
-	if (error == PVRSRV_OK)
-	{
-		/* We also need a lock to protect the hash table used for size tracking.. */
-		error = OSLockCreate(&gpsSizeTrackingHashTableLock);
+#endif
+	PVR_GOTO_IF_ERROR(error, return_);
 
-		if (error != PVRSRV_OK)
-		{
-			goto e0;
-		}
+	/* We also need a lock to protect the hash table used for size tracking. */
+#if defined(__linux__) && defined(__KERNEL__)
+	error = OSLockCreateNoStats(&gpsSizeTrackingHashTableLock);
+#else
+	error = OSLockCreate(&gpsSizeTrackingHashTableLock);
+#endif
+	PVR_GOTO_IF_ERROR(error, destroy_linked_list_lock_);
 
-		/* We also need a lock to protect the GlobalStat counters */
-		error = OSLockCreate(&gsGlobalStats.hGlobalStatsLock);
-		if (error != PVRSRV_OK)
-		{
-			goto e1;
-		}
+	/* We also need a lock to protect the GlobalStat counters */
+#if defined(__linux__) && defined(__KERNEL__)
+	error = OSLockCreateNoStats(&gsGlobalStats.hGlobalStatsLock);
+#else
+	error = OSLockCreate(&gsGlobalStats.hGlobalStatsLock);
+#endif
+	PVR_GOTO_IF_ERROR(error, destroy_hashtable_lock_);
+
+	/* Flag that we are ready to start monitoring memory allocations. */
+
+	gpsSizeTrackingHashTable = HASH_Create(HASH_INITIAL_SIZE);
+	PVR_GOTO_IF_NOMEM(gpsSizeTrackingHashTable, error, destroy_stats_lock_);
+
+	dllist_init(&gsLiveList);
+	dllist_init(&gsDeadList);
+
+	bProcessStatsInitialised = IMG_TRUE;
+#if defined(PVRSRV_ENABLE_GPU_MEMORY_INFO)
+	/* Register our 'system' PID to hold driver-wide alloc stats */
+	_RegisterProcess(&g_hDriverProcessStats, PVR_SYS_ALLOC_PID);
+#endif
 
 #if defined(ENABLE_DEBUGFS_PIDS)
-		_createStatisticsEntries();
+	_createStatisticsEntries();
 #endif
 
 #if defined(PVRSRV_ENABLE_MEMTRACK_STATS_FILE)
-		pvOSProcStats = OSCreateRawStatisticEntry("memtrack_stats", NULL,
-		                                          RawProcessStatsPrintElements);
-#endif
-
-		/* Create power stats entry... */
-		pvOSPowerStatsEntryData = OSCreateStatisticEntry("power_timing_stats",
-														 NULL,
-														 PowerStatsPrintElements,
-														 NULL);
-
-		pvOSGlobalMemEntryRef = OSCreateStatisticEntry(pszDriverStatFilename,
-													   NULL,
-													   GlobalStatsPrintElements,
-													   NULL);
-
-		/* Flag that we are ready to start monitoring memory allocations. */
-
-		gpsSizeTrackingHashTable = HASH_Create(HASH_INITIAL_SIZE);
-
-		OSCachedMemSet(asClockSpeedChanges, 0, sizeof(asClockSpeedChanges));
-
-		bProcessStatsInitialised = IMG_TRUE;
-#if defined(PVRSRV_ENABLE_GPU_MEMORY_INFO)
-		/* Register our 'system' PID to hold driver-wide alloc stats */
-		_RegisterProcess(&g_hDriverProcessStats, PVR_SYS_ALLOC_PID);
-#endif
+	{
+		DI_ITERATOR_CB sIterator = {.pfnShow = RawProcessStatsPrintElements};
+		error = DICreateEntry("memtrack_stats", NULL, &sIterator, NULL,
+		                       DI_ENTRY_TYPE_GENERIC, &psProcStatsDIEntry);
+		PVR_LOG_IF_ERROR(error, "DICreateEntry (1)");
 	}
-	return error;
-e1:
+#endif
+
+	{
+		DI_ITERATOR_CB sIterator = {.pfnShow = GlobalStatsPrintElements};
+		error = DICreateEntry("driver_stats", NULL, &sIterator, NULL,
+		                      DI_ENTRY_TYPE_GENERIC, &psGlobalMemDIEntry);
+		PVR_LOG_IF_ERROR(error, "DICreateEntry (3)");
+	}
+
+	return PVRSRV_OK;
+
+destroy_stats_lock_:
+#if defined(__linux__) && defined(__KERNEL__)
+	OSLockDestroyNoStats(gsGlobalStats.hGlobalStatsLock);
+#else
+	OSLockDestroy(gsGlobalStats.hGlobalStatsLock);
+#endif
+	gsGlobalStats.hGlobalStatsLock = NULL;
+destroy_hashtable_lock_:
+#if defined(__linux__) && defined(__KERNEL__)
+	OSLockDestroyNoStats(gpsSizeTrackingHashTableLock);
+#else
 	OSLockDestroy(gpsSizeTrackingHashTableLock);
+#endif
 	gpsSizeTrackingHashTableLock = NULL;
-e0:
+destroy_linked_list_lock_:
+#if defined(__linux__) && defined(__KERNEL__)
+	OSLockDestroyNoStats(g_psLinkedListLock);
+#else
 	OSLockDestroy(g_psLinkedListLock);
+#endif
 	g_psLinkedListLock = NULL;
+return_:
 	return error;
 
-} /* PVRSRVStatsInitialise */
+}
 
-static PVRSRV_ERROR _DumpAllVMallocEntries (uintptr_t k, uintptr_t v);
+static PVRSRV_ERROR _DumpAllVMallocEntries (uintptr_t k, uintptr_t v, void* pvPriv)
+{
+#if defined(PVRSRV_NEED_PVR_DPF) || defined(DOXYGEN)
+	_PVR_STATS_TRACKING_HASH_ENTRY *psNewTrackingHashEntry = (_PVR_STATS_TRACKING_HASH_ENTRY *)(uintptr_t)v;
+	IMG_UINT64 uiCpuVAddr = (IMG_UINT64)k;
+
+	PVR_DPF((PVR_DBG_ERROR, "%s: " IMG_SIZE_FMTSPEC " bytes @ 0x%" IMG_UINT64_FMTSPECx " (PID %u)", __func__,
+	         psNewTrackingHashEntry->uiSizeInBytes,
+	         uiCpuVAddr,
+	         psNewTrackingHashEntry->uiPid));
+
+	PVR_UNREFERENCED_PARAMETER(pvPriv);
+#endif
+	return PVRSRV_OK;
+}
 
 /*************************************************************************/ /*!
 @Function       PVRSRVStatsDestroy
@@ -1045,7 +896,28 @@ static PVRSRV_ERROR _DumpAllVMallocEntries (uintptr_t k, uintptr_t v);
 void
 PVRSRVStatsDestroy(void)
 {
+	DLLIST_NODE *psNode, *psNext;
+
 	PVR_ASSERT(bProcessStatsInitialised);
+
+#if defined(PVRSRV_ENABLE_MEMTRACK_STATS_FILE)
+	if (psProcStatsDIEntry != NULL)
+	{
+		DIDestroyEntry(psProcStatsDIEntry);
+		psProcStatsDIEntry = NULL;
+	}
+#endif
+
+	/* Destroy the global data entry */
+	if (psGlobalMemDIEntry!=NULL)
+	{
+		DIDestroyEntry(psGlobalMemDIEntry);
+		psGlobalMemDIEntry = NULL;
+	}
+
+#if defined(ENABLE_DEBUGFS_PIDS)
+	_removeStatisticsEntries();
+#endif
 
 #if defined(PVRSRV_ENABLE_GPU_MEMORY_INFO)
 	/* Deregister our 'system' PID which holds driver-wide alloc stats */
@@ -1055,79 +927,75 @@ PVRSRVStatsDestroy(void)
 	/* Stop monitoring memory allocations... */
 	bProcessStatsInitialised = IMG_FALSE;
 
-#if defined(PVRSRV_ENABLE_MEMTRACK_STATS_FILE)
-	if (pvOSProcStats)
-	{
-		OSRemoveRawStatisticEntry(&pvOSProcStats);
-	}
-#endif
-
-	/* Destroy the power stats entry... */
-	if (pvOSPowerStatsEntryData!=NULL)
-	{
-		OSRemoveStatisticEntry(&pvOSPowerStatsEntryData);
-	}
-
-	/* Destroy the global data entry */
-	if (pvOSGlobalMemEntryRef!=NULL)
-	{
-		OSRemoveStatisticEntry(&pvOSGlobalMemEntryRef);
-	}
-
-#if defined(ENABLE_DEBUGFS_PIDS)
-	_removeStatisticsEntries();
-#endif
-
 	/* Destroy the locks... */
 	if (g_psLinkedListLock != NULL)
 	{
+#if defined(__linux__) && defined(__KERNEL__)
+		OSLockDestroyNoStats(g_psLinkedListLock);
+#else
 		OSLockDestroy(g_psLinkedListLock);
+#endif
 		g_psLinkedListLock = NULL;
 	}
 
 	/* Free the live and dead lists... */
-	while (g_psLiveList != NULL)
+	dllist_foreach_node(&gsLiveList, psNode, psNext)
 	{
-		PVRSRV_PROCESS_STATS* psProcessStats = g_psLiveList;
-		_RemoveProcessStatsFromList(psProcessStats);
+		PVRSRV_PROCESS_STATS* psProcessStats = IMG_CONTAINER_OF(psNode, PVRSRV_PROCESS_STATS, sNode);
+		dllist_remove_node(&psProcessStats->sNode);
 		_DestroyProcessStat(psProcessStats);
 	}
 
-	while (g_psDeadList != NULL)
+	dllist_foreach_node(&gsDeadList, psNode, psNext)
 	{
-		PVRSRV_PROCESS_STATS* psProcessStats = g_psDeadList;
-		_RemoveProcessStatsFromList(psProcessStats);
+		PVRSRV_PROCESS_STATS* psProcessStats = IMG_CONTAINER_OF(psNode, PVRSRV_PROCESS_STATS, sNode);
+		dllist_remove_node(&psProcessStats->sNode);
 		_DestroyProcessStat(psProcessStats);
 	}
 
 	if (gpsSizeTrackingHashTable != NULL)
 	{
 		/* Dump all remaining entries in HASH table (list any remaining vmallocs) */
-		HASH_Iterate(gpsSizeTrackingHashTable, (HASH_pfnCallback)_DumpAllVMallocEntries);
+		HASH_Iterate(gpsSizeTrackingHashTable, (HASH_pfnCallback)_DumpAllVMallocEntries, NULL);
 		HASH_Delete(gpsSizeTrackingHashTable);
 	}
 	if (gpsSizeTrackingHashTableLock != NULL)
 	{
+#if defined(__linux__) && defined(__KERNEL__)
+		OSLockDestroyNoStats(gpsSizeTrackingHashTableLock);
+#else
 		OSLockDestroy(gpsSizeTrackingHashTableLock);
+#endif
 		gpsSizeTrackingHashTableLock = NULL;
 	}
 
 	if (NULL != gsGlobalStats.hGlobalStatsLock)
 	{
+#if defined(__linux__) && defined(__KERNEL__)
+		OSLockDestroyNoStats(gsGlobalStats.hGlobalStatsLock);
+#else
 		OSLockDestroy(gsGlobalStats.hGlobalStatsLock);
+#endif
 		gsGlobalStats.hGlobalStatsLock = NULL;
 	}
 
-} /* PVRSRVStatsDestroy */
+}
 
 static void _decrease_global_stat(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 								  size_t uiBytes)
 {
+#if defined(ENABLE_GPU_MEM_TRACEPOINT)
+	IMG_UINT64 ui64InitialSize;
+#endif
+
 	OSLockAcquire(gsGlobalStats.hGlobalStatsLock);
+
+#if defined(ENABLE_GPU_MEM_TRACEPOINT)
+	ui64InitialSize = GET_GPUMEM_GLOBAL_STAT_VALUE();
+#endif
 
 	switch (eAllocType)
 	{
-#if !defined(PVR_DISABLE_KMALLOC_MEMSTATS)
 		case PVRSRV_MEM_ALLOC_TYPE_KMALLOC:
 			DECREASE_GLOBAL_STAT_VALUE(gsGlobalStats, PVRSRV_DRIVER_STAT_TYPE_KMALLOC, uiBytes);
 			break;
@@ -1135,11 +1003,7 @@ static void _decrease_global_stat(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 		case PVRSRV_MEM_ALLOC_TYPE_VMALLOC:
 			DECREASE_GLOBAL_STAT_VALUE(gsGlobalStats, PVRSRV_DRIVER_STAT_TYPE_VMALLOC, uiBytes);
 			break;
-#else
-		case PVRSRV_MEM_ALLOC_TYPE_KMALLOC:
-		case PVRSRV_MEM_ALLOC_TYPE_VMALLOC:
-			break;
-#endif
+
 		case PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_UMA:
 			DECREASE_GLOBAL_STAT_VALUE(gsGlobalStats, PVRSRV_DRIVER_STAT_TYPE_ALLOC_PT_MEMORY_UMA, uiBytes);
 			break;
@@ -1172,21 +1036,43 @@ static void _decrease_global_stat(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 			DECREASE_GLOBAL_STAT_VALUE(gsGlobalStats, PVRSRV_DRIVER_STAT_TYPE_ALLOC_GPUMEM_UMA_POOL, uiBytes);
 			break;
 
+		case PVRSRV_MEM_ALLOC_TYPE_DMA_BUF_IMPORT:
+			DECREASE_GLOBAL_STAT_VALUE(gsGlobalStats, PVRSRV_DRIVER_STAT_TYPE_DMA_BUF_IMPORT, uiBytes);
+			break;
+
 		default:
 			PVR_ASSERT(0);
 			break;
 	}
+
+#if defined(ENABLE_GPU_MEM_TRACEPOINT)
+	{
+		IMG_UINT64 ui64Size = GET_GPUMEM_GLOBAL_STAT_VALUE();
+		if (ui64Size != ui64InitialSize)
+		{
+			TracepointUpdateGPUMemGlobal(0, ui64Size);
+		}
+	}
+#endif
+
 	OSLockRelease(gsGlobalStats.hGlobalStatsLock);
 }
 
 static void _increase_global_stat(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 								  size_t uiBytes)
 {
+#if defined(ENABLE_GPU_MEM_TRACEPOINT)
+	IMG_UINT64 ui64InitialSize;
+#endif
+
 	OSLockAcquire(gsGlobalStats.hGlobalStatsLock);
+
+#if defined(ENABLE_GPU_MEM_TRACEPOINT)
+	ui64InitialSize = GET_GPUMEM_GLOBAL_STAT_VALUE();
+#endif
 
 	switch (eAllocType)
 	{
-#if !defined(PVR_DISABLE_KMALLOC_MEMSTATS)
 		case PVRSRV_MEM_ALLOC_TYPE_KMALLOC:
 			INCREASE_GLOBAL_STAT_VALUE(gsGlobalStats, PVRSRV_DRIVER_STAT_TYPE_KMALLOC, uiBytes);
 			break;
@@ -1194,11 +1080,7 @@ static void _increase_global_stat(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 		case PVRSRV_MEM_ALLOC_TYPE_VMALLOC:
 			INCREASE_GLOBAL_STAT_VALUE(gsGlobalStats, PVRSRV_DRIVER_STAT_TYPE_VMALLOC, uiBytes);
 			break;
-#else
-		case PVRSRV_MEM_ALLOC_TYPE_KMALLOC:
-		case PVRSRV_MEM_ALLOC_TYPE_VMALLOC:
-			break;
-#endif
+
 		case PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_UMA:
 			INCREASE_GLOBAL_STAT_VALUE(gsGlobalStats, PVRSRV_DRIVER_STAT_TYPE_ALLOC_PT_MEMORY_UMA, uiBytes);
 			break;
@@ -1231,10 +1113,25 @@ static void _increase_global_stat(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 			INCREASE_GLOBAL_STAT_VALUE(gsGlobalStats, PVRSRV_DRIVER_STAT_TYPE_ALLOC_GPUMEM_UMA_POOL, uiBytes);
 			break;
 
+		case PVRSRV_MEM_ALLOC_TYPE_DMA_BUF_IMPORT:
+			INCREASE_GLOBAL_STAT_VALUE(gsGlobalStats, PVRSRV_DRIVER_STAT_TYPE_DMA_BUF_IMPORT, uiBytes);
+			break;
+
 		default:
 			PVR_ASSERT(0);
 			break;
 	}
+
+#if defined(ENABLE_GPU_MEM_TRACEPOINT)
+	{
+		IMG_UINT64 ui64Size = GET_GPUMEM_GLOBAL_STAT_VALUE();
+		if (ui64Size != ui64InitialSize)
+		{
+			TracepointUpdateGPUMemGlobal(0, ui64Size);
+		}
+	}
+#endif
+
 	OSLockRelease(gsGlobalStats.hGlobalStatsLock);
 }
 
@@ -1256,8 +1153,7 @@ _RegisterProcess(IMG_HANDLE *phProcessStats, IMG_PID ownerPid)
 	if (psProcessStats != NULL)
 	{
 		/* Move it back onto the live list! */
-		_RemoveProcessStatsFromList(psProcessStats);
-		_AddProcessStatsToFrontOfLiveList(psProcessStats);
+		_MoveProcessToLiveList(psProcessStats);
 	}
 	else
 	{
@@ -1271,9 +1167,7 @@ _RegisterProcess(IMG_HANDLE *phProcessStats, IMG_PID ownerPid)
 		OSLockAcquireNested(psProcessStats->hLock, PROCESS_LOCK_SUBCLASS_CURRENT);
 
 		psProcessStats->ui32RefCount++;
-		psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_CONNECTIONS] = psProcessStats->ui32RefCount;
-		UPDATE_MAX_VALUE(psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAX_CONNECTIONS],
-		                 psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_CONNECTIONS]);
+
 		OSLockRelease(psProcessStats->hLock);
 		OSLockRelease(g_psLinkedListLock);
 
@@ -1285,14 +1179,11 @@ _RegisterProcess(IMG_HANDLE *phProcessStats, IMG_PID ownerPid)
 
 	/* Allocate a new node structure and initialise it... */
 	eError = _AllocateProcessStats(&psProcessStats, ownerPid);
-	if(eError != PVRSRV_OK)
-	{
-		goto e0;
-	}
+	PVR_GOTO_IF_ERROR(eError, e0);
 
 	/* Add it to the live list... */
 	OSLockAcquire(g_psLinkedListLock);
-	_AddProcessStatsToFrontOfLiveList(psProcessStats);
+	dllist_add_to_head(&gsLiveList, &psProcessStats->sNode);
 	OSLockRelease(g_psLinkedListLock);
 
 	/* Done */
@@ -1339,7 +1230,6 @@ PVRSRVStatsDeregisterProcess(IMG_HANDLE hProcessStats)
 		{
 			OSLockAcquireNested(psProcessStats->hLock, PROCESS_LOCK_SUBCLASS_CURRENT);
 			psProcessStats->ui32RefCount--;
-			psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_CONNECTIONS] = psProcessStats->ui32RefCount;
 
 #if !defined(PVRSRV_DEBUG_LINUX_MEMORY_STATS)
 			if (psProcessStats->ui32RefCount == 0)
@@ -1359,37 +1249,107 @@ PVRSRVStatsDeregisterProcess(IMG_HANDLE hProcessStats)
 	}
 } /* PVRSRVStatsDeregisterProcess */
 
+PVRSRV_ERROR PVRSRVStatsDeviceConnect(PVRSRV_DEVICE_NODE *psDeviceNode)
+{
+	IMG_UINT32 ui32DevID = psDeviceNode->sDevId.ui32InternalID;
+	IMG_PID ownerPid = OSGetCurrentClientProcessIDKM();
+	PVRSRV_PROCESS_STATS*	psProcessStats;
+
+	OSLockAcquire(g_psLinkedListLock);
+
+	psProcessStats = _FindProcessStatsInLiveList(ownerPid);
+
+	if (psProcessStats != NULL)
+	{
+		if (ui32DevID < psProcessStats->ui32DevCount)
+		{
+			psProcessStats->ai32DevStats[ui32DevID][PVRSRV_DEVICE_STAT_TYPE_CONNECTIONS]++;
+			UPDATE_MAX_VALUE(psProcessStats->ai32DevStats[ui32DevID][PVRSRV_DEVICE_STAT_TYPE_MAX_CONNECTIONS],
+							 psProcessStats->ai32DevStats[ui32DevID][PVRSRV_DEVICE_STAT_TYPE_CONNECTIONS]);
+
+		}
+		else
+		{
+			PVR_DPF((PVR_DBG_ERROR, "%s: Device index %d is greater than device count %d for PID %d.",
+					 __func__, ui32DevID, psProcessStats->ui32DevCount, ownerPid));
+		}
+	}
+	else
+	{
+		PVR_DPF((PVR_DBG_ERROR, "%s: Process %d not found.",
+				 __func__, ownerPid));
+	}
+
+	OSLockRelease(g_psLinkedListLock);
+
+	return PVRSRV_OK;
+}
+
+void PVRSRVStatsDeviceDisconnect(PVRSRV_DEVICE_NODE *psDeviceNode)
+{
+	IMG_UINT32 ui32DevID = psDeviceNode->sDevId.ui32InternalID;
+	IMG_PID	currentCleanupPid = PVRSRVGetPurgeConnectionPid();
+	PVRSRV_DATA* psPVRSRVData = PVRSRVGetPVRSRVData();
+	IMG_PID currentPid = OSGetCurrentClientProcessIDKM();
+	PVRSRV_PROCESS_STATS*	psProcessStats;
+
+	OSLockAcquire(g_psLinkedListLock);
+
+	if (psPVRSRVData)
+	{
+		if ((currentPid == psPVRSRVData->cleanupThreadPid) &&
+		    (currentCleanupPid != 0))
+		{
+			psProcessStats = _FindProcessStats(currentCleanupPid);
+		}
+		else
+		{
+			psProcessStats = _FindProcessStatsInLiveList(currentPid);
+		}
+	}
+	else
+	{
+		psProcessStats = _FindProcessStatsInLiveList(currentPid);
+	}
+
+	if (psProcessStats != NULL)
+	{
+		if (ui32DevID < psProcessStats->ui32DevCount)
+		{
+			psProcessStats->ai32DevStats[ui32DevID][PVRSRV_DEVICE_STAT_TYPE_CONNECTIONS]--;
+		}
+		else
+		{
+			PVR_DPF((PVR_DBG_ERROR, "%s: Device index %d is greater than device count %d for PID %d.",
+					 __func__, ui32DevID, psProcessStats->ui32DevCount, currentPid));
+		}
+	}
+	else
+	{
+		PVR_DPF((PVR_DBG_ERROR, "%s: Process %d not found.",
+				 __func__, currentPid));
+	}
+
+	OSLockRelease(g_psLinkedListLock);
+}
+
 void
 PVRSRVStatsAddMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 							 void *pvCpuVAddr,
 							 IMG_CPU_PHYADDR sCpuPAddr,
 							 size_t uiBytes,
-							 void *pvPrivateData,
-							 IMG_PID currentPid)
-#if defined(PVRSRV_DEBUG_LINUX_MEMORY_STATS) && defined(DEBUG)
-{
-	_PVRSRVStatsAddMemAllocRecord(eAllocType, pvCpuVAddr, sCpuPAddr, uiBytes, pvPrivateData, currentPid, NULL, 0);
-}
-void
-
-_PVRSRVStatsAddMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE eAllocType,
-							  void *pvCpuVAddr,
-							  IMG_CPU_PHYADDR sCpuPAddr,
-							  size_t uiBytes,
-							  void *pvPrivateData,
-							  IMG_PID currentPid,
-							  void *pvAllocFromFile, IMG_UINT32 ui32AllocFromLine)
-#endif
+							 IMG_PID currentPid
+							 DEBUG_MEMSTATS_PARAMS)
 {
 #if defined(PVRSRV_ENABLE_MEMORY_STATS)
 	IMG_PID				   currentCleanupPid = PVRSRVGetPurgeConnectionPid();
 	PVRSRV_DATA*		   psPVRSRVData = PVRSRVGetPVRSRVData();
 	PVRSRV_MEM_ALLOC_REC*  psRecord = NULL;
 	PVRSRV_PROCESS_STATS*  psProcessStats;
-	enum { PVRSRV_PROC_NOTFOUND,
-	       PVRSRV_PROC_FOUND,
-	       PVRSRV_PROC_RESURRECTED
-	     } eProcSearch = PVRSRV_PROC_FOUND;
+	__maybe_unused PVRSRV_PROC_SEARCH_STATE eProcSearch = PVRSRV_PROC_FOUND;
+#if defined(ENABLE_GPU_MEM_TRACEPOINT)
+	IMG_UINT64 ui64InitialSize;
+#endif
 
 	/* Don't do anything if we are not initialised or we are shutting down! */
 	if (!bProcessStatsInitialised)
@@ -1419,11 +1379,8 @@ _PVRSRVStatsAddMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 	psRecord->pvCpuVAddr       = pvCpuVAddr;
 	psRecord->sCpuPAddr.uiAddr = sCpuPAddr.uiAddr;
 	psRecord->uiBytes          = uiBytes;
-	psRecord->pvPrivateData    = pvPrivateData;
 
-	psRecord->pid = currentPid;
-
-#if defined(PVRSRV_DEBUG_LINUX_MEMORY_STATS) && defined(DEBUG)
+#if defined(PVRSRV_DEBUG_LINUX_MEMORY_STATS_ON)
 	psRecord->pvAllocdFromFile = pvAllocFromFile;
 	psRecord->ui32AllocdFromLine = ui32AllocFromLine;
 #endif
@@ -1464,45 +1421,35 @@ _PVRSRVStatsAddMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 		eProcSearch = PVRSRV_PROC_NOTFOUND;
 
 #if defined(PVRSRV_DEBUG_LINUX_MEMORY_STATS)
-		PVR_DPF((PVR_DBG_WARNING,
+		PVR_DPF((PVR_DBG_MESSAGE,
 				 "%s: Process stat increment called for 'unknown' process PID(%d)",
 				 __func__, currentPid));
 
-		if(_AllocateProcessStats(&psProcessStats, currentPid) != PVRSRV_OK)
+		if (_AllocateProcessStats(&psProcessStats, currentPid) != PVRSRV_OK)
 		{
 			OSLockRelease(g_psLinkedListLock);
-			goto e0;
+			PVR_DPF((PVR_DBG_ERROR,
+			        "%s UNABLE TO CREATE process_stats entry for pid %d [%s] (" IMG_SIZE_FMTSPEC " bytes)",
+			        __func__, currentPid, OSGetCurrentProcessName(), uiBytes));
+			goto free_record;
 		}
 
 		/* Add it to the live list... */
-		_AddProcessStatsToFrontOfLiveList(psProcessStats);
+		dllist_add_to_head(&gsLiveList, &psProcessStats->sNode);
 
 		OSLockRelease(g_psLinkedListLock);
 
 #else  /* defined(PVRSRV_DEBUG_LINUX_MEMORY_STATS) */
 		OSLockRelease(g_psLinkedListLock);
+		goto free_record;
 #endif /* defined(PVRSRV_DEBUG_LINUX_MEMORY_STATS) */
-
-		if (psProcessStats == NULL)
-		{
-#if defined(PVRSRV_DEBUG_LINUX_MEMORY_STATS)
-				PVR_DPF((PVR_DBG_ERROR,
-				 "%s UNABLE TO CREATE process_stats entry for pid %d [%s] (" IMG_SIZE_FMTSPEC " bytes)",
-				 __func__, currentPid, OSGetCurrentProcessName(), uiBytes));
-#endif
-			if (psRecord != NULL)
-			{
-				OSFreeMemNoStats(psRecord);
-			}
-			return;
-		}
 	}
 	else
 	{
 #if defined(PVRSRV_DEBUG_LINUX_MEMORY_STATS)
 		if (eProcSearch == PVRSRV_PROC_RESURRECTED)
 		{
-			PVR_DPF((PVR_DBG_WARNING,
+			PVR_DPF((PVR_DBG_MESSAGE,
 				 "%s: Process stat incremented on 'dead' process PID(%d)",
 				 __func__, currentPid));
 			/* Move process from dead list to live list */
@@ -1514,145 +1461,103 @@ _PVRSRVStatsAddMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 
 	OSLockAcquireNested(psProcessStats->hLock, PROCESS_LOCK_SUBCLASS_CURRENT);
 
-	/* Insert the memory record... */
-	if (psRecord != NULL)
+#if defined(PVRSRV_ENABLE_MEMORY_STATS)
 	{
-		List_PVRSRV_MEM_ALLOC_REC_Insert(&psProcessStats->psMemoryRecords, psRecord);
+		IMG_UINT64 ui64Key;
+
+		if (eAllocType == PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_LMA ||
+			eAllocType == PVRSRV_MEM_ALLOC_TYPE_ALLOC_LMA_PAGES ||
+			eAllocType == PVRSRV_MEM_ALLOC_TYPE_ALLOC_UMA_PAGES)
+		{
+			ui64Key = psRecord->sCpuPAddr.uiAddr;
+		}
+		else
+		{
+			ui64Key = (IMG_UINT64)psRecord->pvCpuVAddr;
+		}
+
+		/* Insert the memory record... */
+		if (!HASH_Insert(psProcessStats->psMemoryRecords, ui64Key, (uintptr_t)psRecord))
+		{
+			PVR_DPF((PVR_DBG_ERROR,
+					 "%s UNABLE TO CREATE mem stats record for pid %d [%s] (" IMG_SIZE_FMTSPEC " bytes)",
+					 __func__, currentPid, OSGetCurrentProcessName(), uiBytes));
+		}
 	}
+#endif
+
+#if defined(ENABLE_GPU_MEM_TRACEPOINT)
+	ui64InitialSize = GET_GPUMEM_PERPID_STAT_VALUE(psProcessStats);
+#endif
 
 	/* Update the memory watermarks... */
 	switch (eAllocType)
 	{
-#if !defined(PVR_DISABLE_KMALLOC_MEMSTATS)
 		case PVRSRV_MEM_ALLOC_TYPE_KMALLOC:
 		{
-			if (psRecord != NULL)
-			{
-				if (pvCpuVAddr == NULL)
-				{
-					break;
-				}
-				psRecord->ui64Key = (IMG_UINT64)(uintptr_t)pvCpuVAddr;
-			}
-			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_KMALLOC, (IMG_UINT32)uiBytes);
-			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, (IMG_UINT32)uiBytes);
+			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_KMALLOC, uiBytes);
+			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, uiBytes);
 			psProcessStats->ui32StatAllocFlags |= (IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_KMALLOC-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 		}
 		break;
 
 		case PVRSRV_MEM_ALLOC_TYPE_VMALLOC:
 		{
-			if (psRecord != NULL)
-			{
-				if (pvCpuVAddr == NULL)
-				{
-					break;
-				}
-				psRecord->ui64Key = (IMG_UINT64)(uintptr_t)pvCpuVAddr;
-			}
-			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_VMALLOC, (IMG_UINT32)uiBytes);
-			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, (IMG_UINT32)uiBytes);
+			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_VMALLOC, uiBytes);
+			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, uiBytes);
 			psProcessStats->ui32StatAllocFlags |= (IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_VMALLOC-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 		}
 		break;
-#else
-		case PVRSRV_MEM_ALLOC_TYPE_KMALLOC:
-		case PVRSRV_MEM_ALLOC_TYPE_VMALLOC:
-		break;
-#endif
+
 		case PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_UMA:
 		{
-			if (psRecord != NULL)
-			{
-				if (pvCpuVAddr == NULL)
-				{
-					break;
-				}
-				psRecord->ui64Key = (IMG_UINT64)(uintptr_t)pvCpuVAddr;
-			}
-			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA, (IMG_UINT32)uiBytes);
-			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, (IMG_UINT32)uiBytes);
+			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA, uiBytes);
+			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, uiBytes);
 			psProcessStats->ui32StatAllocFlags |= (IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 		}
 		break;
 
 		case PVRSRV_MEM_ALLOC_TYPE_VMAP_PT_UMA:
 		{
-			if (psRecord != NULL)
-			{
-				if (pvCpuVAddr == NULL)
-				{
-					break;
-				}
-				psRecord->ui64Key = (IMG_UINT64)(uintptr_t)pvCpuVAddr;
-			}
-			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_VMAP_PT_UMA, (IMG_UINT32)uiBytes);
+			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_VMAP_PT_UMA, uiBytes);
 			psProcessStats->ui32StatAllocFlags |= (IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_VMAP_PT_UMA-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 		}
 		break;
 
 		case PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_LMA:
 		{
-			if (psRecord != NULL)
-			{
-				psRecord->ui64Key = sCpuPAddr.uiAddr;
-			}
-			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA, (IMG_UINT32)uiBytes);
-			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, (IMG_UINT32)uiBytes);
+			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA, uiBytes);
+			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, uiBytes);
 			psProcessStats->ui32StatAllocFlags |= (IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 		}
 		break;
 
 		case PVRSRV_MEM_ALLOC_TYPE_IOREMAP_PT_LMA:
 		{
-			if (psRecord != NULL)
-			{
-				if (pvCpuVAddr == NULL)
-				{
-					break;
-				}
-				psRecord->ui64Key = (IMG_UINT64)(uintptr_t)pvCpuVAddr;
-			}
-			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_IOREMAP_PT_LMA, (IMG_UINT32)uiBytes);
+			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_IOREMAP_PT_LMA, uiBytes);
 			psProcessStats->ui32StatAllocFlags |= (IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_IOREMAP_PT_LMA-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 		}
 		break;
 
 		case PVRSRV_MEM_ALLOC_TYPE_ALLOC_LMA_PAGES:
 		{
-			if (psRecord != NULL)
-			{
-				psRecord->ui64Key = sCpuPAddr.uiAddr;
-			}
-			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES, (IMG_UINT32)uiBytes);
-			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, (IMG_UINT32)uiBytes);
+			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES, uiBytes);
+			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, uiBytes);
 			psProcessStats->ui32StatAllocFlags |= (IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 		}
 		break;
 
 		case PVRSRV_MEM_ALLOC_TYPE_ALLOC_UMA_PAGES:
 		{
-			if (psRecord != NULL)
-			{
-				psRecord->ui64Key = sCpuPAddr.uiAddr;
-			}
-			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES, (IMG_UINT32)uiBytes);
-			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, (IMG_UINT32)uiBytes);
+			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES, uiBytes);
+			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, uiBytes);
 			psProcessStats->ui32StatAllocFlags |= (IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 		}
 		break;
 
 		case PVRSRV_MEM_ALLOC_TYPE_MAP_UMA_LMA_PAGES:
 		{
-			if (psRecord != NULL)
-			{
-				if (pvCpuVAddr == NULL)
-				{
-					break;
-				}
-				psRecord->ui64Key = (IMG_UINT64)(uintptr_t)pvCpuVAddr;
-			}
-			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_MAP_UMA_LMA_PAGES, (IMG_UINT32)uiBytes);
+			INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_MAP_UMA_LMA_PAGES, uiBytes);
 			psProcessStats->ui32StatAllocFlags |= (IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_MAP_UMA_LMA_PAGES-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 		}
 		break;
@@ -1663,16 +1568,29 @@ _PVRSRVStatsAddMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 		}
 		break;
 	}
+
+#if defined(ENABLE_GPU_MEM_TRACEPOINT)
+	if (psProcessStats->pid != PVR_SYS_ALLOC_PID)
+	{
+		IMG_UINT64 ui64Size = GET_GPUMEM_PERPID_STAT_VALUE(psProcessStats);
+		if (ui64Size != ui64InitialSize)
+		{
+			TracepointUpdateGPUMemPerProcess(0, psProcessStats->pid, ui64Size);
+		}
+	}
+#endif
+
 	OSLockRelease(psProcessStats->hLock);
 
 	return;
 
-#if defined(PVRSRV_DEBUG_LINUX_MEMORY_STATS)
-e0:
-	OSFreeMemNoStats(psRecord);
-	return;
-#endif
-#endif
+free_record:
+	_decrease_global_stat(eAllocType, uiBytes);
+	if (psRecord != NULL)
+	{
+		OSFreeMemNoStats(psRecord);
+	}
+#endif /* defined(PVRSRV_ENABLE_MEMORY_STATS) */
 } /* PVRSRVStatsAddMemAllocRecord */
 
 void
@@ -1719,78 +1637,48 @@ PVRSRVStatsRemoveMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 	}
 	if (psProcessStats != NULL)
 	{
-		psRecord      = psProcessStats->psMemoryRecords;
-		while (psRecord != NULL)
-		{
-			if (psRecord->ui64Key == ui64Key  &&  psRecord->eAllocType == eAllocType)
-			{
-				bFound = IMG_TRUE;
-				break;
-			}
-
-			psRecord = psRecord->psNext;
-		}
+		psRecord = (PVRSRV_MEM_ALLOC_REC*)HASH_Remove(psProcessStats->psMemoryRecords, ui64Key);
+		bFound = psRecord != NULL;
 	}
 
 	/* If not found, we need to do a full search in case it was allocated to a different PID... */
 	if (!bFound)
 	{
 		PVRSRV_PROCESS_STATS* psProcessStatsAlreadyChecked = psProcessStats;
+		DLLIST_NODE *psNode, *psNext;
 
 		/* Search all live lists first... */
-		psProcessStats = g_psLiveList;
-		while (psProcessStats != NULL)
+		dllist_foreach_node(&gsLiveList, psNode, psNext)
 		{
+			psProcessStats = IMG_CONTAINER_OF(psNode, PVRSRV_PROCESS_STATS, sNode);
 			if (psProcessStats != psProcessStatsAlreadyChecked)
 			{
-				psRecord      = psProcessStats->psMemoryRecords;
-				while (psRecord != NULL)
-				{
-					if (psRecord->ui64Key == ui64Key  &&  psRecord->eAllocType == eAllocType)
-					{
-						bFound = IMG_TRUE;
-						break;
-					}
-
-					psRecord = psRecord->psNext;
-				}
+				psRecord = (PVRSRV_MEM_ALLOC_REC*)HASH_Remove(psProcessStats->psMemoryRecords, ui64Key);
+				bFound = psRecord != NULL;
 			}
 
 			if (bFound)
 			{
 				break;
 			}
-
-			psProcessStats = psProcessStats->psNext;
 		}
 
 		/* If not found, then search all dead lists next... */
 		if (!bFound)
 		{
-			psProcessStats = g_psDeadList;
-			while (psProcessStats != NULL)
+			dllist_foreach_node(&gsDeadList, psNode, psNext)
 			{
+				psProcessStats = IMG_CONTAINER_OF(psNode, PVRSRV_PROCESS_STATS, sNode);
 				if (psProcessStats != psProcessStatsAlreadyChecked)
 				{
-					psRecord      = psProcessStats->psMemoryRecords;
-					while (psRecord != NULL)
-					{
-						if (psRecord->ui64Key == ui64Key  &&  psRecord->eAllocType == eAllocType)
-						{
-							bFound = IMG_TRUE;
-							break;
-						}
-
-						psRecord = psRecord->psNext;
-					}
+					psRecord = (PVRSRV_MEM_ALLOC_REC*)HASH_Remove(psProcessStats->psMemoryRecords, ui64Key);
+					bFound = psRecord != NULL;
 				}
 
 				if (bFound)
 				{
 					break;
 				}
-
-				psProcessStats = psProcessStats->psNext;
 			}
 		}
 	}
@@ -1806,7 +1694,6 @@ PVRSRVStatsRemoveMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 		                       psProcessStats,
 		                       psRecord->uiBytes);
 
-		List_PVRSRV_MEM_ALLOC_REC_Remove(psRecord);
 		OSLockRelease(psProcessStats->hLock);
 		OSLockRelease(g_psLinkedListLock);
 
@@ -1839,20 +1726,6 @@ PVR_UNREFERENCED_PARAMETER(ui64Key);
 #endif
 } /* PVRSRVStatsRemoveMemAllocRecord */
 
-static PVRSRV_ERROR _DumpAllVMallocEntries (uintptr_t k, uintptr_t v)
-{
-#if defined(PVRSRV_NEED_PVR_DPF) || defined(DOXYGEN)
-	_PVR_STATS_TRACKING_HASH_ENTRY *psNewTrackingHashEntry = (_PVR_STATS_TRACKING_HASH_ENTRY *)(uintptr_t)v;
-	IMG_UINT64 uiCpuVAddr = (IMG_UINT64)k;
-
-	PVR_DPF((PVR_DBG_ERROR, "%s: " IMG_SIZE_FMTSPEC " bytes @ 0x%" IMG_UINT64_FMTSPECx " (PID %u)", __func__,
-	         psNewTrackingHashEntry->uiSizeInBytes,
-	         uiCpuVAddr,
-	         psNewTrackingHashEntry->uiPid));
-#endif
-	return PVRSRV_OK;
-}
-
 void
 PVRSRVStatsIncrMemAllocStatAndTrack(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 									size_t uiBytes,
@@ -1874,34 +1747,33 @@ PVRSRVStatsIncrMemAllocStatAndTrack(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 
 	/* Alloc untracked memory for the new hash table entry */
 	psNewTrackingHashEntry = (_PVR_STATS_TRACKING_HASH_ENTRY *)OSAllocMemNoStats(sizeof(*psNewTrackingHashEntry));
-	if (psNewTrackingHashEntry)
-	{
-		/* Fill-in the size of the allocation and PID of the allocating process */
-		psNewTrackingHashEntry->uiSizeInBytes = uiBytes;
-		psNewTrackingHashEntry->uiPid = uiPid;
-		OSLockAcquire(gpsSizeTrackingHashTableLock);
-		/* Insert address of the new struct into the hash table */
-		bRes = HASH_Insert(gpsSizeTrackingHashTable, uiCpuVAddr, (uintptr_t)psNewTrackingHashEntry);
-		OSLockRelease(gpsSizeTrackingHashTableLock);
-	}
-
-	if (psNewTrackingHashEntry)
-	{
-		if (bRes)
-		{
-			PVRSRVStatsIncrMemAllocStat(eAllocType, uiBytes, uiPid);
-		}
-		else
-		{
-			PVR_DPF((PVR_DBG_ERROR, "*** %s : @ line %d HASH_Insert() failed!",
-					 __func__, __LINE__));
-		}
-	}
-	else
+	if (psNewTrackingHashEntry == NULL)
 	{
 		PVR_DPF((PVR_DBG_ERROR,
 				 "*** %s : @ line %d Failed to alloc memory for psNewTrackingHashEntry!",
 				 __func__, __LINE__));
+		return;
+	}
+
+	/* Fill-in the size of the allocation and PID of the allocating process */
+	psNewTrackingHashEntry->uiSizeInBytes = uiBytes;
+	psNewTrackingHashEntry->uiPid = uiPid;
+	OSLockAcquire(gpsSizeTrackingHashTableLock);
+	/* Insert address of the new struct into the hash table */
+	bRes = HASH_Insert(gpsSizeTrackingHashTable, uiCpuVAddr, (uintptr_t)psNewTrackingHashEntry);
+	OSLockRelease(gpsSizeTrackingHashTableLock);
+	if (bRes)
+	{
+		PVRSRVStatsIncrMemAllocStat(eAllocType, uiBytes, uiPid);
+	}
+	else
+	{
+		PVR_DPF((PVR_DBG_ERROR, "*** %s : @ line %d HASH_Insert() failed!",
+				 __func__, __LINE__));
+		/* Free the memory allocated for psNewTrackingHashEntry, as we
+		 * failed to insert it into the Hash table.
+		 */
+		OSFreeMemNoStats(psNewTrackingHashEntry);
 	}
 }
 
@@ -1912,12 +1784,12 @@ PVRSRVStatsIncrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 
 {
 	IMG_PID				  currentCleanupPid = PVRSRVGetPurgeConnectionPid();
-	PVRSRV_DATA* 		  psPVRSRVData = PVRSRVGetPVRSRVData();
+	PVRSRV_DATA*		  psPVRSRVData = PVRSRVGetPVRSRVData();
 	PVRSRV_PROCESS_STATS* psProcessStats = NULL;
-	enum { PVRSRV_PROC_NOTFOUND,
-	       PVRSRV_PROC_FOUND,
-	       PVRSRV_PROC_RESURRECTED
-	     } eProcSearch = PVRSRV_PROC_FOUND;
+	__maybe_unused PVRSRV_PROC_SEARCH_STATE eProcSearch = PVRSRV_PROC_FOUND;
+#if defined(ENABLE_GPU_MEM_TRACEPOINT)
+	IMG_UINT64 ui64InitialSize;
+#endif
 
 	/* Don't do anything if we are not initialised or we are shutting down! */
 	if (!bProcessStatsInitialised)
@@ -1964,19 +1836,19 @@ PVRSRVStatsIncrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 		eProcSearch = PVRSRV_PROC_NOTFOUND;
 
 #if defined(PVRSRV_DEBUG_LINUX_MEMORY_STATS)
-		PVR_DPF((PVR_DBG_WARNING,
+		PVR_DPF((PVR_DBG_MESSAGE,
 				 "%s: Process stat increment called for 'unknown' process PID(%d)",
 				 __func__, currentPid));
 
 		if (bProcessStatsInitialised)
 		{
-			if(_AllocateProcessStats(&psProcessStats, currentPid) != PVRSRV_OK)
+			if (_AllocateProcessStats(&psProcessStats, currentPid) != PVRSRV_OK)
 			{
+				OSLockRelease(g_psLinkedListLock);
 				return;
 			}
-
 			/* Add it to the live list... */
-			_AddProcessStatsToFrontOfLiveList(psProcessStats);
+			dllist_add_to_head(&gsLiveList, &psProcessStats->sNode);
 		}
 #else
 		OSLockRelease(g_psLinkedListLock);
@@ -1989,7 +1861,7 @@ PVRSRVStatsIncrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 #if defined(PVRSRV_DEBUG_LINUX_MEMORY_STATS)
 		if (eProcSearch == PVRSRV_PROC_RESURRECTED)
 		{
-			PVR_DPF((PVR_DBG_WARNING,
+			PVR_DPF((PVR_DBG_MESSAGE,
 					 "%s: Process stat incremented on 'dead' process PID(%d)",
 					 __func__, currentPid));
 
@@ -1998,83 +1870,92 @@ PVRSRVStatsIncrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 		}
 #endif
 		OSLockAcquireNested(psProcessStats->hLock, PROCESS_LOCK_SUBCLASS_CURRENT);
-		/*Release the list lock as soon as we acquire the process lock,
-		 * this ensures if the process is in deadlist the entry cannot be deleted or modified */
+		/* Release the list lock as soon as we acquire the process lock,
+		 * this ensures if the process is in deadlist the entry cannot be
+		 * deleted or modified
+		 */
 		OSLockRelease(g_psLinkedListLock);
+
+#if defined(ENABLE_GPU_MEM_TRACEPOINT)
+		ui64InitialSize = GET_GPUMEM_PERPID_STAT_VALUE(psProcessStats);
+#endif
+
 		/* Update the memory watermarks... */
 		switch (eAllocType)
 		{
-#if !defined(PVR_DISABLE_KMALLOC_MEMSTATS)
 			case PVRSRV_MEM_ALLOC_TYPE_KMALLOC:
 			{
-				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_KMALLOC, (IMG_UINT32)uiBytes);
-				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, (IMG_UINT32)uiBytes);
+				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_KMALLOC, uiBytes);
+				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, uiBytes);
 				psProcessStats->ui32StatAllocFlags |= (IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_KMALLOC-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 			}
 			break;
 
 			case PVRSRV_MEM_ALLOC_TYPE_VMALLOC:
 			{
-				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_VMALLOC, (IMG_UINT32)uiBytes);
-				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, (IMG_UINT32)uiBytes);
+				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_VMALLOC, uiBytes);
+				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, uiBytes);
 				psProcessStats->ui32StatAllocFlags |= (IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_VMALLOC-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 			}
 			break;
-#else
-			case PVRSRV_MEM_ALLOC_TYPE_KMALLOC:
-			case PVRSRV_MEM_ALLOC_TYPE_VMALLOC:
-			break;
-#endif
+
 			case PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_UMA:
 			{
-				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA, (IMG_UINT32)uiBytes);
-				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, (IMG_UINT32)uiBytes);
+				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA, uiBytes);
+				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, uiBytes);
 				psProcessStats->ui32StatAllocFlags |= (IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 			}
 			break;
 
 			case PVRSRV_MEM_ALLOC_TYPE_VMAP_PT_UMA:
 			{
-				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_VMAP_PT_UMA, (IMG_UINT32)uiBytes);
+				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_VMAP_PT_UMA, uiBytes);
 				psProcessStats->ui32StatAllocFlags |= (IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_VMAP_PT_UMA-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 			}
 			break;
 
 			case PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_LMA:
 			{
-				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA, (IMG_UINT32)uiBytes);
-				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, (IMG_UINT32)uiBytes);
+				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA, uiBytes);
+				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, uiBytes);
 				psProcessStats->ui32StatAllocFlags |= (IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 			}
 			break;
 
 			case PVRSRV_MEM_ALLOC_TYPE_IOREMAP_PT_LMA:
 			{
-				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_IOREMAP_PT_LMA, (IMG_UINT32)uiBytes);
+				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_IOREMAP_PT_LMA, uiBytes);
 				psProcessStats->ui32StatAllocFlags |= (IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_IOREMAP_PT_LMA-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 			}
 			break;
 
 			case PVRSRV_MEM_ALLOC_TYPE_ALLOC_LMA_PAGES:
 			{
-				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES, (IMG_UINT32)uiBytes);
-				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, (IMG_UINT32)uiBytes);
+				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES, uiBytes);
+				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, uiBytes);
 				psProcessStats->ui32StatAllocFlags |= (IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 			}
 			break;
 
 			case PVRSRV_MEM_ALLOC_TYPE_ALLOC_UMA_PAGES:
 			{
-				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES, (IMG_UINT32)uiBytes);
-				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, (IMG_UINT32)uiBytes);
+				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES, uiBytes);
+				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, uiBytes);
 				psProcessStats->ui32StatAllocFlags |= (IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 			}
 			break;
 
 			case PVRSRV_MEM_ALLOC_TYPE_MAP_UMA_LMA_PAGES:
 			{
-				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_MAP_UMA_LMA_PAGES, (IMG_UINT32)uiBytes);
+				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_MAP_UMA_LMA_PAGES, uiBytes);
 				psProcessStats->ui32StatAllocFlags |= (IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_MAP_UMA_LMA_PAGES-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
+			}
+			break;
+
+			case PVRSRV_MEM_ALLOC_TYPE_DMA_BUF_IMPORT:
+			{
+				INCREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_DMA_BUF_IMPORT, uiBytes);
+				psProcessStats->ui32StatAllocFlags |= (IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_DMA_BUF_IMPORT-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 			}
 			break;
 
@@ -2084,6 +1965,19 @@ PVRSRVStatsIncrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 			}
 			break;
 		}
+
+#if defined(ENABLE_GPU_MEM_TRACEPOINT)
+		if (psProcessStats->pid != PVR_SYS_ALLOC_PID)
+		{
+			IMG_UINT64 ui64Size = GET_GPUMEM_PERPID_STAT_VALUE(psProcessStats);
+			if (ui64Size != ui64InitialSize)
+			{
+				TracepointUpdateGPUMemPerProcess(0, psProcessStats->pid,
+				                                 ui64Size);
+			}
+		}
+#endif
+
 		OSLockRelease(psProcessStats->hLock);
 	}
 
@@ -2092,16 +1986,19 @@ PVRSRVStatsIncrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 static void
 _DecreaseProcStatValue(PVRSRV_MEM_ALLOC_TYPE eAllocType,
                        PVRSRV_PROCESS_STATS* psProcessStats,
-                       IMG_UINT32 uiBytes)
+                       IMG_UINT64 uiBytes)
 {
+#if defined(ENABLE_GPU_MEM_TRACEPOINT)
+	IMG_UINT64 ui64InitialSize = GET_GPUMEM_PERPID_STAT_VALUE(psProcessStats);
+#endif
+
 	switch (eAllocType)
 	{
-	#if !defined(PVR_DISABLE_KMALLOC_MEMSTATS)
 		case PVRSRV_MEM_ALLOC_TYPE_KMALLOC:
 		{
-			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_KMALLOC, (IMG_UINT32)uiBytes);
-			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, (IMG_UINT32)uiBytes);
-			if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_KMALLOC] == 0)
+			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_KMALLOC, uiBytes);
+			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, uiBytes);
+			if (psProcessStats->i64StatValue[PVRSRV_PROCESS_STAT_TYPE_KMALLOC] == 0)
 			{
 				psProcessStats->ui32StatAllocFlags &= ~(IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_KMALLOC-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 			}
@@ -2110,24 +2007,20 @@ _DecreaseProcStatValue(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 
 		case PVRSRV_MEM_ALLOC_TYPE_VMALLOC:
 		{
-			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_VMALLOC, (IMG_UINT32)uiBytes);
-			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, (IMG_UINT32)uiBytes);
-			if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_VMALLOC] == 0)
+			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_VMALLOC, uiBytes);
+			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, uiBytes);
+			if (psProcessStats->i64StatValue[PVRSRV_PROCESS_STAT_TYPE_VMALLOC] == 0)
 			{
 				psProcessStats->ui32StatAllocFlags &= ~(IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_VMALLOC-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 			}
 		}
 		break;
-	#else
-		case PVRSRV_MEM_ALLOC_TYPE_KMALLOC:
-		case PVRSRV_MEM_ALLOC_TYPE_VMALLOC:
-		break;
-	#endif
+
 		case PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_UMA:
 		{
-			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA, (IMG_UINT32)uiBytes);
-			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, (IMG_UINT32)uiBytes);
-			if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA] == 0)
+			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA, uiBytes);
+			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, uiBytes);
+			if (psProcessStats->i64StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA] == 0)
 			{
 				psProcessStats->ui32StatAllocFlags &= ~(IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 			}
@@ -2136,8 +2029,8 @@ _DecreaseProcStatValue(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 
 		case PVRSRV_MEM_ALLOC_TYPE_VMAP_PT_UMA:
 		{
-			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_VMAP_PT_UMA, (IMG_UINT32)uiBytes);
-			if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_VMAP_PT_UMA] == 0)
+			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_VMAP_PT_UMA, uiBytes);
+			if (psProcessStats->i64StatValue[PVRSRV_PROCESS_STAT_TYPE_VMAP_PT_UMA] == 0)
 			{
 				psProcessStats->ui32StatAllocFlags &= ~(IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_VMAP_PT_UMA-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 			}
@@ -2146,9 +2039,9 @@ _DecreaseProcStatValue(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 
 		case PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_LMA:
 		{
-			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA, (IMG_UINT32)uiBytes);
-			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, (IMG_UINT32)uiBytes);
-			if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA] == 0)
+			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA, uiBytes);
+			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, uiBytes);
+			if (psProcessStats->i64StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA] == 0)
 			{
 				psProcessStats->ui32StatAllocFlags &= ~(IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 			}
@@ -2157,8 +2050,8 @@ _DecreaseProcStatValue(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 
 		case PVRSRV_MEM_ALLOC_TYPE_IOREMAP_PT_LMA:
 		{
-			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_IOREMAP_PT_LMA, (IMG_UINT32)uiBytes);
-			if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_IOREMAP_PT_LMA] == 0)
+			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_IOREMAP_PT_LMA, uiBytes);
+			if (psProcessStats->i64StatValue[PVRSRV_PROCESS_STAT_TYPE_IOREMAP_PT_LMA] == 0)
 			{
 				psProcessStats->ui32StatAllocFlags &= ~(IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_IOREMAP_PT_LMA-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 			}
@@ -2167,9 +2060,9 @@ _DecreaseProcStatValue(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 
 		case PVRSRV_MEM_ALLOC_TYPE_ALLOC_LMA_PAGES:
 		{
-			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES, (IMG_UINT32)uiBytes);
-			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, (IMG_UINT32)uiBytes);
-			if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES] == 0)
+			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES, uiBytes);
+			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, uiBytes);
+			if (psProcessStats->i64StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES] == 0)
 			{
 				psProcessStats->ui32StatAllocFlags &= ~(IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 			}
@@ -2178,9 +2071,9 @@ _DecreaseProcStatValue(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 
 		case PVRSRV_MEM_ALLOC_TYPE_ALLOC_UMA_PAGES:
 		{
-			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES, (IMG_UINT32)uiBytes);
-			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, (IMG_UINT32)uiBytes);
-			if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES] == 0)
+			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES, uiBytes);
+			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_TOTAL, uiBytes);
+			if (psProcessStats->i64StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES] == 0)
 			{
 				psProcessStats->ui32StatAllocFlags &= ~(IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 			}
@@ -2189,10 +2082,20 @@ _DecreaseProcStatValue(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 
 		case PVRSRV_MEM_ALLOC_TYPE_MAP_UMA_LMA_PAGES:
 		{
-			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_MAP_UMA_LMA_PAGES, (IMG_UINT32)uiBytes);
-			if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAP_UMA_LMA_PAGES] == 0)
+			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_MAP_UMA_LMA_PAGES, uiBytes);
+			if (psProcessStats->i64StatValue[PVRSRV_PROCESS_STAT_TYPE_MAP_UMA_LMA_PAGES] == 0)
 			{
 				psProcessStats->ui32StatAllocFlags &= ~(IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_MAP_UMA_LMA_PAGES-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
+			}
+		}
+		break;
+
+		case PVRSRV_MEM_ALLOC_TYPE_DMA_BUF_IMPORT:
+		{
+			DECREASE_STAT_VALUE(psProcessStats, PVRSRV_PROCESS_STAT_TYPE_DMA_BUF_IMPORT, uiBytes);
+			if (psProcessStats->i64StatValue[PVRSRV_PROCESS_STAT_TYPE_DMA_BUF_IMPORT] == 0)
+			{
+					psProcessStats->ui32StatAllocFlags &= ~(IMG_UINT32)(1 << (PVRSRV_PROCESS_STAT_TYPE_DMA_BUF_IMPORT-PVRSRV_PROCESS_STAT_TYPE_KMALLOC));
 			}
 		}
 		break;
@@ -2204,52 +2107,58 @@ _DecreaseProcStatValue(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 		break;
 	}
 
+#if defined(ENABLE_GPU_MEM_TRACEPOINT)
+	if (psProcessStats->pid != PVR_SYS_ALLOC_PID)
+	{
+		IMG_UINT64 ui64Size = GET_GPUMEM_PERPID_STAT_VALUE(psProcessStats);
+		if (ui64Size != ui64InitialSize)
+		{
+			TracepointUpdateGPUMemPerProcess(0, psProcessStats->pid, ui64Size);
+		}
+	}
+#endif
 }
 
 #if defined(PVRSRV_ENABLE_MEMTRACK_STATS_FILE)
-void RawProcessStatsPrintElements(void *pvFile,
-                                  void *pvStatPtr,
-                                  OS_STATS_PRINTF_FUNC *pfnOSStatsPrintf)
+int RawProcessStatsPrintElements(OSDI_IMPL_ENTRY *psEntry, void *pvData)
 {
 	PVRSRV_PROCESS_STATS *psProcessStats;
+	DLLIST_NODE *psNode, *psNext;
 
-	if (pfnOSStatsPrintf == NULL)
-	{
-		PVR_DPF((PVR_DBG_ERROR, "%s: pfnOSStatsPrintf not set", __func__));
-		return;
-	}
-
-	pfnOSStatsPrintf(pvFile, "%s,%s,%s,%s,%s,%s\n",
-	                 "PID",
-	                 "MemoryUsageKMalloc",           // PVRSRV_PROCESS_STAT_TYPE_KMALLOC
-	                 "MemoryUsageAllocPTMemoryUMA",  // PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA
-	                 "MemoryUsageAllocPTMemoryLMA",  // PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA
-	                 "MemoryUsageAllocGPUMemLMA",    // PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES
-	                 "MemoryUsageAllocGPUMemUMA"     // PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES
-	                 );
+	DIPrintf(psEntry,
+	         "%s,%s,%s,%s,%s,%s,%s\n",
+	         "PID",
+	         "MemoryUsageKMalloc",           // PVRSRV_PROCESS_STAT_TYPE_KMALLOC
+	         "MemoryUsageAllocPTMemoryUMA",  // PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA
+	         "MemoryUsageAllocPTMemoryLMA",  // PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA
+	         "MemoryUsageAllocGPUMemLMA",    // PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES
+	         "MemoryUsageAllocGPUMemUMA",    // PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES
+	         "MemoryUsageDmaBufImport");     // PVRSRV_PROCESS_STAT_TYPE_DMA_BUF_IMPORT
 
 	OSLockAcquire(g_psLinkedListLock);
 
-	psProcessStats = g_psLiveList;
-
-	while (psProcessStats != NULL)
+	dllist_foreach_node(&gsLiveList, psNode, psNext)
 	{
+		psProcessStats = IMG_CONTAINER_OF(psNode, PVRSRV_PROCESS_STATS, sNode);
 		if (psProcessStats->pid != PVR_SYS_ALLOC_PID)
 		{
-			pfnOSStatsPrintf(pvFile, "%d,%d,%d,%d,%d,%d\n",
-							 psProcessStats->pid,
-							 psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_KMALLOC],
-							 psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA],
-							 psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA],
-							 psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES],
-							 psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES]
-							 );
+			DIPrintf(psEntry,
+			         "%d,%"IMG_INT64_FMTSPECd",%"IMG_INT64_FMTSPECd","
+			         "%"IMG_INT64_FMTSPECd",%"IMG_INT64_FMTSPECd","
+			         "%"IMG_INT64_FMTSPECd",%"IMG_INT64_FMTSPECd"\n",
+			         psProcessStats->pid,
+			         psProcessStats->i64StatValue[PVRSRV_PROCESS_STAT_TYPE_KMALLOC],
+			         psProcessStats->i64StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA],
+			         psProcessStats->i64StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA],
+			         psProcessStats->i64StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES],
+			         psProcessStats->i64StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES],
+			         psProcessStats->i64StatValue[PVRSRV_PROCESS_STAT_TYPE_DMA_BUF_IMPORT]);
 		}
-
-		psProcessStats = psProcessStats->psNext;
 	}
 
 	OSLockRelease(g_psLinkedListLock);
+
+	return 0;
 } /* RawProcessStatsPrintElements */
 #endif
 
@@ -2257,7 +2166,6 @@ void
 PVRSRVStatsDecrMemKAllocStat(size_t uiBytes,
                              IMG_PID decrPID)
 {
-#if !defined(PVR_DISABLE_KMALLOC_MEMSTATS)
 	PVRSRV_PROCESS_STATS*  psProcessStats;
 
 	/* Don't do anything if we are not initialised or we are shutting down! */
@@ -2280,7 +2188,6 @@ PVRSRVStatsDecrMemKAllocStat(size_t uiBytes,
 	}
 
 	OSLockRelease(g_psLinkedListLock);
-#endif
 }
 
 static void
@@ -2341,7 +2248,7 @@ PVRSRVStatsDecrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 							IMG_PID currentPid)
 {
 	IMG_PID				   currentCleanupPid = PVRSRVGetPurgeConnectionPid();
-	PVRSRV_DATA* 		   psPVRSRVData = PVRSRVGetPVRSRVData();
+	PVRSRV_DATA*		   psPVRSRVData = PVRSRVGetPVRSRVData();
 	PVRSRV_PROCESS_STATS*  psProcessStats = NULL;
 
 	/* Don't do anything if we are not initialised or we are shutting down! */
@@ -2374,8 +2281,10 @@ PVRSRVStatsDecrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 	if (psProcessStats != NULL)
 	{
 		OSLockAcquireNested(psProcessStats->hLock, PROCESS_LOCK_SUBCLASS_CURRENT);
-		/*Release the list lock as soon as we acquire the process lock,
-		 * this ensures if the process is in deadlist the entry cannot be deleted or modified */
+		/* Release the list lock as soon as we acquire the process lock,
+		 * this ensures if the process is in deadlist the entry cannot be
+		 * deleted or modified
+		 */
 		OSLockRelease(g_psLinkedListLock);
 		/* Update the memory watermarks... */
 		_DecreaseProcStatValue(eAllocType,
@@ -2417,13 +2326,57 @@ PVRSRVStatsDecrMemAllocPoolStat(size_t uiBytes)
 	_decrease_global_stat(PVRSRV_MEM_ALLOC_TYPE_UMA_POOL_PAGES, uiBytes);
 }
 
+PVRSRV_ERROR
+PVRSRVStatsUpdateOOMStat(CONNECTION_DATA *psConnection,
+						  PVRSRV_DEVICE_NODE *psDeviceNode,
+						  IMG_UINT32 ui32OOMStatType,
+						  IMG_PID pidOwner)
+{
+	PVRSRV_DEVICE_STAT_TYPE eOOMStatType = (PVRSRV_DEVICE_STAT_TYPE) ui32OOMStatType;
+	IMG_PID	pidCurrent = pidOwner;
+	PVRSRV_PROCESS_STATS* psProcessStats;
+
+	PVR_UNREFERENCED_PARAMETER(psConnection);
+
+	/* Don't do anything if we are not initialised or we are shutting down! */
+	if (!bProcessStatsInitialised)
+	{
+		return PVRSRV_ERROR_NOT_INITIALISED;
+	}
+
+	if (ui32OOMStatType >= PVRSRV_DEVICE_STAT_TYPE_COUNT)
+	{
+		return PVRSRV_ERROR_INVALID_PARAMS;
+	}
+
+	/* Lock while we find the correct process and update the record... */
+	OSLockAcquire(g_psLinkedListLock);
+
+	psProcessStats = _FindProcessStats(pidCurrent);
+	if (psProcessStats != NULL)
+	{
+		OSLockAcquireNested(psProcessStats->hLock, PROCESS_LOCK_SUBCLASS_CURRENT);
+		psProcessStats->ai32DevStats[psDeviceNode->sDevId.ui32InternalID][eOOMStatType]++;
+		OSLockRelease(psProcessStats->hLock);
+	}
+	else
+	{
+		PVR_DPF((PVR_DBG_WARNING, "PVRSRVStatsUpdateOOMStat: Process not found for Pid=%d", pidCurrent));
+	}
+
+	OSLockRelease(g_psLinkedListLock);
+
+	return PVRSRV_OK;
+} /* PVRSRVStatsUpdateOOMStat */
+
 void
-PVRSRVStatsUpdateRenderContextStats(IMG_UINT32 ui32TotalNumPartialRenders,
+PVRSRVStatsUpdateRenderContextStats(PVRSRV_DEVICE_NODE *psDeviceNode,
+									IMG_UINT32 ui32TotalNumPartialRenders,
 									IMG_UINT32 ui32TotalNumOutOfMemory,
 									IMG_UINT32 ui32NumTAStores,
 									IMG_UINT32 ui32Num3DStores,
-									IMG_UINT32 ui32NumSHStores,
 									IMG_UINT32 ui32NumCDMStores,
+									IMG_UINT32 ui32NumTDMStores,
 									IMG_PID pidOwner)
 {
 	IMG_PID	pidCurrent = pidOwner;
@@ -2442,25 +2395,28 @@ PVRSRVStatsUpdateRenderContextStats(IMG_UINT32 ui32TotalNumPartialRenders,
 	psProcessStats = _FindProcessStats(pidCurrent);
 	if (psProcessStats != NULL)
 	{
+		IMG_UINT32 ui32DevID = psDeviceNode->sDevId.ui32InternalID;
+
 		OSLockAcquireNested(psProcessStats->hLock, PROCESS_LOCK_SUBCLASS_CURRENT);
-		psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_RC_PRS]       += ui32TotalNumPartialRenders;
-		psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_RC_OOMS]      += ui32TotalNumOutOfMemory;
-		psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_RC_TA_STORES] += ui32NumTAStores;
-		psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_RC_3D_STORES] += ui32Num3DStores;
-		psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_RC_SH_STORES] += ui32NumSHStores;
-		psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_RC_CDM_STORES]+= ui32NumCDMStores;
+		psProcessStats->ai32DevStats[ui32DevID][PVRSRV_DEVICE_STAT_TYPE_RC_PRS]       += ui32TotalNumPartialRenders;
+		psProcessStats->ai32DevStats[ui32DevID][PVRSRV_DEVICE_STAT_TYPE_RC_OOMS]      += ui32TotalNumOutOfMemory;
+		psProcessStats->ai32DevStats[ui32DevID][PVRSRV_DEVICE_STAT_TYPE_RC_TA_STORES] += ui32NumTAStores;
+		psProcessStats->ai32DevStats[ui32DevID][PVRSRV_DEVICE_STAT_TYPE_RC_3D_STORES] += ui32Num3DStores;
+		psProcessStats->ai32DevStats[ui32DevID][PVRSRV_DEVICE_STAT_TYPE_RC_CDM_STORES]+= ui32NumCDMStores;
+		psProcessStats->ai32DevStats[ui32DevID][PVRSRV_DEVICE_STAT_TYPE_RC_TDM_STORES]+= ui32NumTDMStores;
 		OSLockRelease(psProcessStats->hLock);
 	}
 	else
 	{
-		PVR_DPF((PVR_DBG_WARNING, "PVRSRVStatsUpdateRenderContextStats: Null process. Pid=%d", pidCurrent));
+		PVR_DPF((PVR_DBG_WARNING, "PVRSRVStatsUpdateRenderContextStats: Process not found for Pid=%d", pidCurrent));
 	}
 
 	OSLockRelease(g_psLinkedListLock);
 } /* PVRSRVStatsUpdateRenderContextStats */
 
 void
-PVRSRVStatsUpdateZSBufferStats(IMG_UINT32 ui32NumReqByApp,
+PVRSRVStatsUpdateZSBufferStats(PVRSRV_DEVICE_NODE *psDeviceNode,
+							   IMG_UINT32 ui32NumReqByApp,
 							   IMG_UINT32 ui32NumReqByFW,
 							   IMG_PID owner)
 {
@@ -2480,17 +2436,24 @@ PVRSRVStatsUpdateZSBufferStats(IMG_UINT32 ui32NumReqByApp,
 	psProcessStats = _FindProcessStats(currentPid);
 	if (psProcessStats != NULL)
 	{
+		IMG_UINT32 ui32DevID = psDeviceNode->sDevId.ui32InternalID;
+
 		OSLockAcquireNested(psProcessStats->hLock, PROCESS_LOCK_SUBCLASS_CURRENT);
-		psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ZSBUFFER_REQS_BY_APP] += ui32NumReqByApp;
-		psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ZSBUFFER_REQS_BY_FW]  += ui32NumReqByFW;
+		psProcessStats->ai32DevStats[ui32DevID][PVRSRV_DEVICE_STAT_TYPE_ZSBUFFER_REQS_BY_APP] += ui32NumReqByApp;
+		psProcessStats->ai32DevStats[ui32DevID][PVRSRV_DEVICE_STAT_TYPE_ZSBUFFER_REQS_BY_FW] += ui32NumReqByFW;
 		OSLockRelease(psProcessStats->hLock);
+	}
+	else
+	{
+		PVR_DPF((PVR_DBG_WARNING, "%s: Process not found for Pid=%d", __func__, currentPid));
 	}
 
 	OSLockRelease(g_psLinkedListLock);
 } /* PVRSRVStatsUpdateZSBufferStats */
 
 void
-PVRSRVStatsUpdateFreelistStats(IMG_UINT32 ui32NumGrowReqByApp,
+PVRSRVStatsUpdateFreelistStats(PVRSRV_DEVICE_NODE *psDeviceNode,
+							   IMG_UINT32 ui32NumGrowReqByApp,
 							   IMG_UINT32 ui32NumGrowReqByFW,
 							   IMG_UINT32 ui32InitFLPages,
 							   IMG_UINT32 ui32NumHighPages,
@@ -2512,91 +2475,95 @@ PVRSRVStatsUpdateFreelistStats(IMG_UINT32 ui32NumGrowReqByApp,
 
 	if (psProcessStats != NULL)
 	{
+		IMG_UINT32 ui32DevID = psDeviceNode->sDevId.ui32InternalID;
 
 		OSLockAcquireNested(psProcessStats->hLock, PROCESS_LOCK_SUBCLASS_CURRENT);
-		psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_FREELIST_GROW_REQS_BY_APP] += ui32NumGrowReqByApp;
-		psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_FREELIST_GROW_REQS_BY_FW]  += ui32NumGrowReqByFW;
+		psProcessStats->ai32DevStats[ui32DevID][PVRSRV_DEVICE_STAT_TYPE_FREELIST_GROW_REQS_BY_APP] += ui32NumGrowReqByApp;
+		psProcessStats->ai32DevStats[ui32DevID][PVRSRV_DEVICE_STAT_TYPE_FREELIST_GROW_REQS_BY_FW] += ui32NumGrowReqByFW;
 
-		UPDATE_MAX_VALUE(psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_FREELIST_PAGES_INIT],
-				(IMG_INT32) ui32InitFLPages);
+		UPDATE_MAX_VALUE(psProcessStats->ai32DevStats[ui32DevID][PVRSRV_DEVICE_STAT_TYPE_FREELIST_PAGES_INIT],
+						 (IMG_INT32) ui32InitFLPages);
 
-		UPDATE_MAX_VALUE(psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_FREELIST_MAX_PAGES],
-				(IMG_INT32) ui32NumHighPages);
-
+		UPDATE_MAX_VALUE(psProcessStats->ai32DevStats[ui32DevID][PVRSRV_DEVICE_STAT_TYPE_FREELIST_MAX_PAGES],
+						 (IMG_INT32) ui32NumHighPages);
 		OSLockRelease(psProcessStats->hLock);
 
+	}
+	else
+	{
+		PVR_DPF((PVR_DBG_WARNING, "%s: Process not found for Pid=%d", __func__, currentPid));
 	}
 
 	OSLockRelease(g_psLinkedListLock);
 } /* PVRSRVStatsUpdateFreelistStats */
 
 
-#if defined (ENABLE_DEBUGFS_PIDS)
+#if defined(ENABLE_DEBUGFS_PIDS)
 
-void
-GenericStatsPrintElementsLive(void *pvFile,
-			      void *pvStatPtr,
-			      OS_STATS_PRINTF_FUNC* pfnOSStatsPrintf)
+int
+GenericStatsPrintElementsLive(OSDI_IMPL_ENTRY *psEntry, void *pvData)
 {
-	PVRSRV_STAT_PV_DATA *psStatType = (PVRSRV_STAT_PV_DATA *)pvStatPtr;
+	PVRSRV_STAT_PV_DATA *psStatType = DIGetPrivData(psEntry);
 	PVRSRV_PROCESS_STATS* psProcessStats;
+	DLLIST_NODE *psNode, *psNext;
 
-	if (pfnOSStatsPrintf == NULL)	return;
+	PVR_UNREFERENCED_PARAMETER(pvData);
+
 	PVR_ASSERT(psStatType->pfnStatsPrintElements != NULL);
 
-	pfnOSStatsPrintf(pvFile, "%s\n", psStatType->szLiveStatsHeaderStr);
+	DIPrintf(psEntry, "%s\n", psStatType->szLiveStatsHeaderStr);
 
 	OSLockAcquire(g_psLinkedListLock);
 
-	psProcessStats = g_psLiveList;
-
-	if(psProcessStats == NULL)
+	if (dllist_is_empty(&gsLiveList))
 	{
-		pfnOSStatsPrintf(pvFile, "No Stats to display\n%s\n", g_szSeparatorStr);
+		DIPrintf(psEntry, "No Stats to display\n%s\n", g_szSeparatorStr);
 	}
 	else
 	{
-		while(psProcessStats != NULL)
+		dllist_foreach_node(&gsLiveList, psNode, psNext)
 		{
-			psStatType->pfnStatsPrintElements(pvFile, psProcessStats, pfnOSStatsPrintf);
-			psProcessStats = psProcessStats->psNext;
-			pfnOSStatsPrintf(pvFile, "%s\n", g_szSeparatorStr);
+			psProcessStats = IMG_CONTAINER_OF(psNode, PVRSRV_PROCESS_STATS, sNode);
+			psStatType->pfnStatsPrintElements(psEntry, psProcessStats);
+			DIPrintf(psEntry, "%s\n", g_szSeparatorStr);
 		}
 	}
 	OSLockRelease(g_psLinkedListLock);
+
+	return 0;
 }
 
-void
-GenericStatsPrintElementsRetired(void *pvFile,
-				 void *pvStatPtr,
-				 OS_STATS_PRINTF_FUNC* pfnOSStatsPrintf)
+int
+GenericStatsPrintElementsRetired(OSDI_IMPL_ENTRY *psEntry, void *pvData)
 {
-	PVRSRV_STAT_PV_DATA *psStatType = (PVRSRV_STAT_PV_DATA *)pvStatPtr;
+	PVRSRV_STAT_PV_DATA *psStatType = DIGetPrivData(psEntry);
 	PVRSRV_PROCESS_STATS* psProcessStats;
+	DLLIST_NODE *psNode, *psNext;
 
-	if (pfnOSStatsPrintf == NULL)	return;
+	PVR_UNREFERENCED_PARAMETER(pvData);
+
 	PVR_ASSERT(psStatType->pfnStatsPrintElements != NULL);
 
-	pfnOSStatsPrintf(pvFile, "%s\n", psStatType->szRetiredStatsHeaderStr);
+	DIPrintf(psEntry, "%s\n", psStatType->szRetiredStatsHeaderStr);
 
 	OSLockAcquire(g_psLinkedListLock);
 
-	psProcessStats = g_psDeadList;
-
-	if(psProcessStats == NULL)
+	if (dllist_is_empty(&gsDeadList))
 	{
-		pfnOSStatsPrintf(pvFile, "No Stats to display\n%s\n", g_szSeparatorStr);
+		DIPrintf(psEntry, "No Stats to display\n%s\n", g_szSeparatorStr);
 	}
 	else
 	{
-		while(psProcessStats != NULL)
+		dllist_foreach_node(&gsDeadList, psNode, psNext)
 		{
-			psStatType->pfnStatsPrintElements(pvFile, psProcessStats, pfnOSStatsPrintf);
-			psProcessStats = psProcessStats->psNext;
-			pfnOSStatsPrintf(pvFile, "%s\n", g_szSeparatorStr);
+			psProcessStats = IMG_CONTAINER_OF(psNode, PVRSRV_PROCESS_STATS, sNode);
+			psStatType->pfnStatsPrintElements(psEntry, psProcessStats);
+			DIPrintf(psEntry, "%s\n", g_szSeparatorStr);
 		}
 	}
 	OSLockRelease(g_psLinkedListLock);
+
+	return 0;
 }
 
 #if defined(PVRSRV_ENABLE_PERPID_STATS)
@@ -2607,22 +2574,54 @@ GenericStatsPrintElementsRetired(void *pvFile,
 @Input          pfnOSStatsPrintf  Printf function to use for output.
 */ /**************************************************************************/
 void
-ProcessStatsPrintElements(void *pvFile,
-			  PVRSRV_PROCESS_STATS* psProcessStats,
-			  OS_STATS_PRINTF_FUNC* pfnOSStatsPrintf)
+ProcessStatsPrintElements(OSDI_IMPL_ENTRY *psEntry,
+                          PVRSRV_PROCESS_STATS *psProcessStats)
 {
 	IMG_UINT32 ui32StatNumber;
 
 	OSLockAcquireNested(psProcessStats->hLock, PROCESS_LOCK_SUBCLASS_CURRENT);
 
-	pfnOSStatsPrintf(pvFile, "PID %u\n", psProcessStats->pid);
+	DIPrintf(psEntry, "PID %u\n", psProcessStats->pid);
 
-	/* Loop through all the values and print them... */
+	/* Print device stats table PVRSRV_DEVICE_STAT_TYPE */
+	if (psProcessStats->ui32DevCount > 0)
+	{
+		IMG_UINT32 i;
+
+		for (ui32StatNumber = 0;
+			 ui32StatNumber < ARRAY_SIZE(pszDeviceStatType);
+			 ui32StatNumber++)
+		{
+			if (OSStringNCompare(pszDeviceStatType[ui32StatNumber], "", 1) != 0)
+			{
+				DIPrintf(psEntry, "%-34s",
+						 pszDeviceStatType[ui32StatNumber]);
+
+				for (i = 0; i < psProcessStats->ui32DevCount; i++)
+				{
+					if (i == 0)
+					{
+						DIPrintf(psEntry, "%10d",
+								 psProcessStats->ai32DevStats[i][ui32StatNumber]);
+					}
+					else
+					{
+						DIPrintf(psEntry, ",%d",
+								 psProcessStats->ai32DevStats[i][ui32StatNumber]);
+					}
+				}
+			}
+
+			DIPrintf(psEntry, "\n");
+		}
+	}
+
+	/* Print process memory stats table PVRSRV_PROCESS_STAT_TYPE */
 	for (ui32StatNumber = 0;
 	     ui32StatNumber < ARRAY_SIZE(pszProcessStatType);
 	     ui32StatNumber++)
 	{
-		if (OSStringCompare(pszProcessStatType[ui32StatNumber], "") != 0)
+		if (OSStringNCompare(pszProcessStatType[ui32StatNumber], "", 1) != 0)
 		{
 #if defined(PVRSRV_ENABLE_GPU_MEMORY_INFO)
 			if ((ui32StatNumber == PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES) ||
@@ -2633,7 +2632,7 @@ ProcessStatsPrintElements(void *pvFile,
 									    (ui32StatNumber == PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES)
 									    ? PHYS_HEAP_TYPE_LMA : PHYS_HEAP_TYPE_UMA);
 
-				pfnOSStatsPrintf(pvFile, "%-34s%10d %8dK\n",
+				DIPrintf(psEntry, "%-34s%10d %8dK\n",
 						 pszProcessStatType[ui32StatNumber], ui32Total, ui32Total>>10);
 			}
 			else
@@ -2642,16 +2641,16 @@ ProcessStatsPrintElements(void *pvFile,
 				if (ui32StatNumber >= PVRSRV_PROCESS_STAT_TYPE_KMALLOC &&
 					ui32StatNumber <= PVRSRV_PROCESS_STAT_TYPE_TOTAL_MAX)
 				{
-					pfnOSStatsPrintf(pvFile, "%-34s%10d %8dK\n",
-							 pszProcessStatType[ui32StatNumber],
-							 psProcessStats->i32StatValue[ui32StatNumber],
-							 psProcessStats->i32StatValue[ui32StatNumber] >> 10);
+					DIPrintf(psEntry, "%-34s%10"IMG_INT64_FMTSPECd" %8"IMG_INT64_FMTSPECd"K\n",
+					         pszProcessStatType[ui32StatNumber],
+					         psProcessStats->i64StatValue[ui32StatNumber],
+					         psProcessStats->i64StatValue[ui32StatNumber] >> 10);
 				}
 				else
 				{
-					pfnOSStatsPrintf(pvFile, "%-34s%10d\n",
-							 pszProcessStatType[ui32StatNumber],
-							 psProcessStats->i32StatValue[ui32StatNumber]);
+					DIPrintf(psEntry, "%-34s%10"IMG_INT64_FMTSPECd"\n",
+					         pszProcessStatType[ui32StatNumber],
+					         psProcessStats->i64StatValue[ui32StatNumber]);
 				}
 			}
 		}
@@ -2664,18 +2663,14 @@ ProcessStatsPrintElements(void *pvFile,
 #if defined(PVRSRV_ENABLE_CACHEOP_STATS)
 void
 PVRSRVStatsUpdateCacheOpStats(PVRSRV_CACHE_OP uiCacheOp,
-							IMG_UINT32 ui32OpSeqNum,
 #if defined(PVRSRV_ENABLE_GPU_MEMORY_INFO) && defined(DEBUG)
 							IMG_DEV_VIRTADDR sDevVAddr,
 							IMG_DEV_PHYADDR sDevPAddr,
-							IMG_UINT32 eFenceOpType,
 #endif
 							IMG_DEVMEM_SIZE_T uiOffset,
 							IMG_DEVMEM_SIZE_T uiSize,
 							IMG_UINT64 ui64ExecuteTime,
-							IMG_BOOL bRangeBasedFlush,
 							IMG_BOOL bUserModeFlush,
-							IMG_BOOL bIsFence,
 							IMG_PID ownerPid)
 {
 	IMG_PID				  currentPid = (ownerPid!=0)?ownerPid:OSGetCurrentClientProcessIDKM();
@@ -2707,15 +2702,11 @@ PVRSRVStatsUpdateCacheOpStats(PVRSRV_CACHE_OP uiCacheOp,
 #if defined(PVRSRV_ENABLE_GPU_MEMORY_INFO) && defined(DEBUG)
 		psProcessStats->asCacheOp[Idx].sDevVAddr = sDevVAddr;
 		psProcessStats->asCacheOp[Idx].sDevPAddr = sDevPAddr;
-		psProcessStats->asCacheOp[Idx].eFenceOpType = eFenceOpType;
 #endif
 		psProcessStats->asCacheOp[Idx].uiOffset = uiOffset;
 		psProcessStats->asCacheOp[Idx].uiSize = uiSize;
-		psProcessStats->asCacheOp[Idx].bRangeBasedFlush = bRangeBasedFlush;
 		psProcessStats->asCacheOp[Idx].bUserModeFlush = bUserModeFlush;
 		psProcessStats->asCacheOp[Idx].ui64ExecuteTime = ui64ExecuteTime;
-		psProcessStats->asCacheOp[Idx].ui32OpSeqNum = ui32OpSeqNum;
-		psProcessStats->asCacheOp[Idx].bIsFence = bIsFence;
 
 		OSLockRelease(psProcessStats->hLock);
 	}
@@ -2730,33 +2721,28 @@ PVRSRVStatsUpdateCacheOpStats(PVRSRV_CACHE_OP uiCacheOp,
 @Input          pfnOSStatsPrintf  Printf function to use for output.
 */ /**************************************************************************/
 void
-CacheOpStatsPrintElements(void *pvFile,
-			  PVRSRV_PROCESS_STATS* psProcessStats,
-			  OS_STATS_PRINTF_FUNC* pfnOSStatsPrintf)
+CacheOpStatsPrintElements(OSDI_IMPL_ENTRY *psEntry,
+                          PVRSRV_PROCESS_STATS *psProcessStats)
 {
 	IMG_CHAR  *pszCacheOpType, *pszFlushType, *pszFlushMode;
 	IMG_INT32 i32WriteIdx, i32ReadIdx;
 
 #if defined(PVRSRV_ENABLE_GPU_MEMORY_INFO) && defined(DEBUG)
 	#define CACHEOP_RI_PRINTF_HEADER \
-		"%-10s %-10s %-5s %-16s %-16s %-10s %-10s %-12s %-12s\n"
-	#define CACHEOP_RI_PRINTF_FENCE	 \
-		"%-10s %-10s %-5s %-16s %-16s %-10s %-10s %-12llu 0x%-10x\n"
+		"%-10s %-10s %-5s %-16s %-16s %-10s %-10s %-12s\n"
 	#define CACHEOP_RI_PRINTF		\
-		"%-10s %-10s %-5s 0x%-14llx 0x%-14llx 0x%-8llx 0x%-8llx %-12llu 0x%-10x\n"
+		"%-10s %-10s %-5s 0x%-14llx 0x%-14llx 0x%-8llx 0x%-8llx %-12llu\n"
 #else
 	#define CACHEOP_PRINTF_HEADER	\
-		"%-10s %-10s %-5s %-10s %-10s %-12s %-12s\n"
-	#define CACHEOP_PRINTF_FENCE	 \
-		"%-10s %-10s %-5s %-10s %-10s %-12llu 0x%-10x\n"
-	#define CACHEOP_PRINTF		 	\
-		"%-10s %-10s %-5s 0x%-8llx 0x%-8llx %-12llu 0x%-10x\n"
+		"%-10s %-10s %-5s %-10s %-10s %-12s\n"
+	#define CACHEOP_PRINTF			\
+		"%-10s %-10s %-5s 0x%-8llx 0x%-8llx %-12llu\n"
 #endif
 
-	pfnOSStatsPrintf(pvFile, "PID %u\n", psProcessStats->pid);
+	DIPrintf(psEntry, "PID %u\n", psProcessStats->pid);
 
 	/* File header info */
-	pfnOSStatsPrintf(pvFile,
+	DIPrintf(psEntry,
 #if defined(PVRSRV_ENABLE_GPU_MEMORY_INFO) && defined(DEBUG)
 					CACHEOP_RI_PRINTF_HEADER,
 #else
@@ -2771,8 +2757,7 @@ CacheOpStatsPrintElements(void *pvFile,
 #endif
 					"Offset",
 					"Size",
-					"Time (us)",
-					"SeqNo");
+					"Time (us)");
 
 	/* Take a snapshot of write index, read backwards in buffer
 	   and wrap round at boundary */
@@ -2781,118 +2766,47 @@ CacheOpStatsPrintElements(void *pvFile,
 		 i32ReadIdx != i32WriteIdx;
 		 i32ReadIdx = DECREMENT_CACHEOP_STAT_IDX_WRAP(i32ReadIdx))
 	{
-		IMG_UINT64 ui64ExecuteTime;
+		IMG_UINT64 ui64ExecuteTime = psProcessStats->asCacheOp[i32ReadIdx].ui64ExecuteTime;
+		IMG_DEVMEM_SIZE_T ui64NumOfPages = psProcessStats->asCacheOp[i32ReadIdx].uiSize >> OSGetPageShift();
 
-		if (! psProcessStats->asCacheOp[i32ReadIdx].ui32OpSeqNum)
+		if (ui64NumOfPages <= PMR_MAX_TRANSLATION_STACK_ALLOC)
 		{
-			break;
-		}
-
-		ui64ExecuteTime = psProcessStats->asCacheOp[i32ReadIdx].ui64ExecuteTime;
-
-		if (psProcessStats->asCacheOp[i32ReadIdx].bIsFence)
-		{
-			IMG_CHAR *pszFenceType = "";
-			pszCacheOpType = "Fence";
-
-#if defined(PVRSRV_ENABLE_GPU_MEMORY_INFO) && defined(DEBUG)
-			switch (psProcessStats->asCacheOp[i32ReadIdx].eFenceOpType)
-			{
-				case RGXFWIF_DM_GP:
-					pszFenceType = "GP";
-					break;
-
-				case RGXFWIF_DM_TDM:
-					/* Also case RGXFWIF_DM_2D: */
-					pszFenceType = "TDM/2D";
-					break;
-
-				case RGXFWIF_DM_TA:
-					pszFenceType = "TA";
-					break;
-
-				case RGXFWIF_DM_3D:
-					pszFenceType = "3D";
-					break;
-
-				case RGXFWIF_DM_CDM:
-					pszFenceType = "CDM";
-					break;
-
-				default:
-					PVR_ASSERT(0);
-					break;
-			}
-#endif
-
-			pfnOSStatsPrintf(pvFile,
-#if defined(PVRSRV_ENABLE_GPU_MEMORY_INFO) && defined(DEBUG)
-							CACHEOP_RI_PRINTF_FENCE,
-#else
-							CACHEOP_PRINTF_FENCE,
-#endif
-							pszCacheOpType,
-							pszFenceType,
-							"",
-#if defined(PVRSRV_ENABLE_GPU_MEMORY_INFO) && defined(DEBUG)
-							"",
-							"",
-#endif
-							"",
-							"",
-							ui64ExecuteTime,
-							psProcessStats->asCacheOp[i32ReadIdx].ui32OpSeqNum);
+			pszFlushType = "RBF.Fast";
 		}
 		else
 		{
-			if (psProcessStats->asCacheOp[i32ReadIdx].bRangeBasedFlush)
-			{
-				IMG_DEVMEM_SIZE_T ui64NumOfPages;
+			pszFlushType = "RBF.Slow";
+		}
 
-				ui64NumOfPages = psProcessStats->asCacheOp[i32ReadIdx].uiSize >> OSGetPageShift();
-				if (ui64NumOfPages <= PMR_MAX_TRANSLATION_STACK_ALLOC)
-				{
-					pszFlushType = "RBF.Fast";
-				}
-				else
-				{
-					pszFlushType = "RBF.Slow";
-				}
-			}
-			else
-			{
-				pszFlushType = "GF";
-			}
+		if (psProcessStats->asCacheOp[i32ReadIdx].bUserModeFlush)
+		{
+			pszFlushMode = "UM";
+		}
+		else
+		{
+			pszFlushMode = "KM";
+		}
 
-			if (psProcessStats->asCacheOp[i32ReadIdx].bUserModeFlush)
-			{
-				pszFlushMode = "UM";
-			}
-			else
-			{
-				pszFlushMode = "KM";
-			}
+		switch (psProcessStats->asCacheOp[i32ReadIdx].uiCacheOp)
+		{
+			case PVRSRV_CACHE_OP_NONE:
+				pszCacheOpType = "None";
+				break;
+			case PVRSRV_CACHE_OP_CLEAN:
+				pszCacheOpType = "Clean";
+				break;
+			case PVRSRV_CACHE_OP_INVALIDATE:
+				pszCacheOpType = "Invalidate";
+				break;
+			case PVRSRV_CACHE_OP_FLUSH:
+				pszCacheOpType = "Flush";
+				break;
+			default:
+				pszCacheOpType = "Unknown";
+				break;
+		}
 
-			switch (psProcessStats->asCacheOp[i32ReadIdx].uiCacheOp)
-			{
-				case PVRSRV_CACHE_OP_NONE:
-					pszCacheOpType = "None";
-					break;
-				case PVRSRV_CACHE_OP_CLEAN:
-					pszCacheOpType = "Clean";
-					break;
-				case PVRSRV_CACHE_OP_INVALIDATE:
-					pszCacheOpType = "Invalidate";
-					break;
-				case PVRSRV_CACHE_OP_FLUSH:
-					pszCacheOpType = "Flush";
-					break;
-				default:
-					pszCacheOpType = "Unknown";
-					break;
-			}
-
-			pfnOSStatsPrintf(pvFile,
+		DIPrintf(psEntry,
 #if defined(PVRSRV_ENABLE_GPU_MEMORY_INFO) && defined(DEBUG)
 							CACHEOP_RI_PRINTF,
 #else
@@ -2907,14 +2821,73 @@ CacheOpStatsPrintElements(void *pvFile,
 #endif
 							psProcessStats->asCacheOp[i32ReadIdx].uiOffset,
 							psProcessStats->asCacheOp[i32ReadIdx].uiSize,
-							ui64ExecuteTime,
-							psProcessStats->asCacheOp[i32ReadIdx].ui32OpSeqNum);
+							ui64ExecuteTime);
 		}
-	}
+
 } /* CacheOpStatsPrintElements */
 #endif
 
 #if defined(PVRSRV_ENABLE_MEMORY_STATS)
+static PVRSRV_ERROR _PrintMemStatsEntry(uintptr_t k, uintptr_t v, void* pvPriv)
+{
+	IMG_UINT32	ui32VAddrFields = sizeof(void*)/sizeof(IMG_UINT32);
+	IMG_UINT32	ui32PAddrFields = sizeof(IMG_CPU_PHYADDR)/sizeof(IMG_UINT32);
+	IMG_UINT32 ui32ItemNumber;
+	PVRSRV_MEM_ALLOC_REC *psRecord = (PVRSRV_MEM_ALLOC_REC *)(uintptr_t)v;
+	PVRSRV_MEM_ALLOC_PRINT_DATA *psPrintData = (PVRSRV_MEM_ALLOC_PRINT_DATA *)pvPriv;
+	OSDI_IMPL_ENTRY *psEntry = psPrintData->psEntry;
+
+	if (psRecord != NULL)
+	{
+		IMG_BOOL bPrintStat = IMG_TRUE;
+
+		DIPrintf(psEntry, "%-5d  ", psPrintData->pid);
+
+		switch (psRecord->eAllocType)
+		{
+		case PVRSRV_MEM_ALLOC_TYPE_KMALLOC:				DIPrintf(psEntry, "KMALLOC             "); break;
+		case PVRSRV_MEM_ALLOC_TYPE_VMALLOC:				DIPrintf(psEntry, "VMALLOC             "); break;
+		case PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_LMA:	DIPrintf(psEntry, "ALLOC_PAGES_PT_LMA  "); break;
+		case PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_UMA:	DIPrintf(psEntry, "ALLOC_PAGES_PT_UMA  "); break;
+		case PVRSRV_MEM_ALLOC_TYPE_IOREMAP_PT_LMA:		DIPrintf(psEntry, "IOREMAP_PT_LMA      "); break;
+		case PVRSRV_MEM_ALLOC_TYPE_VMAP_PT_UMA:			DIPrintf(psEntry, "VMAP_PT_UMA         "); break;
+		case PVRSRV_MEM_ALLOC_TYPE_ALLOC_LMA_PAGES:		DIPrintf(psEntry, "ALLOC_LMA_PAGES     "); break;
+		case PVRSRV_MEM_ALLOC_TYPE_ALLOC_UMA_PAGES:		DIPrintf(psEntry, "ALLOC_UMA_PAGES     "); break;
+		case PVRSRV_MEM_ALLOC_TYPE_MAP_UMA_LMA_PAGES:	DIPrintf(psEntry, "MAP_UMA_LMA_PAGES   "); break;
+		case PVRSRV_MEM_ALLOC_TYPE_DMA_BUF_IMPORT:      DIPrintf(psEntry, "DMA_BUF_IMPORT      "); break;
+		default:										DIPrintf(psEntry, "INVALID             "); break;
+		}
+
+		if (bPrintStat)
+		{
+			for (ui32ItemNumber = 0; ui32ItemNumber < ui32VAddrFields; ui32ItemNumber++)
+			{
+				DIPrintf(psEntry, "%08x", *(((IMG_UINT32*) &psRecord->pvCpuVAddr) + ui32VAddrFields - ui32ItemNumber - 1));
+			}
+			DIPrintf(psEntry, "  ");
+
+			for (ui32ItemNumber = 0; ui32ItemNumber < ui32PAddrFields; ui32ItemNumber++)
+			{
+				DIPrintf(psEntry, "%08x", *(((IMG_UINT32*) &psRecord->sCpuPAddr.uiAddr) + ui32PAddrFields - ui32ItemNumber - 1));
+			}
+
+#if defined(PVRSRV_DEBUG_LINUX_MEMORY_STATS_ON)
+			DIPrintf(psEntry, "  " IMG_SIZE_FMTSPEC, psRecord->uiBytes);
+
+			DIPrintf(psEntry, "  %s", (IMG_CHAR*) psRecord->pvAllocdFromFile);
+
+			DIPrintf(psEntry, "  %d\n", psRecord->ui32AllocdFromLine);
+#else
+			DIPrintf(psEntry, "  " IMG_SIZE_FMTSPEC "\n", psRecord->uiBytes);
+#endif
+		}
+
+		psPrintData->ui32NumEntries++;
+	}
+
+	return PVRSRV_OK;
+}
+
 /*************************************************************************/ /*!
 @Function       MemStatsPrintElements
 @Description    Prints all elements for the memory statistic record.
@@ -2922,88 +2895,40 @@ CacheOpStatsPrintElements(void *pvFile,
 @Input          pfnOSStatsPrintf  Printf function to use for output.
 */ /**************************************************************************/
 void
-MemStatsPrintElements(void *pvFile,
-                      PVRSRV_PROCESS_STATS* psProcessStats,
-                      OS_STATS_PRINTF_FUNC* pfnOSStatsPrintf)
+MemStatsPrintElements(OSDI_IMPL_ENTRY *psEntry,
+                      PVRSRV_PROCESS_STATS *psProcessStats)
 {
 	IMG_UINT32	ui32VAddrFields = sizeof(void*)/sizeof(IMG_UINT32);
 	IMG_UINT32	ui32PAddrFields = sizeof(IMG_CPU_PHYADDR)/sizeof(IMG_UINT32);
-	PVRSRV_MEM_ALLOC_REC *psRecord;
 	IMG_UINT32 ui32ItemNumber;
+	PVRSRV_MEM_ALLOC_PRINT_DATA sPrintData;
+
+	sPrintData.psEntry = psEntry;
+	sPrintData.pid = psProcessStats->pid;
+	sPrintData.ui32NumEntries = 0;
 
 	/* Write the header... */
-	pfnOSStatsPrintf(pvFile, "PID    ");
+	DIPrintf(psEntry, "PID    ");
 
-	pfnOSStatsPrintf(pvFile, "Type                VAddress");
+	DIPrintf(psEntry, "Type                VAddress");
 	for (ui32ItemNumber = 1;  ui32ItemNumber < ui32VAddrFields;  ui32ItemNumber++)
 	{
-		pfnOSStatsPrintf(pvFile, "        ");
+		DIPrintf(psEntry, "        ");
 	}
 
-	pfnOSStatsPrintf(pvFile, "  PAddress");
+	DIPrintf(psEntry, "  PAddress");
 	for (ui32ItemNumber = 1;  ui32ItemNumber < ui32PAddrFields;  ui32ItemNumber++)
 	{
-        pfnOSStatsPrintf(pvFile, "        ");
+		DIPrintf(psEntry, "        ");
 	}
 
-    pfnOSStatsPrintf(pvFile, "  Size(bytes)\n");
+	DIPrintf(psEntry, "  Size(bytes)\n");
 
-	psRecord = psProcessStats->psMemoryRecords;
-	if (psRecord == NULL)
+	HASH_Iterate(psProcessStats->psMemoryRecords, (HASH_pfnCallback)_PrintMemStatsEntry, &sPrintData);
+
+	if (sPrintData.ui32NumEntries == 0)
 	{
-		pfnOSStatsPrintf(pvFile, "%-5d\n", psProcessStats->pid);
-	}
-
-	while (psRecord != NULL)
-	{
-		IMG_BOOL bPrintStat = IMG_TRUE;
-
-		pfnOSStatsPrintf(pvFile, "%-5d  ", psProcessStats->pid);
-
-		switch (psRecord->eAllocType)
-		{
-#if !defined(PVR_DISABLE_KMALLOC_MEMSTATS)
-		case PVRSRV_MEM_ALLOC_TYPE_KMALLOC:      		pfnOSStatsPrintf(pvFile, "KMALLOC             "); break;
-		case PVRSRV_MEM_ALLOC_TYPE_VMALLOC:      		pfnOSStatsPrintf(pvFile, "VMALLOC             "); break;
-#else
-		case PVRSRV_MEM_ALLOC_TYPE_KMALLOC:
-		case PVRSRV_MEM_ALLOC_TYPE_VMALLOC:      		bPrintStat = IMG_FALSE; break;
-#endif
-		case PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_LMA:  pfnOSStatsPrintf(pvFile, "ALLOC_PAGES_PT_LMA  "); break;
-		case PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_UMA:  pfnOSStatsPrintf(pvFile, "ALLOC_PAGES_PT_UMA  "); break;
-		case PVRSRV_MEM_ALLOC_TYPE_IOREMAP_PT_LMA:		pfnOSStatsPrintf(pvFile, "IOREMAP_PT_LMA      "); break;
-		case PVRSRV_MEM_ALLOC_TYPE_VMAP_PT_UMA:			pfnOSStatsPrintf(pvFile, "VMAP_PT_UMA         "); break;
-		case PVRSRV_MEM_ALLOC_TYPE_ALLOC_LMA_PAGES: 	pfnOSStatsPrintf(pvFile, "ALLOC_LMA_PAGES     "); break;
-		case PVRSRV_MEM_ALLOC_TYPE_ALLOC_UMA_PAGES: 	pfnOSStatsPrintf(pvFile, "ALLOC_UMA_PAGES     "); break;
-		case PVRSRV_MEM_ALLOC_TYPE_MAP_UMA_LMA_PAGES: 	pfnOSStatsPrintf(pvFile, "MAP_UMA_LMA_PAGES   "); break;
-		default:										pfnOSStatsPrintf(pvFile, "INVALID             "); break;
-		}
-
-		if (bPrintStat)
-		{
-			for (ui32ItemNumber = 0; ui32ItemNumber < ui32VAddrFields; ui32ItemNumber++)
-			{
-				pfnOSStatsPrintf(pvFile, "%08x", *(((IMG_UINT32*) &psRecord->pvCpuVAddr) + ui32VAddrFields - ui32ItemNumber - 1));
-			}
-			pfnOSStatsPrintf(pvFile, "  ");
-
-			for (ui32ItemNumber = 0; ui32ItemNumber < ui32PAddrFields; ui32ItemNumber++)
-			{
-				pfnOSStatsPrintf(pvFile, "%08x", *(((IMG_UINT32*) &psRecord->sCpuPAddr.uiAddr) + ui32PAddrFields - ui32ItemNumber - 1));
-			}
-
-#if defined(PVRSRV_DEBUG_LINUX_MEMORY_STATS) && defined(DEBUG)
-			pfnOSStatsPrintf(pvFile, "  %u", psRecord->uiBytes);
-
-			pfnOSStatsPrintf(pvFile, "  %s", (IMG_CHAR*)psRecord->pvAllocdFromFile);
-
-			pfnOSStatsPrintf(pvFile, "  %d\n", psRecord->ui32AllocdFromLine);
-#else
-			pfnOSStatsPrintf(pvFile, "  %u\n", psRecord->uiBytes);
-#endif
-		}
-		/* Move to next record... */
-		psRecord = psRecord->psNext;
+		DIPrintf(psEntry, "%-5d\n", psProcessStats->pid);
 	}
 } /* MemStatsPrintElements */
 #endif
@@ -3015,28 +2940,26 @@ MemStatsPrintElements(void *pvFile,
 @Input          pvStatPtr         Pointer to statistics structure.
 @Input          pfnOSStatsPrintf  Printf function to use for output.
 */ /**************************************************************************/
-void
-RIMemStatsPrintElements(void *pvFile,
-                        PVRSRV_PROCESS_STATS* psProcessStats,
-                        OS_STATS_PRINTF_FUNC* pfnOSStatsPrintf)
+void RIMemStatsPrintElements(OSDI_IMPL_ENTRY *psEntry,
+                             PVRSRV_PROCESS_STATS *psProcessStats)
 {
 	IMG_CHAR   *pszStatFmtText  = NULL;
 	IMG_HANDLE *pRIHandle       = NULL;
 
-	/* Acquire RI lock*/
+	/* Acquire RI lock */
 	RILockAcquireKM();
 
 	/*
-	 *  Loop through the RI system to get each line of text.
+	 * Loop through the RI system to get each line of text.
 	 */
 	while (RIGetListEntryKM(psProcessStats->pid,
 							&pRIHandle,
 							&pszStatFmtText))
 	{
-		pfnOSStatsPrintf(pvFile, "%s", pszStatFmtText);
+		DIPrintf(psEntry, "%s", pszStatFmtText);
 	}
 
-	/* Release RI lock*/
+	/* Release RI lock */
 	RILockReleaseKM();
 
 } /* RIMemStatsPrintElements */
@@ -3044,114 +2967,28 @@ RIMemStatsPrintElements(void *pvFile,
 
 #endif
 
-static IMG_UINT32	ui32FirmwareStartTimestamp;
-static IMG_UINT64	ui64FirmwareIdleDuration;
-
-void SetFirmwareStartTime(IMG_UINT32 ui32Time)
+int GlobalStatsPrintElements(OSDI_IMPL_ENTRY *psEntry, void *pvData)
 {
-	ui32FirmwareStartTimestamp = UPDATE_TIME(ui32FirmwareStartTimestamp, ui32Time);
-}
+	IMG_UINT32 ui32StatNumber;
+	PVR_UNREFERENCED_PARAMETER(pvData);
 
-void SetFirmwareHandshakeIdleTime(IMG_UINT64 ui64Duration)
-{
-	ui64FirmwareIdleDuration = UPDATE_TIME(ui64FirmwareIdleDuration, ui64Duration);
-}
+	OSLockAcquire(gsGlobalStats.hGlobalStatsLock);
 
-static INLINE void PowerStatsPrintGroup(IMG_UINT32 *pui32Stats,
-                                        void *pvFile,
-                                        OS_STATS_PRINTF_FUNC *pfnPrintf,
-                                        PVRSRV_POWER_STAT_TYPE eForced,
-                                        PVRSRV_POWER_STAT_TYPE ePowerOn)
-{
-	IMG_UINT32 ui32Index;
-
-	ui32Index = GET_POWER_STAT_INDEX(eForced, ePowerOn, PRE_POWER, DEVICE);
-	pfnPrintf(pvFile, "  Pre-Device:  %9u\n", pui32Stats[ui32Index]);
-
-	ui32Index = GET_POWER_STAT_INDEX(eForced, ePowerOn, PRE_POWER, SYSTEM);
-	pfnPrintf(pvFile, "  Pre-System:  %9u\n", pui32Stats[ui32Index]);
-
-	ui32Index = GET_POWER_STAT_INDEX(eForced, ePowerOn, POST_POWER, SYSTEM);
-	pfnPrintf(pvFile, "  Post-System: %9u\n", pui32Stats[ui32Index]);
-
-	ui32Index = GET_POWER_STAT_INDEX(eForced, ePowerOn, POST_POWER, DEVICE);
-	pfnPrintf(pvFile, "  Post-Device: %9u\n", pui32Stats[ui32Index]);
-}
-
-void PowerStatsPrintElements(void *pvFile,
-							 void *pvStatPtr,
-							 OS_STATS_PRINTF_FUNC* pfnOSStatsPrintf)
-{
-	IMG_UINT32 *pui32Stats = &aui32PowerTimingStats[0];
-	IMG_UINT32 ui32Idx;
-
-	PVR_UNREFERENCED_PARAMETER(pvStatPtr);
-
-	if (pfnOSStatsPrintf == NULL)
+	for (ui32StatNumber = 0;
+	     ui32StatNumber < ARRAY_SIZE(pszDriverStatType);
+	     ui32StatNumber++)
 	{
-		return;
-	}
-
-	pfnOSStatsPrintf(pvFile, "Forced Power-on Transition (nanoseconds):\n");
-	PowerStatsPrintGroup(pui32Stats, pvFile, pfnOSStatsPrintf, FORCED, POWER_ON);
-	pfnOSStatsPrintf(pvFile, "\n");
-
-	pfnOSStatsPrintf(pvFile, "Forced Power-off Transition (nanoseconds):\n");
-	PowerStatsPrintGroup(pui32Stats, pvFile, pfnOSStatsPrintf, FORCED, POWER_OFF);
-	pfnOSStatsPrintf(pvFile, "\n");
-
-	pfnOSStatsPrintf(pvFile, "Not Forced Power-on Transition (nanoseconds):\n");
-	PowerStatsPrintGroup(pui32Stats, pvFile, pfnOSStatsPrintf, NOT_FORCED, POWER_ON);
-	pfnOSStatsPrintf(pvFile, "\n");
-
-	pfnOSStatsPrintf(pvFile, "Not Forced Power-off Transition (nanoseconds):\n");
-	PowerStatsPrintGroup(pui32Stats, pvFile, pfnOSStatsPrintf, NOT_FORCED, POWER_OFF);
-	pfnOSStatsPrintf(pvFile, "\n");
-
-
-	pfnOSStatsPrintf(pvFile, "FW bootup time (timer ticks): %u\n", ui32FirmwareStartTimestamp);
-	pfnOSStatsPrintf(pvFile, "Host Acknowledge Time for FW Idle Signal (timer ticks): %u\n", (IMG_UINT32)(ui64FirmwareIdleDuration));
-	pfnOSStatsPrintf(pvFile, "\n");
-
-	pfnOSStatsPrintf(pvFile, "Last %d Clock Speed Change Timers (nanoseconds):\n", NUM_EXTRA_POWER_STATS);
-	pfnOSStatsPrintf(pvFile, "Prepare DVFS\tDVFS Change\tPost DVFS\n");
-
-	for (ui32Idx = ui32ClockSpeedIndexStart; ui32Idx !=ui32ClockSpeedIndexEnd; ui32Idx = (ui32Idx + 1) % NUM_EXTRA_POWER_STATS)
-	{
-		pfnOSStatsPrintf(pvFile, "%12llu\t%11llu\t%9llu\n",asClockSpeedChanges[ui32Idx].ui64PreClockSpeedChangeDuration,
-						 asClockSpeedChanges[ui32Idx].ui64BetweenPreEndingAndPostStartingDuration,
-						 asClockSpeedChanges[ui32Idx].ui64PostClockSpeedChangeDuration);
-	}
-
-
-} /* PowerStatsPrintElements */
-
-void GlobalStatsPrintElements(void *pvFile,
-			      void *pvStatPtr,
-			      OS_STATS_PRINTF_FUNC* pfnOSGetStatsPrintf)
-{
-	PVR_UNREFERENCED_PARAMETER(pvStatPtr);
-
-	if (pfnOSGetStatsPrintf != NULL)
-	{
-		IMG_UINT32 ui32StatNumber;
-
-		OSLockAcquire(gsGlobalStats.hGlobalStatsLock);
-
-		for (ui32StatNumber = 0;
-		     ui32StatNumber < ARRAY_SIZE(pszDriverStatType);
-		     ui32StatNumber++)
+		if (OSStringNCompare(pszDriverStatType[ui32StatNumber], "", 1) != 0)
 		{
-			if (OSStringCompare(pszDriverStatType[ui32StatNumber], "") != 0)
-			{
-				pfnOSGetStatsPrintf(pvFile, "%-34s%10d\n",
-					    pszDriverStatType[ui32StatNumber],
-					    GET_GLOBAL_STAT_VALUE(ui32StatNumber));
-			}
+			DIPrintf(psEntry, "%-34s%12llu\n",
+				    pszDriverStatType[ui32StatNumber],
+				    GET_GLOBAL_STAT_VALUE(ui32StatNumber));
 		}
-
-		OSLockRelease(gsGlobalStats.hGlobalStatsLock);
 	}
+
+	OSLockRelease(gsGlobalStats.hGlobalStatsLock);
+
+	return 0;
 }
 
 /*************************************************************************/ /*!
@@ -3172,26 +3009,27 @@ void GlobalStatsPrintElements(void *pvFile,
                                     are stored.
 @Output         Memory statistics records for the requested pid.
 */ /**************************************************************************/
-PVRSRV_ERROR PVRSRVFindProcessMemStats(IMG_PID pid, IMG_UINT32 ui32ArrSize, IMG_BOOL bAllProcessStats, IMG_UINT32 *pui32MemoryStats)
+PVRSRV_ERROR PVRSRVFindProcessMemStats(IMG_PID pid,
+                                       IMG_UINT32 ui32ArrSize,
+                                       IMG_BOOL bAllProcessStats,
+                                       IMG_UINT64 *pui64MemoryStats)
 {
 	IMG_INT i;
 	PVRSRV_PROCESS_STATS* psProcessStats;
 
-	PVR_LOGR_IF_FALSE(pui32MemoryStats != NULL,
-	                  "pui32MemoryStats is NULL",
-	                  PVRSRV_ERROR_INVALID_PARAMS);
+	PVR_LOG_RETURN_IF_INVALID_PARAM(pui64MemoryStats, "pui64MemoryStats");
 
 	if (bAllProcessStats)
 	{
-		PVR_LOGR_IF_FALSE(ui32ArrSize == PVRSRV_DRIVER_STAT_TYPE_COUNT,
-				  "MemStats array size is incorrect",
-				  PVRSRV_ERROR_INVALID_PARAMS);
+		PVR_LOG_RETURN_IF_FALSE(ui32ArrSize == PVRSRV_DRIVER_STAT_TYPE_COUNT,
+			"MemStats array size is incorrect",
+			PVRSRV_ERROR_INVALID_PARAMS);
 
 		OSLockAcquire(gsGlobalStats.hGlobalStatsLock);
 
 		for (i = 0; i < ui32ArrSize; i++)
 		{
-			pui32MemoryStats[i] = GET_GLOBAL_STAT_VALUE(i);
+			pui64MemoryStats[i] = GET_GLOBAL_STAT_VALUE(i);
 		}
 
 		OSLockRelease(gsGlobalStats.hGlobalStatsLock);
@@ -3199,9 +3037,9 @@ PVRSRV_ERROR PVRSRVFindProcessMemStats(IMG_PID pid, IMG_UINT32 ui32ArrSize, IMG_
 		return PVRSRV_OK;
 	}
 
-	PVR_LOGR_IF_FALSE(ui32ArrSize == PVRSRV_PROCESS_STAT_TYPE_COUNT,
-			  "MemStats array size is incorrect",
-			  PVRSRV_ERROR_INVALID_PARAMS);
+	PVR_LOG_RETURN_IF_FALSE(ui32ArrSize == PVRSRV_PROCESS_STAT_TYPE_COUNT,
+		"MemStats array size is incorrect",
+		PVRSRV_ERROR_INVALID_PARAMS);
 
 	OSLockAcquire(g_psLinkedListLock);
 
@@ -3219,7 +3057,7 @@ PVRSRV_ERROR PVRSRVFindProcessMemStats(IMG_PID pid, IMG_UINT32 ui32ArrSize, IMG_
 	OSLockAcquireNested(psProcessStats->hLock, PROCESS_LOCK_SUBCLASS_CURRENT);
 	for (i = 0; i < ui32ArrSize; i++)
 	{
-		pui32MemoryStats[i] = psProcessStats->i32StatValue[i];
+		pui64MemoryStats[i] = psProcessStats->i64StatValue[i];
 	}
 	OSLockRelease(psProcessStats->hLock);
 
@@ -3231,30 +3069,35 @@ PVRSRV_ERROR PVRSRVFindProcessMemStats(IMG_PID pid, IMG_UINT32 ui32ArrSize, IMG_
 
 /*************************************************************************/ /*!
 @Function       PVRSRVGetProcessMemUsage
-@Description    Calculate allocated kernel and graphics memory for all live/connected processes.
-                Memstat values provided by this API relate only to the physical
-                memory allocated by the process and does not relate to any of
-				the mapped or imported memory.
-@Output			pui32TotalMem					Total memory usage for all live PIDs connected to the driver.
-@Output         pui32NumberOfLivePids 			Number of live pids currently connected to the server.
-@Output         ppsPerProcessMemUsageData   	Handle to an array of PVRSRV_PER_PROCESS_MEM_USAGE, number of elements defined by pui32NumberOfLivePids.
-@Return        	PVRSRV_OK						Success
-				PVRSRV_ERROR_PROCESS_NOT_FOUND	No live processes.
-				PVRSRV_ERROR_OUT_OF_MEMORY 		Failed to allocate memory for ppsPerProcessMemUsageData.
+@Description    Calculate allocated kernel and graphics memory for all live or
+                connected processes. Memstat values provided by this API relate
+                only to the physical memory allocated by the process and does
+                not relate to any of the mapped or imported memory.
+@Output         pui64TotalMem                   Total memory usage for all live
+                                                PIDs connected to the driver.
+@Output         pui32NumberOfLivePids           Number of live pids currently
+                                                connected to the server.
+@Output         ppsPerProcessMemUsageData       Handle to an array of
+                                                PVRSRV_PER_PROCESS_MEM_USAGE,
+                                                number of elements defined by
+                                                pui32NumberOfLivePids.
+@Return         PVRSRV_OK                       Success
+                PVRSRV_ERROR_PROCESS_NOT_FOUND  No live processes.
+                PVRSRV_ERROR_OUT_OF_MEMORY      Failed to allocate memory for
+                                                ppsPerProcessMemUsageData.
 */ /**************************************************************************/
-PVRSRV_ERROR PVRSRVGetProcessMemUsage(IMG_UINT32 *pui32TotalMem,
+PVRSRV_ERROR PVRSRVGetProcessMemUsage(IMG_UINT64 *pui64TotalMem,
 									  IMG_UINT32 *pui32NumberOfLivePids,
 									  PVRSRV_PER_PROCESS_MEM_USAGE **ppsPerProcessMemUsageData)
 {
-	IMG_UINT32 ui32Counter = 0;
 	IMG_UINT32 ui32NumberOfLivePids = 0;
 	PVRSRV_ERROR eError = PVRSRV_ERROR_PROCESS_NOT_FOUND;
-	PVRSRV_PROCESS_STATS* psProcessStats = NULL;
 	PVRSRV_PER_PROCESS_MEM_USAGE* psPerProcessMemUsageData = NULL;
+	DLLIST_NODE *psNode, *psNext;
 
 	OSLockAcquire(gsGlobalStats.hGlobalStatsLock);
 
-	*pui32TotalMem = GET_GLOBAL_STAT_VALUE(PVRSRV_DRIVER_STAT_TYPE_KMALLOC) +
+	*pui64TotalMem = GET_GLOBAL_STAT_VALUE(PVRSRV_DRIVER_STAT_TYPE_KMALLOC) +
 		GET_GLOBAL_STAT_VALUE(PVRSRV_DRIVER_STAT_TYPE_VMALLOC) +
 		GET_GLOBAL_STAT_VALUE(PVRSRV_DRIVER_STAT_TYPE_ALLOC_GPUMEM_LMA) +
 		GET_GLOBAL_STAT_VALUE(PVRSRV_DRIVER_STAT_TYPE_ALLOC_GPUMEM_UMA) +
@@ -3264,11 +3107,9 @@ PVRSRV_ERROR PVRSRVGetProcessMemUsage(IMG_UINT32 *pui32TotalMem,
 	OSLockRelease(gsGlobalStats.hGlobalStatsLock);
 
 	OSLockAcquire(g_psLinkedListLock);
-	psProcessStats = g_psLiveList;
 
-	while (psProcessStats != NULL)
+	dllist_foreach_node(&gsLiveList, psNode, psNext)
 	{
-		psProcessStats = psProcessStats->psNext;
 		ui32NumberOfLivePids++;
 	}
 
@@ -3279,24 +3120,27 @@ PVRSRV_ERROR PVRSRVGetProcessMemUsage(IMG_UINT32 *pui32TotalMem,
 
 		if (psPerProcessMemUsageData)
 		{
-			psProcessStats = g_psLiveList;
+			PVRSRV_PROCESS_STATS* psProcessStats = NULL;
+			IMG_UINT32 ui32Counter = 0;
 
-			while (psProcessStats != NULL)
+			dllist_foreach_node(&gsLiveList, psNode, psNext)
 			{
+				psProcessStats = IMG_CONTAINER_OF(psNode, PVRSRV_PROCESS_STATS, sNode);
 				OSLockAcquireNested(psProcessStats->hLock, PROCESS_LOCK_SUBCLASS_CURRENT);
 
 				psPerProcessMemUsageData[ui32Counter].ui32Pid = (IMG_UINT32)psProcessStats->pid;
 
-				psPerProcessMemUsageData[ui32Counter].ui32KernelMemUsage = psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_KMALLOC] +
-				psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_VMALLOC];
+				psPerProcessMemUsageData[ui32Counter].ui64KernelMemUsage =
+					psProcessStats->i64StatValue[PVRSRV_PROCESS_STAT_TYPE_KMALLOC] +
+					psProcessStats->i64StatValue[PVRSRV_PROCESS_STAT_TYPE_VMALLOC];
 
-				psPerProcessMemUsageData[ui32Counter].ui32GraphicsMemUsage = psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA] +
-				psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA] +
-				psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES] +
-				psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES];
+				psPerProcessMemUsageData[ui32Counter].ui64GraphicsMemUsage =
+					psProcessStats->i64StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA] +
+					psProcessStats->i64StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA] +
+					psProcessStats->i64StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES] +
+					psProcessStats->i64StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES];
 
 				OSLockRelease(psProcessStats->hLock);
-				psProcessStats = psProcessStats->psNext;
 				ui32Counter++;
 			}
 			eError = PVRSRV_OK;

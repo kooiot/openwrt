@@ -23,14 +23,25 @@ static struct de_cdc_desc vch0_cdc = {
 	.reg_offset = 0x08000,
 	.support_gtm = true,
 	.support_csc = true,
+	.type = CHANNEL_CDC,
 };
 
 static struct de_cdc_desc uch0_cdc = {
 	.name = "uch0_cdc",
 	.id = 3,
 	.reg_offset = 0x08000,
+	.type = CHANNEL_CDC,
 };
 
+static struct de_cdc_desc dep0_cdc = {
+	.name = "dep0_cdc",
+	.id = 0,
+	.reg_offset = 0x0C000,
+	.type = DEVICE_CDC,
+};
+static struct de_cdc_desc *de212_cdc[] = {
+	&dep0_cdc,
+};
 static struct de_cdc_desc *de350_cdc[] = {
 	&vch0_cdc, &uch0_cdc,
 };
@@ -39,6 +50,11 @@ static struct de_cdc_desc *de352_cdc[] = {
 	&vch0_cdc, &uch0_cdc,
 };
 
+static struct de_version_cdc de212 = {
+	.version = 0x212,
+	.cdc_cnt = ARRAY_SIZE(de212_cdc),
+	.cdc = &de212_cdc[0],
+};
 
 static struct de_version_cdc de350 = {
 	.version = 0x350,
@@ -53,17 +69,22 @@ static struct de_version_cdc de352 = {
 };
 
 static struct de_version_cdc *de_version[] = {
-	&de350, &de352,
+	&de212, &de350, &de352,
 };
 
 const struct de_cdc_desc *get_cdc_desc(struct module_create_info *info)
 {
 	int i, j;
+	struct cdc_extra_create_info *ex = info->extra;
+	if (IS_ERR_OR_NULL(ex))
+		return NULL;
 	for (i = 0; i < ARRAY_SIZE(de_version); i++) {
 		if (de_version[i]->version == info->de_version) {
 			for (j = 0; j < de_version[i]->cdc_cnt; j++) {
-				if (de_version[i]->cdc[j]->id == info->id)
+				if ((de_version[i]->cdc[j]->id == info->id) &&
+					(de_version[i]->cdc[j]->type == ex->type)) {
 					return de_version[i]->cdc[j];
+				}
 			}
 		}
 	}

@@ -8,6 +8,7 @@ menu "IR-TX Drivers"
 
 config AW_IR_TX
 	tristate "IR-TX Support for Allwinner SoCs"
+	select INPUT
 	select RC_CORE
 	select RC_DEVICES
 	help

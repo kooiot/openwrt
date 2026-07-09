@@ -17,4 +17,11 @@ config AW_MAILBOX_SUPPORT_TXDONE_IRQ
 	help
 	  Say y here to support Allwinner SOC processors msgbox txdone irq.
 
+config AW_MAILBOX_WAIT_IEC60730_INSTALL
+	tristate "Allwinner wait remote msgbox init after IEC60730 install"
+	depends on AW_MSGBOX
+	default n
+	help
+	  Say y here to wait remote msgbox init after IEC60730 install.
+
 endmenu

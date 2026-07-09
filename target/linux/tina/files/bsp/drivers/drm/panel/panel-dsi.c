@@ -28,68 +28,15 @@
 #include <linux/of.h>
 #include <linux/slab.h>
 #include <video/mipi_display.h>
-#include <drm/drm_mipi_dsi.h>
 #include <drm/drm_crtc.h>
-#include "panels.h"
-#define POWER_MAX 3
-#define GPIO_MAX  3
+#include "panel-dsi.h"
 
-struct panel_cmd_header {
-	u8 data_type;
-	u8 delay;
-	u8 payload_length;
-} __packed;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+#include <drm/display/drm_dsc_helper.h>
+#else
+#include <drm/drm_dsc.h>
+#endif
 
-struct panel_cmd_desc {
-	struct panel_cmd_header header;
-	u8 *payload;
-};
-
-struct panel_cmd_seq {
-	struct panel_cmd_desc *cmds;
-	unsigned int cmd_cnt;
-};
-
-struct panel_desc {
-	const struct display_timings *timings;
-	struct {
-		unsigned int width;
-		unsigned int height;
-	} size;
-
-	unsigned int reset_num;
-	 struct {
-		unsigned int power;
-		unsigned int enable;
-		unsigned int reset;
-	} delay;
-
-	struct panel_cmd_seq *init_seq;
-	struct panel_cmd_seq *exit_seq;
-};
-
-struct panel_dsi {
-	struct drm_panel panel;
-	struct device *dev;
-	struct device *panel_dev;
-	struct mipi_dsi_device *dsi;
-
-	const struct panel_desc *desc;
-	unsigned int bus_format;
-
-	struct regulator *supply[POWER_MAX];
-	struct gpio_desc *enable_gpio[GPIO_MAX];
-	struct gpio_desc *reset_gpio;
-
-	enum drm_panel_orientation orientation;
-};
-
-struct panel_desc_dsi {
-	struct panel_desc desc;
-	unsigned long flags;
-	enum mipi_dsi_pixel_format format;
-	unsigned int lanes;
-};
 /*
 static const struct drm_display_mode auo_b080uan01_mode = {
 	.clock = 154500,
@@ -118,10 +65,6 @@ static const struct panel_desc_dsi auo_b080uan01 = {
 	.lanes = 4,
 };
 */
-static inline struct panel_dsi *to_panel_dsi(struct drm_panel *panel)
-{
-	return container_of(panel, struct panel_dsi, panel);
-}
 
 static void panel_dsi_sleep(unsigned int msec)
 {
@@ -178,7 +121,10 @@ static int panel_dsi_cmd_seq(struct panel_dsi *dsi_panel,
 	struct mipi_dsi_device *dsi = dsi_panel->dsi;
 	unsigned int i;
 	int err;
-
+#ifdef DSI_RX_DEBUG
+	u32 j;
+	u8 value[100];
+#endif
 	if (!seq)
 		return -EINVAL;
 
@@ -211,6 +157,14 @@ static int panel_dsi_cmd_seq(struct panel_dsi *dsi_panel,
 
 		if (cmd->header.delay)
 			panel_dsi_sleep(cmd->header.delay);
+#ifdef DSI_RX_DEBUG
+		panel_dsi_sleep(500);
+		mipi_dsi_dcs_read(dsi, cmd->payload[0], value, cmd->header.payload_length - 1);
+		printk("%x: ", cmd->payload[0]);
+		for (j = 0; j < cmd->header.payload_length - 1; j++)
+			printk("%x  ", value[j]);
+		printk("\n================\n");
+#endif
 	}
 
 	return 0;
@@ -241,13 +195,19 @@ static int panel_dsi_get_modes(struct drm_panel *panel,
 			continue;
 		}
 		drm_display_mode_from_videomode(&vm, mode);
-		mode->type |= DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
+		mode->width_mm = desc->size.width;
+		mode->height_mm = desc->size.height;
+
+		mode->type |= DRM_MODE_TYPE_DRIVER;
+		if (desc->timings->native_mode == i)
+			mode->type |= DRM_MODE_TYPE_PREFERRED;
+
 		drm_mode_probed_add(connector, mode);
 		num++;
 	}
+	connector->display_info.width_mm = desc->size.width;
+	connector->display_info.height_mm = desc->size.height;
 /*
-	connector->display_info.width_mm = dsi_panel->desc->size.width;
-	connector->display_info.height_mm = dsi_panel->desc->size.height;
 	drm_display_info_set_bus_formats(&connector->display_info,
 					&dsi_panel->desc->bus_format, 1);
 	connector->display_info.bus_flags =
@@ -287,13 +247,30 @@ static int panel_dsi_disable(struct drm_panel *panel)
 static int panel_dsi_unprepare(struct drm_panel *panel)
 {
 	struct panel_dsi *dsi_panel = to_panel_dsi(panel);
-	int i;
+	struct gpio_timing *timing;
+	int i, items, ret;
 
 	if (dsi_panel->desc->exit_seq)
 		if (dsi_panel->dsi)
 			panel_dsi_cmd_seq(dsi_panel, dsi_panel->desc->exit_seq);
 
-	for (i = GPIO_MAX; i > 0; i--) {
+	if (dsi_panel->desc->dsc) {
+		ret = mipi_dsi_dcs_set_display_off(dsi_panel->dsi);
+		if (ret < 0) {
+			dev_err(dsi_panel->dev, "Failed to set display off: %d\n", ret);
+			return ret;
+		}
+		msleep(20);
+
+		ret = mipi_dsi_dcs_enter_sleep_mode(dsi_panel->dsi);
+		if (ret < 0) {
+			dev_err(dsi_panel->dev, "Failed to enter sleep mode: %d\n", ret);
+			return ret;
+		}
+		msleep(120);
+	}
+
+	for (i = dsi_panel->gpio_num; i > 0; i--) {
 		if (dsi_panel->enable_gpio[i - 1]) {
 			gpiod_set_value_cansleep(dsi_panel->enable_gpio[i - 1], 0);
 			if (dsi_panel->desc->delay.enable)
@@ -301,12 +278,34 @@ static int panel_dsi_unprepare(struct drm_panel *panel)
 		}
 	}
 
-	if (dsi_panel->reset_gpio)
-		gpiod_set_value_cansleep(dsi_panel->reset_gpio, 0);
-	if (dsi_panel->desc->delay.reset)
-		panel_dsi_sleep(dsi_panel->desc->delay.reset);
+	if (dsi_panel->reset_gpio) {
+		items = dsi_panel->desc->rst_off_seq.items;
+		timing = dsi_panel->desc->rst_off_seq.timing;
+		for (i = 0; i < items; i++) {
+			gpiod_set_value_cansleep(dsi_panel->reset_gpio, timing[i].level);
+			panel_dsi_sleep(timing[i].delay);
+		}
+	}
 
-	for (i = POWER_MAX; i > 0; i--) {
+	if (dsi_panel->desc->reset_num) {
+		if (dsi_panel->reset_gpio)
+			gpiod_set_value_cansleep(dsi_panel->reset_gpio, 0);
+		if (dsi_panel->desc->delay.reset)
+			panel_dsi_sleep(dsi_panel->desc->delay.reset);
+	}
+
+	if (dsi_panel->avdd_supply) {
+		regulator_disable(dsi_panel->avdd_supply);
+		if (dsi_panel->desc->delay.power)
+				panel_dsi_sleep(dsi_panel->desc->delay.power);
+	}
+	if (dsi_panel->avee_supply) {
+		regulator_disable(dsi_panel->avee_supply);
+		if (dsi_panel->desc->delay.power)
+				panel_dsi_sleep(dsi_panel->desc->delay.power);
+	}
+
+	for (i = dsi_panel->power_num; i > 0; i--) {
 		if (dsi_panel->supply[i - 1]) {
 			regulator_disable(dsi_panel->supply[i - 1]);
 			if (dsi_panel->desc->delay.power)
@@ -325,7 +324,7 @@ int panel_dsi_regulator_enable(struct drm_panel *panel)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
 	panel->prepared = true;
 #endif
-	for (i = 0; i < POWER_MAX; i++) {
+	for (i = 0; i < dsi_panel->power_num; i++) {
 		if (dsi_panel->supply[i]) {
 			err = regulator_enable(dsi_panel->supply[i]);
 			if (err < 0) {
@@ -337,18 +336,110 @@ int panel_dsi_regulator_enable(struct drm_panel *panel)
 				panel_dsi_sleep(dsi_panel->desc->delay.power);
 		}
 	}
+	if (dsi_panel->avdd_supply) {
+		err = regulator_enable(dsi_panel->avdd_supply);
+		if (err < 0) {
+			dev_err(dsi_panel->dev, "failed to enable supply%d: %d\n",
+				i, err);
+			return err;
+		}
+		if (dsi_panel->avdd_output_voltage)
+			regulator_set_voltage(dsi_panel->avdd_supply,
+				dsi_panel->avdd_output_voltage, dsi_panel->avdd_output_voltage);
+		if (dsi_panel->desc->delay.power)
+			panel_dsi_sleep(dsi_panel->desc->delay.power);
+	}
+
+	if (dsi_panel->avee_supply) {
+		err = regulator_enable(dsi_panel->avee_supply);
+		if (err < 0) {
+			dev_err(dsi_panel->dev, "failed to enable supply%d: %d\n",
+				i, err);
+			return err;
+		}
+		if (dsi_panel->avee_output_voltage)
+			regulator_set_voltage(dsi_panel->avee_supply,
+				dsi_panel->avee_output_voltage, dsi_panel->avee_output_voltage);
+		if (dsi_panel->desc->delay.power)
+			panel_dsi_sleep(dsi_panel->desc->delay.power);
+	}
 
 	return 0;
 }
 EXPORT_SYMBOL(panel_dsi_regulator_enable);
+static int sunxi_dsc_panel_enable(struct panel_dsi *dsi_panel)
+{
+	struct mipi_dsi_device *dsi = dsi_panel->dsi;
+	struct drm_dsc_picture_parameter_set pps;
+	int ret;
+//	void *value = NULL;
+
+	mipi_dsi_compression_mode(dsi, true);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	drm_dsc_pps_payload_pack(&pps, dsi->dsc);
+#else
+	drm_dsc_pps_payload_pack(&pps, dsi_panel->dsc);
+#endif
+	ret = mipi_dsi_picture_parameter_set(dsi, &pps);
+	if (ret) {
+		dev_err(&dsi->dev, "Failed to set PPS\n");
+		return ret;
+	}
+/*	value = &pps;
+	for (i = 0; i < 100; i++)
+		printk("****%d: 0x%x ", i , *((u8 *)value + i));
+*/
+	ret = mipi_dsi_dcs_exit_sleep_mode(dsi);
+	if (ret < 0) {
+		dev_err(&dsi->dev, "Failed to exit sleep mode: %d\n", ret);
+		return ret;
+	}
+	msleep(120);
+
+	ret = mipi_dsi_dcs_set_display_on(dsi);
+	if (ret < 0) {
+		dev_err(&dsi->dev, "Failed on set display on: %d\n", ret);
+		return ret;
+	}
+	msleep(20);
+
+	return 0;
+}
+
+bool panel_dsi_is_support_backlight(struct drm_panel *panel)
+{
+	return panel->backlight;
+}
+EXPORT_SYMBOL(panel_dsi_is_support_backlight);
+
+int panel_dsi_get_backlight_value(struct drm_panel *panel)
+{
+	if (panel->backlight)
+		return backlight_get_brightness(panel->backlight);
+
+	return 0;
+}
+EXPORT_SYMBOL(panel_dsi_get_backlight_value);
+
+void panel_dsi_set_backlight_value(struct drm_panel *panel, int brightness)
+{
+	if (!panel->backlight || backlight_is_blank(panel->backlight) || brightness <= 0)
+		return ;
+
+	// TODO: support backlight mapping
+	panel->backlight->props.brightness = brightness;
+	backlight_update_status(panel->backlight);
+}
+EXPORT_SYMBOL(panel_dsi_set_backlight_value);
 
 static int panel_dsi_prepare(struct drm_panel *panel)
 {
 	struct panel_dsi *dsi_panel = to_panel_dsi(panel);
-	int i;
+	struct gpio_timing *timing;
+	int i, items;
 
 	panel_dsi_regulator_enable(panel);
-	for (i = 0; i < GPIO_MAX; i++) {
+	for (i = 0; i < dsi_panel->gpio_num; i++) {
 		if (dsi_panel->enable_gpio[i]) {
 			gpiod_set_value_cansleep(dsi_panel->enable_gpio[i], 1);
 
@@ -368,9 +459,20 @@ static int panel_dsi_prepare(struct drm_panel *panel)
 			panel_dsi_sleep(dsi_panel->desc->delay.reset);
 	}
 
+	if (dsi_panel->reset_gpio) {
+		items = dsi_panel->desc->rst_on_seq.items;
+		timing = dsi_panel->desc->rst_on_seq.timing;
+		for (i = 0; i < items; i++) {
+			gpiod_set_value_cansleep(dsi_panel->reset_gpio, timing[i].level);
+			panel_dsi_sleep(timing[i].delay);
+		}
+	}
+
 	if (dsi_panel->desc->init_seq)
 		if (dsi_panel->dsi)
 			panel_dsi_cmd_seq(dsi_panel, dsi_panel->desc->init_seq);
+	if (dsi_panel->desc->dsc)
+		sunxi_dsc_panel_enable(dsi_panel);
 
 	return 0;
 }
@@ -405,7 +507,10 @@ static int panel_dsi_parse_dt(struct panel_dsi *dsi_panel)
 		dsi_panel->orientation = DRM_MODE_PANEL_ORIENTATION_NORMAL;
 	}
 
-	for (i = 0; i < POWER_MAX; i++) {
+	dsi_panel->power_num = 3;
+	np = dsi_panel->panel_dev->of_node;
+	of_property_read_u32(np, "power-num", &dsi_panel->power_num);
+	for (i = 0; i < dsi_panel->power_num; i++) {
 		power_name = kasprintf(GFP_KERNEL, "power%d", i);
 		dsi_panel->supply[i] = devm_regulator_get_optional(dsi_panel->panel_dev, power_name);
 		if (IS_ERR(dsi_panel->supply[i])) {
@@ -416,37 +521,81 @@ static int panel_dsi_parse_dt(struct panel_dsi *dsi_panel)
 					dev_err(dsi_panel->dev,
 						"failed to request regulator(%s): %d\n",
 						power_name, ret);
+				kfree(power_name);
 				return ret;
 			}
 
 			dsi_panel->supply[i] = NULL;
 		}
+		kfree(power_name);
 	}
+	power_name = "avdd";
+	dsi_panel->avdd_supply = devm_regulator_get_optional(dsi_panel->panel_dev, power_name);
+	if (IS_ERR(dsi_panel->avdd_supply)) {
+		ret = PTR_ERR(dsi_panel->avdd_supply);
+
+		if (ret != -ENODEV) {
+			if (ret != -EPROBE_DEFER)
+				dev_err(dsi_panel->dev,
+					"failed to request regulator(%s): %d\n",
+					power_name, ret);
+			return ret;
+		}
+
+		dsi_panel->avdd_supply = NULL;
+	} else
+		of_property_read_u32(np, "avdd-output-voltage", &dsi_panel->avdd_output_voltage);
+	power_name = "avee";
+	dsi_panel->avee_supply = devm_regulator_get_optional(dsi_panel->panel_dev, power_name);
+	if (IS_ERR(dsi_panel->avee_supply)) {
+		ret = PTR_ERR(dsi_panel->avee_supply);
+
+		if (ret != -ENODEV) {
+			if (ret != -EPROBE_DEFER)
+				dev_err(dsi_panel->dev,
+					"failed to request regulator(%s): %d\n",
+					power_name, ret);
+			return ret;
+		}
+
+		dsi_panel->avee_supply = NULL;
+	} else
+		of_property_read_u32(np, "avee-output-voltage", &dsi_panel->avee_output_voltage);
+
 
 	/* Get GPIOs and backlight controller. */
-	for (i = 0; i < GPIO_MAX; i++) {
+	dsi_panel->gpio_num = 3;
+	of_property_read_u32(np, "gpio-num", &dsi_panel->gpio_num);
+	for (i = 0; i < dsi_panel->gpio_num; i++) {
 		gpio_name = kasprintf(GFP_KERNEL, "enable%d", i);
 		dsi_panel->enable_gpio[i] =
 			devm_gpiod_get_optional(dsi_panel->panel_dev, gpio_name, GPIOD_OUT_HIGH);
 		if (IS_ERR(dsi_panel->enable_gpio[i])) {
 			ret = PTR_ERR(dsi_panel->enable_gpio[i]);
-			dev_err(dsi_panel->dev, "failed to request %s GPIO: %d\n", gpio_name,
-				ret);
-			return ret;
+			if (ret != -EBUSY) { /* dual-dsi shares a panel driver, EBUSY will appera */
+				dev_err(dsi_panel->dev, "failed to request %s GPIO: %d\n", gpio_name, ret);
+				kfree(gpio_name);
+				return ret;
+			}
 		}
+		kfree(gpio_name);
 	}
 
 	dsi_panel->reset_gpio =
 		devm_gpiod_get_optional(dsi_panel->panel_dev, "reset", GPIOD_OUT_HIGH);
 	if (IS_ERR(dsi_panel->reset_gpio)) {
 		ret = PTR_ERR(dsi_panel->reset_gpio);
-		dev_err(dsi_panel->dev, "failed to request %s GPIO: %d\n", "reset",
-			ret);
-		return ret;
+		if (ret != -EBUSY) { /* dual-dsi shares a panel driver, EBUSY will appera */
+			dev_err(dsi_panel->dev, "failed to request %s GPIO: %d\n", "reset", ret);
+			return ret;
+		}
 	}
+
+	of_property_read_u32(np, "dsc,vrr-setp", &dsi_panel->vrr_setp);
 
 	return 0;
 }
+
 static int panel_simple_parse_cmd_seq(struct device *dev,
 				const u8 *data, int length,
 				struct panel_cmd_seq *seq)
@@ -507,12 +656,62 @@ static int panel_simple_parse_cmd_seq(struct device *dev,
 
 	return 0;
 }
+static int of_parse_reset_seq(struct panel_desc *desc, struct device_node *np)
+{
+	struct property *prop;
+	int bytes, rc;
+	u32 *p;
+
+	prop = of_find_property(np, "reset-on-sequence", &bytes);
+	if (!prop) {
+		DRM_INFO("reset-on-sequence property not found\n");
+		return -EINVAL;
+	}
+
+	p = kzalloc(bytes, GFP_KERNEL);
+	if (!p)
+		return -ENOMEM;
+	rc = of_property_read_u32_array(np, "reset-on-sequence",
+							p, bytes / 4);
+	if (rc) {
+		DRM_ERROR("parse reset-on-sequence failed\n");
+		kfree(p);
+		return rc;
+	}
+
+	desc->rst_on_seq.items = bytes / 8;
+	desc->rst_on_seq.timing = (struct gpio_timing *)p;
+
+	prop = of_find_property(np, "reset-off-sequence", &bytes);
+	if (!prop) {
+		DRM_ERROR("reset-off-sequence property not found\n");
+		return -EINVAL;
+	}
+
+	p = kzalloc(bytes, GFP_KERNEL);
+	if (!p)
+		return -ENOMEM;
+	rc = of_property_read_u32_array(np, "reset-off-sequence",
+							p, bytes / 4);
+	if (rc) {
+		DRM_ERROR("parse reset-off-sequence failed\n");
+		kfree(p);
+		return rc;
+	}
+
+	desc->rst_off_seq.items = bytes / 8;
+	desc->rst_off_seq.timing = (struct gpio_timing *)p;
+
+	return 0;
+}
 
 static int panel_of_get_desc_data(struct device *dev,
 					struct panel_desc *desc, struct device_node *np)
 {
 	struct display_timings *timings = NULL;
 	const void *data;
+	const char *str = NULL;
+	u32 value = 0;
 	int len;
 	int err;
 
@@ -530,7 +729,33 @@ static int panel_of_get_desc_data(struct device *dev,
 	of_property_read_u32(np, "power-delay-ms", &desc->delay.power);
 	of_property_read_u32(np, "enable-delay-ms", &desc->delay.enable);
 	of_property_read_u32(np, "reset-delay-ms", &desc->delay.reset);
-	of_property_read_u32(np, "reset-num", &desc->reset_num);
+	if (of_parse_reset_seq(desc, np))
+		of_property_read_u32(np, "reset-num", &desc->reset_num);
+
+	if (!of_property_read_string(np, "dsc,status", &str) && !strncmp(str, "okay", 4)) {
+		desc->dsc = devm_kzalloc(dev, sizeof(*desc->dsc), GFP_KERNEL);
+		if (!desc->dsc)
+			return -ENOMEM;
+		if (!of_property_read_u32(np, "dsc,slice-height", &value))
+			desc->dsc->slice_height = value;
+		if (!of_property_read_u32(np, "dsc,slice-width", &value))
+			desc->dsc->slice_width = value;
+		if (!of_property_read_u32(np, "dsc,bits-per-component", &value))
+			desc->dsc->bits_per_component = value;
+		if (!of_property_read_u32(np, "dsc,block-pred-enable", &value)) {
+			if (value)
+				desc->dsc->block_pred_enable = true;
+			else
+				desc->dsc->block_pred_enable = false;
+		}
+
+		desc->dsc->dsc_version_major = 0x1;
+		desc->dsc->dsc_version_minor = 0x1;
+		desc->dsc->slice_count = 2;
+		desc->dsc->bits_per_pixel = 8 << 4;
+		desc->dsc->line_buf_depth = 9;
+	} else
+		desc->dsc = NULL;
 
 	data = of_get_property(np, "panel-init-sequence", &len);
 	if (data) {
@@ -611,7 +836,7 @@ static int panel_dsi_probe(struct mipi_dsi_device *dsi)
 	struct panel_dsi *dsi_panel;
 	struct device *dev = &dsi->dev, *panel_dev;
 	struct device_driver *panel_drv;
-	const struct panel_desc_dsi *desc;
+	struct panel_desc_dsi *desc;
 	struct panel_desc_dsi *d;
 	const struct of_device_id *id;
 	struct device_node *np = NULL;
@@ -633,6 +858,7 @@ static int panel_dsi_probe(struct mipi_dsi_device *dsi)
 			DRM_ERROR("[DSI-PANEL] panel-dsi driver not probe\n");
 			return -EPROBE_DEFER;
 		}
+
 		np = panel_dev->of_node;
 		dsi_panel->panel_dev = panel_dev;
 	} else {
@@ -653,7 +879,15 @@ static int panel_dsi_probe(struct mipi_dsi_device *dsi)
 		}
 	}
 
-	desc = id->data ? id->data : d;
+	if (id->data) {
+		desc = devm_kzalloc(dev, sizeof(*desc), GFP_KERNEL);
+		if (!desc)
+			return -ENOMEM;
+		memcpy(desc, id->data, sizeof(struct panel_desc_dsi));
+	} else {
+		desc = d;
+	}
+
 	dsi_panel->dev = dev;
 	dsi_panel->desc = &desc->desc;
 	dsi_panel->dsi = dsi;
@@ -666,6 +900,11 @@ static int panel_dsi_probe(struct mipi_dsi_device *dsi)
 	if (ret < 0)
 		return ret;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	dsi->dsc = dsi_panel->desc->dsc;
+#else
+	dsi_panel->dsc = dsi_panel->desc->dsc;
+#endif
 	/* Register the panel. */
 	drm_panel_init(&dsi_panel->panel, dev, &panel_dsi_funcs,
 			DRM_MODE_CONNECTOR_DSI);
@@ -699,6 +938,7 @@ static int panel_simple_remove(struct device *dev)
 
 	return 0;
 }
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)
 static int panel_dsi_remove(struct mipi_dsi_device *dsi)
 #else
@@ -766,6 +1006,6 @@ module_exit(panel_dsi_exit);
 //module_mipi_dsi_driver(panel_dsi_driver);
 
 MODULE_AUTHOR("xiaozhineng <xiaozhineng@allwinnertech.com>");
-MODULE_VERSION("1.0.0");
+MODULE_VERSION("1.0.1");
 MODULE_DESCRIPTION("dsi Panel Driver");
 MODULE_LICENSE("GPL");

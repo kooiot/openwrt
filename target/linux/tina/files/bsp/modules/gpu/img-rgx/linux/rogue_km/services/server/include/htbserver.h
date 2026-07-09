@@ -66,36 +66,25 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#ifndef __HTBSERVER_H__
-#define __HTBSERVER_H__
+#ifndef HTBSERVER_H
+#define HTBSERVER_H
 
 #include "img_types.h"
 #include "pvrsrv_error.h"
 #include "pvrsrv.h"
-#include "htbuffer.h"
 
+#define HTBLOGK(SF, args...) do { if (HTB_GROUP_ENABLED(SF)) HTBLogSimple(SF, ## args); } while (0)
 
-/************************************************************************/ /*!
- @Function      HTBIDeviceCreate
- @Description   Initialisation actions for HTB at device creation.
+/* macros to cast 64 or 32-bit pointers into 32-bit integer components for Host Trace */
+#define HTBLOG_PTR_BITS_HIGH(p) ((IMG_UINT32)((((IMG_UINT64)((uintptr_t)p))>>32)&0xffffffff))
+#define HTBLOG_PTR_BITS_LOW(p)  ((IMG_UINT32)(((IMG_UINT64)((uintptr_t)p))&0xffffffff))
 
- @Input         psDeviceNode    Reference to the device node in context
+/* macros to cast 64-bit integers into 32-bit integer components for Host Trace */
+#define HTBLOG_U64_BITS_HIGH(u) ((IMG_UINT32)((u>>32)&0xffffffff))
+#define HTBLOG_U64_BITS_LOW(u)  ((IMG_UINT32)(u&0xffffffff))
 
- @Return        eError          Internal services call returned eError error
-                                number
-*/ /**************************************************************************/
-PVRSRV_ERROR
-HTBDeviceCreate(PVRSRV_DEVICE_NODE *psDeviceNode);
-
-/************************************************************************/ /*!
- @Function      HTBIDeviceDestroy
- @Description   De-initialisation actions for HTB at device destruction.
-
- @Input         psDeviceNode    Reference to the device node in context
-
-*/ /**************************************************************************/
-void
-HTBDeviceDestroy(PVRSRV_DEVICE_NODE *psDeviceNode);
+/* Host Trace Buffer name */
+#define HTB_STREAM_NAME	"PVRHTBuffer"
 
 /************************************************************************/ /*!
  @Function      HTBInit
@@ -116,24 +105,6 @@ HTBInit(void);
 */ /**************************************************************************/
 PVRSRV_ERROR
 HTBDeInit(void);
-
-/*************************************************************************/ /*!
- @Function      HTBConfigureKM
- @Description   Configure or update the configuration of the Host Trace Buffer
-
- @Input         ui32NameSize    Size of the pszName string
-
- @Input         pszName         Name to use for the underlying data buffer
-
- @Input         ui32BufferSize  Size of the underlying data buffer
-
- @Return        eError          Internal services call returned eError error
-                                number
-*/ /**************************************************************************/
-PVRSRV_ERROR
-HTBConfigureKM(IMG_UINT32 ui32NameSize, const IMG_CHAR * pszName,
-			   const IMG_UINT32 ui32BufferSize);
-
 
 /*************************************************************************/ /*!
  @Function      HTBControlKM
@@ -210,16 +181,8 @@ HTBSyncScale(const IMG_BOOL bLogValues, const IMG_UINT64 ui64OSTS,
 			 const IMG_UINT64 ui64CRTS, const IMG_UINT32 ui32CalcClkSpd);
 
 /*************************************************************************/ /*!
- @Function      HTBLogKM
- @Description   Record a Host Trace Buffer log event
-
- @Input         PID             The PID of the process the event is associated
-                                with. This is provided as an argument rather
-                                than querying internally so that events associated
-                                with a particular process, but performed by
-                                another can be logged correctly.
-
- @Input         ui64TimeStamp   The timestamp to be associated with this log event
+ @Function      HTBLogSimple
+ @Description   Record a Host Trace Buffer log event with implicit PID and Timestamp
 
  @Input         SF              The log event ID
 
@@ -228,10 +191,27 @@ HTBSyncScale(const IMG_BOOL bLogValues, const IMG_UINT64 ui64OSTS,
  @Return        PVRSRV_OK       Success.
 
 */ /**************************************************************************/
-PVRSRV_ERROR
-HTBLogKM(IMG_UINT32 PID, IMG_UINT64 ui64TimeStamp, HTB_LOG_SFids SF,
-		 IMG_UINT32 ui32NumArgs, IMG_UINT32 *aui32Args);
+IMG_INTERNAL PVRSRV_ERROR
+HTBLogSimple(IMG_UINT32 SF, ...);
 
-#endif /* __HTBSERVER_H__ */
+/*  DEBUG log group enable */
+#if !defined(HTB_DEBUG_LOG_GROUP)
+#undef HTB_LOG_TYPE_DBG    /* No trace statements in this log group should be checked in */
+#define HTB_LOG_TYPE_DBG    __BUILDERROR__
+#endif
+
+/*************************************************************************/ /*!
+ @Function      HTBIsConfigured
+ @Description   Determine if HTB stream has been configured
+
+ @Input         none
+
+ @Return        IMG_FALSE       Stream has not been configured
+                IMG_TRUE        Stream has been configured
+
+*/ /**************************************************************************/
+IMG_BOOL
+HTBIsConfigured(void);
+#endif /* HTBSERVER_H */
 
 /* EOF */

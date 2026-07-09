@@ -22,6 +22,7 @@
 #include <linux/interrupt.h>
 #include <linux/delay.h>
 #include <linux/err.h>
+#include <linux/console.h>
 
 #include <linux/clk.h>
 #include <linux/reset/sunxi.h>
@@ -91,6 +92,10 @@
 
 /*use for wait dma des hold bit clear*/
 #define SUNXI_DES_CLR_WAIT_CNT (20000)
+
+/*use for cmdq recovert*/
+#define SUNXI_SUB_FREQ (50000000)
+#define SUNXI_SUB_FREQ_MAX (100000000)
 
 /* whether can fix read data timeout problem */
 #define SUNXI_RDTO_OPERATION(host, data)	\
@@ -1196,14 +1201,22 @@ static int sunxi_mmc_finalize_request(struct sunxi_mmc_host *host)
 
 out:
 #if IS_ENABLED(CONFIG_AW_MMC_CQHCI) || IS_ENABLED(CONFIG_MMC_CQHCI)
-	/* only use sdr50, while cmdq failed */
+	/* while cmdq failed */
 	/* card will be NULL, because uhs-3 sd card may send the cmd48 */
 	if ((mrq->cmd->opcode == MMC_CMDQ_TASK_MGMT) && (host->sunxi_caps3 & MMC_SUNXI_CQE_ON)) {
 		/*In the case of recovery, force entry through cmd48 error to
-		 * initialize recovery to sdr50*/
+		 * initialize recovery to sub 50M
+		 * eg, HS400 200M - HS400 150M - HS400 150M - SDR 50M */
 		mrq->cmd->error = -ETIMEDOUT;
-		if (card != NULL)
-			sunxi_mmc_select_timing(host->mmc, MMC_TIMING_MMC_HS);
+		if (card != NULL) {
+			if (host->mmc->ios.clock > SUNXI_SUB_FREQ_MAX) {
+				/* This function will be entered multiple times when an error occurs.
+				 * f_max only sub once before recovery */
+				if (host->mmc->f_max == host->mmc->ios.clock)
+					host->mmc->f_max -= SUNXI_SUB_FREQ;
+			} else
+				sunxi_mmc_select_timing(host->mmc, MMC_TIMING_MMC_HS);
+		}
 	}
 
 	if (host->rstr_nrml) {
@@ -1943,6 +1956,11 @@ static void sunxi_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 			msleep(1);
 		}
 
+		if (!IS_ERR(host->pins_uart_jtag) && !(host->dat3_imask)) {
+			if (!atomic_cmpxchg_acquire(&host->sdc0_lock_once, UNLOCK, LOCKED))
+				console_lock();
+		}
+
 		if (!IS_ERR(host->pins_default)) {
 			rval =
 			    pinctrl_select_state(host->pinctrl,
@@ -1980,14 +1998,25 @@ static void sunxi_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 		sunxi_mmc_reset_host(host);
 
 		sunxi_mmc_bus_clk_en(host, 0);
-		if (!IS_ERR(host->pins_sleep)) {
+		if (!IS_ERR(host->pins_uart_jtag)) {
 			rval =
 			    pinctrl_select_state(host->pinctrl,
-						 host->pins_sleep);
+						 host->pins_uart_jtag);
 			if (rval) {
 				SM_ERR(mmc_dev(mmc),
-					"could not set sleep pins\n");
+					"could not set uart_jtag pins\n");
 				return;
+			}
+		} else {
+			if (!IS_ERR(host->pins_sleep)) {
+				rval =
+				    pinctrl_select_state(host->pinctrl,
+							 host->pins_sleep);
+				if (rval) {
+					SM_ERR(mmc_dev(mmc),
+						"could not set sleep pins\n");
+					return;
+				}
 			}
 		}
 
@@ -1999,17 +2028,10 @@ static void sunxi_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 			msleep(host->time_pwroff_ms);
 		}
 
-		if (!IS_ERR(host->pins_uart_jtag)) {
-			rval =
-			    pinctrl_select_state(host->pinctrl,
-						 host->pins_uart_jtag);
-			if (rval) {
-				SM_ERR(mmc_dev(mmc),
-					"could not set uart_jtag pins\n");
-				return;
-			}
+		if (!IS_ERR(host->pins_uart_jtag) && !(host->dat3_imask)) {
+			if (atomic_cmpxchg_acquire(&host->sdc0_lock_once, LOCKED, UNLOCK))
+				console_unlock();
 		}
-
 
 		if (!IS_ERR(host->supply.vqmmc18sw)) {
 			rval = regulator_disable(host->supply.vqmmc18sw);
@@ -2425,7 +2447,7 @@ static int sunxi_mmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 	struct platform_device *pdev = to_platform_device(mmc_dev(mmc));
 
 	if (host->tuning_in_kernel != 1) {
-		SM_ERR(mmc_dev(mmc), "sdc%d :the host don't support tuning in kernel\n", host->phy_index);
+		SM_INFO(mmc_dev(mmc), "sdc%d :the host don't support tuning in kernel\n", host->phy_index);
 		kfree(rcv_pattern);
 		return 0;
 	}
@@ -2831,6 +2853,15 @@ static int sunxi_mmc_request_parallel(void *flash, void *request, struct request
 	int ret;
 	int work_timeout = SUNXI_TRANS_TIMEOUT;
 	enum mrq_slot slot;
+
+	/*
+	 * Judge cmd->opcode == MMC_ALL_SEND_CID make sure detect SD card success.
+	 * if we detect sd card success, we unlock console to let uart pin to print message, not use card pin.
+	 */
+	if (!IS_ERR(host->pins_uart_jtag) && !(host->dat3_imask)) {
+		if ((cmd->opcode == MMC_ALL_SEND_CID) && unlikely(atomic_cmpxchg_acquire(&host->sdc0_lock_once, LOCKED, UNLOCK)))
+			console_unlock();
+	}
 
 	if (host->sunxi_caps3 & MMC_SUNXI_CAP3_RDPST) {
 		if (!is_bkgd) {
@@ -3750,6 +3781,14 @@ static int sunxi_mmc_resource_request(struct sunxi_mmc_host *host,
 
 	host->pins_default = pinctrl_lookup_state(host->pinctrl,
 						  PINCTRL_STATE_DEFAULT);
+	/*
+	 * Use "sdc_default" to aovid core set pin to default before smhc driver probe.
+	 * Because use PINCTRL_STATE_DEFAULT,pin drivers will set pin to default before smhc driver probe.
+	 */
+	if (IS_ERR(host->pins_default))
+		host->pins_default = pinctrl_lookup_state(host->pinctrl,
+							  "sdc_default");
+
 	if (IS_ERR(host->pins_default)) {
 		SM_WARN(&pdev->dev,
 			 "could not get default pinstate,check if pin is needed\n");
@@ -3762,6 +3801,8 @@ static int sunxi_mmc_resource_request(struct sunxi_mmc_host *host,
 						"uart_jtag");
 		if (IS_ERR(host->pins_uart_jtag))
 			SM_WARN(&pdev->dev, "Cann't get uart0 pinstate,check if needed\n");
+		else if (!of_property_read_bool(np, "data3-detect"))
+			atomic_set(&host->sdc0_lock_once, UNLOCK);
 	} else {
 		host->pins_uart_jtag = ERR_PTR(-ENODEV);
 	}
@@ -3787,24 +3828,24 @@ static int sunxi_mmc_resource_request(struct sunxi_mmc_host *host,
 
 	host->clk_ahb = devm_clk_get(&pdev->dev, "ahb");
 	if (IS_ERR(host->clk_ahb)) {
-		SM_ERR(&pdev->dev, "Could not get ahb clock\n");
+		SM_INFO(&pdev->dev, "Could not get ahb clock\n");
 		ret = PTR_ERR(host->clk_ahb);
 		goto error_disable_regulator;
 	}
 
 	host->clk_mbus = devm_clk_get(&pdev->dev, "mmc_mbus");
 	if (IS_ERR(host->clk_mbus)) {
-		SM_ERR(&pdev->dev, "Could not get mbus clock\n");
+		SM_INFO(&pdev->dev, "Could not get mbus clock\n");
 	}
 
 	host->clk_store = devm_clk_get(&pdev->dev, "mmc_store");
 	if (IS_ERR(host->clk_store)) {
-		SM_ERR(&pdev->dev, "Could not get store clock\n");
+		SM_INFO(&pdev->dev, "Could not get store clock\n");
 	}
 
 	host->clk_mmc = devm_clk_get(&pdev->dev, "mmc");
 	if (IS_ERR(host->clk_mmc)) {
-		SM_ERR(&pdev->dev, "Could not get mmc clock\n");
+		SM_INFO(&pdev->dev, "Could not get mmc clock\n");
 		ret = PTR_ERR(host->clk_mmc);
 		goto error_disable_regulator;
 	}

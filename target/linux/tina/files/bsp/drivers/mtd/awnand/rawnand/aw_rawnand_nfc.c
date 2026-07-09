@@ -129,9 +129,36 @@ static void aw_nfc_reg_prepare(struct nfc_reg *reg)
 	reg->mdma_cur_buf_addr = (volatile uint32_t *)((uint8_t *)host->base + 0x0210);
 	reg->dma_cnt = (volatile uint32_t *)((uint8_t *)host->base + 0x0214);
 	reg->ver = (volatile uint32_t *)((uint8_t *)host->base + 0x02f0);
+	reg->io_data = (volatile uint32_t *)((uint8_t *)host->base + 0x0300);
 	reg->ram0_base = (volatile uint32_t *)((uint8_t *)host->base + 0x0400);
 	reg->ram1_base = (volatile uint32_t *)((uint8_t *)host->base + 0x0800);
 
+}
+
+
+void aw_nfc_reg_save(struct nfc_reg *reg, struct nfc_reg_save_val *nfc_reg_save_val)
+{
+	nfc_reg_save_val->timing_ctl_val = readl(reg->timing_ctl);
+	nfc_reg_save_val->timing_cfg_val = readl(reg->timing_cfg);
+	nfc_reg_save_val->io_data_val = readl(reg->io_data);
+	nfc_reg_save_val->efr_val = readl(reg->efr);
+	nfc_reg_save_val->pat_id_val = readl(reg->pat_id);
+	nfc_reg_save_val->dma_cnt_val = readl(reg->dma_cnt);
+	nfc_reg_save_val->ctl_val = readl(reg->ctl);
+	nfc_reg_save_val->ddr2_spec_ctl_val = readl(reg->ddr2_spec_ctl);
+
+}
+
+void aw_nfc_reg_recover(struct nfc_reg *reg, struct nfc_reg_save_val *nfc_reg_save_val)
+{
+	writel(nfc_reg_save_val->timing_ctl_val, reg->timing_ctl);
+	writel(nfc_reg_save_val->timing_cfg_val, reg->timing_cfg);
+	writel(nfc_reg_save_val->io_data_val, reg->io_data);
+	writel(nfc_reg_save_val->efr_val, reg->efr);
+	writel(nfc_reg_save_val->pat_id_val, reg->pat_id);
+	writel(nfc_reg_save_val->dma_cnt_val, reg->dma_cnt);
+	writel(nfc_reg_save_val->ctl_val, reg->ctl);
+	writel(nfc_reg_save_val->ddr2_spec_ctl_val, reg->ddr2_spec_ctl);
 }
 
 int aw_rawnand_get_ecc_mode(int sparesize, int pagesize)
@@ -390,11 +417,24 @@ static int nand_dma_send_start(struct aw_nand_host *host, void *pbuf, uint byte_
 	return 0;
 }
 
-static int aw_host_set_pin(struct aw_nand_host *host)
+int aw_host_set_pin(struct aw_nand_host *host)
 {
 	struct pinctrl *pinctrl = NULL;
 
 	pinctrl = pinctrl_get_select(host->dev, "default");
+	if (IS_ERR_OR_NULL(pinctrl)) {
+		awrawnand_err("set nand0 pin fail\n");
+		return -EIO;
+	}
+
+	return 0;
+}
+
+int aw_host_release_pin(struct aw_nand_host *host)
+{
+	struct pinctrl *pinctrl = NULL;
+
+	pinctrl = pinctrl_get_select(host->dev, "sleep");
 	if (IS_ERR_OR_NULL(pinctrl)) {
 		awrawnand_err("set nand0 pin fail\n");
 		return -EIO;
@@ -1362,7 +1402,7 @@ static int aw_host_set_mcclk(struct aw_nand_host *host, uint32_t mcclk)
 
 }
 
-static int aw_host_clk_init(struct aw_nand_host *host)
+int aw_host_clk_init(struct aw_nand_host *host)
 {
 	int ret = 0;
 	long rate = 0;
@@ -1429,6 +1469,20 @@ static int aw_host_clk_init(struct aw_nand_host *host)
 
 out:
 	return ret;
+}
+
+int aw_host_clk_deinit(struct aw_nand_host *host)
+{
+	if (host->mdclk)
+		clk_disable_unprepare(host->mdclk);
+	if (host->mcclk)
+		clk_disable_unprepare(host->mcclk);
+	if (host->busclk)
+		clk_disable_unprepare(host->busclk);
+	if (host->mbusclk)
+		clk_disable_unprepare(host->mbusclk);
+
+	return 0;
 }
 
 static int aw_host_set_clk(struct aw_nand_host *host, uint32_t mdclk,
@@ -1740,7 +1794,7 @@ static int aw_host_set_clk_itf_sdr(struct aw_nand_host *host)
 	return ret;
 }
 
-static int aw_host_set_interface(struct aw_nand_host *host)
+int aw_host_set_interface(struct aw_nand_host *host)
 {
 	int ret = 0;
 	struct aw_nand_chip *chip = awnand_host_to_chip(host);
@@ -1811,7 +1865,7 @@ int aw_host_init_tail(struct aw_nand_host *host)
 	return ret;
 }
 
-static int aw_host_requlator_request(struct aw_nand_host *host)
+int aw_host_requlator_request(struct aw_nand_host *host)
 {
 	if (regulator_enable(host->vcc_nand)) {
 		awrawnand_err("request vcc nand fail\n");
@@ -1820,6 +1874,21 @@ static int aw_host_requlator_request(struct aw_nand_host *host)
 
 	if (regulator_enable(host->vcc_io)) {
 		awrawnand_err("request vcc io fail\n");
+		return -EPERM;
+	}
+
+	return 0;
+}
+
+int aw_host_requlator_release(struct aw_nand_host *host)
+{
+	if (regulator_disable(host->vcc_nand)) {
+		awrawnand_err("release vcc nand fail\n");
+		return -EPERM;
+	}
+
+	if (regulator_disable(host->vcc_io)) {
+		awrawnand_err("release vcc io fail\n");
 		return -EPERM;
 	}
 

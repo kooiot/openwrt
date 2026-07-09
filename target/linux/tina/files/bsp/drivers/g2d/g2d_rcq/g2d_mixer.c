@@ -917,6 +917,7 @@ OUT:
 	return ret;
 }
 
+#ifdef G2D_RCQ_DEBUG
 static __s32 g2d_mixer_rcq_debug(struct g2d_mixer_task *p_task)
 {
 	struct g2d_reg_block **p_reg_blks;
@@ -992,6 +993,7 @@ static __s32 g2d_mixer_rcq_debug(struct g2d_mixer_task *p_task)
 OUT:
 	return ret;
 }
+#endif
 
 static __s32 g2d_mixer_apply(struct g2d_mixer_task *p_task)
 {
@@ -1012,8 +1014,10 @@ static __s32 g2d_mixer_apply(struct g2d_mixer_task *p_task)
 	g2d_mixer_start(0);
 #endif
 
+#ifdef G2D_RCQ_DEBUG
 	if (dbg_info > 1)
 		g2d_mixer_rcq_debug(p_task);
+#endif
 
 #if G2D_MIXER_RCQ_USED == 1
 	g2d_top_rcq_irq_en(1);
@@ -1041,8 +1045,10 @@ static __s32 g2d_mixer_task_destory(struct g2d_mixer_task *p_task)
 		kfree(p_task->p_rcq_info->reg_blk);
 		kfree(p_task->p_rcq_info);
 	}
-
-	kfree(p_task->p_para);
+	if (p_task->frame_cnt == 1)
+		kfree(p_task->p_para);
+	else
+		vfree(p_task->p_para);
 
 	list_del(&p_task->list);
 	ida_simple_remove(&g2d_task_ida, p_task->task_id);
@@ -1110,8 +1116,13 @@ __u32 create_mixer_task(__g2d_info_t *p_g2d_info, struct mixer_para *p_para,
 		task->destory(task);
 		goto OUT;
 	}
-	task->p_para = kmalloc(sizeof(*(task->p_para)) * task->frame_cnt,
-			       GFP_KERNEL | __GFP_ZERO);
+
+	if (task->frame_cnt == 1)
+		task->p_para = kmalloc(sizeof(*(task->p_para)) * task->frame_cnt,
+					   GFP_KERNEL | __GFP_ZERO);
+	else
+		task->p_para = vzalloc(sizeof(*(task->p_para)) * task->frame_cnt);
+
 	if (!task->p_para) {
 		task->destory(task);
 		goto OUT;

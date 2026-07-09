@@ -31,8 +31,6 @@
 #define ZETTA_MANUFACTURE	0xba
 #define FM_MANUFACTURE		0xa1
 #define HEYANGTEK_MANUFACTURE	0xc9
-#define XCSP_MANUFACTURE 0x8c
-
 
 struct spinand_manufacture m;
 
@@ -148,60 +146,23 @@ struct aw_spinand_phy_info gigadevice[] = {
 		.EccProtectedType = SIZE16_OFF4_LEN12,
 		.BadBlockFlag	= BAD_BLK_FLAG_FRIST_1_PAGE,
 	},
-};
-
-
-struct aw_spinand_phy_info xcsp[] =
-{
-
 	{
-		.Model		= "XCSP2AAPK-IT",
-		.NandID		= {0x8c, 0xA1, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
+		.Model		= "GD5F4GQ6UEY1G",
+		.NandID		= {0xc8, 0x55, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
 		.DieCntPerChip  = 1,
 		.SectCntPerPage = 4,
 		.PageCntPerBlk  = 64,
-		.BlkCntPerDie	= 2048,
-		.OobSizePerPage = 128,
+		.BlkCntPerDie	= 4096,
+		.OobSizePerPage = 64,
 		.OperationOpt	= SPINAND_QUAD_READ | SPINAND_QUAD_PROGRAM |
 			SPINAND_DUAL_READ,
-		.MaxEraseTimes  = 100000,
-		.EccType	= BIT2_ERR2_LIMIT3,
-		.EccProtectedType = SIZE16_OFF0_LEN16,
-		.BadBlockFlag = BAD_BLK_FLAG_FRIST_1_PAGE,
-	},
-	
-	{
-	.Model		= "XCSP1AAPK-IT",
-	.NandID		= {0x8c, 0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
-	.DieCntPerChip  = 1,
-	.SectCntPerPage = 4,
-	.PageCntPerBlk  = 64,
-	.BlkCntPerDie	= 1024,
-	.OobSizePerPage = 128,
-	.OperationOpt	= SPINAND_QUAD_READ | SPINAND_QUAD_PROGRAM | SPINAND_DUAL_READ,
-	.MaxEraseTimes  = 100000,
-	.EccType	= BIT2_ERR2_LIMIT3,
-	.EccProtectedType = SIZE16_OFF0_LEN16,
-	.BadBlockFlag = BAD_BLK_FLAG_FRIST_1_PAGE,
-},
-
-	{
-.Model		= "XCSP4AAPK-IT",
-.NandID 	= {0x8c, 0xB1, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
-.DieCntPerChip	= 1,
-.SectCntPerPage = 4,
-.PageCntPerBlk	= 128,
-.BlkCntPerDie	= 2048,
-.OobSizePerPage = 128,
-.OperationOpt	= SPINAND_QUAD_READ  | SPINAND_DUAL_READ | SPINAND_QUAD_PROGRAM,
-.MaxEraseTimes	= 100000,
-.ecc_status_shift = ECC_STATUS_SHIFT_4,
-.EccType	= BIT2_ERR2_LIMIT3,
-.EccProtectedType = 0,
-.BadBlockFlag = BAD_BLK_FLAG_FRIST_1_PAGE,
-},
+		.MaxEraseTimes  = 50000,
+		.EccFlag	= HAS_EXT_ECC_SE01,
+		.EccType	= BIT4_LIMIT5_TO_7_ERR8_LIMIT_12,
+		.EccProtectedType = SIZE16_OFF4_LEN12,
+		.BadBlockFlag	= BAD_BLK_FLAG_FRIST_1_PAGE,
+	}
 };
-
 
 struct aw_spinand_phy_info micron[] = {
 	{
@@ -524,6 +485,22 @@ struct aw_spinand_phy_info foresee[] = {
 		.EccProtectedType = SIZE16_OFF0_LEN16,
 		.BadBlockFlag = BAD_BLK_FLAG_FRIST_1_PAGE,
 	},
+	{
+		.Model		= "F35SQA002G",
+		.NandID		= {0xcd, 0x72, 0x72, 0xff, 0xff, 0xff, 0xff, 0xff},
+		.DieCntPerChip  = 1,
+		.SectCntPerPage = 4,
+		.PageCntPerBlk  = 64,
+		.BlkCntPerDie	= 2048,
+		.OobSizePerPage = 64,
+		.OperationOpt	= SPINAND_QUAD_READ | SPINAND_QUAD_PROGRAM |
+			SPINAND_DUAL_READ,
+		.MaxEraseTimes  = 50000,
+		.ecc_status_shift = ECC_STATUS_SHIFT_4,
+		.EccType	= BIT2_LIMIT1_ERR2,
+		.EccProtectedType = SIZE16_OFF0_LEN16,
+		.BadBlockFlag = BAD_BLK_FLAG_FRIST_1_PAGE,
+	},
 
 };
 
@@ -690,8 +667,6 @@ static struct spinand_manufacture spinand_factory[] = {
 	SPINAND_FACTORY_INFO(ZETTA_MANUFACTURE, "Zetta", zetta),
 	SPINAND_FACTORY_INFO(FM_MANUFACTURE, "FM", fm),
 	SPINAND_FACTORY_INFO(HEYANGTEK_MANUFACTURE, "HeYangTek", heyangtek),
-	
-	SPINAND_FACTORY_INFO(XCSP_MANUFACTURE, "xcsp", xcsp),
 };
 
 
@@ -736,9 +711,6 @@ static int spinand_get_chip_munufacture(struct aw_spinand_chip *chip, const char
 	case HEYANGTEK_MANUFACTURE:
 		*m = "HeYangTek";
 	break;
-	case XCSP_MANUFACTURE:
-		*m="XinCun";
-		break;
 	default:
 		*m = NULL;
 	break;

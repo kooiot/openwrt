@@ -39,7 +39,7 @@ struct sensor_config32 {
 	unsigned int bin_factor;     /* binning factor                         */
 	unsigned int intg_min;       /* integration min, unit: line, Q4        */
 	unsigned int intg_max;       /* integration max, unit: line, Q4        */
-#if !defined CONFIG_ARCH_SUN50IW10
+#if !IS_ENABLED(CONFIG_ARCH_SUN50IW10) && !IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 	unsigned int intg_mid_min;   /* middle integration min, unit: line, Q4 */
 	unsigned int intg_mid_max;   /* middle integration max, unit: line, Q4 */
 	unsigned int intg_short_min; /* short integration min, unit: line, Q4  */
@@ -53,12 +53,12 @@ struct sensor_config32 {
 
 struct sensor_exp_gain32 {
 	int exp_val;
-#if !defined CONFIG_ARCH_SUN50IW10
+#if !IS_ENABLED(CONFIG_ARCH_SUN50IW10) && !IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 	int exp_mid_val;
 	int exp_short_val;
 #endif
 	int gain_val;
-#if !defined CONFIG_ARCH_SUN50IW10
+#if !IS_ENABLED(CONFIG_ARCH_SUN50IW10) && !IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 	int gain_mid_val;
 	int gain_short_val;
 #endif

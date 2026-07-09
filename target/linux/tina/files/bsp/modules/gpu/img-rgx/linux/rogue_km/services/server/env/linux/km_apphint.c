@@ -41,12 +41,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#include "pvr_debugfs.h"
+#include "di_server.h"
 #include "pvr_uaccess.h"
 #include <linux/moduleparam.h>
 #include <linux/workqueue.h>
 #include <linux/string.h>
-#include <stdbool.h>
 
 /* Common and SO layer */
 #include "img_defs.h"
@@ -73,12 +72,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "km_apphint.h"
 
 #if defined(PDUMP)
+#if defined(__linux__)
  #include <linux/version.h>
+
  #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
   #include <linux/stdarg.h>
  #else
   #include <stdarg.h>
  #endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) */
+#else
+ #include <stdarg.h>
+#endif /* __linux__ */
 #include "pdump_km.h"
 #endif
 
@@ -91,6 +95,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define APPHINT_DEVICES_MAX 16
 
+/* Apphint Debug output level */
+#define APPHINT_DPF_LEVEL PVR_DBG_VERBOSE
+
 /*
 *******************************************************************************
  * AppHint mnemonic data type helper tables
@@ -101,9 +108,11 @@ struct apphint_lookup {
 };
 
 static const struct apphint_lookup fwt_logtype_tbl[] = {
-	{ "trace", 2},
-	{ "tbi", 1},
+	{ "trace", 0},
 	{ "none", 0}
+#if defined(SUPPORT_TBI_INTERFACE)
+	, { "tbi", 1}
+#endif
 };
 
 static const struct apphint_lookup fwt_loggroup_tbl[] = {
@@ -128,6 +137,7 @@ static const struct apphint_lookup htb_logmode_tbl[] = {
 	{ "restricted", HTB_LOGMODE_RESTRICTEDPID}
 };
 
+__maybe_unused
 static const struct apphint_lookup timecorr_clk_tbl[] = {
 	{ "mono", 0 },
 	{ "mono_raw", 1 },
@@ -145,23 +155,40 @@ union apphint_value {
 	IMG_CHAR *STRING;
 };
 
+union apphint_query_action {
+	PVRSRV_ERROR (*UINT64)(const PVRSRV_DEVICE_NODE *device,
+	                       const void *private_data, IMG_UINT64 *value);
+	PVRSRV_ERROR (*UINT32)(const PVRSRV_DEVICE_NODE *device,
+	                       const void *private_data, IMG_UINT32 *value);
+	PVRSRV_ERROR (*BOOL)(const PVRSRV_DEVICE_NODE *device,
+	                     const void *private_data, IMG_BOOL *value);
+	PVRSRV_ERROR (*STRING)(const PVRSRV_DEVICE_NODE *device,
+	                       const void *private_data, IMG_CHAR **value);
+};
+
+union apphint_set_action {
+	PVRSRV_ERROR (*UINT64)(const PVRSRV_DEVICE_NODE *device,
+	                       const void *private_data, IMG_UINT64 value);
+	PVRSRV_ERROR (*UINT32)(const PVRSRV_DEVICE_NODE *device,
+	                       const void *private_data, IMG_UINT32 value);
+	PVRSRV_ERROR (*BOOL)(const PVRSRV_DEVICE_NODE *device,
+	                     const void *private_data, IMG_BOOL value);
+	PVRSRV_ERROR (*STRING)(const PVRSRV_DEVICE_NODE *device,
+	                       const void *private_data, IMG_CHAR *value);
+};
+
 struct apphint_action {
-	union {
-		PVRSRV_ERROR (*UINT64)(const PVRSRV_DEVICE_NODE *device, const void *private_data, IMG_UINT64 *value);
-		PVRSRV_ERROR (*UINT32)(const PVRSRV_DEVICE_NODE *device, const void *private_data, IMG_UINT32 *value);
-		PVRSRV_ERROR (*BOOL)(const PVRSRV_DEVICE_NODE *device, const void *private_data, IMG_BOOL *value);
-		PVRSRV_ERROR (*STRING)(const PVRSRV_DEVICE_NODE *device, const void *private_data, IMG_CHAR **value);
-	} query;
-	union {
-		PVRSRV_ERROR (*UINT64)(const PVRSRV_DEVICE_NODE *device, const void *private_data, IMG_UINT64 value);
-		PVRSRV_ERROR (*UINT32)(const PVRSRV_DEVICE_NODE *device, const void *private_data, IMG_UINT32 value);
-		PVRSRV_ERROR (*BOOL)(const PVRSRV_DEVICE_NODE *device, const void *private_data, IMG_BOOL value);
-		PVRSRV_ERROR (*STRING)(const PVRSRV_DEVICE_NODE *device, const void *private_data, IMG_CHAR *value);
-	} set;
-	const PVRSRV_DEVICE_NODE *device;
-	const void *private_data;
-	union apphint_value stored;
-	bool free;
+	union apphint_query_action query; /*!< Query callbacks. */
+	union apphint_set_action set;     /*!< Set callbacks. */
+	const PVRSRV_DEVICE_NODE *device; /*!< Pointer to the device node.*/
+	const void *private_data;         /*!< Opaque data passed to `query` and
+	                                       `set` callbacks. */
+	union apphint_value stored;       /*!< Value of the AppHint. */
+	bool free;                        /*!< Flag indicating that memory has been
+	                                       allocated for this AppHint and it
+	                                       needs to be freed on deinit. */
+	bool initialised;                 /*!< Flag indicating if the AppHint has
+	                                       been already initialised. */
 };
 
 struct apphint_param {
@@ -172,10 +199,17 @@ struct apphint_param {
 };
 
 struct apphint_init_data {
-	IMG_UINT32 id;			/* index into AppHint Table */
+	IMG_UINT32 id;          /* index into AppHint Table */
 	APPHINT_CLASS class;
 	const IMG_CHAR *name;
 	union apphint_value default_value;
+	APPHINT_RT_CLASS guest; /* ALWAYS => present on GUEST,
+	                           NEVER => not present on GUEST */
+};
+
+struct apphint_init_data_mapping {
+	IMG_UINT32 device_apphint_id;
+	IMG_UINT32 modparam_apphint_id;
 };
 
 struct apphint_class_state {
@@ -197,30 +231,42 @@ struct apphint_work {
 #define UINT32List UINT32
 
 static const struct apphint_init_data init_data_buildvar[] = {
-#define X(a, b, c, d, e) \
-	{APPHINT_ID_ ## a, APPHINT_CLASS_ ## c, #a, {.b=d} },
+#define X(a, b, c, d, e, f) \
+	{APPHINT_ID_ ## a, APPHINT_CLASS_ ## c, #a, {.b=d}, APPHINT_RT_CLASS_ ## f },
+	APPHINT_LIST_BUILDVAR_COMMON
 	APPHINT_LIST_BUILDVAR
 #undef X
 };
 
 static const struct apphint_init_data init_data_modparam[] = {
-#define X(a, b, c, d, e) \
-	{APPHINT_ID_ ## a, APPHINT_CLASS_ ## c, #a, {.b=d} },
+#define X(a, b, c, d, e, f) \
+	{APPHINT_ID_ ## a, APPHINT_CLASS_ ## c, #a, {.b=d}, APPHINT_RT_CLASS_ ## f },
+	APPHINT_LIST_MODPARAM_COMMON
 	APPHINT_LIST_MODPARAM
 #undef X
 };
 
-static const struct apphint_init_data init_data_debugfs[] = {
-#define X(a, b, c, d, e) \
-	{APPHINT_ID_ ## a, APPHINT_CLASS_ ## c, #a, {.b=d} },
-	APPHINT_LIST_DEBUGFS
+static const struct apphint_init_data init_data_debuginfo[] = {
+#define X(a, b, c, d, e, f) \
+	{APPHINT_ID_ ## a, APPHINT_CLASS_ ## c, #a, {.b=d}, APPHINT_RT_CLASS_ ## f },
+	APPHINT_LIST_DEBUGINFO_COMMON
+	APPHINT_LIST_DEBUGINFO
 #undef X
 };
 
-static const struct apphint_init_data init_data_debugfs_device[] = {
-#define X(a, b, c, d, e) \
-	{APPHINT_ID_ ## a, APPHINT_CLASS_ ## c, #a, {.b=d} },
-	APPHINT_LIST_DEBUGFS_DEVICE
+static const struct apphint_init_data init_data_debuginfo_device[] = {
+#define X(a, b, c, d, e, f) \
+	{APPHINT_ID_ ## a, APPHINT_CLASS_ ## c, #a, {.b=d}, APPHINT_RT_CLASS_ ## f },
+	APPHINT_LIST_DEBUGINFO_DEVICE_COMMON
+	APPHINT_LIST_DEBUGINFO_DEVICE
+#undef X
+};
+
+static const struct apphint_init_data_mapping init_data_debuginfo_device_to_modparams[] = {
+#define X(a, b) \
+	{APPHINT_ID_ ## a, APPHINT_ID_ ## b},
+	APPHINT_LIST_DEBUIGINFO_DEVICE_X_MODPARAM_INIT_COMMON
+	APPHINT_LIST_DEBUIGINFO_DEVICE_X_MODPARAM_INIT
 #undef X
 };
 
@@ -230,7 +276,7 @@ static const struct apphint_init_data init_data_debugfs_device[] = {
 __maybe_unused static const char NO_PARAM_TABLE[] = {};
 
 static const struct apphint_param param_lookup[] = {
-#define X(a, b, c, d, e) \
+#define X(a, b, c, d, e, f) \
 	{APPHINT_ID_ ## a, APPHINT_DATA_TYPE_ ## b, e, ARRAY_SIZE(e) },
 	APPHINT_LIST_ALL
 #undef X
@@ -257,22 +303,22 @@ static const struct apphint_class_state class_state[] = {
 static struct apphint_state
 {
 	struct workqueue_struct *workqueue;
-	PPVR_DEBUGFS_DIR_DATA debugfs_device_rootdir[APPHINT_DEVICES_MAX];
-	PPVR_DEBUGFS_ENTRY_DATA debugfs_device_entry[APPHINT_DEVICES_MAX][APPHINT_DEBUGFS_DEVICE_ID_MAX];
-	PPVR_DEBUGFS_DIR_DATA debugfs_rootdir;
-	PPVR_DEBUGFS_ENTRY_DATA debugfs_entry[APPHINT_DEBUGFS_ID_MAX];
-	PPVR_DEBUGFS_DIR_DATA buildvar_rootdir;
-	PPVR_DEBUGFS_ENTRY_DATA buildvar_entry[APPHINT_BUILDVAR_ID_MAX];
+	DI_GROUP *debuginfo_device_rootdir[APPHINT_DEVICES_MAX];
+	DI_ENTRY *debuginfo_device_entry[APPHINT_DEVICES_MAX][APPHINT_DEBUGINFO_DEVICE_ID_MAX];
+	DI_GROUP *debuginfo_rootdir;
+	DI_ENTRY *debuginfo_entry[APPHINT_DEBUGINFO_ID_MAX];
+	DI_GROUP *buildvar_rootdir;
+	DI_ENTRY *buildvar_entry[APPHINT_BUILDVAR_ID_MAX];
 
-	int num_devices;
+	unsigned int num_devices;
 	PVRSRV_DEVICE_NODE *devices[APPHINT_DEVICES_MAX];
-	int initialized;
+	unsigned int initialized;
 
 	/* Array contains value space for 1 copy of all apphint values defined
 	 * (for device 1) and N copies of device specific apphint values for
 	 * multi-device platforms.
 	 */
-	struct apphint_action val[APPHINT_ID_MAX + ((APPHINT_DEVICES_MAX-1)*APPHINT_DEBUGFS_DEVICE_ID_MAX)];
+	struct apphint_action val[APPHINT_ID_MAX + ((APPHINT_DEVICES_MAX-1)*APPHINT_DEBUGINFO_DEVICE_ID_MAX)];
 
 } apphint = {
 /* statically initialise default values to ensure that any module_params
@@ -281,8 +327,8 @@ static struct apphint_state
 	.val = {
 #define UINT32Bitfield UINT32
 #define UINT32List UINT32
-#define X(a, b, c, d, e) \
-	{ {NULL}, {NULL}, NULL, NULL, {.b=d}, false },
+#define X(a, b, c, d, e, f) \
+	{ {NULL}, {NULL}, NULL, NULL, {.b=d}, NULL },
 	APPHINT_LIST_ALL
 #undef X
 #undef UINT32Bitfield
@@ -292,7 +338,7 @@ static struct apphint_state
 	.num_devices = 0
 };
 
-#define APPHINT_DEBUGFS_DEVICE_ID_OFFSET (APPHINT_ID_MAX-APPHINT_DEBUGFS_DEVICE_ID_MAX)
+#define APPHINT_DEBUGINFO_DEVICE_ID_OFFSET (APPHINT_ID_MAX-APPHINT_DEBUGINFO_DEVICE_ID_MAX)
 
 static inline void
 get_apphint_id_from_action_addr(const struct apphint_action * const addr,
@@ -300,20 +346,40 @@ get_apphint_id_from_action_addr(const struct apphint_action * const addr,
 {
 	*id = (APPHINT_ID)(addr - apphint.val);
 	if (*id >= APPHINT_ID_MAX) {
-		*id -= APPHINT_DEBUGFS_DEVICE_ID_OFFSET;
-		*id %= APPHINT_DEBUGFS_DEVICE_ID_MAX;
-		*id += APPHINT_DEBUGFS_DEVICE_ID_OFFSET;
+		*id -= APPHINT_DEBUGINFO_DEVICE_ID_OFFSET;
+		*id %= APPHINT_DEBUGINFO_DEVICE_ID_MAX;
+		*id += APPHINT_DEBUGINFO_DEVICE_ID_OFFSET;
 	}
 }
 
 static inline void
 get_value_offset_from_device(const PVRSRV_DEVICE_NODE * const device,
-                             int * const offset)
+                             int * const offset,
+                             APPHINT_ID id)
 {
 	int i;
+	IMG_BOOL bFound = IMG_FALSE;
 
 	/* No device offset if not a device specific apphint */
 	if (APPHINT_OF_DRIVER_NO_DEVICE == device) {
+		*offset = 0;
+		return;
+	}
+
+	/* Check that the specified ID is a device-specific one. If not we
+	 * set the offset to 0 for the global MODPARAM / BUILDVAR etc. AppHint
+	 */
+	for (i = 0; i < ARRAY_SIZE(init_data_debuginfo_device); i++)
+	{
+		const struct apphint_init_data *device_init = &init_data_debuginfo_device[i];
+
+		if ((IMG_UINT32)id == device_init->id) {
+			bFound = IMG_TRUE;
+			break;
+		}
+	}
+
+	if (!bFound) {
 		*offset = 0;
 		return;
 	}
@@ -326,7 +392,7 @@ get_value_offset_from_device(const PVRSRV_DEVICE_NODE * const device,
 		PVR_DPF((PVR_DBG_WARNING, "%s: Unregistered device", __func__));
 		i = 0;
 	}
-	*offset = i * APPHINT_DEBUGFS_DEVICE_ID_MAX;
+	*offset = i * APPHINT_DEBUGINFO_DEVICE_ID_MAX;
 }
 
 /**
@@ -503,7 +569,7 @@ static int apphint_read(char *buffer, size_t count, APPHINT_ID ue,
 			}
 		}
 		if (i == size) {
-			if (strlen(arg) == 0) {
+			if (OSStringLength(arg) == 0) {
 				PVR_DPF((PVR_DBG_ERROR,
 					"%s: No value set for AppHint",
 					__func__));
@@ -556,7 +622,7 @@ static int apphint_read(char *buffer, size_t count, APPHINT_ID ue,
 	{
 		/* buffer may include '\n', remove it */
 		char *string = strsep(&buffer, "\n");
-		size_t len = strlen(string);
+		size_t len = OSStringLength(string);
 
 		if (!len) {
 			result = -EINVAL;
@@ -565,13 +631,13 @@ static int apphint_read(char *buffer, size_t count, APPHINT_ID ue,
 
 		++len;
 
-		value->STRING = kmalloc(len, GFP_KERNEL);
+		value->STRING = kmalloc(len , GFP_KERNEL);
 		if (!value->STRING) {
 			result = -ENOMEM;
 			goto err_exit;
 		}
 
-		strlcpy(value->STRING, string, len);
+		OSStringLCopy(value->STRING, string, len);
 		break;
 	}
 	default:
@@ -584,41 +650,72 @@ err_exit:
 }
 
 static PVRSRV_ERROR get_apphint_value_from_action(const struct apphint_action * const action,
-												  union apphint_value * const value)
+                                                  union apphint_value * const value,
+                                                  const PVRSRV_DEVICE_NODE * const psDevNode)
 {
 	APPHINT_ID id;
 	APPHINT_DATA_TYPE data_type;
 	PVRSRV_ERROR result = PVRSRV_OK;
+	const PVRSRV_DEVICE_NODE *psDevice;
 
 	get_apphint_id_from_action_addr(action, &id);
 	data_type = param_lookup[id].data_type;
 
+	/* If we've got an entry that is APPHINT_OF_DRIVER_NO_DEVICE we should use
+	 * the higher-level psDevNode value instead. This is the device-node that is
+	 * associated with the original debug_dump request.
+	 * Note: if we're called with psDevNode == APPHINT_OF_DRIVER_NO_DEVICE
+	 * we attempt to use the first registered apphint.devices[0] (if any
+	 * devices have been presented). If we have no devices hooked into the
+	 * apphint mechanism we just return the default value for the AppHint.
+	 */
+	if (psDevNode == APPHINT_OF_DRIVER_NO_DEVICE) {
+		if (action->device == APPHINT_OF_DRIVER_NO_DEVICE) {
+			if (apphint.num_devices > 0) {
+				psDevice = apphint.devices[0];
+			} else {
+				PVR_DPF((PVR_DBG_ERROR,
+				        "Uninitialised AppHint device for AppHint index (%d)",
+				        id));
+				return PVRSRV_ERROR_RETRY;
+			}
+		} else {
+			psDevice = action->device;
+		}
+	} else {
+		if (action->device == APPHINT_OF_DRIVER_NO_DEVICE) {
+			psDevice = psDevNode;
+		} else {
+			psDevice = action->device;
+		}
+	}
+
 	if (action->query.UINT64) {
 		switch (data_type) {
 		case APPHINT_DATA_TYPE_UINT64:
-			result = action->query.UINT64(action->device,
-										  action->private_data,
-										  &value->UINT64);
+			result = action->query.UINT64(psDevice,
+			                              action->private_data,
+			                              &value->UINT64);
 			break;
 
 		case APPHINT_DATA_TYPE_UINT32:
 		case APPHINT_DATA_TYPE_UINT32Bitfield:
 		case APPHINT_DATA_TYPE_UINT32List:
-			result = action->query.UINT32(action->device,
-										  action->private_data,
-										  &value->UINT32);
+			result = action->query.UINT32(psDevice,
+			                              action->private_data,
+			                              &value->UINT32);
 			break;
 
 		case APPHINT_DATA_TYPE_BOOL:
-			result = action->query.BOOL(action->device,
-										action->private_data,
-										&value->BOOL);
+			result = action->query.BOOL(psDevice,
+			                            action->private_data,
+			                            &value->BOOL);
 			break;
 
 		case APPHINT_DATA_TYPE_STRING:
-			result = action->query.STRING(action->device,
-										  action->private_data,
-										  &value->STRING);
+			result = action->query.STRING(psDevice,
+			                              action->private_data,
+			                              &value->STRING);
 			break;
 		default:
 			PVR_DPF((PVR_DBG_ERROR,
@@ -636,7 +733,7 @@ static PVRSRV_ERROR get_apphint_value_from_action(const struct apphint_action * 
 	return result;
 }
 
-/**
+/*
  * apphint_write - write the current AppHint data to a buffer
  *
  * Returns length written or -errno
@@ -652,7 +749,7 @@ static int apphint_write(char *buffer, const size_t size,
 	get_apphint_id_from_action_addr(a, &id);
 	hint = &param_lookup[id];
 
-	result = get_apphint_value_from_action(a, &value);
+	result = get_apphint_value_from_action(a, &value, a->device);
 
 	switch (hint->data_type) {
 	case APPHINT_DATA_TYPE_UINT64:
@@ -744,9 +841,9 @@ err_exit:
 
 /*
 *******************************************************************************
- Module parameters initialization - different from debugfs
+ Module parameters initialization - different from debuginfo
 ******************************************************************************/
-/**
+/*
  * apphint_kparam_set - Handle an update of a module parameter
  *
  * Returns 0, or -errno.  arg is in kp->arg.
@@ -766,6 +863,7 @@ static int apphint_kparam_set(const char *val, const struct kernel_param *kp)
 		result = apphint_read(val_copy, result, id, &value);
 		if (result >= 0) {
 			((struct apphint_action *)kp->arg)->stored = value;
+			((struct apphint_action *)kp->arg)->initialised = true;
 			if (param_lookup[id].data_type == APPHINT_DATA_TYPE_STRING) {
 				((struct apphint_action *)kp->arg)->free = true;
 			}
@@ -776,7 +874,7 @@ static int apphint_kparam_set(const char *val, const struct kernel_param *kp)
 	return (result > 0) ? 0 : result;
 }
 
-/**
+/*
  * apphint_kparam_get - handle a read of a module parameter
  *
  * Returns length written or -errno.  Buffer is 4k (ie. be short!)
@@ -793,7 +891,7 @@ static const struct kernel_param_ops apphint_kparam_fops = {
 };
 
 /*
- * call module_param_cb() for all AppHints listed in APPHINT_LIST_MODPARAM
+ * call module_param_cb() for all AppHints listed in APPHINT_LIST_MODPARAM_COMMON + APPHINT_LIST_MODPARAM
  * apphint_modparam_class_ ## resolves to apphint_modparam_enable() except for
  * AppHint classes that have been disabled.
  */
@@ -801,16 +899,17 @@ static const struct kernel_param_ops apphint_kparam_fops = {
 #define apphint_modparam_enable(name, number, perm) \
 	module_param_cb(name, &apphint_kparam_fops, &apphint.val[number], perm);
 
-#define X(a, b, c, d, e) \
+#define X(a, b, c, d, e, f) \
 	apphint_modparam_class_ ##c(a, APPHINT_ID_ ## a, 0444)
+	APPHINT_LIST_MODPARAM_COMMON
 	APPHINT_LIST_MODPARAM
 #undef X
 
 /*
 *******************************************************************************
- Debugfs get (seq file) operations - supporting functions
+ Debug Info get (seq file) operations - supporting functions
 ******************************************************************************/
-static void *apphint_seq_start(struct seq_file *s, loff_t *pos)
+static void *apphint_di_start(OSDI_IMPL_ENTRY *s, IMG_UINT64 *pos)
 {
 	if (*pos == 0) {
 		/* We want only one entry in the sequence, one call to show() */
@@ -822,13 +921,13 @@ static void *apphint_seq_start(struct seq_file *s, loff_t *pos)
 	return NULL;
 }
 
-static void apphint_seq_stop(struct seq_file *s, void *v)
+static void apphint_di_stop(OSDI_IMPL_ENTRY *s, void *v)
 {
 	PVR_UNREFERENCED_PARAMETER(s);
 	PVR_UNREFERENCED_PARAMETER(v);
 }
 
-static void *apphint_seq_next(struct seq_file *s, void *v, loff_t *pos)
+static void *apphint_di_next(OSDI_IMPL_ENTRY *s, void *v, IMG_UINT64 *pos)
 {
 	PVR_UNREFERENCED_PARAMETER(s);
 	PVR_UNREFERENCED_PARAMETER(v);
@@ -836,46 +935,39 @@ static void *apphint_seq_next(struct seq_file *s, void *v, loff_t *pos)
 	return NULL;
 }
 
-static int apphint_seq_show(struct seq_file *s, void *v)
+static int apphint_di_show(OSDI_IMPL_ENTRY *s, void *v)
 {
 	IMG_CHAR km_buffer[APPHINT_BUFFER_SIZE];
 	int result;
+	void *private = DIGetPrivData(s);
 
 	PVR_UNREFERENCED_PARAMETER(v);
 
-	result = apphint_write(km_buffer, APPHINT_BUFFER_SIZE, s->private);
+	result = apphint_write(km_buffer, APPHINT_BUFFER_SIZE, private);
 	if (result < 0) {
 		PVR_DPF((PVR_DBG_ERROR, "%s: failure", __func__));
 	} else {
-		/* debugfs requires a trailing \n, module_params don't */
+		/* debuginfo requires a trailing \n, module_params don't */
 		result += snprintf(km_buffer + result,
 				APPHINT_BUFFER_SIZE - result,
 				"\n");
-		seq_puts(s, km_buffer);
+		DIPuts(s, km_buffer);
 	}
 
 	/* have to return 0 to see output */
 	return (result < 0) ? result : 0;
 }
 
-static const struct seq_operations apphint_seq_fops = {
-	.start = apphint_seq_start,
-	.stop  = apphint_seq_stop,
-	.next  = apphint_seq_next,
-	.show  = apphint_seq_show,
-};
-
 /*
 *******************************************************************************
- Debugfs supporting functions
+ Debug Info supporting functions
 ******************************************************************************/
-/**
- * apphint_set - Handle a debugfs value update
+
+/*
+ * apphint_set - Handle a DI value update
  */
-static ssize_t apphint_set(const char __user *buffer,
-			    size_t count,
-			    loff_t *ppos,
-			    void *data)
+static IMG_INT64 apphint_set(const IMG_CHAR *buffer, IMG_UINT64 count,
+                             IMG_UINT64 *ppos, void *data)
 {
 	APPHINT_ID id;
 	union apphint_value value;
@@ -887,18 +979,17 @@ static ssize_t apphint_set(const char __user *buffer,
 		return -EIO;
 
 	if (count >= APPHINT_BUFFER_SIZE) {
-		PVR_DPF((PVR_DBG_ERROR, "%s: String too long (%zd)",
+		PVR_DPF((PVR_DBG_ERROR, "%s: String too long (%" IMG_INT64_FMTSPECd ")",
 			__func__, count));
 		result = -EINVAL;
 		goto err_exit;
 	}
 
-	if (pvr_copy_from_user(km_buffer, buffer, count)) {
-		PVR_DPF((PVR_DBG_ERROR, "%s: Copy of user data failed",
-			__func__));
-		result = -EFAULT;
-		goto err_exit;
-	}
+	/* apphint_read() modifies the buffer so we need to copy it */
+	memcpy(km_buffer, buffer, count);
+	/* count is larger than real buffer by 1 because DI framework appends
+	 * a '\0' character at the end, but here we're ignoring this */
+	count -= 1;
 	km_buffer[count] = '\0';
 
 	get_apphint_id_from_action_addr(action, &id);
@@ -911,19 +1002,27 @@ err_exit:
 	return result;
 }
 
-/**
- * apphint_debugfs_init - Create the specified debugfs entries
+/*
+ * apphint_debuginfo_init - Create the specified debuginfo entries
  */
-static int apphint_debugfs_init(const char *sub_dir,
-		int device_num,
-		unsigned init_data_size,
+static int apphint_debuginfo_init(const char *sub_dir,
+		unsigned int device_num,
+		unsigned int init_data_size,
 		const struct apphint_init_data *init_data,
-		PPVR_DEBUGFS_DIR_DATA parentdir,
-		PPVR_DEBUGFS_DIR_DATA *rootdir, PPVR_DEBUGFS_ENTRY_DATA *entry)
+		DI_GROUP *parentdir,
+		DI_GROUP **rootdir,
+		DI_ENTRY *entry[])
 {
-	int result = 0;
-	unsigned i;
-	int device_value_offset = device_num * APPHINT_DEBUGFS_DEVICE_ID_MAX;
+	PVRSRV_ERROR result;
+	unsigned int i;
+	unsigned int device_value_offset = device_num * APPHINT_DEBUGINFO_DEVICE_ID_MAX;
+	const DI_ITERATOR_CB iterator = {
+		.pfnStart = apphint_di_start, .pfnStop = apphint_di_stop,
+		.pfnNext  = apphint_di_next,  .pfnShow = apphint_di_show,
+		.pfnWrite = apphint_set,      .ui32WriteLenMax = APPHINT_BUFFER_SIZE
+	};
+	/* Determine if we're booted as a GUEST VZ OS */
+	IMG_BOOL bIsGUEST = PVRSRV_VZ_MODE_IS(GUEST);
 
 	if (*rootdir) {
 		PVR_DPF((PVR_DBG_WARNING,
@@ -932,9 +1031,8 @@ static int apphint_debugfs_init(const char *sub_dir,
 		goto err_exit;
 	}
 
-	result = PVRDebugFSCreateEntryDir(sub_dir, parentdir,
-					  rootdir);
-	if (result < 0) {
+	result = DICreateGroup(sub_dir, parentdir, rootdir);
+	if (result != PVRSRV_OK) {
 		PVR_DPF((PVR_DBG_WARNING,
 			"Failed to create \"%s\" DebugFS directory.", sub_dir));
 		goto err_exit;
@@ -944,40 +1042,50 @@ static int apphint_debugfs_init(const char *sub_dir,
 		if (!class_state[init_data[i].class].enabled)
 			continue;
 
-		result = PVRDebugFSCreateFile(init_data[i].name,
+		/* Check to see if this AppHint should appear in a GUEST OS.
+		 * This will have a value in the init_data[i].guest field of ALWAYS
+		 * and if we don't have this set (and we're in GUEST mode) we must
+		 * not present this AppHint to the OS.
+		 */
+		if (bIsGUEST && (init_data[i].guest != APPHINT_RT_CLASS_ALWAYS))
+			continue;
+
+		result = DICreateEntry(init_data[i].name,
 				*rootdir,
-				&apphint_seq_fops,
-				apphint_set,
-				NULL,
+				&iterator,
 				(void *) &apphint.val[init_data[i].id + device_value_offset],
+				DI_ENTRY_TYPE_GENERIC,
 				&entry[i]);
-		if (result < 0) {
+		if (result != PVRSRV_OK) {
 			PVR_DPF((PVR_DBG_WARNING,
 				"Failed to create \"%s/%s\" DebugFS entry.",
 				sub_dir, init_data[i].name));
 		}
 	}
 
+	return 0;
+
 err_exit:
 	return result;
 }
 
-/**
- * apphint_debugfs_deinit- destroy the debugfs entries
+/*
+ * apphint_debuginfo_deinit- destroy the debuginfo entries
  */
-static void apphint_debugfs_deinit(unsigned num_entries,
-		PPVR_DEBUGFS_DIR_DATA *rootdir, PPVR_DEBUGFS_ENTRY_DATA *entry)
+static void apphint_debuginfo_deinit(unsigned int num_entries,
+		DI_GROUP **rootdir,
+		DI_ENTRY *entry[])
 {
-	unsigned i;
+	unsigned int i;
 
 	for (i = 0; i < num_entries; i++) {
 		if (entry[i]) {
-			PVRDebugFSRemoveFile(&entry[i]);
+			DIDestroyEntry(entry[i]);
 		}
 	}
 
 	if (*rootdir) {
-		PVRDebugFSRemoveEntryDir(rootdir);
+		DIDestroyGroup(*rootdir);
 		*rootdir = NULL;
 	}
 }
@@ -987,17 +1095,19 @@ static void apphint_debugfs_deinit(unsigned num_entries,
  AppHint status dump implementation
 ******************************************************************************/
 #if defined(PDUMP)
-static void apphint_pdump_values(void *flags, const IMG_CHAR *format, ...)
+static void apphint_pdump_values(void *pvDeviceNode,
+                                 const IMG_CHAR *format, ...)
 {
 	char km_buffer[APPHINT_BUFFER_SIZE];
-	IMG_UINT32 ui32Flags = *(IMG_UINT32 *)flags;
+	IMG_UINT32 ui32Flags = PDUMP_FLAGS_CONTINUOUS;
 	va_list ap;
 
 	va_start(ap, format);
 	(void)vsnprintf(km_buffer, APPHINT_BUFFER_SIZE, format, ap);
 	va_end(ap);
 
-	PDumpCommentKM(km_buffer, ui32Flags);
+	/* ui32CommentSize set to 0 here as function does not make use of the value. */
+	PDumpCommentKM(NULL, (PVRSRV_DEVICE_NODE*)pvDeviceNode, 0, km_buffer, ui32Flags);
 }
 #endif
 
@@ -1015,7 +1125,7 @@ static IMG_BOOL is_apphint_value_equal(const APPHINT_DATA_TYPE data_type,
 		case APPHINT_DATA_TYPE_BOOL:
 			return left->BOOL == right->BOOL;
 		case APPHINT_DATA_TYPE_STRING:
-			return (strcmp(left->STRING, right->STRING) == 0 ? IMG_TRUE : IMG_FALSE);
+			return (OSStringNCompare(left->STRING, right->STRING, OSStringLength(right->STRING) + 1) == 0 ? IMG_TRUE : IMG_FALSE);
 		default:
 			PVR_DPF((PVR_DBG_WARNING, "%s: unhandled data type (%d)", __func__, data_type));
 			return IMG_FALSE;
@@ -1028,10 +1138,11 @@ static void apphint_dump_values(const char *group_name,
 			int group_size,
 			DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 			void *pvDumpDebugFile,
-			bool list_all)
+			bool list_all,
+			PVRSRV_DEVICE_NODE *psDevNode)
 {
 	int i, result;
-	int device_value_offset = device_num * APPHINT_DEBUGFS_DEVICE_ID_MAX;
+	int device_value_offset = device_num * APPHINT_DEBUGINFO_DEVICE_ID_MAX;
 	char km_buffer[APPHINT_BUFFER_SIZE];
 	char count = 0;
 
@@ -1043,7 +1154,7 @@ static void apphint_dump_values(const char *group_name,
 		const struct apphint_action *action = &apphint.val[id + device_value_offset];
 		union apphint_value value;
 
-		result = get_apphint_value_from_action(action, &value);
+		result = get_apphint_value_from_action(action, &value, psDevNode);
 
 		if (PVRSRV_OK != result) {
 			continue;
@@ -1072,7 +1183,7 @@ static void apphint_dump_values(const char *group_name,
 	}
 }
 
-/**
+/*
  * Callback for debug dump
  */
 static void apphint_dump_state(PVRSRV_DBGREQ_HANDLE hDebugRequestHandle,
@@ -1081,7 +1192,7 @@ static void apphint_dump_state(PVRSRV_DBGREQ_HANDLE hDebugRequestHandle,
 			void *pvDumpDebugFile)
 {
 	int i, result;
-	char km_buffer[APPHINT_BUFFER_SIZE];
+	char description_buffer[50];
 	PVRSRV_DEVICE_NODE *device = (PVRSRV_DEVICE_NODE *)hDebugRequestHandle;
 
 	if (DD_VERB_LVL_ENABLED(ui32VerbLevel, DEBUG_REQUEST_VERBOSITY_HIGH)) {
@@ -1089,34 +1200,34 @@ static void apphint_dump_state(PVRSRV_DBGREQ_HANDLE hDebugRequestHandle,
 
 		apphint_dump_values("Build Vars", 0,
 			init_data_buildvar, ARRAY_SIZE(init_data_buildvar),
-			pfnDumpDebugPrintf, pvDumpDebugFile, true);
+			pfnDumpDebugPrintf, pvDumpDebugFile, true, device);
 
 		apphint_dump_values("Module Params", 0,
 			init_data_modparam, ARRAY_SIZE(init_data_modparam),
-			pfnDumpDebugPrintf, pvDumpDebugFile, false);
+			pfnDumpDebugPrintf, pvDumpDebugFile, false, device);
 
-		apphint_dump_values("Debugfs Params", 0,
-			init_data_debugfs, ARRAY_SIZE(init_data_debugfs),
-			pfnDumpDebugPrintf, pvDumpDebugFile, false);
+		apphint_dump_values("Debug Info Params", 0,
+			init_data_debuginfo, ARRAY_SIZE(init_data_debuginfo),
+			pfnDumpDebugPrintf, pvDumpDebugFile, false, device);
 
 		for (i = 0; i < APPHINT_DEVICES_MAX; i++) {
 			if (!apphint.devices[i]
 			    || (device && device != apphint.devices[i]))
 				continue;
 
-			result = snprintf(km_buffer,
-					  APPHINT_BUFFER_SIZE,
-					  "Debugfs Params Device ID: %d",
+			result = snprintf(description_buffer,
+					  sizeof(description_buffer),
+					  "Debug Info Params Device ID: %d",
 					  i);
 			if (0 > result)
 				continue;
 
-			apphint_dump_values(km_buffer, i,
-					    init_data_debugfs_device,
-					    ARRAY_SIZE(init_data_debugfs_device),
+			apphint_dump_values(description_buffer, i,
+					    init_data_debuginfo_device,
+					    ARRAY_SIZE(init_data_debuginfo_device),
 					    pfnDumpDebugPrintf,
 					    pvDumpDebugFile,
-						false);
+						false, device);
 		}
 	}
 }
@@ -1148,14 +1259,14 @@ int pvr_apphint_init(void)
 		goto err_out;
 	}
 
-	result = apphint_debugfs_init("apphint", 0,
-		ARRAY_SIZE(init_data_debugfs), init_data_debugfs,
+	result = apphint_debuginfo_init("apphint", 0,
+		ARRAY_SIZE(init_data_debuginfo), init_data_debuginfo,
 		NULL,
-		&apphint.debugfs_rootdir, apphint.debugfs_entry);
+		&apphint.debuginfo_rootdir, apphint.debuginfo_entry);
 	if (0 != result)
 		goto err_out;
 
-	result = apphint_debugfs_init("buildvar", 0,
+	result = apphint_debuginfo_init("buildvar", 0,
 		ARRAY_SIZE(init_data_buildvar), init_data_buildvar,
 		NULL,
 		&apphint.buildvar_rootdir, apphint.buildvar_entry);
@@ -1169,44 +1280,52 @@ err_out:
 int pvr_apphint_device_register(PVRSRV_DEVICE_NODE *device)
 {
 	int result, i;
-	char device_num[APPHINT_BUFFER_SIZE];
-	int device_value_offset;
+	unsigned int device_value_offset;
 
 	if (!apphint.initialized) {
 		result = -EAGAIN;
 		goto err_out;
 	}
 
-	if (apphint.num_devices+1 >= APPHINT_DEVICES_MAX) {
+	if (apphint.num_devices+1 > APPHINT_DEVICES_MAX) {
 		result = -EMFILE;
 		goto err_out;
 	}
 
-	result = snprintf(device_num, APPHINT_BUFFER_SIZE, "%d", apphint.num_devices);
-	if (result < 0) {
-		PVR_DPF((PVR_DBG_WARNING,
-			"snprintf failed (%d)", result));
-		result = -EINVAL;
-		goto err_out;
-	}
-
 	/* Set the default values for the new device */
-	device_value_offset = apphint.num_devices * APPHINT_DEBUGFS_DEVICE_ID_MAX;
-	for (i = 0; i < APPHINT_DEBUGFS_DEVICE_ID_MAX; i++) {
-		apphint.val[init_data_debugfs_device[i].id + device_value_offset].stored
-			= init_data_debugfs_device[i].default_value;
+	device_value_offset = apphint.num_devices * APPHINT_DEBUGINFO_DEVICE_ID_MAX;
+	for (i = 0; i < APPHINT_DEBUGINFO_DEVICE_ID_MAX; i++) {
+		apphint.val[init_data_debuginfo_device[i].id + device_value_offset].stored
+			= init_data_debuginfo_device[i].default_value;
 	}
 
-	result = apphint_debugfs_init(device_num, apphint.num_devices,
-	                              ARRAY_SIZE(init_data_debugfs_device),
-	                              init_data_debugfs_device,
-	                              apphint.debugfs_rootdir,
-	                              &apphint.debugfs_device_rootdir[apphint.num_devices],
-	                              apphint.debugfs_device_entry[apphint.num_devices]);
+	/* Set value of an apphint if mapping to module param exists for it
+	 * and this module parameter has been initialised */
+	for (i = 0; i < ARRAY_SIZE(init_data_debuginfo_device_to_modparams); i++) {
+		const struct apphint_init_data_mapping *mapping =
+			&init_data_debuginfo_device_to_modparams[i];
+		const struct apphint_action *modparam_action =
+			&apphint.val[mapping->modparam_apphint_id];
+		struct apphint_action *device_action =
+			&apphint.val[mapping->device_apphint_id + device_value_offset];
+
+		/* Set only if the module parameter was explicitly set during the module
+		 * load. */
+		if (modparam_action->initialised) {
+			device_action->stored = modparam_action->stored;
+		}
+	}
+
+	result = apphint_debuginfo_init("apphint", device->sDevId.ui32InternalID,
+	                              ARRAY_SIZE(init_data_debuginfo_device),
+	                              init_data_debuginfo_device,
+	                              device->sDebugInfo.psGroup,
+	                              &apphint.debuginfo_device_rootdir[device->sDevId.ui32InternalID],
+	                              apphint.debuginfo_device_entry[device->sDevId.ui32InternalID]);
 	if (0 != result)
 		goto err_out;
 
-	apphint.devices[apphint.num_devices] = device;
+	apphint.devices[device->sDevId.ui32InternalID] = device;
 	apphint.num_devices++;
 
 	(void)SOPvrDbgRequestNotifyRegister(
@@ -1242,11 +1361,13 @@ void pvr_apphint_device_unregister(PVRSRV_DEVICE_NODE *device)
 		device->hAppHintDbgReqNotify = NULL;
 	}
 
-	apphint_debugfs_deinit(APPHINT_DEBUGFS_DEVICE_ID_MAX,
-	                       &apphint.debugfs_device_rootdir[i],
-	                       apphint.debugfs_device_entry[i]);
+	apphint_debuginfo_deinit(APPHINT_DEBUGINFO_DEVICE_ID_MAX,
+	                       &apphint.debuginfo_device_rootdir[i],
+	                       apphint.debuginfo_device_entry[i]);
 
 	apphint.devices[i] = NULL;
+
+	WARN_ON(apphint.num_devices==0);
 	apphint.num_devices--;
 }
 
@@ -1272,9 +1393,9 @@ void pvr_apphint_deinit(void)
 		}
 	}
 
-	apphint_debugfs_deinit(APPHINT_DEBUGFS_ID_MAX,
-			&apphint.debugfs_rootdir, apphint.debugfs_entry);
-	apphint_debugfs_deinit(APPHINT_BUILDVAR_ID_MAX,
+	apphint_debuginfo_deinit(APPHINT_DEBUGINFO_ID_MAX,
+			&apphint.debuginfo_rootdir, apphint.debuginfo_entry);
+	apphint_debuginfo_deinit(APPHINT_BUILDVAR_ID_MAX,
 			&apphint.buildvar_rootdir, apphint.buildvar_entry);
 
 	destroy_workqueue(apphint.workqueue);
@@ -1282,59 +1403,195 @@ void pvr_apphint_deinit(void)
 	apphint.initialized = 0;
 }
 
-void pvr_apphint_dump_state(void)
+void pvr_apphint_dump_state(PVRSRV_DEVICE_NODE *device)
 {
 #if defined(PDUMP)
-	IMG_UINT32 ui32Flags = PDUMP_FLAGS_CONTINUOUS;
-
-	apphint_dump_state(NULL, DEBUG_REQUEST_VERBOSITY_HIGH,
-	                   apphint_pdump_values, (void *)&ui32Flags);
+	/* NB. apphint_pdump_values() is the pfnDumpDebugPrintf
+	 * function used when PDUMP is defined.
+	 * apphintpdump_values() calls PDumpCommentKM(), which
+	 * requires the device but as it is only called as a
+	 * DUMPDEBUG_PRINTF_FUNC it is only passed pvDumpDebugFile
+	 * (which happens to be the 4th parameter in the call to
+	 * apphint_dump_state() below).
+	 * Hence, we also need to pass device in the 4th parameter.
+	 */
+	apphint_dump_state(device, DEBUG_REQUEST_VERBOSITY_HIGH,
+	                   apphint_pdump_values, device);
 #endif
-	apphint_dump_state(NULL, DEBUG_REQUEST_VERBOSITY_HIGH,
+	apphint_dump_state(device, DEBUG_REQUEST_VERBOSITY_HIGH,
 	                   NULL, NULL);
 }
 
-int pvr_apphint_get_uint64(APPHINT_ID ue, IMG_UINT64 *pVal)
+
+int pvr_apphint_get_uint64(PVRSRV_DEVICE_NODE *device, APPHINT_ID ue, IMG_UINT64 *pVal)
 {
 	int error = -ERANGE;
+	int device_offset = (device != NULL) ? device->sDevId.ui32InternalID * APPHINT_DEBUGINFO_DEVICE_ID_MAX : 0;
 
 	if (ue < APPHINT_ID_MAX) {
-		*pVal = apphint.val[ue].stored.UINT64;
-		error = 0;
-	}
-	return error;
-}
-
-int pvr_apphint_get_uint32(APPHINT_ID ue, IMG_UINT32 *pVal)
-{
-	int error = -ERANGE;
-
-	if (ue < APPHINT_ID_MAX) {
-		*pVal = apphint.val[ue].stored.UINT32;
-		error = 0;
-	}
-	return error;
-}
-
-int pvr_apphint_get_bool(APPHINT_ID ue, IMG_BOOL *pVal)
-{
-	int error = -ERANGE;
-
-	if (ue < APPHINT_ID_MAX) {
-		error = 0;
-		*pVal = apphint.val[ue].stored.BOOL;
-	}
-	return error;
-}
-
-int pvr_apphint_get_string(APPHINT_ID ue, IMG_CHAR *pBuffer, size_t size)
-{
-	int error = -ERANGE;
-	if (ue < APPHINT_ID_MAX && apphint.val[ue].stored.STRING) {
-		if (strlcpy(pBuffer, apphint.val[ue].stored.STRING, size) < size) {
+		if ((int)ue > APPHINT_DEBUGINFO_DEVICE_ID_OFFSET) // From this point, we're in the device apphints
+		{
+			*pVal = apphint.val[ue + device_offset].stored.UINT64;
+			error = 0;
+		}
+		else
+		{
+			*pVal = apphint.val[ue].stored.UINT64;
 			error = 0;
 		}
 	}
+	return error;
+}
+
+int pvr_apphint_get_uint32(PVRSRV_DEVICE_NODE *device, APPHINT_ID ue, IMG_UINT32 *pVal)
+{
+	int error = -ERANGE;
+	int device_offset = (device != NULL) ? device->sDevId.ui32InternalID * APPHINT_DEBUGINFO_DEVICE_ID_MAX : 0;
+
+	if (ue < APPHINT_ID_MAX) {
+		if ((int)ue > APPHINT_DEBUGINFO_DEVICE_ID_OFFSET) // From this point, we're in the device apphints
+		{
+			*pVal = apphint.val[ue + device_offset].stored.UINT32;
+			error = 0;
+		}
+		else
+		{
+			*pVal = apphint.val[ue].stored.UINT32;
+			error = 0;
+		}
+	}
+	return error;
+}
+
+int pvr_apphint_get_bool(PVRSRV_DEVICE_NODE *device, APPHINT_ID ue, IMG_BOOL *pVal)
+{
+	int error = -ERANGE;
+	int device_offset = (device != NULL) ? device->sDevId.ui32InternalID * APPHINT_DEBUGINFO_DEVICE_ID_MAX : 0;
+
+	if (ue < APPHINT_ID_MAX) {
+		if ((int)ue > APPHINT_DEBUGINFO_DEVICE_ID_OFFSET) // From this point, we're in the device apphints
+		{
+			*pVal = apphint.val[ue + device_offset].stored.BOOL;
+			error = 0;
+		}
+		else
+		{
+			*pVal = apphint.val[ue].stored.BOOL;
+			error = 0;
+		}
+	}
+	return error;
+}
+
+int pvr_apphint_get_string(PVRSRV_DEVICE_NODE *device, APPHINT_ID ue, IMG_CHAR *pBuffer, size_t size)
+{
+	int error = -ERANGE;
+	int device_offset = (device != NULL) ? device->sDevId.ui32InternalID * APPHINT_DEBUGINFO_DEVICE_ID_MAX : 0;
+
+	if (ue < APPHINT_ID_MAX && apphint.val[ue].stored.STRING) {
+		if ((int)ue > APPHINT_DEBUGINFO_DEVICE_ID_OFFSET) // From this point, we're in the device apphints
+		{
+			if (OSStringLCopy(pBuffer, apphint.val[ue + device_offset].stored.STRING, size) < size) {
+				error = 0;
+			}
+		}
+		else
+		{
+			if (OSStringLCopy(pBuffer, apphint.val[ue].stored.STRING, size) < size) {
+				error = 0;
+			}
+		}
+	}
+	return error;
+}
+
+int pvr_apphint_set_uint64(PVRSRV_DEVICE_NODE *device, APPHINT_ID ue, IMG_UINT64 Val)
+{
+	int error = -ERANGE;
+	int device_offset = (device != NULL) ? device->sDevId.ui32InternalID * APPHINT_DEBUGINFO_DEVICE_ID_MAX : 0;
+
+	if ((ue < APPHINT_ID_MAX) &&
+		(param_lookup[ue].data_type == APPHINT_DATA_TYPE_UINT64)) {
+
+		if (apphint.val[ue + device_offset].set.UINT64) {
+			apphint.val[ue + device_offset].set.UINT64(apphint.val[ue + device_offset].device,
+													 apphint.val[ue + device_offset].private_data,
+													 Val);
+		} else {
+			apphint.val[ue + device_offset].stored.UINT64 = Val;
+		}
+		apphint.val[ue].device = device;
+		error = 0;
+	}
+
+	return error;
+}
+
+int pvr_apphint_set_uint32(PVRSRV_DEVICE_NODE *device, APPHINT_ID ue, IMG_UINT32 Val)
+{
+	int error = -ERANGE;
+	int device_offset = (device != NULL) ? device->sDevId.ui32InternalID * APPHINT_DEBUGINFO_DEVICE_ID_MAX : 0;
+
+	if ((ue < APPHINT_ID_MAX) &&
+		(param_lookup[ue].data_type == APPHINT_DATA_TYPE_UINT32)) {
+
+		if (apphint.val[ue + device_offset].set.UINT32) {
+			apphint.val[ue + device_offset].set.UINT32(apphint.val[ue + device_offset].device,
+													 apphint.val[ue + device_offset].private_data,
+													 Val);
+		} else {
+			apphint.val[ue + device_offset].stored.UINT32 = Val;
+		}
+		apphint.val[ue].device = device;
+		error = 0;
+	}
+
+	return error;
+}
+
+int pvr_apphint_set_bool(PVRSRV_DEVICE_NODE *device, APPHINT_ID ue, IMG_BOOL Val)
+{
+	int error = -ERANGE;
+	int device_offset = (device != NULL) ? device->sDevId.ui32InternalID * APPHINT_DEBUGINFO_DEVICE_ID_MAX : 0;
+
+	if ((ue < APPHINT_ID_MAX) &&
+		(param_lookup[ue].data_type == APPHINT_DATA_TYPE_BOOL)) {
+
+		error = 0;
+		if (apphint.val[ue + device_offset].set.BOOL) {
+			apphint.val[ue + device_offset].set.BOOL(apphint.val[ue + device_offset].device,
+												 apphint.val[ue + device_offset].private_data,
+												 Val);
+		} else {
+			apphint.val[ue + device_offset].stored.BOOL = Val;
+		}
+		apphint.val[ue].device = device;
+	}
+
+	return error;
+}
+
+int pvr_apphint_set_string(PVRSRV_DEVICE_NODE *device, APPHINT_ID ue, IMG_CHAR *pBuffer, size_t size)
+{
+	int error = -ERANGE;
+	int device_offset = (device != NULL) ? device->sDevId.ui32InternalID * APPHINT_DEBUGINFO_DEVICE_ID_MAX : 0;
+
+	if ((ue < APPHINT_ID_MAX) &&
+		((param_lookup[ue].data_type == APPHINT_DATA_TYPE_STRING) &&
+		apphint.val[ue + device_offset].stored.STRING)) {
+
+		if (apphint.val[ue + device_offset].set.STRING) {
+			error = apphint.val[ue + device_offset].set.STRING(apphint.val[ue + device_offset].device,
+															 apphint.val[ue + device_offset].private_data,
+															 pBuffer);
+		} else {
+			if (strlcpy(apphint.val[ue + device_offset].stored.STRING, pBuffer, size) < size) {
+				error = 0;
+			}
+		}
+		apphint.val[ue].device = device;
+	}
+
 	return error;
 }
 
@@ -1346,6 +1603,9 @@ void pvr_apphint_register_handlers_uint64(APPHINT_ID id,
 {
 	int device_value_offset;
 
+	PVR_DPF((APPHINT_DPF_LEVEL, "%s(%d, %p, %p, %p, %p)",
+	         __func__, id, query, set, device, private_data));
+
 	if (id >= APPHINT_ID_MAX) {
 		PVR_DPF((PVR_DBG_ERROR,
 		         "%s: AppHint ID (%d) is out of range, max (%d)",
@@ -1353,7 +1613,7 @@ void pvr_apphint_register_handlers_uint64(APPHINT_ID id,
 		return;
 	}
 
-	get_value_offset_from_device(device, &device_value_offset);
+	get_value_offset_from_device(device, &device_value_offset, id);
 
 	switch (param_lookup[id].data_type) {
 	case APPHINT_DATA_TYPE_UINT64:
@@ -1382,6 +1642,9 @@ void pvr_apphint_register_handlers_uint32(APPHINT_ID id,
 {
 	int device_value_offset;
 
+	PVR_DPF((APPHINT_DPF_LEVEL, "%s(%d, %p, %p, %p, %p)",
+	         __func__, id, query, set, device, private_data));
+
 	if (id >= APPHINT_ID_MAX) {
 		PVR_DPF((PVR_DBG_ERROR,
 		         "%s: AppHint ID (%d) is out of range, max (%d)",
@@ -1389,7 +1652,7 @@ void pvr_apphint_register_handlers_uint32(APPHINT_ID id,
 		return;
 	}
 
-	get_value_offset_from_device(device, &device_value_offset);
+	get_value_offset_from_device(device, &device_value_offset, id);
 
 	switch (param_lookup[id].data_type) {
 	case APPHINT_DATA_TYPE_UINT32:
@@ -1421,6 +1684,9 @@ void pvr_apphint_register_handlers_bool(APPHINT_ID id,
 {
 	int device_value_offset;
 
+	PVR_DPF((APPHINT_DPF_LEVEL, "%s(%d, %p, %p, %p, %p)",
+	         __func__, id, query, set, device, private_data));
+
 	if (id >= APPHINT_ID_MAX) {
 		PVR_DPF((PVR_DBG_ERROR,
 		         "%s: AppHint ID (%d) is out of range, max (%d)",
@@ -1428,7 +1694,7 @@ void pvr_apphint_register_handlers_bool(APPHINT_ID id,
 		return;
 	}
 
-	get_value_offset_from_device(device, &device_value_offset);
+	get_value_offset_from_device(device, &device_value_offset, id);
 
 	switch (param_lookup[id].data_type) {
 	case APPHINT_DATA_TYPE_BOOL:
@@ -1458,6 +1724,9 @@ void pvr_apphint_register_handlers_string(APPHINT_ID id,
 {
 	int device_value_offset;
 
+	PVR_DPF((APPHINT_DPF_LEVEL, "%s(%d, %p, %p, %p, %p)",
+	         __func__, id, query, set, device, private_data));
+
 	if (id >= APPHINT_ID_MAX) {
 		PVR_DPF((PVR_DBG_ERROR,
 		         "%s: AppHint ID (%d) is out of range, max (%d)",
@@ -1465,7 +1734,7 @@ void pvr_apphint_register_handlers_string(APPHINT_ID id,
 		return;
 	}
 
-	get_value_offset_from_device(device, &device_value_offset);
+	get_value_offset_from_device(device, &device_value_offset, id);
 
 	switch (param_lookup[id].data_type) {
 	case APPHINT_DATA_TYPE_STRING:

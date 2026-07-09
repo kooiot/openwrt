@@ -62,7 +62,7 @@ PVRSRV_ERROR
 OSMMapPMR(IMG_HANDLE hBridge,
           IMG_HANDLE hPMR,
           IMG_DEVMEM_SIZE_T uiPMRSize,
-          IMG_UINT32 uiFlags,
+          PVRSRV_MEMALLOCFLAGS_T uiFlags,
           IMG_HANDLE *phOSMMapPrivDataOut,
           void **ppvMappingAddressOut,
           size_t *puiMappingLengthOut)
@@ -122,7 +122,7 @@ OSMMapPMR(IMG_HANDLE hBridge,
       error exit paths follow
     */
 
- e0:
+e0:
     PVR_ASSERT(eError != PVRSRV_OK);
     return eError;
 }

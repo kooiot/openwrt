@@ -14,7 +14,9 @@
  *
  */
 #include  "usbc_i.h"
+#if defined(CONFIG_AW_SID) || defined(CONFIG_AW_SID_V2)
 #include "sunxi-sid.h"
+#endif
 
 /**
  * define USB PHY controller reg bit
@@ -240,7 +242,7 @@ void usb_otg_phy_txtune(void __iomem *regs)
 
 #if IS_ENABLED(CONFIG_ARCH_SUN8IW20) || IS_ENABLED(CONFIG_ARCH_SUN20IW1) \
 	|| IS_ENABLED(CONFIG_ARCH_SUN8IW21) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) \
-	|| IS_ENABLED(CONFIG_ARCH_SUN300IW1)
+	|| IS_ENABLED(CONFIG_ARCH_SUN300IW1) || IS_ENABLED(CONFIG_ARCH_SUN251IW1)
 /* for new phy */
 static int usbc_new_phyx_tp_write(void __iomem *regs,
 		int addr, int data, int len)
@@ -317,7 +319,8 @@ static int usbc_new_phyx_tp_read(void __iomem *regs, int addr, int len)
 void usbc_new_phyx_write(void __iomem *regs, u32 data)
 {
 	u32 temp = 0, ptmp = 0, rtmp = 0;
-#if IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN300IW1)
+#if IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN300IW1) \
+	|| IS_ENABLED(CONFIG_ARCH_SUN251IW1)
 	u32 ristmp = 0;
 #endif
 
@@ -334,7 +337,8 @@ void usbc_new_phyx_write(void __iomem *regs, u32 data)
 	ptmp = data & PHY_RANGE_PREE_MASK;
 	ptmp >>= 4;
 	rtmp = data & PHY_RANGE_RESI_MASK;
-#if IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN300IW1)
+#if IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN300IW1) \
+	|| IS_ENABLED(CONFIG_ARCH_SUN251IW1)
 	ristmp = data & PHY_RANGE_RISE_MASK;
 	ristmp >>= 10;
 	usbc_new_phyx_tp_write(regs, 0x68, ristmp, 0x2);
@@ -366,7 +370,7 @@ void usbc_new_phyx_write(void __iomem *regs, u32 data)
 		DMSG_INFO("vref mode no need to control trancevie data!\n");
 	}
 #elif IS_ENABLED(CONFIG_ARCH_SUN8IW21) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) \
-	 || IS_ENABLED(CONFIG_ARCH_SUN300IW1)
+	 || IS_ENABLED(CONFIG_ARCH_SUN300IW1) || IS_ENABLED(CONFIG_ARCH_SUN251IW1)
 	/* tranceive data */
 	usbc_new_phyx_tp_write(regs, 0x60, temp, 0x4);
 	DMSG_INFO("write to trancevie data: 0x%x\n", temp);
@@ -411,7 +415,7 @@ u32 usbc_new_phyx_read(void __iomem *regs)
 	ptmp <<= 4;
 	ret = mtmp | ctmp | temp | ptmp | rtmp;
 #elif IS_ENABLED(CONFIG_ARCH_SUN8IW21) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) \
-	 || IS_ENABLED(CONFIG_ARCH_SUN300IW1)
+	 || IS_ENABLED(CONFIG_ARCH_SUN300IW1) || IS_ENABLED(CONFIG_ARCH_SUN251IW1)
 	u32 temp = 0, ptmp = 0, rtmp = 0, ret = 0;
 	u32 ristmp = 0, tune_temp = 0;
 
@@ -622,7 +626,8 @@ void usbc_phy_reassign(void __iomem *regs, __hdle hUSB, int val)
 #elif IS_ENABLED(CONFIG_ARCH_SUN8IW21)
 	if ((val >= 0) && (val <= 0x3ff))
 		usbc_new_phyx_write(regs, val);
-#elif IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN300IW1)
+#elif IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN300IW1) \
+	|| IS_ENABLED(CONFIG_ARCH_SUN251IW1)
 	if ((val >= 0) && (val <= 0xfff))
 		usbc_new_phyx_write(regs, val);
 #else

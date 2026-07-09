@@ -48,7 +48,7 @@
 #define __SUNXI_MMC_H__
 
 #define DRIVER_NAME "sunxi-mmc"
-#define DRIVER_RIVISION "v5.61 2025-02-25 15:32"
+#define DRIVER_RIVISION "v5.70 2025-04-28 09:38---v5.64 2025-03-25 09:34"
 #define DRIVER_VERSION "SD/MMC/SDIO Host Controller Driver(" DRIVER_RIVISION ")"
 
 #if defined CONFIG_AW_FPGA_S4 || defined CONFIG_AW_FPGA_V7 || defined CONFIG_AW_FPGA_UV440
@@ -611,7 +611,10 @@ struct sunxi_mmc_host {
 	u32 execute_tuning_runing;
 	void (*sunxi_mmc_set_samp_dl)(struct sunxi_mmc_host *host,
 					int sunxi_samp_dl);
-
+/* Use to control console print to buffer or uart/card pin */
+#define UNLOCK	0
+#define LOCKED	1
+	atomic_t sdc0_lock_once;
 };
 
 /* the struct as the the kernel version changes,which copy form core/slot-gpio.c */

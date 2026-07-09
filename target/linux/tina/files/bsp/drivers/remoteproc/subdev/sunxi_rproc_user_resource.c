@@ -14,6 +14,7 @@
 
 #include "sunxi_rproc_rsc_helper.h"
 #include "sunxi_rproc_rsc_helper_i.h"
+#include "../sunxi_rproc_load_partition.h"
 #include <linux/slab.h>
 
 #define LOAD_FROM_PARTITION		(0xff)

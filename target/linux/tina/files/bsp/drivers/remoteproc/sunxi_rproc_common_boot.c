@@ -34,8 +34,48 @@
 #include <linux/workqueue.h>
 #include <linux/of_reserved_mem.h>
 #include <linux/err.h>
+#include <linux/regulator/consumer.h>
+#include <sunxi-sid.h>
 
 #include "sunxi_rproc_boot.h"
+
+#define SUN55IW6_DVFS_RV_VF0   (0x00)
+#define SUN55IW6_DVFS_RV_VF1   (0x01)
+#define SUN55IW6_DVFS_RV_VF1_1 (0x11)
+#define SUN55IW6_DVFS_RV_VF2   (0x02)
+#define SUN55IW6_DVFS_RV_VF2_1 (0x12)
+#define SUN55IW6_DVFS_RV_VF2_3 (0x32)
+#define SUN55IW6_DVFS_RV_VF2_4 (0x42)
+#define SUN55IW6_DVFS_RV_VF2_5 (0x52)
+#define SUN55IW6_DVFS_RV_VF2_6 (0x62)
+#define SUN55IW6_DVFS_RV_VF3   (0x03)
+#define SUN55IW6_DVFS_RV_VF4   (0x04)
+#define SUN55IW6_DVFS_RV_VF4_1 (0x14)
+
+/* sun55iw6 riscv vf table v0.93 */
+struct vf_info vf_info_table[] = {
+	/* dvfs                   voltage     core_rangle */
+	{SUN55IW6_DVFS_RV_VF0,    920,        600000000},
+#if !defined(CONFIG_AW_VF_FOR_T536)
+	{SUN55IW6_DVFS_RV_VF1,    920,        480000000},
+#endif
+	{SUN55IW6_DVFS_RV_VF1,    940,        600000000},
+	{SUN55IW6_DVFS_RV_VF1_1,  920,        480000000},
+	{SUN55IW6_DVFS_RV_VF1_1,  940,        600000000},
+	{SUN55IW6_DVFS_RV_VF2,    920,        480000000},
+	{SUN55IW6_DVFS_RV_VF2,    940,        600000000},
+	{SUN55IW6_DVFS_RV_VF2_1,  940,        600000000},
+	{SUN55IW6_DVFS_RV_VF2_3,  940,        600000000},
+	{SUN55IW6_DVFS_RV_VF2_4,  920,        480000000},
+	{SUN55IW6_DVFS_RV_VF2_4,  940,        600000000},
+	{SUN55IW6_DVFS_RV_VF2_5,  920,        480000000},
+	{SUN55IW6_DVFS_RV_VF2_5,  940,        600000000},
+	{SUN55IW6_DVFS_RV_VF2_6,  920,        480000000},
+	{SUN55IW6_DVFS_RV_VF2_6,  940,        600000000},
+	{SUN55IW6_DVFS_RV_VF3,    920,        600000000},
+	{SUN55IW6_DVFS_RV_VF4,    920,        600000000},
+	{SUN55IW6_DVFS_RV_VF4_1,  940,        600000000},
+};
 
 struct rproc_common_res *rproc_common_find_res(struct rproc_common_boot *com, const char *name)
 {
@@ -96,7 +136,11 @@ static int enable_cache_ecc(struct device *dev, struct rproc_clk_opration *op)
 
 static int exec_clk_opration(struct device *dev, struct rproc_clk_opration *op)
 {
-	int ret;
+	int ret, i = 0;
+	struct regulator *regulator;
+	unsigned int voltage;
+	unsigned int dvfs;
+	unsigned int dvfs_arry_size = 0;
 
 	if (op->option < RPROC_COMMON_OP_DEASSERT || op->option >= RPROC_COMMON_OP_MAX) {
 		dev_err(dev, "'%s' invalid option: %d\n", op->name, op->option);
@@ -190,6 +234,34 @@ static int exec_clk_opration(struct device *dev, struct rproc_clk_opration *op)
 		dev_dbg(dev, "udelay %ld\n", op->val);
 		udelay(op->val);
 		break;
+	case RPROC_COMMON_OP_VF_TABLE_CHECK:
+		regulator = regulator_get(dev, "e907");
+		if (!IS_ERR(regulator)) {
+			voltage = regulator_get_voltage(regulator)/1000;
+			dev_info(dev, "riscv supply vol = %d mv\n", voltage);
+		} else {
+			dev_err(dev, "get e907 regulator error\n");
+			regulator = NULL;
+			return -ENXIO;
+		};
+
+		if (sunxi_get_soc_dvfs(&dvfs)) {
+			dev_err(dev, "riscv failed to get soc dvfs\n");
+			return -ENXIO;
+		}
+
+		dev_info(dev, "%s %d riscv vf dvfs:%x\n", __func__, __LINE__, dvfs);
+
+		dvfs_arry_size = sizeof(vf_info_table)/sizeof(struct vf_info);
+		for (i = 0; i < dvfs_arry_size; i++) {
+			if (vf_info_table[i].dvfs == dvfs
+					&& vf_info_table[i].voltage == voltage
+					&& vf_info_table[i].core_rate_range >= op->val)
+				return 0;
+		}
+
+		dev_err(dev, "cannot find riscv vf point for %ld freq and voltage %d!\n", op->val, voltage);
+		return -ENXIO;
 	default:
 		dev_err(dev, "'%s' invalid option: %d\n", op->name, op->option);
 		return -ENXIO;
@@ -213,27 +285,29 @@ static int parse_common_res(struct device *dev, struct rproc_common_boot *com, s
 	if (op->option == RPROC_COMMON_OP_USLEEP)
 		return 0;
 
-	res = rproc_common_find_res(com, op->name);
-	if (!res) {
-		dev_err(dev, "%s: resource '%s' not exist\n", __func__, op->name);
-		return -ENXIO;
-	}
-
-	op->ptr = res->reg;
-
-	if (res->type == RPROC_COMMON_RST_RES && op->option >= RPROC_COMMON_OP_CLK_START) {
-		dev_err(dev, "%s is rst source, can't exec %d option\n", op->name, op->option);
-		return -ENXIO;
-	} else if (res->type == RPROC_COMMON_CLK_RES) {
-		if (op->option <= RPROC_COMMON_OP_CLK_START ||
-				op->option >= RPROC_COMMON_OP_REG_START) {
-			dev_err(dev, "%s is clk source, can't exec %d option\n", op->name, op->option);
+	if (op->option != RPROC_COMMON_OP_VF_TABLE_CHECK) {
+		res = rproc_common_find_res(com, op->name);
+		if (!res) {
+			dev_err(dev, "%s: resource '%s' not exist\n", __func__, op->name);
 			return -ENXIO;
 		}
-	} else if (res->type == RPROC_COMMON_REG_RES) {
-		if (!(op->option > RPROC_COMMON_OP_REG_START)) {
-			dev_err(dev, "%s is reg source, can't exec %d option\n", op->name, op->option);
+
+		op->ptr = res->reg;
+
+		if (res->type == RPROC_COMMON_RST_RES && op->option >= RPROC_COMMON_OP_CLK_START) {
+			dev_err(dev, "%s is rst source, can't exec %d option\n", op->name, op->option);
 			return -ENXIO;
+		} else if (res->type == RPROC_COMMON_CLK_RES) {
+			if (op->option <= RPROC_COMMON_OP_CLK_START ||
+					op->option >= RPROC_COMMON_OP_REG_START) {
+				dev_err(dev, "%s is clk source, can't exec %d option\n", op->name, op->option);
+				return -ENXIO;
+			}
+		} else if (res->type == RPROC_COMMON_REG_RES) {
+			if (!(op->option > RPROC_COMMON_OP_REG_START)) {
+				dev_err(dev, "%s is reg source, can't exec %d option\n", op->name, op->option);
+				return -ENXIO;
+			}
 		}
 	}
 
@@ -257,6 +331,15 @@ static int parse_common_res(struct device *dev, struct rproc_common_boot *com, s
 		break;
 	case RPROC_COMMON_OP_WRITEREG: /* write reg */
 		op->reg_val = &res->val;
+		break;
+	case RPROC_COMMON_OP_VF_TABLE_CHECK: /* voltage check */
+		ret = of_property_read_u32(np, op->prop_rate, &new_rate);
+		if (ret) {
+			dev_err(dev, "parse dts property '%s' failed, ret: %d", op->prop_rate, ret);
+			return -ENXIO;
+		}
+		op->val = new_rate;
+		dev_dbg(dev, "get clk %s rate from dts('%ld') success\n", op->name, op->val);
 		break;
 	}
 
@@ -314,7 +397,7 @@ int rproc_parse_common_resource(struct platform_device *pdev, struct rproc_commo
 		for (i = 0; i < com->nr_start_seq; i++) {
 			ret = parse_common_res(dev, com, &com->start_seq[i]);
 			if (ret < 0) {
-				dev_err(dev, "%s: parse_common_res '%s' failed\n",
+				dev_err(dev, "%s start : parse_common_res '%s' failed\n",
 						__func__, com->start_seq[i].name);
 				return -ENXIO;
 			}
@@ -371,7 +454,18 @@ int rproc_common_start(struct device *dev, struct rproc_common_boot *com)
 	}
 
 	for (i = 0; i < com->nr_start_seq; i++) {
-		com->start_seq[i].reg = com->base_addr;
+#if IS_ENABLED(CONFIG_AW_REMOTEPROC_E907_AXI_MONITOR)
+		if (!strcmp(com->start_seq[i].name, RV_AXI_MONITOR_RES_NAME)) {
+			com->start_seq[i].reg = com->axi_monitor_base_addr;
+			if (com->start_seq[i].offset == AXI_MONITOR_TAKEN_OVER_REG)
+				rproc_common_set_regval(com, RV_AXI_MONITOR_RES_NAME,
+					AXI_MONITOR_TAKEN_OVER_ENABLE);
+			if (com->start_seq[i].offset == AXI_MONITOR_TAKEN_TIMEOUT_REG)
+				rproc_common_set_regval(com, RV_AXI_MONITOR_RES_NAME,
+					AXI_MONITOR_TAKEN_OVER_TIMEOUT_TIME);
+		} else
+#endif
+			com->start_seq[i].reg = com->base_addr;
 		ret = exec_clk_opration(dev, &com->start_seq[i]);
 		if (ret)
 			break;
@@ -384,6 +478,9 @@ EXPORT_SYMBOL(rproc_common_start);
 int rproc_common_stop(struct device *dev, struct rproc_common_boot *com)
 {
 	int i, ret = 0;
+#if IS_ENABLED(CONFIG_AW_REMOTEPROC_E907_AXI_MONITOR)
+	u32 val;
+#endif
 
 	dev_dbg(dev, "%s,%d\n", __func__, __LINE__);
 
@@ -394,6 +491,16 @@ int rproc_common_stop(struct device *dev, struct rproc_common_boot *com)
 	}
 
 	for (i = 0; i < com->nr_stop_seq; i++) {
+#if IS_ENABLED(CONFIG_AW_REMOTEPROC_E907_AXI_MONITOR)
+		if (!strcmp(com->stop_seq[i].name, RV_AXI_MONITOR_RST_NAME)) {
+			val = readl(com->axi_monitor_base_addr);
+			if (!((val | (1 << 0)) && (val | (1 << 3))))
+				break;
+		}
+
+		if (!strcmp(com->stop_seq[i].name, RV_AXI_MONITOR_RES_NAME))
+			com->stop_seq[i].reg = com->axi_monitor_base_addr;
+#endif
 		ret = exec_clk_opration(dev, &com->stop_seq[i]);
 		if (ret)
 			break;

@@ -724,18 +724,16 @@ int aw87xxx_monitor_bin_parse(struct device *dev,
 static int aw_monitor_get_battery_status(struct device *dev,
 				int type, int *value)
 {
-	char name[] = "battery";
+	struct aw87xxx *aw87xxx = dev_get_drvdata(dev);
 	int ret = -1;
 	union power_supply_propval prop = { 0 };
-	struct power_supply *psy = NULL;
 
-	psy = power_supply_get_by_name(name);
-	if (psy == NULL) {
-		AW_DEV_LOGE(dev, "no struct power supply name:%s", name);
+	if (!aw87xxx->psy || IS_ERR(aw87xxx->psy)) {
+		AW_DEV_LOGE(dev, "get power supply failed");
 		return -EINVAL;
 	}
 
-	ret = power_supply_get_property(psy, type, &prop);
+	ret = power_supply_get_property(aw87xxx->psy, type, &prop);
 	if (ret < 0) {
 		AW_DEV_LOGE(dev, "get type:%d failed", type);
 		return -EINVAL;

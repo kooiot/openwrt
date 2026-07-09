@@ -45,8 +45,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /***************************************************************************/
 
-#if !defined(__HANDLE_IMPL_H__)
-#define __HANDLE_IMPL_H__
+#if !defined(HANDLE_IMPL_H)
+#define HANDLE_IMPL_H
 
 #include "img_types.h"
 #include "pvrsrv_error.h"
@@ -86,4 +86,4 @@ typedef struct _HANDLE_IMPL_FUNCTAB_
 
 PVRSRV_ERROR PVRSRVHandleGetFuncTable(HANDLE_IMPL_FUNCTAB const **ppsFuncs);
 
-#endif /* !defined(__HANDLE_IMPL_H__) */
+#endif /* !defined(HANDLE_IMPL_H) */

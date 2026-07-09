@@ -51,26 +51,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "img_types.h"
 #include "pvrsrv_memallocflags.h"
 
-typedef struct _DEVMEM_CONTEXT_ DEVMEM_CONTEXT;		/*!< Convenience typedef for struct _DEVMEM_CONTEXT_ */
-typedef struct _DEVMEM_HEAP_ DEVMEM_HEAP;			/*!< Convenience typedef for struct _DEVMEM_HEAP_ */
-typedef struct _DEVMEM_MEMDESC_ DEVMEM_MEMDESC;		/*!< Convenience typedef for struct _DEVMEM_MEMDESC_ */
-typedef struct _DEVMEM_PAGELIST_ DEVMEM_PAGELIST;	/*!< Convenience typedef for struct _DEVMEM_PAGELIST_ */
-typedef PVRSRV_MEMALLOCFLAGS_T DEVMEM_FLAGS_T;		/*!< Convenience typedef for PVRSRV_MEMALLOCFLAGS_T */
+typedef struct DEVMEM_CONTEXT_TAG DEVMEM_CONTEXT;     /*!< Convenience typedef for struct DEVMEM_CONTEXT_TAG */
+typedef struct DEVMEM_HEAP_TAG DEVMEM_HEAP;           /*!< Convenience typedef for struct DEVMEM_HEAP_TAG */
+typedef struct DEVMEM_MEMDESC_TAG DEVMEM_MEMDESC;     /*!< Convenience typedef for struct DEVMEM_MEMDESC_TAG */
+typedef struct DEVMEM_PAGELIST_TAG DEVMEM_PAGELIST;   /*!< Convenience typedef for struct DEVMEM_PAGELIST_TAG */
 
 typedef IMG_HANDLE DEVMEM_EXPORTHANDLE;             /*!< Typedef for DeviceMem Export Handle */
 typedef IMG_UINT64 DEVMEM_EXPORTKEY;                /*!< Typedef for DeviceMem Export Key */
 typedef IMG_DEVMEM_SIZE_T DEVMEM_SIZE_T;            /*!< Typedef for DeviceMem SIZE_T */
 typedef IMG_DEVMEM_LOG2ALIGN_T DEVMEM_LOG2ALIGN_T;  /*!< Typedef for DeviceMem LOG2 Alignment */
 
-typedef struct _DEVMEMX_PHYS_MEMDESC_ DEVMEMX_PHYSDESC;    /*!< Convenience typedef for DevmemX physical */
-typedef struct _DEVMEMX_VIRT_MEMDESC_ DEVMEMX_VIRTDESC;    /*!< Convenience typedef for DevmemX virtual */
+typedef struct DEVMEMX_PHYS_MEMDESC_TAG DEVMEMX_PHYSDESC;    /*!< Convenience typedef for DevmemX physical */
+typedef struct DEVMEMX_VIRT_MEMDESC_TAG DEVMEMX_VIRTDESC;    /*!< Convenience typedef for DevmemX virtual */
 
 /*! calling code needs all the info in this struct, to be able to pass it around */
 typedef struct
 {
     /*! A handle to the PMR. */
     IMG_HANDLE hPMRExportHandle;
-    /*! The "key" to prove we have authorization to use this PMR */
+    /*! The "key" to prove we have authorisation to use this PMR */
     IMG_UINT64 uiPMRExportPassword;
     /*! Size and alignment properties for this PMR.  Note, these
        numbers are not trusted in kernel, but we need to cache them
@@ -101,41 +100,49 @@ typedef struct
     IMG_DEVMEM_LOG2ALIGN_T uiLog2ContiguityGuarantee;
 } DEVMEM_EXPORTCOOKIE;
 
-/* Enum that describes the operation associated with changing sparse memory*/
-typedef enum Resize {
-	SPARSE_RESIZE_NONE = 0,
+/* Enum that describes the operation associated with changing sparse memory */
+typedef IMG_UINT32 SPARSE_MEM_RESIZE_FLAGS;
+#define SPARSE_RESIZE_NONE 0U
 
 	/* This should be set to indicate the change needs allocation */
-	SPARSE_RESIZE_ALLOC = 1,
+#define SPARSE_RESIZE_ALLOC 1U
 
 	/* This should be set to indicate the change needs free */
-	SPARSE_RESIZE_FREE = 2,
+#define SPARSE_RESIZE_FREE 2U
 
-	SPARSE_RESIZE_BOTH = ((IMG_UINT8)SPARSE_RESIZE_ALLOC | (IMG_UINT8)SPARSE_RESIZE_FREE),
+#define SPARSE_RESIZE_BOTH (SPARSE_RESIZE_ALLOC | SPARSE_RESIZE_FREE)
 
 	/* This should be set to silently swap underlying physical memory
-	 * without disturbing its device or cpu virtual maps
+	 * without disturbing its device or cpu virtual maps.
 	 * This flag is not supported in the case of PDUMP and could lead to
-	 * PDUMP panic when used */
-	SPARSE_REMAP_MEM = 4,
+	 * PDUMP panic when used.
+	 */
+#define SPARSE_REMAP_MEM 4U
 
 	/* Should be set to get the sparse changes appear in cpu virtual map */
-	SPARSE_MAP_CPU_ADDR = 8
-}SPARSE_MEM_RESIZE_FLAGS;
+#define SPARSE_MAP_CPU_ADDR 8U
 
-/* To be used with all the sparse allocations that get mapped to CPU Virtual space
- * The sparse allocation CPU mapping is torn down and re-mapped every time the
- * sparse allocation layout changes */
+
+/* To be used with all the sparse allocations that gets mapped to CPU Virtual
+ * space. The sparse allocation CPU mapping is torn down and re-mapped every
+ * time the sparse allocation layout changes.
+ */
 #define PVRSRV_UNMAP_ON_SPARSE_CHANGE 1
 
-/* To use with DevmemSubAllocate() as the default factor if no
- * over-allocation is desired. */
-#define DEVMEM_NO_PRE_ALLOCATE_MULTIPLIER 1
+/* To use with DevmemSubAllocate() as the default factor if no over-allocation
+ * is desired.
+ */
+#define DEVMEM_NO_PRE_ALLOCATE_MULTIPLIER (1U)
 
-/* Defines the max length for PMR, MemDesc, Device memory
- * History and RI debug annotations stored in memory, including
- * the null terminator. */
-#define DEVMEM_ANNOTATION_MAX_LEN (PVR_ANNOTATION_MAX_LEN + 1)
+/* Defines the max length for PMR, MemDesc, Device memory History and RI debug
+ * annotations stored in memory, including the null terminator.
+ */
+#define DEVMEM_ANNOTATION_MAX_LEN ((IMG_UINT32)PVR_ANNOTATION_MAX_LEN + 1U)
+
+
+/* Reserved VA space of a heap must always be multiple of DEVMEM_HEAP_RESERVED_SIZE_GRANULARITY
+ * Granularity has been chosen to support the max possible practically used OS page size.
+ */
+#define DEVMEM_HEAP_RESERVED_SIZE_GRANULARITY        0x10000 /* 64KB is MAX anticipated OS page size */
 
 #endif /* #ifndef DEVICEMEM_TYPEDEFS_H */
-

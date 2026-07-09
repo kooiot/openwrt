@@ -3,7 +3,7 @@
 @Title          Initialisation server internal header
 @Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
 @Description    Defines the connections between the various parts of the
-		initialisation server.
+                initialisation server.
 @License        Dual MIT/GPLv2
 
 The contents of this file are subject to the MIT license as set out below.
@@ -42,10 +42,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#ifndef __SRVINIT_H__
-#define __SRVINIT_H__
+#ifndef SRVINIT_H
+#define SRVINIT_H
 
-#if defined (__cplusplus)
+#if defined(__cplusplus)
 extern "C" {
 #endif
 
@@ -58,10 +58,10 @@ extern "C" {
 PVRSRV_ERROR RGXInit(PVRSRV_DEVICE_NODE *psDeviceNode);
 #endif
 
-#if defined (__cplusplus)
+#if defined(__cplusplus)
 }
 #endif
-#endif /* __SRVINIT_H__ */
+#endif /* SRVINIT_H */
 
 /******************************************************************************
  End of file (srvinit.h)

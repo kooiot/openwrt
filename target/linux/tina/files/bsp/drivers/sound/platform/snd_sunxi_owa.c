@@ -1086,7 +1086,8 @@ static int sunxi_owa_component_suspend(struct snd_soc_component *component)
 
 	snd_sunxi_save_reg(regmap, &sunxi_reg_group);
 
-	pinctrl_select_state(pin->pinctrl, pin->pinstate_sleep);
+	if (pin->pinctrl_used)
+		pinctrl_select_state(pin->pinctrl, pin->pinstate_sleep);
 	regmap_update_bits(regmap, SUNXI_OWA_CTL, 1 << CTL_GEN_EN, 0 << CTL_GEN_EN);
 	snd_owa_clk_bus_disable(owa->clk);
 	snd_sunxi_regulator_disable(owa->rglt);
@@ -1115,7 +1116,8 @@ static int sunxi_owa_component_resume(struct snd_soc_component *component)
 	}
 
 	regmap_update_bits(regmap, SUNXI_OWA_CTL, 1 << CTL_GEN_EN, 1 << CTL_GEN_EN);
-	pinctrl_select_state(pin->pinctrl, pin->pinstate);
+	if (pin->pinctrl_used)
+		pinctrl_select_state(pin->pinctrl, pin->pinstate);
 
 	sunxi_owa_init(owa);
 	snd_sunxi_echo_reg(regmap, &sunxi_reg_group);
@@ -1349,10 +1351,11 @@ static int snd_sunxi_owa_irq_init(struct platform_device *pdev, struct sunxi_owa
 
 static void snd_sunxi_owa_irq_exit(struct sunxi_owa_irq *owa_irq)
 {
+	struct sunxi_owa *owa = container_of(owa_irq, struct sunxi_owa, owa_irq);
 	SND_LOG_DEBUG("\n");
 
 	if (owa_irq->id) {
-		free_irq(owa_irq->id, NULL);
+		free_irq(owa_irq->id, owa);
 		cancel_delayed_work(&owa_irq->lock_confirm_work);
 	}
 }
@@ -1377,6 +1380,7 @@ static void snd_sunxi_dma_params_init(struct sunxi_owa *owa)
 	owa->capture_dma_param.fifo_size = dts->capture_fifo_size;
 };
 
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 /* sysfs debug */
 static void snd_sunxi_dump_version(void *priv, char *buf, size_t *count)
 {
@@ -1478,6 +1482,7 @@ static int snd_sunxi_dump_store(void *priv, const char *buf, size_t count)
 
 	return 0;
 }
+#endif
 
 static int sunxi_owa_dev_probe(struct platform_device *pdev)
 {
@@ -1489,7 +1494,9 @@ static int sunxi_owa_dev_probe(struct platform_device *pdev)
 	struct sunxi_owa_mem *mem;
 	struct sunxi_owa_pinctl *pin;
 	struct sunxi_owa_dts *dts;
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 	struct snd_sunxi_dump *dump;
+#endif
 	const struct sunxi_owa_quirks *quirks;
 
 	SND_LOG_DEBUG("\n");
@@ -1505,7 +1512,9 @@ static int sunxi_owa_dev_probe(struct platform_device *pdev)
 	mem = &owa->mem;
 	pin = &owa->pin;
 	dts = &owa->dts;
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 	dump = &owa->dump;
+#endif
 	owa->pdev = pdev;
 
 	ret = snd_sunxi_mem_init(pdev, mem);
@@ -1578,6 +1587,7 @@ static int sunxi_owa_dev_probe(struct platform_device *pdev)
 	if (ret)
 		SND_LOG_WARN("irq init failed\n");
 
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 	snprintf(owa->module_name, 32, "%s", "OWA");
 	dump->name = owa->module_name;
 	dump->priv = owa;
@@ -1588,6 +1598,7 @@ static int sunxi_owa_dev_probe(struct platform_device *pdev)
 	ret = snd_sunxi_dump_register(dump);
 	if (ret)
 		SND_LOG_WARN("snd_sunxi_dump_register failed\n");
+#endif
 
 	SND_LOG_DEBUG("register owa platform success\n");
 
@@ -1618,11 +1629,15 @@ static int sunxi_owa_dev_remove(struct platform_device *pdev)
 	struct sunxi_owa_mem *mem = &owa->mem;
 	struct sunxi_owa_pinctl *pin = &owa->pin;
 	struct sunxi_owa_dts *dts = &owa->dts;
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 	struct snd_sunxi_dump *dump = &owa->dump;
+#endif
 	struct sunxi_owa_irq *owa_irq = &owa->owa_irq;
 
 	/* remove components */
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 	snd_sunxi_dump_unregister(dump);
+#endif
 	if (dts->rx_sync_en) {
 		sunxi_rx_sync_remove(dts->rx_sync_domain);
 	}

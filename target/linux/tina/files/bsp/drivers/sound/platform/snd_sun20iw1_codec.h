@@ -369,6 +369,11 @@
 #define INPUT2_SHIFT		1
 #define INPUT3_SHIFT		2
 
+/* for mic single/diff switch */
+#define MIC1SIN_SHIFT		0
+#define MIC2SIN_SHIFT		1
+#define MIC3SIN_SHIFT		2
+
 struct sunxi_codec_mem {
 	struct resource res;
 	void __iomem *membase;

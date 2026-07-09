@@ -59,21 +59,16 @@ DevmemXPDumpLoadMem(DEVMEMX_PHYSDESC *psMemDescPhys,
 	PVRSRV_ERROR eError;
 
 	PVR_ASSERT(uiSize != 0);
-	PVR_ASSERT(uiOffset + uiSize <= (psMemDescPhys->uiNumPages << psMemDescPhys->uiLog2PageSize));
+	PVR_ASSERT(uiOffset + uiSize <= (psMemDescPhys->uiNumPages <<
+			psMemDescPhys->uiLog2PageSize));
 
-	eError = BridgePMRPDumpLoadMem(psMemDescPhys->hBridge,
+	eError = BridgePMRPDumpLoadMem(GetBridgeHandle(psMemDescPhys->hConnection),
 	                               psMemDescPhys->hPMR,
 	                               uiOffset,
 	                               uiSize,
 	                               uiPDumpFlags,
 	                               IMG_FALSE);
-
-	if (eError != PVRSRV_OK)
-	{
-		PVR_DPF((PVR_DBG_ERROR,
-		         "%s: failed with error %d",
-		         __func__, eError));
-	}
+	PVR_LOG_IF_ERROR(eError, "BridgePMRPDumpLoadMem");
 }
 
 #endif

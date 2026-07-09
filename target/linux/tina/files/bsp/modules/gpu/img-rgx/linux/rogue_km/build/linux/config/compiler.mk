@@ -65,11 +65,17 @@ define calculate-compiler-preferred-target
    ifneq ($$(filter i386-% i486-% i586-% i686-%,$$($(1)_compiler_preferred_target)),)
     $(1)_compiler_preferred_target := i386-linux-gnu
    endif
-   ifneq ($$(filter armv7a-cros-linux-gnueabi armv7l-tizen-linux-gnueabi,$$($(1)_compiler_preferred_target)),)
+   ifneq ($$(filter aarch64-poky-linux arm64-%,$$($(1)_compiler_preferred_target)),)
+    $(1)_compiler_preferred_target := aarch64-linux-gnu
+   endif
+   ifneq ($$(filter armv7a-cros-linux-gnueabi armv7a-cros-linux-gnueabihf,$$($(1)_compiler_preferred_target)),)
     $(1)_compiler_preferred_target := arm-linux-gnueabi
    endif
    ifneq ($$(filter arm-linux-android,$$($(1)_compiler_preferred_target)),)
     $(1)_compiler_preferred_target := arm-linux-androideabi
+   endif
+   ifneq ($$(filter riscv64-buildroot-linux-gnu riscv64-img-linux-musl riscv64-poky-linux,$$($(1)_compiler_preferred_target)),)
+    $(1)_compiler_preferred_target := riscv64-linux-gnu
    endif
    ifneq ($$(filter clang%,$(2)),)
     ifeq ($(1),target)
@@ -136,6 +142,14 @@ endif
 endif
 endif
 
+# We set HOST_ALL_ARCH this way, as the host architectures may be overridden
+# on the command line.
+ifeq ($(HOST_PRIMARY_ARCH),$(HOST_32BIT_ARCH))
+ HOST_ALL_ARCH := $(HOST_PRIMARY_ARCH)
+else
+ HOST_ALL_ARCH := $(HOST_PRIMARY_ARCH) $(HOST_32BIT_ARCH)
+endif
+
 # Workaround our lack of support for non-Linux HOST_CCs
 ifneq ($(HOST_CC_IS_LINUX),1)
  $(warning $$(HOST_CC) is non-Linux. Trying to work around.)
@@ -146,11 +160,11 @@ endif
 $(eval $(call BothConfigMake,HOST_PRIMARY_ARCH,$(HOST_PRIMARY_ARCH)))
 $(eval $(call BothConfigMake,HOST_32BIT_ARCH,$(HOST_32BIT_ARCH)))
 $(eval $(call BothConfigMake,HOST_FORCE_32BIT,$(HOST_FORCE_32BIT)))
+$(eval $(call BothConfigMake,HOST_ALL_ARCH,$(HOST_ALL_ARCH)))
 
 TARGET_ALL_ARCH :=
 TARGET_PRIMARY_ARCH :=
 TARGET_SECONDARY_ARCH :=
-TARGET_OS :=
 
 # Work out the target compiler cross triple, and include the corresponding
 # compilers/*.mk file, which sets TARGET_PRIMARY_ARCH and
@@ -255,39 +269,43 @@ $(eval $(call BothConfigMake,TARGET_SECONDARY_ARCH,$(TARGET_SECONDARY_ARCH)))
 $(eval $(call BothConfigMake,TARGET_ALL_ARCH,$(TARGET_ALL_ARCH)))
 $(eval $(call BothConfigMake,TARGET_FORCE_32BIT,$(TARGET_FORCE_32BIT)))
 
-$(info ******* Multiarch build: $(if $(MULTIARCH),yes,no))
-$(info ******* Primary arch:    $(if $(TARGET_PRIMARY_ARCH),$(TARGET_PRIMARY_ARCH),none))
-$(info ******* Secondary arch:  $(if $(TARGET_SECONDARY_ARCH),$(TARGET_SECONDARY_ARCH),none))
-ifneq ($(TARGET_OS),)
-$(info ******* Target OS	$(TARGET_OS))
-endif
+$(info ******* Multiarch build:     $(if $(MULTIARCH),yes,no))
+$(info ******* Primary arch:        $(if $(TARGET_PRIMARY_ARCH),$(TARGET_PRIMARY_ARCH),none))
+$(info ******* Secondary arch:      $(if $(TARGET_SECONDARY_ARCH),$(TARGET_SECONDARY_ARCH),none))
+$(info ******* PVR top-level arch:  $(PVR_ARCH))
+$(info ******* PVR DEFS arch:       $(PVR_ARCH_DEFS))
+$(info ******* PVR USC arch:        $(PVR_USC_ARCH))
+$(info ******* PVR TPU arch:        $(PVR_TPU_ARCH))
+$(info ******* HWDefs Root:         $(HWDEFS_DIR))
+$(info ******* Host OS:             $(HOST_OS))
+$(info ******* Target OS:           $(TARGET_OS))
 
-# Find the paths to libgcc for the primary and secondary architectures.
+ifeq ($(SUPPORT_NEUTRINO_PLATFORM),)
+ # Find the paths to libgcc for the primary and secondary architectures.
+ LIBGCC := $(shell $(_cc) -print-libgcc-file-name)
+ LIBGCC_SECONDARY := $(shell $(_cc_secondary) $(TARGET_FORCE_32BIT) -print-libgcc-file-name)
 
-LIBGCC := $(shell $(_cc) -print-libgcc-file-name)
-LIBGCC_SECONDARY := $(shell $(_cc_secondary) $(TARGET_FORCE_32BIT) -print-libgcc-file-name)
-
-# Work around buggy clang Toolchain drivers which cannot find the libgcc.a
-# for various triples. We will just have to manually invoke GCC to get this
-# information.
-#
-# We used to test if the auto-discovered libgcc.a existed before falling
-# back to GCC, but this no longer works because the Android clang can
-# return incorrect guesses which are real files. We need to force.
-ifeq ($(SUPPORT_ARC_PLATFORM),)
- ifeq ($(_CLANG),true)
-  ifeq ($(filter-out %-android- %-androideabi-,$(CROSS_COMPILE)),)
-   LIBGCC := $(shell $(CROSS_COMPILE)gcc -print-libgcc-file-name)
-   ifeq ($(wildcard $(LIBGCC)),)
-    $(error Primary clang -print-libgcc-file-name workaround failed)
-   endif
-   ifeq ($(CROSS_COMPILE_SECONDARY),)
-    LIBGCC_SECONDARY := $(shell $(CROSS_COMPILE)gcc $(TARGET_FORCE_32BIT) -print-libgcc-file-name)
+ # Android clang toolchain drivers cannot find libgcc.a for various triples.
+ # We will use a fixed path to the last supported version (4.9.x) of GCC.
+ #
+ ifeq ($(SUPPORT_ANDROID_PLATFORM)$(SUPPORT_ARC_PLATFORM),1)
+  ifeq ($(_CLANG),true)
+   LIBGCC_PREBUILT_PATH := $(ANDROID_ROOT)/prebuilts/gcc/linux-x86
+   ifeq ($(filter-out arm%,$(ARCH)),)
+    LIBGCC := $(LIBGCC_PREBUILT_PATH)/aarch64/aarch64-linux-android-4.9/lib/gcc/aarch64-linux-android/4.9.x/libgcc.a
+    LIBGCC_SECONDARY := $(LIBGCC_PREBUILT_PATH)/arm/arm-linux-androideabi-4.9/lib/gcc/arm-linux-androideabi/4.9.x/libgcc.a
    else
-    LIBGCC_SECONDARY := $(shell $(CROSS_COMPILE_SECONDARY)gcc $(TARGET_FORCE_32BIT) -print-libgcc-file-name)
+    LIBGCC := $(LIBGCC_PREBUILT_PATH)/x86/x86_64-linux-android-4.9/lib/gcc/x86_64-linux-android/4.9.x/libgcc.a
+    LIBGCC_SECONDARY := $(LIBGCC_PREBUILT_PATH)/x86/x86_64-linux-android-4.9/lib/gcc/x86_64-linux-android/4.9.x/32/libgcc.a
    endif
-   ifeq ($(wildcard $(LIBGCC_SECONDARY)),)
-    $(error Secondary clang -print-libgcc-file-name workaround failed)
+   # Reset LIBGCC and LIBGCC_SECONDARY if libgcc.a is not available so as to move to LLVM tools later
+   ifeq ($(wildcard $(LIBGCC))$(wildcard $(LIBGCC_SECONDARY)),)
+    ifeq ($(__clang_ge_13),1)
+     override LIBGCC :=
+     override LIBGCC_SECONDARY :=
+    else
+     $(error Must specify clang toolchain 13+ when libgcc.a is not available.)
+    endif
    endif
   endif
  endif

@@ -63,6 +63,8 @@ struct sunxi_rproc {
 #ifdef CONFIG_AW_RPROC_TRACE_EVENT_PARSER
 	aw_trace_event_parser_t trace_event_parser;
 #endif
+	int is_nmi_available;
+	uint32_t wait_nmi_complete_timeout;
 };
 
 #endif

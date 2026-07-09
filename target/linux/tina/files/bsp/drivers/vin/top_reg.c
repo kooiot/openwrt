@@ -40,7 +40,7 @@ static char isp_input[4][4][4][4] = {
 		{{0, 0, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 0}, {0, 0, 0, 0} },
 		{{0, 0, 0, 0}, {0, 0, 0, 1}, {0, 0, 0, 0}, {0, 0, 0, 0} }
 	},
-#elif defined (CONFIG_ARCH_SUN8IW15P1) || defined (CONFIG_ARCH_SUN8IW17P1) || defined (CONFIG_ARCH_SUN8IW16P1)
+#elif IS_ENABLED (CONFIG_ARCH_SUN8IW15P1) || IS_ENABLED (CONFIG_ARCH_SUN8IW17P1) || IS_ENABLED (CONFIG_ARCH_SUN8IW16P1)
 	/* isp0 input0~3 */
 	{
 		{{0, 4, 0, 0}, {1, 5, 0, 0}, {2, 6, 0, 0}, {3, 7, 0, 0} },
@@ -107,6 +107,7 @@ static char isp_input[4][4][4][4] = {
 #endif
 };
 
+#if !defined VIPP_ALLMASK_BK
 /* vipp_id isp_id isp_ch */
 static char vipp_input[8][4][4] = {
 #if IS_ENABLED(CONFIG_ARCH_SUN50IW3P1) || IS_ENABLED(CONFIG_ARCH_SUN50IW6P1)
@@ -119,7 +120,7 @@ static char vipp_input[8][4][4] = {
 	{{0, 0, 2, 0}, {1, 0, 3, 0}, {0, 0, 0, 0}, {0, 0, 0, 0} },
 
 	{{0, 0, 0, 2}, {1, 4, 0, 3}, {0, 0, 0, 0}, {0, 0, 0, 0} },
-#elif defined (CONFIG_ARCH_SUN8IW15P1) || defined (CONFIG_ARCH_SUN8IW17P1) || defined (CONFIG_ARCH_SUN8IW16P1)
+#elif IS_ENABLED (CONFIG_ARCH_SUN8IW15P1) || IS_ENABLED (CONFIG_ARCH_SUN8IW17P1) || IS_ENABLED (CONFIG_ARCH_SUN8IW16P1)
 	{{0, 0, 0, 0}, {1, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0} },
 
 	{{0, 2, 0, 0}, {1, 3, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0} },
@@ -172,6 +173,36 @@ static char dma_input[8][4][4] = {
 	{{0, 1, 2, 3}, {4, 5, 6, 7}, {8, 9, 10, 11}, {12, 13, 14, 15} }, /* dma6 */
 
 	{{0, 1, 2, 3}, {4, 5, 6, 7}, {8, 9, 10, 11}, {12, 13, 14, 15} }  /* dma7 */
+};
+#endif
+#else /* VIPP_ALLMASK_BK */
+/* vipp_id-isp_id-isp_ch or vipp_id-vipp-vipp_id*/
+static char vipp_input[8][5][4] = {
+	/* isp0 */      /* isp1 */    /* isp2 */      /* isp3 */       /* vipp0/1/2/3  */
+	{{0, 1, 2, 3}, {4, 5, 6, 7}, {8, 9, 10, 11}, {12, 13, 14, 15}, {0xff, 17, 18, 19} }, /* vipp0 */
+
+	{{0, 1, 2, 3}, {4, 5, 6, 7}, {8, 9, 10, 11}, {12, 13, 14, 15}, {16, 0xff, 18, 19} }, /* vipp1 */
+
+	{{0, 1, 2, 3}, {4, 5, 6, 7}, {8, 9, 10, 11}, {12, 13, 14, 15}, {16, 17, 0xff, 19} }, /* vipp2 */
+
+	{{0, 1, 2, 3}, {4, 5, 6, 7}, {8, 9, 10, 11}, {12, 13, 14, 15}, {16, 17, 18, 0xff} }, /* vipp3 */
+
+	{{0, 1, 2, 3}, {4, 5, 6, 7}, {8, 9, 10, 11}, {12, 13, 14, 15}, {16, 17, 18, 19} },   /* vipp4 */
+
+	{{0, 1, 2, 3}, {4, 5, 6, 7}, {8, 9, 10, 11}, {12, 13, 14, 15}, {16, 17, 18, 19} },   /* vipp5 */
+
+	{{0, 1, 2, 3}, {4, 5, 6, 7}, {8, 9, 10, 11}, {12, 13, 14, 15}, {16, 17, 18, 19} },   /* vipp6 */
+
+	{{0, 1, 2, 3}, {4, 5, 6, 7}, {8, 9, 10, 11}, {12, 13, 14, 15}, {16, 17, 18, 19} },   /* vipp7 */
+};
+
+/* vipp_id bk_id*/
+static char dma_input[4][4] = {
+	/*vipp0/1/2/3*/
+	{0, 1, 2, 3},  /* dma0 */
+	{0, 1, 2, 3},  /* dma1 */
+	{0, 1, 2, 3},  /* dma2 */
+	{0, 1, 2, 3},  /* dma3 */
 };
 #endif
 
@@ -240,9 +271,10 @@ void csic_bk_intpool_clear_status(unsigned int sel, enum csis_bk_intpool interru
 void csic_bk_intpool_get_status(unsigned int sel, struct cisc_bk_intpool_status *status)
 {
 	unsigned int reg_val = vin_reg_readl(csic_top_base[sel] + CSIC_BK_INTPOOL0_INT_STA0_REG_OFF);
+	unsigned int irq_enable = vin_reg_readl(csic_top_base[sel] + CSIC_BK_INTPOOL0_INT_EN0_REG_OFF);
 
-	status->fifo_full = (reg_val & FIFO_FULL_INT_PD_MASK) >> FIFO_FULL_INT_PD;
-	status->fifo_avl = (reg_val & FIFO_AVL_INT_PD_MASK) >> FIFO_AVL_INT_PD;
+	status->fifo_full = (reg_val & FIFO_FULL_INT_PD_MASK) >> FIFO_FULL_INT_PD & (irq_enable & FIFO_FULL_INT_PD_MASK) >> FIFO_FULL_INT_PD;
+	status->fifo_avl = (reg_val & FIFO_AVL_INT_PD_MASK) >> FIFO_AVL_INT_PD & (irq_enable & FIFO_AVL_INT_PD_MASK) >> FIFO_AVL_INT_PD;
 }
 
 void csic_bk_intpool_en(unsigned int sel, unsigned int en)
@@ -339,6 +371,30 @@ void csic_top_isp_bridge_ch_disable(unsigned int sel)
 			CSIC_ISP_BRIDGE_CH_EN_DISABLE_MASK, 1 << CSIC_ISP_BRIDGE_CH_EN_DISABLE);
 }
 
+void csic_top_isp1_bridge_ch_enable(unsigned int sel)
+{
+	vin_reg_clr_set(csic_top_base[sel] + CSIC_TOP_EN_REG_OFF,
+			CSIC_ISP1_BRIDGE_CH_EN_DISABLE_MASK, 0 << CSIC_ISP1_BRIDGE_CH_EN_DISABLE);
+}
+
+void csic_top_isp1_bridge_ch_disable(unsigned int sel)
+{
+	vin_reg_clr_set(csic_top_base[sel] + CSIC_TOP_EN_REG_OFF,
+			CSIC_ISP1_BRIDGE_CH_EN_DISABLE_MASK, 1 << CSIC_ISP1_BRIDGE_CH_EN_DISABLE);
+}
+
+void csic_top_f2s1_bridge_en(unsigned int sel, unsigned int en, unsigned int id)
+{
+	vin_reg_clr_set(csic_top_base[sel] + CSIC_TOP_EN_REG_OFF,
+			CSIC_ISP1_F2S1_BRIDGE_CH_EN_MASK << id, en << (CSIC_ISP1_F2S1_BRIDGE_CH_EN + id));
+}
+
+void csic_top_s2f1_bridge_en(unsigned int sel, unsigned int en, unsigned int id)
+{
+	vin_reg_clr_set(csic_top_base[sel] + CSIC_TOP_EN_REG_OFF,
+			CSIC_ISP1_S1F2_BRIDGE_CH_EN_MASK << id, en << (CSIC_ISP1_S1F2_BRIDGE_CH_EN + id));
+}
+
 void csic_top_version_read_en(unsigned int sel, unsigned int en)
 {
 	vin_reg_clr_set(csic_top_base[sel] + CSIC_TOP_EN_REG_OFF,
@@ -359,6 +415,7 @@ void csic_vipp_input_select(unsigned int sel, unsigned int vipp,
 			vipp_input[vipp][isp][ch]);
 }
 
+#if !defined VIPP_ALLMASK_BK
 void csic_dma_input_select(unsigned int sel, unsigned int dma,
 				unsigned int parser, unsigned int ch)
 {
@@ -367,6 +424,14 @@ void csic_dma_input_select(unsigned int sel, unsigned int dma,
 			dma_input[dma][parser][ch]);
 #endif
 }
+#else
+void csic_dma_input_select(unsigned int sel, unsigned int dma,
+				unsigned int vipp)
+{
+	vin_reg_writel(csic_top_base[sel] + CSIC_DMA0_IN_REG_OFF + dma * 4,
+			dma_input[dma][vipp]);
+}
+#endif
 
 void csic_feature_list_get(unsigned int sel, struct csic_feature_list *fl)
 {
@@ -393,7 +458,7 @@ void csic_version_get(unsigned int sel, struct csic_version *v)
 
 void csic_mbus_req_mex_set(unsigned int sel, unsigned int data)
 {
-#if !defined CONFIG_ARCH_SUN8IW15P1 && !defined CONFIG_ARCH_SUN8IW16P1 && !defined CONFIG_ARCH_SUN8IW17P1 && !defined CONFIG_ARCH_SUN50IW9 && !defined CONFIG_ARCH_SUN50IW3P1 && !defined CONFIG_ARCH_SUN50IW6P1
+#if !IS_ENABLED(CONFIG_ARCH_SUN8IW15P1) && !IS_ENABLED(CONFIG_ARCH_SUN8IW16P1) && !IS_ENABLED(CONFIG_ARCH_SUN8IW17P1) && !IS_ENABLED(CONFIG_ARCH_SUN50IW9) && !IS_ENABLED(CONFIG_ARCH_SUN50IW3P1) && !IS_ENABLED(CONFIG_ARCH_SUN50IW6P1)
 	vin_reg_clr_set(csic_top_base[sel] + CSIC_MBUS_REQ_MAX,
 			MCSI_MEM_REQ_MAX_MASK, data << MCSI_MEM_REQ_MAX);
 	vin_reg_clr_set(csic_top_base[sel] + CSIC_MBUS_REQ_MAX,
@@ -431,8 +496,8 @@ void csic_mulp_int_get_status(unsigned int sel, struct cisc_mulp_int_status *sta
 {
 	unsigned int reg_val = vin_reg_readl(csic_top_base[sel] + CSIC_MULP_INT_REG_OFF);
 
-	status->mulf_done = (reg_val & CSIC_MULP_DONE_PD_MASK) >> CSIC_MULP_DONE_PD;
-	status->mulf_err = (reg_val & CSIC_MULP_ERR_PD_MASK) >> CSIC_MULP_ERR_PD;
+	status->mulf_done = (reg_val & CSIC_MULP_DONE_PD_MASK) >> CSIC_MULP_DONE_PD & (reg_val & CSIC_MULP_DONE_EN_MASK) >> CSIC_MULP_DONE_EN;
+	status->mulf_err = (reg_val & CSIC_MULP_ERR_PD_MASK) >> CSIC_MULP_ERR_PD & (reg_val & CSIC_MULP_ERR_EN_MASK) >> CSIC_MULP_ERR_EN;
 }
 
 void csic_mulp_int_clear_status(unsigned int sel, enum csis_mulp_int interrupt)
@@ -581,6 +646,24 @@ void csic_ccu_mcsi_clk_mode(unsigned int mode)
 			CSIC_MCSI_POST_CLK_MODE_MASK, mode << CSIC_MCSI_POST_CLK_MODE);
 }
 
+void csic_ccu_mcsi_hclk_autogate_enable(void)
+{
+		vin_reg_clr_set(csic_ccu_base + CSIC_CCU_MODE_REG_OFF,
+			CSIC_MCSI_HCLK_AUTOGATE_EN_MASK, 1 << CSIC_MCSI_HCLK_AUTOGATE_EN);
+}
+
+void csic_ccu_mcsi_hclk_autogate_disable(void)
+{
+		vin_reg_clr_set(csic_ccu_base + CSIC_CCU_MODE_REG_OFF,
+			CSIC_MCSI_HCLK_AUTOGATE_EN_MASK, 0 << CSIC_MCSI_HCLK_AUTOGATE_EN);
+}
+
+void csic_ccu_mcsi_hclk_autogate_cycle_set(unsigned int cycle)
+{
+		vin_reg_clr_set(csic_ccu_base + CSIC_CCU_MODE_REG_OFF,
+			CSIC_MCSI_HCLK_AUTOGATE_CYCLE_MASK, cycle << CSIC_MCSI_HCLK_AUTOGATE_CYCLE);
+}
+
 void csic_ccu_mcsi_combo_clk_en(unsigned int sel, unsigned int en)
 {
 	vin_reg_clr_set(csic_ccu_base + CSIC_CCU_PARSER_CLK_EN_REG_OFF,
@@ -619,6 +702,18 @@ void csic_ccu_misp_bridge_clk_gating_disable(void)
 			CSIC_MISP0_BRIDGE_CH_CLK_GATING_DISABLE_MASK, 1 << CSIC_MISP0_BRIDGE_CH_CLK_GATING_DISABLE);
 }
 
+void csic_ccu_misp1_bridge_clk_gating_enable(void)
+{
+	vin_reg_clr_set(csic_ccu_base + CSIC_CCU_ISP_CLK_EN_REG_OFF,
+			CSIC_MISP1_BRIDGE_CH_CLK_GATING_DISABLE_MASK, 0 << CSIC_MISP1_BRIDGE_CH_CLK_GATING_DISABLE);
+}
+
+void csic_ccu_misp1_bridge_clk_gating_disable(void)
+{
+	vin_reg_clr_set(csic_ccu_base + CSIC_CCU_ISP_CLK_EN_REG_OFF,
+			CSIC_MISP1_BRIDGE_CH_CLK_GATING_DISABLE_MASK, 1 << CSIC_MISP1_BRIDGE_CH_CLK_GATING_DISABLE);
+}
+
 void csic_ccu_f2s0_bridge_clk_en(unsigned int en, unsigned int id)
 {
 	vin_reg_clr_set(csic_ccu_base + CSIC_CCU_ISP_CLK_EN_REG_OFF,
@@ -629,6 +724,18 @@ void csic_ccu_s2f0_bridge_clk_en(unsigned int en, unsigned int id)
 {
 	vin_reg_clr_set(csic_ccu_base + CSIC_CCU_ISP_CLK_EN_REG_OFF,
 			CSIC_MISP0_S2F0_BRIDGE_CH_CLK_EN_MASK << id, en << (CSIC_MISP0_S2F0_BRIDGE_CH_CLK_EN + id));
+}
+
+void csic_ccu_f2s1_bridge_clk_en(unsigned int en, unsigned int id)
+{
+	vin_reg_clr_set(csic_ccu_base + CSIC_CCU_ISP_CLK_EN_REG_OFF,
+			CSIC_MISP1_F2S1_BRIDGE_CH_CLK_EN_MASK << id, en << (CSIC_MISP1_F2S1_BRIDGE_CH_CLK_EN + id));
+}
+
+void csic_ccu_s2f1_bridge_clk_en(unsigned int en, unsigned int id)
+{
+	vin_reg_clr_set(csic_ccu_base + CSIC_CCU_ISP_CLK_EN_REG_OFF,
+			CSIC_MISP1_S2F1_BRIDGE_CH_CLK_EN_MASK << id, en << (CSIC_MISP1_S2F1_BRIDGE_CH_CLK_EN + id));
 }
 
 void csic_ccu_mcsi_post_clk_enable(unsigned int sel)

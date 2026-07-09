@@ -44,6 +44,7 @@ extern int sunxi_smc_call_offset(void);
 extern int  optee_probe_drm_configure(unsigned long *drm_base,
 	size_t *drm_size, unsigned long  *tee_base);
 extern int sunxi_optee_call_crashdump(void);
+extern uint32_t sunxi_optee_call_amp(uint32_t cmd, uint32_t arg1, uint32_t arg2);
 extern int smc_tee_secure_key_encrypt(char *out_buf, char *in_buf, int in_len, enum secure_key_type key);
 extern int smc_tee_secure_key_decrypt(char *out_buf, char *in_buf, int len, enum secure_key_type key);
 

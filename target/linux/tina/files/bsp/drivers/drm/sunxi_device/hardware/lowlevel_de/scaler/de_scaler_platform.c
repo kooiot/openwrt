@@ -18,7 +18,7 @@ static struct de_scaler_dsc de350_scalers[] = {
 		.id = 0,
 		.type = DE_SCALER_TYPE_ASU,
 		.line_buffer_yuv = 4096,
-		.line_buffer_rgb = 2048,
+		.line_buffer_rgb = 4096, /* 2 line mode */
 		.line_buffer_yuv_ed = 2048,
 	},
 	{
@@ -219,7 +219,7 @@ static struct de_scaler_dsc de352_scalers[] = {
 		.id = 0,
 		.type = DE_SCALER_TYPE_ASU,
 		.line_buffer_yuv = 4096,
-		.line_buffer_rgb = 2048,
+		.line_buffer_rgb = 4096, /* 2 line mode */
 		.line_buffer_yuv_ed = 2048,
 	},
 	{
@@ -278,8 +278,36 @@ static struct de_version_scaler de352 = {
 	.scaler = de352_scalers,
 };
 
+static struct de_scaler_dsc de212_scalers[] = {
+	/* video and ui channel shares a vsu. TODO: need switch vsu */
+	{
+		.name = "vch0_vsu10",
+		.id = 0,
+		.type = DE_SCALER_TYPE_VSU10,
+		.line_buffer_yuv = 2048,
+		.line_buffer_rgb = 2048,
+		.line_buffer_yuv_ed = 2048,
+	},
+	{
+		.name = "uch0_vsu10",
+		.id = 1,
+		.type = DE_SCALER_TYPE_SHARE,
+		.share_type = DE_SCALER_TYPE_VSU10,
+		.offset = 0x104000,
+		.line_buffer_yuv = 2048,
+		.line_buffer_rgb = 2048,
+		.line_buffer_yuv_ed = 2048,
+	},
+};
+
+static struct de_version_scaler de212 = {
+	.version = 0x212,
+	.scaler_cnt = ARRAY_SIZE(de212_scalers),
+	.scaler = de212_scalers,
+};
+
 static struct de_version_scaler *de_version[] = {
-	&de350, &de355, &de210, &de201, &de352,
+	&de350, &de355, &de210, &de201, &de352, &de212,
 };
 
 struct de_scaler_dsc *get_scaler_dsc(const struct module_create_info *info)

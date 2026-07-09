@@ -50,9 +50,6 @@
 #include "../vin-mipi/sunxi_mipi.h"
 #include "../vin-tdm/vin_tdm.h"
 #include "../vin.h"
-#if IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
-#include "../vin-isp/isp_tuning_priv.h"
-#endif
 
 #define VIN_MAJOR_VERSION 1
 #define VIN_MINOR_VERSION 1
@@ -62,8 +59,7 @@
 		KERNEL_VERSION(VIN_MAJOR_VERSION, VIN_MINOR_VERSION, VIN_RELEASE)
 
 extern struct vin_core *vin_core_gbl[VIN_MAX_DEV];
-extern struct scaler_dev *glb_vipp[VIN_MAX_SCALER];
-#define GET_BIT(x, bit) ((x & (1 << bit)) >> bit)
+#define GET_BIT(x, bit) (((x) & (1 << (bit))) >> (bit))
 
 #if IS_ENABLED(CONFIG_VIN_INIT_MELIS)
 void *vin_map_kernel(unsigned long phys_addr, unsigned long size)
@@ -96,6 +92,7 @@ void vin_unmap_kernel(void *vaddr)
 EXPORT_SYMBOL(vin_unmap_kernel);
 #endif
 
+#if VIN_FALSE
 void __vin_s_stream_handle(struct work_struct *work)
 {
 	int ret = 0;
@@ -117,20 +114,101 @@ void __vin_s_stream_handle(struct work_struct *work)
 	vin_log(VIN_LOG_VIDEO, "%s done, id = %d!\n", __func__, cap->vinc->id);
 }
 
+static void __vin_pipeline_reset_handle(struct work_struct *work)
+{
+#if IS_ENABLED(CONFIG_PIPELINE_RESET)
+	unsigned int i;
+	unsigned int reset_count = 0;
+	bool reset_all = true;
+	struct vin_vid_cap *vid_cap;
+	struct vin_vid_cap *cap = container_of(work, struct vin_vid_cap, pipeline_reset_task);
+	struct csi_dev *csi = container_of(cap->pipe.sd[VIN_IND_CSI], struct csi_dev, subdev);
+	struct isp_dev *isp = container_of(cap->pipe.sd[VIN_IND_ISP], struct isp_dev, subdev);
+
+	if (!mutex_trylock(&csi->reset_lock)) {
+		mutex_lock(&csi->reset_lock);
+		reset_all = false;
+	}
+	vin_warn("video%d pipeline reset after interrupt timeout, reset_all %d!\n", cap->vinc->id, reset_all);
+
+	mutex_lock(&cap->vdev.entity.graph_obj.mdev->graph_mutex);
+	if (!cap->pipe.sd[VIN_IND_SENSOR]->entity.use_count) {
+		vin_err("%s is not used, video%d cannot be resetted!\n", cap->pipe.sd[VIN_IND_SENSOR]->name, cap->vinc->id);
+		mutex_unlock(&cap->vdev.entity.graph_obj.mdev->graph_mutex);
+		mutex_unlock(&csi->reset_lock);
+		return;
+	}
+
+	if (!vin_streaming(cap) || !vin_busy(cap)) {
+		vin_err("video%d have been steaming off, cannot reset!\n", cap->vinc->id);
+		mutex_unlock(&cap->vdev.entity.graph_obj.mdev->graph_mutex);
+		mutex_unlock(&csi->reset_lock);
+		return;
+	}
+
+	if (reset_all) {
+		/* reset all complete pipeline at the same of csi_sel */
+		for (i = 0; i < VIN_MAX_DEV; i++) {
+			vid_cap = &vin_core_gbl[i]->vid_cap;
+			if (!vin_core_gbl[i] || csi->id != vin_core_gbl[i]->csi_sel)
+				continue;
+			if (!vin_streaming(vid_cap))
+				continue;
+
+			reset_count++;
+
+			isp->nosend_ispoff = 1;
+			vin_pipeline_call(vin_core_gbl[i], set_stream, &vid_cap->pipe, 0);
+
+			vin_pipeline_call(vin_core_gbl[i], close, &vid_cap->pipe);
+
+			v4l2_subdev_call(vid_cap->pipe.sd[VIN_IND_ISP], core, init, 0);
+			isp->nosend_ispoff = 0;
+		}
+
+		/* ensure all reset at the same time */
+		if (reset_count >= 2)
+			msleep((2 + csi->reset_time) * 1000);
+
+		for (i = 0; i < VIN_MAX_DEV; i++) {
+			vid_cap = &vin_core_gbl[i]->vid_cap;
+			if (!vin_core_gbl[i] || csi->id != vin_core_gbl[i]->csi_sel)
+				continue;
+			if (!vin_streaming(vid_cap))
+				continue;
+
+			vin_pipeline_call(vin_core_gbl[i], open, &vid_cap->pipe, &vid_cap->vdev.entity, true);
+
+			v4l2_subdev_call(vid_cap->pipe.sd[VIN_IND_ISP], core, init, 1);
+
+			v4l2_subdev_call(vid_cap->pipe.sd[VIN_IND_SCALER], core, init, 1);
+
+			vin_pipeline_call(vin_core_gbl[i], set_stream, &vid_cap->pipe, vin_core_gbl[i]->stream_idx);
+		}
+	}
+	mutex_unlock(&cap->vdev.entity.graph_obj.mdev->graph_mutex);
+	mutex_unlock(&csi->reset_lock);
+
+	vin_timer_update(cap->vinc, 2000);
+
+	vin_warn("video%d pipeline reset end!\n", cap->vinc->id);
+#endif
+}
+#endif
 /* make sure addr was update to register */
-#if defined CSIC_DMA_VER_140_000
+#if defined CSIC_DMA_VER_140_000 || defined CSIC_DMA_VER_150_000
 static int __check_bk_bufaddr(struct vin_core *vinc, struct vin_addr *paddr)
 {
 	unsigned int y, cb, cr;
 
 	if (vinc->vid_cap.frame.fmt.fourcc == V4L2_PIX_FMT_YVU420) {
-		csic_dma_get_buffer_address(vinc->vipp_sel, CSI_BUF_0_A, &y);
-		csic_dma_get_buffer_address(vinc->vipp_sel, CSI_BUF_1_A, &cr);
-		csic_dma_get_buffer_address(vinc->vipp_sel, CSI_BUF_2_A, &cb);
+		csic_dma_get_buffer_address(vinc->id, CSI_BUF_0_A, &y);
+		csic_dma_get_buffer_address(vinc->id, CSI_BUF_1_A, &cr);
+		csic_dma_get_buffer_address(vinc->id, CSI_BUF_2_A, &cb);
 	} else {
-		csic_dma_get_buffer_address(vinc->vipp_sel, CSI_BUF_0_A, &y);
-		csic_dma_get_buffer_address(vinc->vipp_sel, CSI_BUF_1_A, &cb);
-		csic_dma_get_buffer_address(vinc->vipp_sel, CSI_BUF_2_A, &cr);
+		csic_dma_get_buffer_address(vinc->id, CSI_BUF_0_A, &y);
+		csic_dma_get_buffer_address(vinc->id, CSI_BUF_1_A, &cb);
+		csic_dma_get_buffer_address(vinc->id, CSI_BUF_2_A, &cr);
 	}
 
 	if (paddr->y != y || paddr->cb != cb || paddr->cr != cr) {
@@ -159,17 +237,17 @@ static int __check_bk_bufaddr(struct vin_core *vinc, struct vin_addr *paddr)
 	/*
 	while ((paddr->y != y || paddr->cb != cb || paddr->cr != cr) && (cnt < 2)) {
 		if(vinc->vid_cap.frame.fmt.fourcc == V4L2_PIX_FMT_YVU420) {
-			csic_dma_buffer_address(vinc->vipp_sel, CSI_BUF_0_A, paddr->y);
-			csic_dma_buffer_address(vinc->vipp_sel, CSI_BUF_2_A, paddr->cb);
-			csic_dma_buffer_address(vinc->vipp_sel, CSI_BUF_1_A, paddr->cr);
+			csic_dma_buffer_address(vinc->id, CSI_BUF_0_A, paddr->y);
+			csic_dma_buffer_address(vinc->id, CSI_BUF_2_A, paddr->cb);
+			csic_dma_buffer_address(vinc->id, CSI_BUF_1_A, paddr->cr);
 			y = readl(vinc->base + 0x20) << 2;
 			cr = readl(vinc->base + 0x28) << 2;
 			cb = readl(vinc->base + 0x30) << 2;
 
 		} else {
-			csic_dma_buffer_address(vinc->vipp_sel, CSI_BUF_0_A, paddr->y);
-			csic_dma_buffer_address(vinc->vipp_sel, CSI_BUF_1_A, paddr->cb);
-			csic_dma_buffer_address(vinc->vipp_sel, CSI_BUF_2_A, paddr->cr);
+			csic_dma_buffer_address(vinc->id, CSI_BUF_0_A, paddr->y);
+			csic_dma_buffer_address(vinc->id, CSI_BUF_1_A, paddr->cb);
+			csic_dma_buffer_address(vinc->id, CSI_BUF_2_A, paddr->cr);
 			y = readl(vinc->base + 0x20) << 2;
 			cb = readl(vinc->base + 0x28) << 2;
 			cr = readl(vinc->base + 0x30) << 2;
@@ -196,6 +274,8 @@ int vin_set_addr(struct vin_core *vinc, struct vb2_buffer *vb,
 	struct vin_buffer *buf;
 	__maybe_unused int offset_width;
 	__maybe_unused struct vin_core *vinc_bind = NULL;
+	__maybe_unused unsigned int embed_size;
+	struct scaler_dev *scaler = NULL;
 
 	vb2_v4l2 = container_of(vb, struct vb2_v4l2_buffer, vb2_buf);
 	buf = container_of(vb2_v4l2, struct vin_buffer, vb);
@@ -208,24 +288,44 @@ int vin_set_addr(struct vin_core *vinc, struct vb2_buffer *vb,
 			return -EINVAL;
 	}
 
-#if !defined CONFIG_ARCH_SUN8IW21
-	pix_size = ALIGN(frame->o_width, VIN_ALIGN_WIDTH) * frame->o_height;
-#else
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW21P1) || IS_ENABLED(CONFIG_ARCH_SUN300IW1P1) || IS_ENABLED(CONFIG_ARCH_SUN252IW1P1)
 	pix_size = ALIGN(frame->o_width, VIN_ALIGN_WIDTH) * ALIGN(frame->o_height, VIN_ALIGN_HEIGHT);
+#else
+	pix_size = ALIGN(frame->o_width, VIN_ALIGN_WIDTH) * frame->o_height;
 #endif
 	depth = frame->fmt.depth[0] + frame->fmt.depth[1] + frame->fmt.depth[2];
 
 	if (vinc->vid_cap.special_active == 1) {
 		paddr->y = (vin_dma_addr_t)buf->paddr;
 		frame->fmt.memplanes = 1;
-	} else
+	} else {
+		if (vb->num_planes <= 0) {
+			vin_err("%s return -EINVAL!!! vb->num_planes(%d) <= 0\n", __func__, vb->num_planes);
+			return -EINVAL;
+		}
+		if (!vb->planes[0].mem_priv) {
+			vin_print("%s return -EINVAL!!! vb->planes[0].mem_priv is NULL!!!\n", __func__);
+			return -EINVAL;
+		}
 		paddr->y = vb2_dma_contig_plane_dma_addr(vb, 0);
+#if defined OUTPUT_EMBED_DATA
+		if (vinc->time_embed_en || vinc->ispbe_info_embed_en) {
+			paddr->y_vir_addr = vb2_plane_vaddr(vb, 0);
+		}
+#endif
+	}
 
 	if (frame->fmt.memplanes == 1) {
 		switch (frame->fmt.colplanes) {
 		case 1:
 			paddr->cb = 0;
 			paddr->cr = 0;
+#if defined OUTPUT_EMBED_DATA
+			if (vinc->time_embed_en || vinc->ispbe_info_embed_en) {
+				paddr->cb_vir_addr = 0;
+				paddr->cr_vir_addr = 0;
+			}
+#endif
 			break;
 		case 2:
 			/*  decompose Y into Y/Cb  */
@@ -237,10 +337,26 @@ int vin_set_addr(struct vin_core *vinc, struct vb2_buffer *vb,
 				paddr->cb = paddr->y + ALIGN(DIV_ROUND_UP(frame->o_width, 128) * DIV_ROUND_UP(frame->o_height, 32) * 96, 64);
 #endif
 				paddr->cr = 0;
+#if defined OUTPUT_EMBED_DATA
+				if (vinc->time_embed_en || vinc->ispbe_info_embed_en) {
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW12P1)
+					paddr->cb_vir_addr = paddr->y_vir_addr + CEIL_EXP(frame->o_width, 7) * CEIL_EXP(frame->o_height, 5) * 96;
+#else
+					paddr->cb_vir_addr = paddr->y_vir_addr + ALIGN(DIV_ROUND_UP(frame->o_width, 128) * DIV_ROUND_UP(frame->o_height, 32) * 96, 64);
+#endif
+					paddr->cr_vir_addr = 0;
+				}
+#endif
 
 			} else {
 				paddr->cb = (u32)(paddr->y + pix_size);
 				paddr->cr = 0;
+#if defined OUTPUT_EMBED_DATA
+				if (vinc->time_embed_en || vinc->ispbe_info_embed_en) {
+					paddr->cb_vir_addr = paddr->y_vir_addr + pix_size;
+					paddr->cr_vir_addr = 0;
+				}
+#endif
 			}
 			break;
 		case 3:
@@ -250,17 +366,93 @@ int vin_set_addr(struct vin_core *vinc, struct vb2_buffer *vb,
 				paddr->cr = (u32)(paddr->cb + (pix_size >> 2));
 			else /*  422  */
 				paddr->cr = (u32)(paddr->cb + (pix_size >> 1));
+#if defined OUTPUT_EMBED_DATA
+			if (vinc->time_embed_en || vinc->ispbe_info_embed_en) {
+				paddr->cb_vir_addr = paddr->y_vir_addr + pix_size;
+				if (frame->fmt.depth[0] == 12) {
+					paddr->cr_vir_addr = paddr->cb_vir_addr + (pix_size >> 2);
+				} else {/*  422  */
+					paddr->cr_vir_addr = paddr->cb_vir_addr + (pix_size >> 1);
+				}
+			}
+#endif
 			break;
 		default:
 			return -EINVAL;
 		}
 	} else if (!frame->fmt.mdataplanes) {
-		if (frame->fmt.memplanes >= 2)
+		if (frame->fmt.memplanes >= 2) {
+			if (vb->num_planes <= 1) {
+				vin_err("%s return -EINVAL!!! vb->num_planes(%d) <= 1\n", __func__, vb->num_planes);
+				return -EINVAL;
+			}
+			if (!vb->planes[1].mem_priv) {
+				vin_print("%s return -EINVAL!!! vb->planes[1].mem_priv is NULL!!!\n", __func__);
+				return -EINVAL;
+			}
 			paddr->cb = vb2_dma_contig_plane_dma_addr(vb, 1);
+#if defined OUTPUT_EMBED_DATA
+			if (vinc->time_embed_en || vinc->ispbe_info_embed_en) {
+				paddr->cb_vir_addr = vb2_plane_vaddr(vb, 1);
+			}
+#endif
+		}
 
-		if (frame->fmt.memplanes == 3)
+		if (frame->fmt.memplanes == 3) {
+			if (vb->num_planes <= 2) {
+				vin_err("%s return -EINVAL!!! vb->num_planes(%d) <= 2\n", __func__, vb->num_planes);
+				return -EINVAL;
+			}
+			if (!vb->planes[2].mem_priv) {
+				vin_print("%s return -EINVAL!!! vb->planes[2].mem_priv is NULL!!!\n", __func__);
+				return -EINVAL;
+			}
 			paddr->cr = vb2_dma_contig_plane_dma_addr(vb, 2);
+#if defined OUTPUT_EMBED_DATA
+			if (vinc->time_embed_en || vinc->ispbe_info_embed_en) {
+				paddr->cr_vir_addr = vb2_plane_vaddr(vb, 2);
+			}
+#endif
+		}
 	}
+#if defined OUTPUT_EMBED_DATA
+	if (vinc->time_embed_en || vinc->ispbe_info_embed_en) {
+		if (vinc->dma_merge_mode)
+			embed_size = EMBED_DATA_SIZE * 2;
+		else
+			embed_size = EMBED_DATA_SIZE;
+		if ((paddr->cb == 0) && (paddr->cr == 0)) {
+			buf->embed_dma_addr = paddr->y + (vinc->vid_cap.frame.payload[0] - embed_size);
+			buf->embed_vir_addr = paddr->y_vir_addr + (vinc->vid_cap.frame.payload[0] - embed_size);
+		} else if (paddr->cb && (paddr->cr == 0)) {
+			if (vinc->vid_cap.frame.payload[1]) {
+				buf->embed_dma_addr = paddr->cb + (vinc->vid_cap.frame.payload[1] - embed_size);
+				buf->embed_vir_addr = paddr->cb_vir_addr + (vinc->vid_cap.frame.payload[1] - embed_size);
+			} else {
+				if (frame->fmt.depth[0] == 12) { /* 420 */
+					buf->embed_dma_addr = paddr->cb + (pix_size >> 1);
+					buf->embed_vir_addr = paddr->cb_vir_addr + (pix_size >> 1);
+				} else {/*  422  */
+					buf->embed_dma_addr = paddr->cb + pix_size;
+					buf->embed_vir_addr = paddr->cb_vir_addr + pix_size;
+				}
+			}
+		} else {
+			if (vinc->vid_cap.frame.payload[2]) {
+				buf->embed_dma_addr = paddr->cr + (vinc->vid_cap.frame.payload[2] - embed_size);
+				buf->embed_vir_addr = paddr->cr_vir_addr + (vinc->vid_cap.frame.payload[2] - embed_size);
+			} else {
+				if (frame->fmt.depth[0] == 12) { /* 420 */
+					buf->embed_dma_addr = paddr->cr + (pix_size >> 2);
+					buf->embed_vir_addr = paddr->cr_vir_addr + (pix_size >> 2);
+				} else {/*  422  */
+					buf->embed_dma_addr = paddr->cr + (pix_size >> 1);
+					buf->embed_vir_addr = paddr->cr_vir_addr + (pix_size >> 1);
+				}
+			}
+		}
+	}
+#endif
 
 #ifdef NO_SUPPROT_HARDWARE_CALCULATE
 	if ((vinc->vflip == 1) && (frame->fmt.fourcc == V4L2_PIX_FMT_FBC)) {
@@ -317,46 +509,83 @@ int vin_set_addr(struct vin_core *vinc, struct vb2_buffer *vb,
 			v_stride = frame->o_width / 2;
 		}
 
-		csic_dma_buffer_address(vinc->vipp_sel, CSI_BUF_0_A, paddr->y + y_stride);
-		csic_dma_buffer_address(vinc->vipp_sel, CSI_BUF_1_A, paddr->cb + u_stride);
-		csic_dma_buffer_address(vinc->vipp_sel, CSI_BUF_2_A, paddr->cr + v_stride);
-	} else {
-		if (vinc->vid_cap.frame.fmt.fourcc == V4L2_PIX_FMT_YVU420) {
-			csic_dma_buffer_address(vinc->vipp_sel, CSI_BUF_0_A, paddr->y);
-			csic_dma_buffer_address(vinc->vipp_sel, CSI_BUF_2_A, paddr->cb);
-			csic_dma_buffer_address(vinc->vipp_sel, CSI_BUF_1_A, paddr->cr);
-		} else {
-			csic_dma_buffer_address(vinc->vipp_sel, CSI_BUF_0_A, paddr->y);
-			csic_dma_buffer_address(vinc->vipp_sel, CSI_BUF_1_A, paddr->cb);
-			csic_dma_buffer_address(vinc->vipp_sel, CSI_BUF_2_A, paddr->cr);
-		}
-		if (__check_bk_bufaddr(vinc, paddr))
-			return -EINVAL;
-	}
-
-	if (vinc->dma_merge_mode == 1) {
-		if (vinc->id % 4 == 1 && vin_core_gbl[vinc->id - 1]) {
+		csic_dma_buffer_address(vinc->id, CSI_BUF_0_A, paddr->y + y_stride);
+		csic_dma_buffer_address(vinc->id, CSI_BUF_1_A, paddr->cb + u_stride);
+		csic_dma_buffer_address(vinc->id, CSI_BUF_2_A, paddr->cr + v_stride);
+	} else if (vinc->large_image == 3 || vinc->large_image == 4) {
+		/* 2in1 and DMA_STITCH_HORIZONTAL */
+		if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
 			offset_width = frame->o_width/2;
 			vinc_bind = vin_core_gbl[vinc->id - 1];
-			csic_dma_buffer_address(vinc_bind->vipp_sel, CSI_BUF_0_A, paddr->y);
-			csic_dma_buffer_address(vinc->vipp_sel, CSI_BUF_0_A, paddr->y + offset_width);
+			csic_dma_buffer_address(vinc_bind->id, CSI_BUF_0_A, paddr->y);
+			csic_dma_buffer_address(vinc->id, CSI_BUF_0_A, paddr->y + offset_width);
 			if (paddr->cr && paddr->cb) {
-				csic_dma_buffer_address(vinc_bind->vipp_sel, CSI_BUF_1_A, paddr->cb);
-				csic_dma_buffer_address(vinc_bind->vipp_sel, CSI_BUF_2_A, paddr->cr);
-				csic_dma_buffer_address(vinc->vipp_sel, CSI_BUF_1_A, paddr->cb + (offset_width >> 1));
-				csic_dma_buffer_address(vinc->vipp_sel, CSI_BUF_2_A, paddr->cr + (offset_width >> 1));
+				csic_dma_buffer_address(vinc_bind->id, CSI_BUF_1_A, paddr->cb);
+				csic_dma_buffer_address(vinc_bind->id, CSI_BUF_2_A, paddr->cr);
+				csic_dma_buffer_address(vinc->id, CSI_BUF_1_A, paddr->cb + (offset_width >> 1));
+				csic_dma_buffer_address(vinc->id, CSI_BUF_2_A, paddr->cr + (offset_width >> 1));
 			} else if (paddr->cb) {
-				csic_dma_buffer_address(vinc_bind->vipp_sel, CSI_BUF_1_A, paddr->cb);
-				csic_dma_buffer_address(vinc_bind->vipp_sel, CSI_BUF_2_A, paddr->cr);
-				csic_dma_buffer_address(vinc->vipp_sel, CSI_BUF_1_A, paddr->cb + (offset_width));
-				csic_dma_buffer_address(vinc->vipp_sel, CSI_BUF_2_A, paddr->cr);
+				csic_dma_buffer_address(vinc_bind->id, CSI_BUF_1_A, paddr->cb);
+				csic_dma_buffer_address(vinc_bind->id, CSI_BUF_2_A, paddr->cr);
+				csic_dma_buffer_address(vinc->id, CSI_BUF_1_A, paddr->cb + (offset_width));
+				csic_dma_buffer_address(vinc->id, CSI_BUF_2_A, paddr->cr);
 			} else {
-				csic_dma_buffer_address(vinc_bind->vipp_sel, CSI_BUF_1_A, paddr->cb);
-				csic_dma_buffer_address(vinc_bind->vipp_sel, CSI_BUF_2_A, paddr->cr);
-				csic_dma_buffer_address(vinc->vipp_sel, CSI_BUF_1_A, paddr->cb);
-				csic_dma_buffer_address(vinc->vipp_sel, CSI_BUF_2_A, paddr->cr);
+				csic_dma_buffer_address(vinc_bind->id, CSI_BUF_1_A, paddr->cb);
+				csic_dma_buffer_address(vinc_bind->id, CSI_BUF_2_A, paddr->cr);
+				csic_dma_buffer_address(vinc->id, CSI_BUF_1_A, paddr->cb);
+				csic_dma_buffer_address(vinc->id, CSI_BUF_2_A, paddr->cr);
+			}
+#if defined OUTPUT_EMBED_DATA
+			if (vinc->time_embed_en || vinc->ispbe_info_embed_en) {
+				csic_dma_embedded_addr(vinc_bind->id, buf->embed_dma_addr);
+				csic_dma_embedded_addr(vinc->id, buf->embed_dma_addr + EMBED_DATA_SIZE);
+			}
+#endif
+		}
+	} else if (vinc->large_image == 5) {
+		/* DMA_STITCH_VERTICAL */
+		if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
+			vinc_bind = vin_core_gbl[vinc->id - 1];
+			scaler = container_of(vinc_bind->vid_cap.pipe.sd[VIN_IND_SCALER], struct scaler_dev, subdev);
+			/* if dma_overlay.enable = 0, .dma_overlay_offset = 0 */
+			offset_width = frame->o_width * scaler->para.height;
+			csic_dma_buffer_address(vinc_bind->id, CSI_BUF_0_A, paddr->y);
+			csic_dma_buffer_address(vinc->id, CSI_BUF_0_A, paddr->y + offset_width + vinc->vid_cap.dma_overlay.overlay_offset);
+			if (paddr->cr && paddr->cb) {
+				csic_dma_buffer_address(vinc_bind->id, CSI_BUF_1_A, paddr->cb);
+				csic_dma_buffer_address(vinc_bind->id, CSI_BUF_2_A, paddr->cr);
+				csic_dma_buffer_address(vinc->id, CSI_BUF_1_A, paddr->cb + ((offset_width + vinc->vid_cap.dma_overlay.overlay_offset) >> 2));
+				csic_dma_buffer_address(vinc->id, CSI_BUF_2_A, paddr->cr + ((offset_width + vinc->vid_cap.dma_overlay.overlay_offset) >> 2));
+			} else if (paddr->cb) {
+				csic_dma_buffer_address(vinc_bind->id, CSI_BUF_1_A, paddr->cb);
+				csic_dma_buffer_address(vinc_bind->id, CSI_BUF_2_A, paddr->cr);
+				csic_dma_buffer_address(vinc->id, CSI_BUF_1_A, paddr->cb + ((offset_width + vinc->vid_cap.dma_overlay.overlay_offset) >> 1));
+				csic_dma_buffer_address(vinc->id, CSI_BUF_2_A, paddr->cr);
+			} else {
+				csic_dma_buffer_address(vinc_bind->id, CSI_BUF_1_A, paddr->cb);
+				csic_dma_buffer_address(vinc_bind->id, CSI_BUF_2_A, paddr->cr);
+				csic_dma_buffer_address(vinc->id, CSI_BUF_1_A, paddr->cb);
+				csic_dma_buffer_address(vinc->id, CSI_BUF_2_A, paddr->cr);
 			}
 		}
+	} else {
+		if (vinc->vid_cap.frame.fmt.fourcc == V4L2_PIX_FMT_YVU420) {
+			csic_dma_buffer_address(vinc->id, CSI_BUF_0_A, paddr->y);
+			csic_dma_buffer_address(vinc->id, CSI_BUF_2_A, paddr->cb);
+			csic_dma_buffer_address(vinc->id, CSI_BUF_1_A, paddr->cr);
+		} else {
+			csic_dma_buffer_address(vinc->id, CSI_BUF_0_A, paddr->y);
+			csic_dma_buffer_address(vinc->id, CSI_BUF_1_A, paddr->cb);
+			csic_dma_buffer_address(vinc->id, CSI_BUF_2_A, paddr->cr);
+		}
+#if defined OUTPUT_EMBED_DATA
+		if (vinc->time_embed_en || vinc->ispbe_info_embed_en)
+			csic_dma_embedded_addr(vinc->id, buf->embed_dma_addr);
+#endif
+#ifndef BUF_AUTO_UPDATE
+		if (__check_bk_bufaddr(vinc, paddr))
+			return -EINVAL;
+#endif
 	}
 
 	return 0;
@@ -371,6 +600,8 @@ void vin_set_next_buf_addr(struct vin_core *vinc)
 
 	if (vinc->large_image == 1)
 		return;
+	if ((vinc->large_image >= 3) && (vinc->id % 2 == 0))
+		return;
 
 	vinc->vid_cap.first_flag = 0;
 	vinc->vin_status.frame_cnt = 0;
@@ -379,33 +610,40 @@ void vin_set_next_buf_addr(struct vin_core *vinc)
 
 #ifndef BUF_AUTO_UPDATE
 	if (cap->vinc->ve_online_cfg.ve_online_support_flag == 1 && cap->vinc->ve_online_cfg.dma_buf_num == TWO_BK_ONE_BUFFER) {
-		if (vinc->id == 1) {
+		if (vinc->id == 1 || vinc->id == 2 || vinc->id == 3) {
 			cap = &vin_core_gbl[0]->vid_cap;
 			if (vin_streaming(cap) == 0) {
 				vin_err("please open and stream_on video0 first\n");
 				return;
 			}
-		} else if (vinc->id == 5) {
+#if !IS_ENABLED(CONFIG_ARCH_SUN20IW1) && !IS_ENABLED(CONFIG_ARCH_SUN8IW20)
+		} else if (vinc->id == 5 || vinc->id == 6 || vinc->id == 7) {
 			cap = &vin_core_gbl[4]->vid_cap;
 			if (vin_streaming(cap) == 0) {
 				vin_err("please open and stream_on video4 first\n");
 				return;
 			}
+#endif
 		}
 	}
 
+	vin_get_rest_buf_cnt(vinc);
+	if (vinc->vin_status.buf_rest <= 0) {
+		vin_err("%s the remaining number of active buffers is %d\n", __func__, vinc->vin_status.buf_rest);
+		return;
+	}
 	buf = list_entry(cap->vidq_active.next, struct vin_buffer, list);
 	vin_set_addr(vinc, &buf->vb.vb2_buf, &vinc->vid_cap.frame, &vinc->vid_cap.frame.paddr);
-#ifdef CONFIG_BUF_GET_FRAME_DONE
-	csic_set_stored_frm_threshold(vinc->vipp_sel, VIN_STORED_FRM_CNT);
+#if IS_ENABLED(CONFIG_BUF_GET_FRAME_DONE)
+	csic_set_stored_frm_threshold(vinc->id, VIN_STORED_FRM_CNT);
 #endif
 #else
 	vin_get_rest_buf_cnt(vinc);
 	cap->threshold.bufa_fifo_threshold = 1;
 	cap->threshold.stored_frm_threshold = 2;
 	cap->threshold.bufa_fifo_total = vinc->vin_status.buf_rest;
-	csic_buf_addr_fifo_en(vinc->vipp_sel, 1);
-	csic_set_threshold_for_bufa_mode(vinc->vipp_sel, &cap->threshold);
+	csic_buf_addr_fifo_en(vinc->id, 1);
+	csic_set_threshold_for_bufa_mode(vinc->id, &cap->threshold);
 	buf_next = cap->vidq_active.next;
 	for (i = 0; i < cap->threshold.bufa_fifo_total; i++) {
 		buf = list_entry(buf_next, struct vin_buffer, list);
@@ -513,6 +751,7 @@ static int queue_setup(struct vb2_queue *vq,
 {
 	struct vin_vid_cap *cap = vb2_get_drv_priv(vq);
 	unsigned int size;
+	__maybe_unused unsigned int embed_size;
 	int buf_max_flag = 0;
 	int wth;
 	int i;
@@ -551,14 +790,46 @@ static int queue_setup(struct vb2_queue *vq,
 			cap->lbc_cmp.line_tar_bits[1] = roundup(wth * cap->lbc_cmp.bit_depth * 2 + (wth * 2 / 16 * 2), 512);
 		}
 		/* add 1KB buffer to fix ve-lbc error */
-		cap->frame.payload[0] = (cap->lbc_cmp.line_tar_bits[0] + cap->lbc_cmp.line_tar_bits[1]) * cap->frame.o_height/2/8 + 1024;
+		if (cap->lbc_align_en)
+			/* align out_height with 16 to fix ve-encpp-lbc error */
+			cap->frame.payload[0] = (cap->lbc_cmp.line_tar_bits[0] + cap->lbc_cmp.line_tar_bits[1]) * roundup(cap->frame.o_height, VIN_ALIGN_HEIGHT)/2/8 + 1024;
+		else
+			cap->frame.payload[0] = (cap->lbc_cmp.line_tar_bits[0] + cap->lbc_cmp.line_tar_bits[1]) * cap->frame.o_height/2/8 + 1024;
 		break;
 	default:
-		cap->frame.payload[0] = size * cap->frame.fmt.depth[0] / 8;
+		if (cap->yuv_align_en)
+			/* add 64B buffer to fix ve error */
+			cap->frame.payload[0] = size * cap->frame.fmt.depth[0] / 8 + 64;
+		else
+			cap->frame.payload[0] = size * cap->frame.fmt.depth[0] / 8;
+
+		if ((cap->frame.o_width != roundup(cap->frame.o_width, VIN_ALIGN_WIDTH)) && (cap->frame.o_height != roundup(cap->frame.o_height, VIN_ALIGN_HEIGHT)))
+			vin_warn("width&height is towards %d alignment\n", VIN_ALIGN_WIDTH);
+		else if (cap->frame.o_width != roundup(cap->frame.o_width, VIN_ALIGN_WIDTH))
+			vin_warn("width is towards %d alignment\n", VIN_ALIGN_WIDTH);
+		else if (cap->frame.o_height != roundup(cap->frame.o_height, VIN_ALIGN_HEIGHT))
+			vin_warn("height is towards %d alignment\n", VIN_ALIGN_HEIGHT);
 		break;
 	}
 	cap->frame.payload[1] = size * cap->frame.fmt.depth[1] / 8;
 	cap->frame.payload[2] = size * cap->frame.fmt.depth[2] / 8;
+
+#if defined OUTPUT_EMBED_DATA
+	if (cap->vinc->time_embed_en || cap->vinc->ispbe_info_embed_en) {
+		if (cap->vinc->dma_merge_mode)
+			embed_size = EMBED_DATA_SIZE * 2;
+		else
+			embed_size = EMBED_DATA_SIZE;
+
+		if ((cap->frame.payload[1] == 0) && (cap->frame.payload[2] == 0)) {
+			cap->frame.payload[0] = roundup(cap->frame.payload[0], 64) + embed_size;
+		} else if (cap->frame.payload[1] && (cap->frame.payload[2] == 0)) {
+			cap->frame.payload[1] = roundup(cap->frame.payload[1], 64) + embed_size;
+		} else {
+			cap->frame.payload[2] = roundup(cap->frame.payload[2], 64) + embed_size;
+		}
+	}
+#endif
 	if (cap->vinc->ve_online_cfg.ve_online_support_flag == 1 && cap->vinc->ve_online_cfg.dma_buf_num == TWO_BK_ONE_BUFFER) {
 		if (cap->vinc->id == 1 || cap->vinc->id == 5) { /* video1 use video0 buf, video5 use video4 buf, so video1&video5 set buf size to 1kB to adapt v4l2 */
 			cap->frame.payload[0] = 4096;
@@ -594,7 +865,6 @@ static int queue_setup(struct vb2_queue *vq,
 				vin_err("buffer count != 1 in capture mode\n");
 			}
 		} else {
-#ifndef CONFIG_FRAMEDONE_TWO_BUFFER
 			if (cap->vinc->ve_online_cfg.dma_buf_num == BK_TWO_BUFFER && cap->vinc->ve_online_cfg.ve_online_support_flag == 1 && *nbuffers != 2) {
 				*nbuffers = 2;
 				vin_print("video%d:buffer count is invalid, set to 2\n", cap->vinc->id);
@@ -603,6 +873,7 @@ static int queue_setup(struct vb2_queue *vq,
 				*nbuffers = 1;
 				vin_print("video%d:buffer count is invalid, set to 1\n", cap->vinc->id);
 			} else {
+#if !IS_ENABLED(CONFIG_FRAMEDONE_TWO_BUFFER)
 				if (*nbuffers < 3) {
 #if IS_ENABLED(CONFIG_DISPPLAY_SYNC)
 					if (cap->vinc->id != disp_sync_video)
@@ -613,10 +884,10 @@ static int queue_setup(struct vb2_queue *vq,
 					vin_err("buffer count is invalid, set to 3\n");
 #endif
 				}
-			}
 #else
-			*nbuffers = 2;
+				*nbuffers = 2;
 #endif
+			}
 		}
 	}
 
@@ -653,6 +924,14 @@ static int buffer_prepare(struct vb2_buffer *vb)
 			return -EINVAL;
 		}
 		vb2_set_plane_payload(&buf->vb.vb2_buf, i, cap->frame.payload[i]);
+		if (vb->num_planes <= i) {
+			vin_err("%s return -EINVAL!!! vb->num_planes(%d) <= %d\n", __func__, vb->num_planes, i);
+			return -EINVAL;
+		}
+		if (!vb->planes[i].mem_priv) {
+			vin_print("%s return -EINVAL!!! vb->planes[%d].mem_priv is NULL!!!\n", __func__, i);
+			return -EINVAL;
+		}
 		vb->planes[i].m.offset = vb2_dma_contig_plane_dma_addr(vb, i);
 	}
 
@@ -709,7 +988,7 @@ static void stop_streaming(struct vb2_queue *vq)
 		vin_log(VIN_LOG_VIDEO, "buf %d stop\n", buf->vb.vb2_buf.index);
 	}
 
-#ifdef CONFIG_BUF_GET_FRAME_DONE
+#if IS_ENABLED(CONFIG_BUF_GET_FRAME_DONE)
 	while (!list_empty(&cap->vidq_used)) {
 		struct vin_buffer *buf;
 
@@ -732,6 +1011,64 @@ static const struct vb2_ops vin_video_qops = {
 	.wait_finish = vb2_ops_wait_finish,
 };
 
+#if IS_ENABLED(CONFIG_VIN_USE_ION_SIZE_POOL_HEAP)
+void *vin_dma_alloc(struct device *dev, size_t size,
+		dma_addr_t *dma_handle, gfp_t gfp, unsigned long attrs)
+{
+	struct vin_mm *buf;
+	struct vin_core *vinc = (struct vin_core *)dev_get_drvdata(dev);
+
+	buf = kzalloc(sizeof(*buf), GFP_KERNEL);
+	if (!buf) {
+		vin_err("buf memory alloc falied!\n");
+		return NULL;
+	}
+
+	buf->size = size;
+	vin_mem_pool_dma_alloc(dev, buf);
+	list_add_tail(&buf->list, &vinc->frame_buffer_list);
+	*dma_handle = (vin_dma_addr_t)buf->phy_addr;
+
+	return buf->vir_addr;
+}
+
+void vin_dma_free(struct device *dev, size_t size, void *cpu_addr,
+		dma_addr_t dma_handle, unsigned long attrs)
+{
+	struct vin_mm *buf, *tmp;
+	struct vin_core *vinc = (struct vin_core *)dev_get_drvdata(dev);
+
+	list_for_each_entry_safe(buf, tmp, &vinc->frame_buffer_list, list) {
+		if (buf->phy_addr == (void *)(uintptr_t)dma_handle) {
+			vin_mem_pool_dma_free(dev, buf);
+			list_del(&buf->list);
+			kfree(buf);
+			return;
+		}
+	}
+}
+
+int vin_dma_mmap(struct device *dev, struct vm_area_struct *vma,
+			  void *cpu_addr, dma_addr_t dma_addr, size_t size,
+			  unsigned long attrs)
+{
+	return vin_mem_pool_dma_mmap(dev, vma, cpu_addr, dma_addr, size, attrs);
+}
+
+static const struct dma_map_ops vin_dma_ops = {
+	.alloc = vin_dma_alloc,
+	.free = vin_dma_free,
+	.mmap = vin_dma_mmap,
+	.map_page = dma_direct_map_page,
+	.unmap_page = dma_direct_unmap_page,
+	.map_sg = dma_direct_map_sg,
+	.unmap_sg = dma_direct_unmap_sg,
+	.sync_single_for_device = dma_direct_sync_single_for_device,
+	.sync_single_for_cpu = dma_direct_sync_single_for_cpu,
+	.sync_sg_for_device = dma_direct_sync_sg_for_device,
+	.sync_sg_for_cpu = dma_direct_sync_sg_for_cpu,
+};
+#endif
 /*
  * IOCTL vidioc handling
   */
@@ -842,6 +1179,11 @@ static int vin_pipeline_try_format(struct vin_core *vinc,
 				    bool set)
 {
 	struct v4l2_subdev *sd = vinc->vid_cap.pipe.sd[VIN_IND_SENSOR];
+#if defined CSIC_DMA_VER_140_000 || defined CSIC_DMA_VER_150_000
+	__maybe_unused unsigned char logic_id = dma_virtual_find_logic[vinc->id];
+	__maybe_unused struct vin_core *logic_vinc = vin_core_gbl[logic_id];
+#endif
+	__maybe_unused unsigned int save_input_width, save_input_height;
 	struct v4l2_subdev_format sfmt;
 	struct media_entity *me;
 	struct vin_fmt *ffmt;
@@ -945,6 +1287,13 @@ static int vin_pipeline_try_format(struct vin_core *vinc,
 					sfmt.reserved[0] = ch_id;
 			}
 
+#if defined VIPP_ALLMASK_BK
+			if (logic_vinc && logic_vinc->vipp_cascade_en && sd->grp_id == VIN_GRP_ID_SCALER) {
+				save_input_width = sfmt.format.width;
+				save_input_height = sfmt.format.height;
+				sunxi_vipp_get_cascade_cfg(vinc->vipp_sel, logic_vinc->vipp_cascade_id * VIPP_VIRT_NUM + vipp_virtual_find_ch[vinc->vipp_sel], &sfmt.format.width, &sfmt.format.height);
+			}
+#endif
 			sfmt.pad = 0;
 			ret = v4l2_subdev_call(sd, pad, set_fmt, NULL, &sfmt);
 			if (ret) {
@@ -952,6 +1301,12 @@ static int vin_pipeline_try_format(struct vin_core *vinc,
 				media_graph_walk_cleanup(&graph);
 				return ret;
 			}
+#if defined VIPP_ALLMASK_BK
+			if (logic_vinc && logic_vinc->vipp_cascade_en && sd->grp_id == VIN_GRP_ID_SCALER) {
+				sfmt.format.width = save_input_width;
+				sfmt.format.height = save_input_height;
+			}
+#endif
 
 			/* set isp input win size for isp server call sensor_req_cfg */
 			if (sd->grp_id == VIN_GRP_ID_ISP)
@@ -1100,9 +1455,16 @@ static int __vin_set_fmt(struct vin_core *vinc, struct v4l2_format *f)
 	struct sensor_win_size win_cfg;
 	struct v4l2_mbus_framefmt mf;
 	struct vin_fmt *ffmt = NULL;
+	__maybe_unused struct sensor_blc_offset blc_ofs;
 	struct mbus_framefmt_res *res = (void *)mf.reserved;
 	__maybe_unused struct vin_md *vind = dev_get_drvdata(vinc->v4l2_dev->dev);
 	int ret = 0;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+	struct v4l2_subdev_state state;
+#endif
+	struct v4l2_subdev_pad_config cfg;
+	struct v4l2_subdev_selection sel;
+	struct v4l2_control c;
 
 	if (vin_streaming(cap)) {
 		vin_err("%s device busy\n", __func__);
@@ -1151,23 +1513,29 @@ static int __vin_set_fmt(struct vin_core *vinc, struct v4l2_format *f)
 	}
 #endif
 	if (ret == 0) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
-		struct v4l2_subdev_state state;
-#endif
-		struct v4l2_subdev_pad_config cfg;
-		struct v4l2_subdev_selection sel;
-
 		sunxi_isp_sensor_fps(cap->pipe.sd[VIN_IND_ISP], win_cfg.fps_fixed);
 #ifdef SUPPORT_ISP_TDM
-		if (cap->pipe.sd[VIN_IND_TDM_RX])
+		if (cap->pipe.sd[VIN_IND_TDM_RX]) {
 			sunxi_tdm_fps_clk(cap->pipe.sd[VIN_IND_TDM_RX], win_cfg.fps_fixed,
 								clk_get_rate(vind->clk[VIN_TOP_CLK].clock), win_cfg.vts);
+
+			if (cap->tdm_isp_mode == TDM_AIISP || cap->aiisp_switch == AIISP_SWITCH_ON) {
+				memset(&blc_ofs, 0, sizeof(blc_ofs));
+				ret = v4l2_subdev_call(cap->pipe.sd[VIN_IND_SENSOR], core, ioctl, GET_SENSOR_BLC, &blc_ofs);
+				if (ret < 0)
+					vin_warn("aiisp mode need get sensor blc offser\n");
+				else
+					sunxi_tdm_sensor_blc(cap->pipe.sd[VIN_IND_TDM_RX], &blc_ofs);
+			}
+		}
 #endif
 		vinc->vin_status.width = win_cfg.width;
 		vinc->vin_status.height = win_cfg.height;
 		vinc->vin_status.h_off = win_cfg.hoffset;
 		vinc->vin_status.v_off = win_cfg.voffset;
 		/* parser crop */
+		memset(&cfg, 0, sizeof(cfg));
+		memset(&sel, 0, sizeof(sel));
 		cfg.try_crop.width = win_cfg.width;
 		cfg.try_crop.height = win_cfg.height;
 		cfg.try_crop.left = win_cfg.hoffset;
@@ -1177,6 +1545,7 @@ static int __vin_set_fmt(struct vin_core *vinc, struct v4l2_format *f)
 
 		if (cap->pipe.sd[VIN_IND_CSI]) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+			memset(&state, 0, sizeof(state));
 			state.pads = &cfg;
 			ret = v4l2_subdev_call(cap->pipe.sd[VIN_IND_CSI], pad,
 						set_selection, &state, &sel);
@@ -1282,16 +1651,29 @@ static int __vin_set_fmt(struct vin_core *vinc, struct v4l2_format *f)
 		sunxi_flash_check_to_start(cap->pipe.sd[VIN_IND_FLASH],
 					   SW_CTRL_FLASH_ON);
 	} else {
-		sunxi_flash_stop(vinc->vid_cap.pipe.sd[VIN_IND_FLASH]);
+		if (vinc->vid_cap.pipe.sd[VIN_IND_FLASH]) {
+			sunxi_flash_stop(vinc->vid_cap.pipe.sd[VIN_IND_FLASH]);
+			c.id = V4L2_CID_FLASH_LED_MODE;
+			c.value = V4L2_FLASH_LED_MODE_NONE;
+			ret = v4l2_s_ctrl(NULL, vinc->vid_cap.pipe.sd[VIN_IND_FLASH]->ctrl_handler, &c);
+		}
 	}
 
 	if ((mf.width < f->fmt.pix_mp.width) || (mf.height < f->fmt.pix_mp.height)) {
-		f->fmt.pix_mp.width = mf.width;
-		f->fmt.pix_mp.height = mf.height;
+		vin_warn("user want %d*%d, but sensor can find %d*%d\n", f->fmt.pix_mp.width, f->fmt.pix_mp.height, mf.width, mf.height);
+		if (vinc->large_image < 4) {
+			f->fmt.pix_mp.width = mf.width;
+			f->fmt.pix_mp.height = mf.height;
+		}
 	}
 	/* for csi dma size set */
-	cap->frame.offs_h = (mf.width - f->fmt.pix_mp.width) / 2;
-	cap->frame.offs_v = (mf.height - f->fmt.pix_mp.height) / 2;
+	if (vinc->large_image > 3) {
+		cap->frame.offs_h = 0;
+		cap->frame.offs_v = 0;
+	} else {
+		cap->frame.offs_h = (mf.width - f->fmt.pix_mp.width) / 2;
+		cap->frame.offs_v = (mf.height - f->fmt.pix_mp.height) / 2;
+	}
 	cap->frame.o_width = f->fmt.pix_mp.width;
 	cap->frame.o_height = f->fmt.pix_mp.height;
 
@@ -1307,8 +1689,8 @@ static int vidioc_s_fmt_vid_cap_mplane(struct file *file, void *priv,
 	int ret;
 	__maybe_unused struct vin_core *vinc_bind = NULL;
 
-	if (vinc->dma_merge_mode == 1) {
-		if (vinc->id % 4 == 1 && vin_core_gbl[vinc->id - 1]) {
+	if (vinc->dma_merge_mode) {
+		if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
 			vinc_bind = vin_core_gbl[vinc->id - 1];
 			ret = __vin_set_fmt(vinc_bind, f);
 			if (ret < 0) {
@@ -1334,13 +1716,13 @@ int vidioc_s_selection(struct file *file, void *fh,
 	__maybe_unused struct vin_core *vinc_bind = NULL;
 	__maybe_unused struct v4l2_subdev_selection sel_bind;
 
-	if (vinc->dma_merge_mode == 1) {
+	if (vinc->dma_merge_mode) {
 		sel_bind.which = V4L2_SUBDEV_FORMAT_ACTIVE;
 		sel_bind.pad = SCALER_PAD_SINK;
 		sel_bind.target = s->target;
 		sel_bind.flags = s->flags;
 		sel_bind.r = s->r;
-		if (vinc->id % 4 == 1 && vin_core_gbl[vinc->id - 1]) {
+		if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
 			vinc_bind = vin_core_gbl[vinc->id - 1];
 			ret = v4l2_subdev_call(vinc_bind->vid_cap.pipe.sd[VIN_IND_SCALER], pad,
 						set_selection, NULL, &sel_bind);
@@ -1361,6 +1743,7 @@ int vidioc_s_selection(struct file *file, void *fh,
 		vin_err("v4l2 sub device scaler set_selection error!\n");
 	return ret;
 }
+
 int vidioc_g_selection(struct file *file, void *fh,
 				struct v4l2_selection *s)
 {
@@ -1426,10 +1809,15 @@ static void __osd_win_check(struct v4l2_window *win)
 			win->clipcount = MAX_OVERLAY_NUM;
 	} else {
 		if (MAX_ORL_NUM) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
 			if (win->clipcount / 2 > MAX_ORL_NUM)
 				win->clipcount = MAX_ORL_NUM;
 			else
 				win->clipcount /= 2;
+#else
+			if (win->clipcount > MAX_ORL_NUM)
+				win->clipcount = MAX_ORL_NUM;
+#endif
 		} else {
 			if (win->clipcount > MAX_COVER_NUM)
 				win->clipcount = MAX_COVER_NUM;
@@ -1987,6 +2375,41 @@ static int vidioc_overlay(struct file *file, void *__fh, unsigned int on)
 	return ret;
 }
 
+static int vidioc_expbuf(struct file *file, void *priv, struct v4l2_exportbuffer *p)
+{
+#if IS_ENABLED(CONFIG_VIN_USE_ION_SIZE_POOL_HEAP)
+	struct vin_core *vinc = video_drvdata(file);
+	struct video_device *vdev = video_devdata(file);
+	struct vin_mm *buf, *tmp;
+
+	if (vdev->queue->memory != VB2_MEMORY_MMAP) {
+		vin_err("queue is not currently set up for mmap\n");
+		return -EINVAL;
+	}
+
+	if (p->flags & ~(O_CLOEXEC | O_ACCMODE)) {
+		vin_err("queue does support only O_CLOEXEC and access mode flags\n");
+		return -EINVAL;
+	}
+
+	list_for_each_entry_safe(buf, tmp, &vinc->frame_buffer_list, list) {
+		if (buf->phy_addr == (void *)(uintptr_t)p->plane) { /* p->plane is used for phy_addr */
+			p->fd = dma_buf_fd(buf->buf, p->flags & ~O_ACCMODE);
+			if (p->fd < 0) {
+				vin_err("buf%d phy_addr0x%x failed to export (%d)\n", p->index, p->plane, p->fd);
+				return -EINVAL;
+			}
+			get_dma_buf(buf->buf);
+			return 0;
+		}
+	}
+	vin_err("cannot find buf%d phy_addr 0x%x\n", p->index, p->plane);
+	return -EINVAL;
+#else
+	return vb2_ioctl_expbuf(file, priv, p);
+#endif
+}
+
 int vin_timer_init(struct vin_core *vinc)
 {
 	return 0;
@@ -2005,6 +2428,7 @@ void vin_timer_update(struct vin_core *vinc, int ms)
 static int __vin_sensor_setup_link(struct vin_core *vinc, struct modules_config *module,
 					int i, int en)
 {
+#if !IS_ENABLED(CONFIG_DEF_MEDIA_LINK)
 	struct vin_md *vind = dev_get_drvdata(vinc->v4l2_dev->dev);
 	struct v4l2_subdev *sensor = module->modules.sensor[i].sd;
 	struct v4l2_subdev *subdev;
@@ -2050,6 +2474,7 @@ static int __vin_sensor_setup_link(struct vin_core *vinc, struct modules_config 
 				link->sink->entity->name);
 		return -1;
 	}
+#endif
 	return 0;
 }
 
@@ -2106,7 +2531,7 @@ static int __csi_isp_setup_link(struct vin_core *vinc, int en)
 		return -1;
 	}
 #else
-#if !defined CONFIG_DEF_MEDIA_LINK
+#if !IS_ENABLED(CONFIG_DEF_MEDIA_LINK)
 	struct vin_md *vind = dev_get_drvdata(vinc->v4l2_dev->dev);
 	struct v4l2_subdev *csi, *tdm_rx;
 	struct media_link *link = NULL;
@@ -2169,6 +2594,11 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	int valid_idx = module->sensors.valid_idx;
 	int ret = 0;
 	__maybe_unused struct vin_core *vinc_bind = NULL;
+	__maybe_unused struct vin_buffer *buf;
+	__maybe_unused struct list_head *buf_next;
+	__maybe_unused int sensorA_frame_offset;
+	__maybe_unused int sensorB_frame_offset;
+	struct scaler_dev *scaler = NULL;
 
 	if (i != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
 		ret = -EINVAL;
@@ -2181,9 +2611,49 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 		goto streamon_error;
 	}
 
+	sensor_check_vblank(cap->pipe.sd[VIN_IND_SENSOR]);
+
 	ret = vb2_ioctl_streamon(file, priv, i);
 	if (ret)
 		goto streamon_error;
+
+	if (vinc->large_image == 5) {
+		vin_log(VIN_LOG_LARGE, "dma_overlay.enable = %d\n", cap->dma_overlay.enable);
+		if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
+			if (cap->dma_overlay.enable) {
+				if (cap->dma_overlay.logo_data) {
+					vinc_bind = vin_core_gbl[vinc->id - 1];
+					scaler = container_of(vinc_bind->vid_cap.pipe.sd[VIN_IND_SCALER], struct scaler_dev, subdev);
+					sensorA_frame_offset = scaler->para.width * scaler->para.height;
+					scaler = container_of(vinc->vid_cap.pipe.sd[VIN_IND_SCALER], struct scaler_dev, subdev);
+					sensorB_frame_offset = scaler->para.width * scaler->para.height;
+					buf_next = cap->vidq_active.next;
+					while (buf_next !=  &cap->vidq_active) {
+						buf = list_entry(buf_next, struct vin_buffer, list);
+						vin_log(VIN_LOG_LARGE, "dma_overlay_frame_vaddr (0x%p, 0x%p, 0x%p) sensorA_frame_offset = %d, sensorB_frame_offset = %d, dma_overlay_offset = %d\n",
+							vb2_plane_vaddr(&buf->vb.vb2_buf, 0), vb2_plane_vaddr(&buf->vb.vb2_buf, 1), vb2_plane_vaddr(&buf->vb.vb2_buf, 2),
+							sensorA_frame_offset, sensorB_frame_offset, cap->dma_overlay.overlay_offset);
+						/*
+							SensorA
+							logo
+							SensorB
+						*/
+						/*  copy_from_user_Y */
+						memcpy((vb2_plane_vaddr(&buf->vb.vb2_buf, 0) + sensorA_frame_offset), cap->dma_overlay.logo_data, cap->dma_overlay.overlay_offset);
+						/* copy_from_user_UV */
+						memcpy((vb2_plane_vaddr(&buf->vb.vb2_buf, 0) + sensorA_frame_offset + (roundup(cap->dma_overlay.height, 16) * roundup(cap->dma_overlay.width, 16)) +
+						sensorB_frame_offset + (sensorA_frame_offset >> 1)), &cap->dma_overlay.logo_data[cap->dma_overlay.overlay_offset], (cap->dma_overlay.overlay_offset >> 1));
+						buf_next = buf_next->next;
+					}
+					vfree(cap->dma_overlay.logo_data);
+				} else {
+					vin_err("logo_data is NULL!!!\n");
+				}
+			} else {
+				vin_warn("dma_overlay.enable = %d, it will not insert logo\n", cap->dma_overlay.enable);
+			}
+		}
+	}
 
 	if (vinc->large_image == 1) {
 #ifdef SUPPORT_PTN_LARGE
@@ -2196,7 +2666,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 			vin_err("ptn buffer 0x%x alloc failed!\n", cap->buf_byte_size);
 			return -ENOMEM;
 		}
-		csic_dma_buffer_address(vinc->vipp_sel, CSI_BUF_0_A, (vin_dma_addr_t)vinc->ptn_cfg.ptn_buf.dma_addr);
+		csic_dma_buffer_address(vinc->id, CSI_BUF_0_A, (vin_dma_addr_t)vinc->ptn_cfg.ptn_buf.dma_addr);
 #endif
 	}
 
@@ -2218,15 +2688,15 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	mutex_lock(&cap->vdev.entity.graph_obj.mdev->graph_mutex);
 	vin_timer_init(cap->vinc);
 
-	if (vinc->dma_merge_mode == 1) {
-		vin_set_next_buf_addr(cap->vinc);
-		if (vinc->id % 4 == 1 && vin_core_gbl[vinc->id - 1]) {
+	if (vinc->dma_merge_mode) {
+		if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
 			vinc_bind = vin_core_gbl[vinc->id - 1];
 			ret = vin_pipeline_call(vinc_bind, set_stream, &vinc_bind->vid_cap.pipe, vinc_bind->stream_idx);
 			if (ret < 0)
 				vin_err("video%d %s error!\n", vinc_bind->id, __func__);
 			set_bit(VIN_STREAM, &vinc_bind->vid_cap.state);
 		}
+		vin_set_next_buf_addr(cap->vinc);
 	}
 
 	ret = vin_pipeline_call(cap->vinc, set_stream, &cap->pipe, cap->vinc->stream_idx);
@@ -2243,7 +2713,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	 */
 	mutex_unlock(&cap->vdev.entity.graph_obj.mdev->graph_mutex);
 #if VIN_FALSE
-#if IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
+#if IS_ENABLED(CONFIG_ISP_SPECIAL_LDCI)
 	isp = container_of(cap->pipe.sd[VIN_IND_ISP], struct isp_dev, subdev);
 	if (isp->gtm_type == 4) {
 		if ((vinc->id == 0) && (!check_ldci_video_relate(vinc->id, LDCI0_VIDEO_CHN))) {
@@ -2277,6 +2747,8 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
 	struct vin_md *vind = dev_get_drvdata(vinc->v4l2_dev->dev);
 	struct vin_vid_cap *cap = &vinc->vid_cap;
 	struct modules_config *module = &vind->modules[vinc->sensor_sel];
+	__maybe_unused struct tdm_rx_dev *tdm_rx;
+	__maybe_unused struct tdm_dev *tdm;
 	int valid_idx = module->sensors.valid_idx;
 	int ret = 0;
 	__maybe_unused struct vin_core *vinc_bind = NULL;
@@ -2287,7 +2759,7 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
 	vin_timer_del(vinc);
 
 #if VIN_FALSE
-#if IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
+#if IS_ENABLED(CONFIG_ISP_SPECIAL_LDCI)
 	isp = container_of(cap->pipe.sd[VIN_IND_ISP], struct isp_dev, subdev);
 	if (isp->gtm_type == 4) {
 		if ((vinc->id == 0) && (!check_ldci_video_relate(vinc->id, LDCI0_VIDEO_CHN))) {
@@ -2302,10 +2774,11 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
 	mutex_lock(&cap->vdev.entity.graph_obj.mdev->graph_mutex);
 	clear_bit(VIN_STREAM, &cap->state);
 	vin_pipeline_call(vinc, set_stream, &cap->pipe, 0);
-	if (vinc->dma_merge_mode == 1) {
-		if (vinc->id % 4 == 1 && vin_core_gbl[vinc->id - 1]) {
+	if (vinc->dma_merge_mode) {
+		if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
 			vinc_bind = vin_core_gbl[vinc->id - 1];
 			clear_bit(VIN_STREAM, &vinc_bind->vid_cap.state);
+			clear_bit(VIN_BUSY, &vinc_bind->vid_cap.state);
 			vin_pipeline_call(vinc_bind, set_stream, &vinc_bind->vid_cap.pipe, 0);
 			__csi_isp_setup_link(vinc_bind, 0);
 			__vin_sensor_setup_link(vinc_bind, module, valid_idx, 0);
@@ -2315,6 +2788,17 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
 	__csi_isp_setup_link(vinc, 0);
 	__vin_sensor_setup_link(vinc, module, valid_idx, 0);
 	mutex_unlock(&cap->vdev.entity.graph_obj.mdev->graph_mutex);
+
+#if defined SUPPORT_ISP_TDM && (defined TDM_V200 || defined TDM_V230)
+	if (vinc->tdm_rx_sel != 0xff) {
+		tdm_rx = container_of(cap->pipe.sd[VIN_IND_TDM_RX], struct tdm_rx_dev, subdev);
+		tdm = container_of(tdm_rx, struct tdm_dev, tdm_rx[tdm_rx->id]);
+
+		if (tdm->stream_cnt == 0) {
+			cancel_work_sync(&tdm->tdm_reset_task);
+		}
+	}
+#endif
 
 	if (i != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
 		ret = -EINVAL;
@@ -2502,9 +2986,10 @@ static int vidioc_s_input(struct file *file, void *priv, unsigned int i)
 	int ret;
 	__maybe_unused struct vin_core *vinc_bind = NULL;
 
-	if (vinc->dma_merge_mode == 1) {
-		if (vinc->id % 4 == 1 && vin_core_gbl[vinc->id - 1]) {
+	if (vinc->dma_merge_mode) {
+		if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
 			vinc_bind = vin_core_gbl[vinc->id - 1];
+			set_bit(VIN_BUSY, &vinc_bind->vid_cap.state);
 			ret = __vin_s_input(vinc_bind, i);
 			if (ret < 0)
 				return ret;
@@ -2552,13 +3037,20 @@ static int __vin_s_parm(struct vin_core *vinc, struct v4l2_streamparm *parms)
 		parms->parm.capture.capturemode = V4L2_MODE_PREVIEW;
 	}
 
-	if (vinc->dma_merge_mode == 1)
+	if (vinc->dma_merge_mode == 1) {
+		/* large_image 4 means DMA_STITCH_2IN1_LINNER */
 		parms->parm.capture.reserved[2] = 3;
+	} else if (vinc->dma_merge_mode == 2) {
+		/* large_image 4 means DMA_STITCH_HORIZONTAL */
+		parms->parm.capture.reserved[2] = 4;
+	} else if (vinc->dma_merge_mode == 3) {
+		/* large_image 4 means DMA_STITCH_VERTICAL */
+		parms->parm.capture.reserved[2] = 5;
+	}
+
 
 	if ((vinc->csi_ch != 0xff) && (vinc->csi_ch & 0x20))
 		sunxi_csi_set_ch_mode(cap->pipe.sd[VIN_IND_CSI]);
-	else if ((vinc->csi_ch != 0xff) && (vinc->csi_ch & 0x40))
-		sunxi_csi_set_ch_fps_mode(cap->pipe.sd[VIN_IND_CSI]);
 
 	cap->capture_mode = parms->parm.capture.capturemode;
 	vinc->large_image = parms->parm.capture.reserved[2];
@@ -2602,8 +3094,8 @@ static int vidioc_s_parm(struct file *file, void *priv,
 	int ret;
 	__maybe_unused struct vin_core *vinc_bind = NULL;
 
-	if (vinc->dma_merge_mode == 1) {
-		if (vinc->id % 4 == 1 && vin_core_gbl[vinc->id - 1]) {
+	if (vinc->dma_merge_mode) {
+		if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
 			vinc_bind = vin_core_gbl[vinc->id - 1];
 			ret = __vin_s_parm(vinc_bind, parms);
 			if (ret < 0)
@@ -2762,8 +3254,8 @@ int vidioc_sync_ctrl(struct file *file, struct v4l2_fh *fh,
 		csic_prs_sync_cfg(vinc->csi_sel, sync);
 		csic_prs_sync_wait_N(vinc->csi_sel, sync);
 		csic_prs_sync_wait_M(vinc->csi_sel, sync);
-		csic_frame_cnt_enable(vinc->vipp_sel);
-		csic_dma_frm_cnt(vinc->vipp_sel, sync);
+		csic_frame_cnt_enable(vinc->id);
+		csic_dma_frm_cnt(vinc->id, sync);
 		csic_prs_sync_en(vinc->csi_sel, sync);
 	} else {
 		csic_prs_xs_en(vinc->csi_sel, sync);
@@ -2824,12 +3316,13 @@ static int vidioc_vin_ptn_config(struct file *file, struct v4l2_fh *fh,
 		sunxi_isp_ptn(vinc->vid_cap.pipe.sd[VIN_IND_ISP], vinc->ptn_cfg.ptn_type);
 		isp->ptn_cfg = &vinc->ptn_cfg;
 		switch (ptn->ptn_fmt) {
+		/* the data needs to be converted to 10bit format */
 		case V4L2_PIX_FMT_SBGGR8:
 		case V4L2_PIX_FMT_SGBRG8:
 		case V4L2_PIX_FMT_SGRBG8:
 		case V4L2_PIX_FMT_SRGGB8:
 			vinc->ptn_cfg.ptn_dw = 0;
-			vinc->ptn_cfg.ptn_size = ptn->ptn_w * ptn->ptn_h;
+			vinc->ptn_cfg.ptn_size = ptn->ptn_w * ptn->ptn_h * 2;
 			break;
 		case V4L2_PIX_FMT_SBGGR10:
 		case V4L2_PIX_FMT_SGBRG10:
@@ -2921,12 +3414,13 @@ static int vidioc_vin_first_ptn_config(struct file *file, struct v4l2_fh *fh,
 		vinc->ptn_cfg.ptn_mode = 12;
 		vinc->ptn_cfg.ptn_buf.size = ptn->ptn_size + 64; /* read 16word for vblanks */
 		switch (ptn->ptn_fmt) {
+		/* the data needs to be converted to 10bit format */
 		case V4L2_PIX_FMT_SBGGR8:
 		case V4L2_PIX_FMT_SGBRG8:
 		case V4L2_PIX_FMT_SGRBG8:
 		case V4L2_PIX_FMT_SRGGB8:
 			vinc->ptn_cfg.ptn_dw = 0;
-			vinc->ptn_cfg.ptn_size = ptn->ptn_w * ptn->ptn_h;
+			vinc->ptn_cfg.ptn_size = ptn->ptn_w * ptn->ptn_h * 2;
 			break;
 		case V4L2_PIX_FMT_SBGGR10:
 		case V4L2_PIX_FMT_SGBRG10:
@@ -2975,7 +3469,7 @@ static int vidioc_vin_first_ptn_config(struct file *file, struct v4l2_fh *fh,
 				return -ENOMEM;
 			}
 
-			vin_print("ptn dma_addr is 0x%p, size is 0x%x\n", vinc->ptn_cfg.ptn_buf.dma_addr, (unsigned int)vinc->ptn_cfg.ptn_buf.size);
+			vin_print("first ptn dma_addr is 0x%p, size is 0x%x\n", vinc->ptn_cfg.ptn_buf.dma_addr, (unsigned int)vinc->ptn_cfg.ptn_buf.size);
 
 			ret = copy_from_user(vinc->ptn_cfg.ptn_buf.vir_addr, (void *)ptn->ptn_addr, vinc->ptn_cfg.ptn_size);
 			if (ret < 0) {
@@ -3051,10 +3545,10 @@ static int vidioc_set_parser_fps(struct file *file, struct v4l2_fh *fh,
 	csi->prs_fps_ds.ch2_fps_ds = parser_fps_ds->ch2_fps_ds & 0xf;
 	csi->prs_fps_ds.ch3_fps_ds = parser_fps_ds->ch3_fps_ds & 0xf;
 
-	csi->prs_fps_ds.ch0_frm_data_mask = (parser_fps_ds->ch0_fps_ds >> 16) && 0xff;
-	csi->prs_fps_ds.ch1_frm_data_mask = (parser_fps_ds->ch1_fps_ds >> 16) && 0xff;
-	csi->prs_fps_ds.ch2_frm_data_mask = (parser_fps_ds->ch2_fps_ds >> 16) && 0xff;
-	csi->prs_fps_ds.ch3_frm_data_mask = (parser_fps_ds->ch3_fps_ds >> 16) && 0xff;
+	csi->prs_fps_ds.ch0_frm_data_mask = (parser_fps_ds->ch0_fps_ds >> 16) & 0xff;
+	csi->prs_fps_ds.ch1_frm_data_mask = (parser_fps_ds->ch1_fps_ds >> 16) & 0xff;
+	csi->prs_fps_ds.ch2_frm_data_mask = (parser_fps_ds->ch2_fps_ds >> 16) & 0xff;
+	csi->prs_fps_ds.ch3_frm_data_mask = (parser_fps_ds->ch3_fps_ds >> 16) & 0xff;
 
 	return 0;
 }
@@ -3086,7 +3580,7 @@ static int vidioc_set_sensor_isp_cfg(struct file *file, struct v4l2_fh *fh,
 	struct v4l2_subdev *sd	= vinc->vid_cap.pipe.sd[VIN_IND_SENSOR];
 	struct sensor_info *info = container_of(sd, struct sensor_info, sd);
 
-	if (vinc->dma_merge_mode != 1) {
+	if (vinc->dma_merge_mode == 0) {
 		isp->large_image = sensor_isp_cfg->large_image;
 	}
 
@@ -3100,11 +3594,14 @@ static int vidioc_set_ve_online_cfg(struct file *file, struct v4l2_fh *fh,
 			struct csi_ve_online_cfg *cfg)
 {
 	struct vin_core *vinc = video_drvdata(file);
+	struct vin_core *vinc_bind = NULL;
 /* This array is used to determine whether a video node supports ve online mode,
 * 1 means support, 0 means not support.
 */
 #if IS_ENABLED(CONFIG_ARCH_SUN300IW1)
-	int csi_ve_online_video[VIN_MAX_DEV] = {1, 1, 1, 1, 1, 1, 1, 1};
+	int csi_ve_online_video[VIN_MAX_DEV] = {1, 1, 1, 1, 1, 1};
+#elif IS_ENABLED(CONFIG_ARCH_SUN252IW1)
+	int csi_ve_online_video[VIN_MAX_DEV] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 #else
 	int csi_ve_online_video[VIN_MAX_DEV] = {0};
 #endif
@@ -3113,6 +3610,14 @@ static int vidioc_set_ve_online_cfg(struct file *file, struct v4l2_fh *fh,
 		vinc->ve_online_cfg.ve_online_en = 0;
 		vinc->ve_online_cfg.ve_online_support_flag = 0;
 		vinc->ve_online_cfg.dma_buf_num = BK_MUL_BUFFER;
+		if (vinc->large_image == 3) {
+			if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
+				vinc_bind = vin_core_gbl[vinc->id - 1];
+				vinc_bind->ve_online_cfg.ve_online_en = 0;
+				vinc_bind->ve_online_cfg.ve_online_support_flag = 0;
+				vinc_bind->ve_online_cfg.dma_buf_num = BK_MUL_BUFFER;
+			}
+		}
 		vin_print("ve_online close\n");
 		return 0;
 	}
@@ -3120,12 +3625,20 @@ static int vidioc_set_ve_online_cfg(struct file *file, struct v4l2_fh *fh,
 	if (csi_ve_online_video[vinc->id]) {
 		memcpy(&vinc->ve_online_cfg, cfg, sizeof(struct csi_ve_online_cfg));
 		vinc->ve_online_cfg.ve_online_support_flag = 1;
+		if (vinc->dma_merge_mode == 1) {
+			if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
+				vinc_bind = vin_core_gbl[vinc->id - 1];
+				memcpy(&vinc_bind->ve_online_cfg, cfg, sizeof(struct csi_ve_online_cfg));
+				vinc_bind->ve_online_cfg.ve_online_support_flag = 1;
+				vin_print("video%d ve_online %s, buffer_num is %d\n", vinc_bind->id, vinc_bind->ve_online_cfg.ve_online_en ? "open" : "close", vinc_bind->ve_online_cfg.dma_buf_num);
+			}
+		}
 	} else {
 		vin_err("video%d does not support ve online mode\n", vinc->id);
 		return -1;
 	}
 
-	vin_print("ve_online %s, buffer_num is %d\n", vinc->ve_online_cfg.ve_online_en ? "open" : "close", vinc->ve_online_cfg.dma_buf_num);
+	vin_print("video%d ve_online %s, buffer_num is %d\n", vinc->id, vinc->ve_online_cfg.ve_online_en ? "open" : "close", vinc->ve_online_cfg.dma_buf_num);
 
 	return 0;
 }
@@ -3160,15 +3673,14 @@ static int vidioc_set_vipp_shrink_cfg(struct file *file, struct v4l2_fh *fh,
 static int vidioc_set_tdm_speeddn_cfg(struct file *file, struct v4l2_fh *fh,
 			struct tdm_speeddn_cfg *cfg)
 {
-#if defined SUPPORT_ISP_TDM && defined TDM_V200
+#if defined SUPPORT_ISP_TDM && (defined TDM_V200 || defined TDM_V230)
 	struct vin_core *vinc = video_drvdata(file);
 	struct vin_vid_cap *cap = &vinc->vid_cap;
-	struct mipi_dev *mipi = container_of(cap->pipe.sd[VIN_IND_MIPI], struct mipi_dev, subdev);
-	struct tdm_rx_dev *tdm_rx = container_of(cap->pipe.sd[VIN_IND_TDM_RX], struct tdm_rx_dev, subdev);
-	struct tdm_dev *tdm = container_of(tdm_rx, struct tdm_dev, tdm_rx[tdm_rx->id]);
-	struct csi_dev *csi = v4l2_get_subdevdata(cap->pipe.sd[VIN_IND_CSI]);
+	struct mipi_dev *mipi = NULL;
+	struct tdm_rx_dev *tdm_rx = NULL;
+	struct tdm_dev *tdm = NULL;
 
-	if (csi->bus_info.bus_if == V4L2_MBUS_CSI2_DPHY) {
+	if (vinc->mipi_sel != 0xff) {
 		if (cfg->pix_num == MIPI_TWO_PIXEL && mipi->cmb_csi_cfg.lane_num != 4) {
 			cfg->pix_num = MIPI_ONE_PIXEL;
 			vin_warn("mipi %d lane cannot support two pixel, set to one pexel\n", mipi->cmb_csi_cfg.lane_num);
@@ -3179,25 +3691,29 @@ static int vidioc_set_tdm_speeddn_cfg(struct file *file, struct v4l2_fh *fh,
 			vin_warn("when mipi set to two pixel, must open tdm speed_dn\n");
 		}
 
+		mipi = container_of(cap->pipe.sd[VIN_IND_MIPI], struct mipi_dev, subdev);
 		mipi->cmb_csi_cfg.pix_num = (enum cmb_csi_pix_num)cfg->pix_num;
 	}
 
-	tdm->ws.speed_dn_en = cfg->tdm_speed_down_en;
-	if (cfg->tdm_tx_valid_num || cfg->tdm_tx_invalid_num) {
-		tdm->tx_cfg.valid_num = cfg->tdm_tx_valid_num;
-		tdm->tx_cfg.invalid_num = cfg->tdm_tx_invalid_num;
-	} else {
-		tdm->tx_cfg.valid_num = 1;
-		tdm->tx_cfg.invalid_num = 0;
+	if (vinc->tdm_rx_sel != 0xff) {
+		tdm_rx = container_of(cap->pipe.sd[VIN_IND_TDM_RX], struct tdm_rx_dev, subdev);
+		tdm = container_of(tdm_rx, struct tdm_dev, tdm_rx[tdm_rx->id]);
+		tdm->ws.speed_dn_en = cfg->tdm_speed_down_en;
+		if (cfg->tdm_tx_valid_num || cfg->tdm_tx_invalid_num) {
+			tdm->tx_cfg.valid_num = cfg->tdm_tx_valid_num;
+			tdm->tx_cfg.invalid_num = cfg->tdm_tx_invalid_num;
+		} else {
+			tdm->tx_cfg.valid_num = 1;
+			tdm->tx_cfg.invalid_num = 0;
+		}
 	}
 #endif
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
 static int vin_get_isp_encpp_attr_cfg(struct file *file, struct v4l2_fh *fh, struct isp_encpp_cfg_attr_data *encpp_attr_cfg)
 {
-
+#if IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
 	struct vin_core *vinc = video_drvdata(file);
 	struct isp_dev *isp = v4l2_get_subdevdata(vinc->vid_cap.pipe.sd[VIN_IND_ISP]);
 
@@ -3223,8 +3739,158 @@ static int vin_get_isp_encpp_attr_cfg(struct file *file, struct v4l2_fh *fh, str
 		vin_err("encpp_attr_cfg is NULL!!!\n");
 		return -1;
 	}
-
+#endif
 	return 0;
+}
+
+#if IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
+static int vin_set_from_partition(struct vin_vid_cap *cap)
+{
+	int ret = 0;
+	void *vaddr = NULL;
+	SENSOR_ISP_CONFIG_S *sensor_isp_cfg;
+	struct ir_switch ir_switch;
+	unsigned int map_addr = 0;
+	unsigned int check_sign = 0;
+	enum ir_mode ir_mode = DAY_MODE;
+	__maybe_unused struct v4l2_control c;
+	__maybe_unused struct csic_dma_flip flip;
+	__maybe_unused struct v4l2_subdev *sensor = cap->pipe.sd[VIN_IND_SENSOR];
+	/* struct isp_dev *isp = container_of(cap->pipe.sd[VIN_IND_ISP], struct isp_dev, subdev); */
+
+	if (cap->vinc->mipi_sel == 0) {
+		map_addr = VIN_SENSOR0_RESERVE_ADDR;
+		check_sign = 0xAA66AA66;
+	} else {
+		map_addr = VIN_SENSOR1_RESERVE_ADDR;
+		check_sign = 0xBB66BB66;
+	}
+
+	vaddr = vin_map_kernel(map_addr, VIN_RESERVE_SIZE);
+	if (vaddr == NULL) {
+		vin_err("%s:map 0x%x paddr err!!!", __func__, map_addr);
+		ret = -EFAULT;
+		goto ekzalloc;
+	}
+
+	sensor_isp_cfg = (SENSOR_ISP_CONFIG_S *)vaddr;
+
+/*	sensor_isp_cfg->sign = 0xBB66BB66;
+	sensor_isp_cfg->mirror = 0;
+	sensor_isp_cfg->filp = 0;
+	sensor_isp_cfg->ir_mode = DAY_MODE;
+	sensor_isp_cfg->light_enable = 0; */
+
+	/* check id */
+	if (sensor_isp_cfg->sign != check_sign) {
+		vin_warn("%s:sign is 0x%x but not 0x%x\n", __func__, sensor_isp_cfg->sign, check_sign);
+		ret = -EINVAL;
+		goto unmap;
+	}
+
+	vin_log(VIN_LOG_CONFIG, "partition version:0x%x, light_enable:%d, adc_mode:%d, light_def:%d, mirror:%d, flip:%d, ir_mode:%s\n",
+				sensor_isp_cfg->ver, sensor_isp_cfg->light_enable, sensor_isp_cfg->adc_mode,
+				sensor_isp_cfg->light_def, sensor_isp_cfg->mirror, sensor_isp_cfg->filp,
+				sensor_isp_cfg->ir_mode ? (sensor_isp_cfg->ir_mode == 1 ? "auto_mode" : "night_mode") : "day_mode");
+
+#if IS_ENABLED(CONFIG_ENABLE_SENSOR_FLIP_OPTION)
+	/* mirror */
+	if (sensor_isp_cfg->mirror) {
+		c.id = V4L2_CID_HFLIP;
+		c.value = sensor_isp_cfg->mirror > 1 ? 0 : sensor_isp_cfg->mirror;
+		v4l2_s_ctrl(NULL, sensor->ctrl_handler, &c);
+	}
+	/* filp */
+	if (sensor_isp_cfg->filp) {
+		c.id = V4L2_CID_VFLIP;
+		c.value = sensor_isp_cfg->filp > 1 ? 0 : sensor_isp_cfg->filp;
+		v4l2_s_ctrl(NULL, sensor->ctrl_handler, &c);
+	}
+#else
+	flip.hflip_en = sensor_isp_cfg->filp > 1 ? 0 : sensor_isp_cfg->filp;
+	flip.vflip_en = sensor_isp_cfg->mirror > 1 ? 0 : sensor_isp_cfg->mirror;
+	csic_dma_flip_en(cap->vinc->id, &flip);
+#endif
+
+	/* boot0/melis set ir, kernel hold it */
+	if (sensor_isp_cfg->ircut_state) {
+		if (sensor_isp_cfg->ircut_state == 1)
+			ir_mode = DAY_MODE;
+		else if (sensor_isp_cfg->ircut_state == 2)
+			ir_mode = NIGHT_MODE;
+		ir_switch.ir_hold = sensor_isp_cfg->ircut_state;
+		v4l2_subdev_call(sensor, core, ioctl, VIDIOC_VIN_SET_IR, &ir_switch);
+	} else {
+		ir_switch.ir_hold = 0;
+		/* force day or night */
+		if (sensor_isp_cfg->ir_mode == DAY_MODE || sensor_isp_cfg->ir_mode == NIGHT_MODE) {
+			ir_mode = sensor_isp_cfg->ir_mode;
+		} else { /* auto mode */
+			vin_warn("Linux not support read gpadc vol\n");
+		}
+
+		/* ir_hw and ir_led */
+		if (ir_mode == DAY_MODE) {
+			ir_switch.ir_on = 0;
+			ir_switch.ir_flash_on = 0;
+		} else {
+			ir_switch.ir_on = 1;
+			ir_switch.ir_flash_on = 1;
+		}
+		v4l2_subdev_call(sensor, core, ioctl, VIDIOC_VIN_SET_IR, &ir_switch);
+	}
+
+unmap:
+	vin_unmap_kernel(vaddr);
+ekzalloc:
+	return ret;
+}
+
+static int vin_set_sensor_init_from_partition(struct vin_vid_cap *cap, struct v4l2_subdev *sensor)
+{
+	int ret = 0;
+	void *vaddr = NULL;
+	SENSOR_ISP_CONFIG_S *sensor_isp_cfg;
+	unsigned int map_addr = 0;
+	unsigned int check_sign = 0;
+	struct sensor_info *info = NULL;
+
+	if (cap->vinc->mipi_sel == 0) {
+		map_addr = VIN_SENSOR0_RESERVE_ADDR;
+		check_sign = 0xAA66AA66;
+	} else {
+		map_addr = VIN_SENSOR1_RESERVE_ADDR;
+		check_sign = 0xBB66BB66;
+	}
+
+	vaddr = vin_map_kernel(map_addr, VIN_RESERVE_SIZE);
+	if (vaddr == NULL) {
+		vin_err("%s:map 0x%x paddr err!!!", __func__, map_addr);
+		ret = -EFAULT;
+		goto ekzalloc;
+	}
+
+	sensor_isp_cfg = (SENSOR_ISP_CONFIG_S *)vaddr;
+
+	/* check id */
+	if (sensor_isp_cfg->sign != check_sign) {
+		vin_warn("%s:sign is 0x%x but not 0x%x\n", __func__, sensor_isp_cfg->sign, check_sign);
+		ret = -EINVAL;
+		goto unmap;
+	}
+
+	if (sensor_isp_cfg->sensor_deinit) {
+		info = container_of(sensor, struct sensor_info, sd);
+		if (info) {
+			info->preview_first_flag = 0;
+			info->first_power_flag = 0;
+		}
+	}
+
+unmap:
+	vin_unmap_kernel(vaddr);
+ekzalloc:
+	return ret;
 }
 
 static int vin_set_isp_param_bin_cfg(struct isp_dev *isp, char *bin_path)
@@ -3236,6 +3902,7 @@ static int vin_set_isp_param_bin_cfg(struct isp_dev *isp, char *bin_path)
 	char time[20], notes[50], fdstr[100];
 	int rpmsg_data[110];
 	char *param_start = NULL;
+	__maybe_unused mm_segment_t old_fs;
 	loff_t pos = 0;
 
 	sprintf(fdstr, "%s/isp_param_config.bin", bin_path);
@@ -3244,9 +3911,16 @@ static int vin_set_isp_param_bin_cfg(struct isp_dev *isp, char *bin_path)
 		vin_err("open %s failed.\n", fdstr);
 		return -1;
 	} else {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0)
+		old_fs = get_fs();
+		set_fs(KERNEL_DS);
+#endif
 		vfs_read(file_fd, (char *)&size, sizeof(unsigned int), &pos);
 		if (size != sizeof(struct isp_param_config)) {
-			vin_err("%s -- read size %d != isp_param size %ld!\n", fdstr, size, sizeof(struct isp_param_config));
+			vin_err("%s -- read size %u != isp_param size %lu!\n", fdstr, size, (long unsigned int)sizeof(struct isp_param_config));
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0)
+			set_fs(old_fs);
+#endif
 			filp_close(file_fd, NULL);
 			return -1;
 		} else {
@@ -3330,12 +4004,15 @@ static int vin_set_isp_param_bin_cfg(struct isp_dev *isp, char *bin_path)
 			rpmsg_data[2] = SET_BIN_TUNING_UPDATE;//flag
 			rpmsg_data[3] = 0;
 			rpmsg_data[4] = 0;
-			isp_rpmsg_send(isp, rpmsg_data, 5 * 4);
+			memcpy(&rpmsg_data[5], notes, sizeof(notes));
+			isp_rpmsg_send(isp, rpmsg_data, 20 * 4);
 			vin_print("Read %s seccess... Time:%s  Notes:%s\n", fdstr, time, notes);
 			kfree(param);
 		}
 	}
-
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0)
+	set_fs(old_fs);
+#endif
 	filp_close(file_fd, NULL);
 	return 0;
 }
@@ -3349,6 +4026,9 @@ static int vin_set_isp_attr_cfg_ctrl(struct vin_core *vinc, struct isp_cfg_attr_
 	unsigned char *ptr_u8 = NULL;
 	int ret = 0;
 	int i = 0;
+
+	if (isp->is_empty)
+		return 0;
 
 	if (isp->h3a_stat.state == ISPSTAT_ENABLED) {
 		data[0] = VIN_SET_ATTR_IOCTL;
@@ -3388,6 +4068,7 @@ static int vin_set_isp_attr_cfg_ctrl(struct vin_core *vinc, struct isp_cfg_attr_
 			ret = copy_from_user(user_ae_table, attr_cfg->ae_table, sizeof(struct ae_table_info));
 			if (ret != 0) {
 				vin_err("copy attr_cfg->ae_table from usr error!\n");
+				kfree(user_ae_table);
 				return -1;
 			}
 			ptr = &(user_ae_table->ae_tbl[0].min_exp);
@@ -3414,11 +4095,21 @@ static int vin_set_isp_attr_cfg_ctrl(struct vin_core *vinc, struct isp_cfg_attr_
 			break;
 		case ISP_CTRL_VENC2ISP_PARAM:
 			ptr_u8 = (unsigned char *)&data[2];
-			ptr_u8[0] = attr_cfg->VencVe2IspParam.mMovingLevelInfo.is_overflow;
+			ptr_u8[0] = min(attr_cfg->VencVe2IspParam.d2d_level >> 2, 255);
+			ptr_u8[1] = min(attr_cfg->VencVe2IspParam.d3d_level >> 2, 255);
+			ptr_u8[2] = attr_cfg->VencVe2IspParam.mMovingLevelInfo.is_overflow;
 			for (i = 0; i < ISP_MSC_TBL_SIZE; i++) {
-				ptr_u8[i + 1] = attr_cfg->VencVe2IspParam.mMovingLevelInfo.moving_level_table[i] >> 4;
+				ptr_u8[i + 3] = attr_cfg->VencVe2IspParam.mMovingLevelInfo.moving_level_table[i] >> 4;
 			}
 			isp_rpmsg_send(isp, data, 496);
+			break;
+		case ISP_CTRL_AE_FACE_CFG:
+			memcpy(&data[2], &attr_cfg->ae_face_info.face_ae_coor, sizeof(struct fastboot_ae_face_cfg));
+			isp_rpmsg_send(isp, data, 4*123);
+			break;
+		case ISP_CTRL_MIPI_SWITCH:
+			memcpy(&data[2], &attr_cfg->mipi_switch_info, sizeof(struct sensor_mipi_switch_entity));
+			isp_rpmsg_send(isp, data, 4*14);
 			break;
 		}
 	} else {
@@ -3462,6 +4153,58 @@ static int vin_get_isp_attr_cfg_ctrl(struct vin_core *vinc, struct isp_cfg_attr_
 
 	return 0;
 }
+
+static int vin_get_isp_sei_info_ctrl(struct vin_core *vinc, struct isp_sei_info *pInfo)
+{
+	struct isp_dev *isp = v4l2_get_subdevdata(vinc->vid_cap.pipe.sd[VIN_IND_ISP]);
+	int index = 0;
+
+	if (isp->h3a_stat.state == ISPSTAT_ENABLED) {
+		/* exp_line again lum_idx color_temp awb_rgain awb_bgain af_param_mov */
+		if (pInfo->nInfoBitFlags & ISPInfoType_Level1) {
+			snprintf(pInfo->mInfoLevel1, SEI_LEVEL1_LEN, "%05d%05d%05d%05d%05d%05d%05d",
+				isp->isp_info_node.exp_val,
+				isp->isp_info_node.gain_val,
+				isp->isp_info_node.lum_idx,
+				isp->isp_info_node.awb_color_temp,
+				isp->isp_info_node.awb_rgain,
+				isp->isp_info_node.awb_bgain,
+				0);	// ctx->af_entity_ctx.af_param->mov, to be added in the near future
+		}
+
+		/* cmos_temp contrast brightness saturation sharpness bdnf tdnf pltm_level pltm_n_stren */
+		if (pInfo->nInfoBitFlags & ISPInfoType_Level2) {
+			snprintf(pInfo->mInfoLevel2, SEI_LEVEL2_LEN, "%05d%05d%05d%05d%05d%05d%05d%05d%05d",
+				vinc->vin_status.isp_debug_param_info.sensor_temper,
+				isp->isp_info_node.contrast_level,
+				isp->isp_info_node.brightness_level,
+				isp->isp_info_node.saturation_level,
+				isp->isp_info_node.sharpness_level,
+				isp->isp_info_node.denoise_level,
+				isp->isp_info_node.tdf_level,
+				isp->isp_info_node.pltmwdr_level,
+				0);	// ctx->pltm_entity_ctx.pltm_result.pltm_auto_stren, to be added in the near future
+		}
+
+		/* awb_avg_r/g/b [24][32]*3 LightTempMean[10] LightWinNum[10] */
+		if (pInfo->nInfoBitFlags & ISPInfoType_Level3) {
+			// to be added in the near future
+			vin_warn("It is not support get sei info for ISPInfoType_Level3\n");
+		}
+
+		/* ISP_ColorSpace ISP_Cfg_Version ISP_Lib_Commit */
+		if (pInfo->nInfoBitFlags & ISPInfoType_Level4) {
+			index = 0;
+			index += sprintf(pInfo->mInfoLevel4 + index, "%05d", vinc->vid_cap.frame.fmt.color);
+			index += sprintf(pInfo->mInfoLevel4 + index, "%s\0", isp->isp_info_node.isp_cfg_version);
+			index += sprintf(pInfo->mInfoLevel4 + index + 1, "%s\0", isp->isp_info_node.libs_version);
+		}
+	} else {
+		vin_warn("h3a_stat.state is ISPSTAT_DISABLED, can not get isp sei info\n");
+	}
+
+	return 0;
+}
 #endif
 
 static int vidioc_set_isp_attr_cfg(struct file *file, struct v4l2_fh *fh,
@@ -3488,6 +4231,42 @@ static int vidioc_get_isp_attr_cfg(struct file *file, struct v4l2_fh *fh,
 	return ret;
 }
 
+#if IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
+static int vidioc_get_isp_sei_info(struct file *file, struct v4l2_fh *fh,
+			struct isp_sei_info *pInfo)
+{
+	int ret = 0;
+	struct vin_core *vinc = video_drvdata(file);
+
+	ret = vin_get_isp_sei_info_ctrl(vinc, pInfo);
+
+	return ret;
+}
+#endif
+
+/* must set after VIDIOC_S_INPUT and before VIDIOC_STREAMON */
+static int vidioc_set_tdm_depth_cfg(struct file *file, struct v4l2_fh *fh,
+			unsigned int *max_ch)
+{
+#if defined SUPPORT_ISP_TDM && defined TDM_V200
+	struct vin_core *vinc = video_drvdata(file);
+	struct vin_vid_cap *cap = &vinc->vid_cap;
+	struct tdm_rx_dev *tdm_rx = NULL;
+
+	if (*max_ch == 0) {
+		vin_err("must set max_ch > 0\n");
+		return -1;
+	}
+
+	if (vinc->tdm_rx_sel != 0xff) {
+		tdm_rx = container_of(cap->pipe.sd[VIN_IND_TDM_RX], struct tdm_rx_dev, subdev);
+		tdm_rx->ws.data_fifo_depth = MAX_RX_DATA_FIFO_DEPTH/(*max_ch);
+		tdm_rx->ws.head_fifo_depth = MAX_RX_HEAD_FIFO_DEPTH/(*max_ch);
+	}
+#endif
+	return 0;
+}
+
 static int vidioc_set_phy2vir_cfg(struct file *file, struct v4l2_fh *fh,
 			struct isp_memremap_cfg *isp_memremap)
 {
@@ -3500,7 +4279,7 @@ static int vidioc_set_phy2vir_cfg(struct file *file, struct v4l2_fh *fh,
 	__maybe_unused unsigned int map_addr = 0;
 	__maybe_unused unsigned int check_sign = 0;
 
-#ifndef GET_RV_YUV
+#if !GET_RV_YUV
 	if (vinc->mipi_sel == 0) {
 		map_addr = VIN_SENSOR0_RESERVE_ADDR;
 		check_sign = 0xAA11AA11;
@@ -3571,6 +4350,100 @@ static int vidioc_set_phy2vir_cfg(struct file *file, struct v4l2_fh *fh,
 	return 0;
 }
 
+static int vidioc_set_d3d_lbc_ratio(struct file *file, struct v4l2_fh *fh,
+			unsigned int *d3d_lbc_ratio)
+{
+#if defined ISP_600
+	struct vin_core *vinc = video_drvdata(file);
+	struct vin_vid_cap *cap = &vinc->vid_cap;
+	struct isp_dev *isp = container_of(cap->pipe.sd[VIN_IND_ISP], struct isp_dev, subdev);
+
+	isp->d3d_lbc_ratio = *d3d_lbc_ratio;
+#endif
+	return 0;
+}
+
+/* must set after VIDIOC_S_INPUT and before VIDIOC_REQBUFS */
+static int vidioc_set_bkbuffer_align(struct file *file, struct v4l2_fh *fh,
+			struct bk_buffer_align *bkbuf_align)
+{
+	struct vin_core *vinc = video_drvdata(file);
+	struct vin_vid_cap *cap = &vinc->vid_cap;
+
+	cap->lbc_align_en = bkbuf_align->lbc_align_en == 0 ? false : true;
+	cap->yuv_align_en = bkbuf_align->yuv_align_en == 0 ? false : true;
+
+	return 0;
+}
+
+/* must set after VIDIOC_S_INPUT and before VIDIOC_STREAMON */
+static int vidioc_set_bk_width_stride(struct file *file, struct v4l2_fh *fh,
+			unsigned char *wstride_en)
+{
+	struct vin_core *vinc = video_drvdata(file);
+	struct vin_vid_cap *cap = &vinc->vid_cap;
+
+	cap->width_stride_en = *wstride_en == 0 ? false : true;
+
+	return 0;
+}
+
+static int vidioc_set_tdm_drop_frame(struct file *file, struct v4l2_fh *fh,
+		unsigned int *drop_frame_num)
+{
+#if defined SUPPORT_ISP_TDM && defined TDM_V200
+	struct vin_core *vinc = video_drvdata(file);
+	struct vin_md *vind = dev_get_drvdata(vinc->v4l2_dev->dev);
+	struct vin_vid_cap *cap = &vinc->vid_cap;
+	struct v4l2_subdev *isp = cap->pipe.sd[VIN_IND_ISP];
+	struct isp_dev *isp_device = v4l2_get_subdevdata(isp);
+	int i;
+
+	vin_print("vidioc_set_tdm_drop_frame: %d\n", *drop_frame_num);
+
+	if (!cap) {
+		vin_err("cap is NULL!!!\n");
+		return -1;
+	}
+
+	for (i = 0; i < VIN_MAX_DEV; i++) {
+		if (vind->vinc[i] == NULL)
+			continue;
+		if (!vin_streaming(&vind->vinc[i]->vid_cap))
+			continue;
+
+		if (vind->vinc[i]->isp_sel == isp_device->id) {
+			vinc = vind->vinc[i];
+			vin_print("vinc%d will drop frame\n", i);
+			vinc->vid_cap.frame_delay_cnt = *drop_frame_num;
+		}
+	}
+
+#endif
+
+	return 0;
+}
+
+/* must set after VIDIOC_S_INPUT and before VIDIOC_STREAMON */
+static int vidioc_set_tdm_rxbuf_cnt(struct file *file, struct v4l2_fh *fh,
+		unsigned int *count)
+{
+#if defined SUPPORT_ISP_TDM && defined TDM_V200
+#if IS_ENABLED(CONFIG_TDM_OFFLINE_HANDLE_RAW)
+	struct vin_core *vinc = video_drvdata(file);
+	struct vin_vid_cap *cap = &vinc->vid_cap;
+	struct tdm_rx_dev *tdm_rx = NULL;
+
+	if (vinc->tdm_rx_sel != 0xff) {
+		tdm_rx = container_of(cap->pipe.sd[VIN_IND_TDM_RX], struct tdm_rx_dev, subdev);
+		tdm_rx->set_buf_cnt = *count;
+		vin_print("%s:tdm rx%d buf count is %d\n", __func__, tdm_rx->id, tdm_rx->set_buf_cnt);
+	}
+#endif
+#endif
+	return 0;
+}
+
 /* must set before VIDIOC_S_INPUT */
 static int vidioc_merge_int_ch_cfg(struct file *file, struct v4l2_fh *fh,
 			struct mrg_int_ch_cfg *cfg)
@@ -3585,10 +4458,10 @@ static int vidioc_merge_int_ch_cfg(struct file *file, struct v4l2_fh *fh,
 						24, 25, 26, 27, 28, 29, 30, 31, 32, 36, 40};
 #elif IS_ENABLED(CONFIG_ARCH_SUN60IW2)
 	int bk_ch_intpool_sel[VIN_MAX_DEV] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17};
-#elif IS_ENABLED(CONFIG_ARCH_SUN55IW6)
+#elif IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN65IW1) || IS_ENABLED(CONFIG_ARCH_SUN252IW1)
 	int bk_ch_intpool_sel[VIN_MAX_DEV] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 #elif IS_ENABLED(CONFIG_ARCH_SUN300IW1)
-	int bk_ch_intpool_sel[VIN_MAX_DEV] = {0, 1, 2, 3, 4, 5, 6, 7};
+	int bk_ch_intpool_sel[VIN_MAX_DEV] = {0, 1, 2, 3, 4, 5};
 #endif
 	if (cfg->trig_level < 1) {
 		cfg->trig_level = 1;
@@ -3670,14 +4543,529 @@ static int vidioc_set_dma_merge(struct file *file, struct v4l2_fh *fh,
 	__maybe_unused struct vin_core *vinc_bind = NULL;
 
 	vinc->dma_merge_mode = *dma_merge;
-
-	if (vinc->dma_merge_mode == 1) {
-		if (vinc->id % 4 == 1 && vin_core_gbl[vinc->id - 1]) {
+	if (vinc->dma_merge_mode > 0) {
+		if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
 			vinc_bind = vin_core_gbl[vinc->id - 1];
 			vinc_bind->dma_merge_mode = *dma_merge;
 		}
 	}
 
+	return 0;
+}
+
+/* must set after VIDIOC_S_INPUT and before VIDIOC_STREAMON */
+static int vidioc_set_isp_ldci_mode(struct file *file, struct v4l2_fh *fh,
+		unsigned int *ldci_select)
+{
+#if defined ISP_600
+	struct vin_core *vinc = video_drvdata(file);
+	struct vin_md *vind = dev_get_drvdata(vinc->v4l2_dev->dev);
+	struct vin_vid_cap *cap = &vinc->vid_cap;
+	struct isp_dev *isp = container_of(cap->pipe.sd[VIN_IND_ISP], struct isp_dev, subdev);
+	unsigned int i;
+
+	if (vin_streaming(cap)) {
+		vin_err("video%d is streaming, please stop and then set ldci mode\n", vinc->id);
+		return -EBUSY;
+	}
+
+	for (i = 0; i < VIN_MAX_DEV; i++) {
+		if (vind->vinc[i] == NULL)
+			continue;
+
+		if (vind->vinc[i]->isp_sel == isp->id) {
+			if (vin_streaming(&vind->vinc[i]->vid_cap)) {
+				vin_err("video%d is streaming, please stop and then set ldci mode\n", i);
+				return -EBUSY;
+			}
+		}
+	}
+
+	isp->ldci_select = *ldci_select;
+	vin_print("set isp%d ldci from %s\n", isp->id, isp->ldci_select == 1 ? "kernel" : "user");
+#endif
+	return 0;
+}
+
+static int __vidioc_set_dma_overlay(struct vin_core *vinc,
+			struct dma_overlay_para *dma_overlay_data)
+{
+	int ret;
+
+	if (!dma_overlay_data) {
+		vin_err("dma_overlay_data is NULL!\n");
+		return -1;
+	}
+
+	vin_print("[%s] vinc%d dma_overlay_en = %d, overlay_size_%d_%d\n", __func__, vinc->id, dma_overlay_data->dma_overlay_en,
+		dma_overlay_data->overlay_width, dma_overlay_data->overlay_height);
+	if (dma_overlay_data->dma_overlay_en) {
+		vinc->vid_cap.dma_overlay.logo_data = vmalloc(dma_overlay_data->length * sizeof(unsigned char));
+		if (vinc->vid_cap.dma_overlay.logo_data) {
+			ret = copy_from_user(vinc->vid_cap.dma_overlay.logo_data, dma_overlay_data->overlay_data, dma_overlay_data->length);
+			if (ret < 0) {
+				vin_err("copy overlay_data from usr error!\n");
+				return ret;
+			}
+		} else {
+			vin_err("logo_data is NULL!\n");
+			return -1;
+		}
+		vinc->vid_cap.dma_overlay.enable = dma_overlay_data->dma_overlay_en;
+		vinc->vid_cap.dma_overlay.width = dma_overlay_data->overlay_width;
+		vinc->vid_cap.dma_overlay.height = dma_overlay_data->overlay_height;
+		vinc->vid_cap.dma_overlay.length = dma_overlay_data->length;
+		vinc->vid_cap.dma_overlay.overlay_offset = dma_overlay_data->overlay_width * dma_overlay_data->overlay_height;
+		vin_print("[%s] vinc%d enable = %d, overlay_size_%d_%d\n", __func__, vinc->id, vinc->vid_cap.dma_overlay.enable,
+			vinc->vid_cap.dma_overlay.width, vinc->vid_cap.dma_overlay.height);
+	} else {
+		vin_warn("dma_overlay_en is %d, it will not insert logo!\n", dma_overlay_data->dma_overlay_en);
+		vinc->vid_cap.dma_overlay.enable = 0;
+		vinc->vid_cap.dma_overlay.width = 0;
+		vinc->vid_cap.dma_overlay.height = 0;
+		vinc->vid_cap.dma_overlay.overlay_offset = 0;
+	}
+
+	return 0;
+}
+
+static int vidioc_set_dma_overlay(struct file *file, struct v4l2_fh *fh,
+			struct dma_overlay_para *dma_overlay_data)
+{
+	struct vin_core *vinc = video_drvdata(file);
+	int ret;
+
+	ret = __vidioc_set_dma_overlay(vinc, dma_overlay_data);
+
+	return ret;
+}
+
+static int __vidioc_set_sclaer_resolution(struct vin_core *vinc,
+			struct dma_merge_scaler_cfg *sensor_scaler_cfg)
+{
+	int ret;
+	__maybe_unused struct vin_core *vinc_bind = NULL;
+
+	vin_log(VIN_LOG_LARGE, "SensorA:%dx%d, SensorB:%dx%d\n",
+		sensor_scaler_cfg->sensorA_scaler_cfg.width, sensor_scaler_cfg->sensorA_scaler_cfg.height,
+		sensor_scaler_cfg->sensorB_scaler_cfg.width, sensor_scaler_cfg->sensorB_scaler_cfg.height);
+
+	if (vinc->dma_merge_mode) {
+		if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
+			vinc_bind = vin_core_gbl[vinc->id - 1];
+			ret = v4l2_subdev_call(vinc_bind->vid_cap.pipe.sd[VIN_IND_SCALER], core,
+			ioctl, VIDIOC_VIN_SET_SCALER_CFG, &sensor_scaler_cfg->sensorA_scaler_cfg);
+			if (ret < 0)
+				vin_err("v4l2 sub device scaler%d set resolution error!\n", vinc->id - 1);
+		}
+	}
+	ret = v4l2_subdev_call(vinc->vid_cap.pipe.sd[VIN_IND_SCALER], core,
+				ioctl, VIDIOC_VIN_SET_SCALER_CFG, &sensor_scaler_cfg->sensorB_scaler_cfg);
+	if (ret < 0)
+		vin_err("v4l2 sub device scaler set resolution error!\n");
+
+	return ret;
+}
+
+static int vidioc_set_sclaer_resolution(struct file *file, struct v4l2_fh *fh,
+			struct dma_merge_scaler_cfg *sensor_scaler_cfg)
+{
+	struct vin_core *vinc = video_drvdata(file);
+	int ret;
+
+	ret = __vidioc_set_sclaer_resolution(vinc, sensor_scaler_cfg);
+
+	return ret;
+}
+
+static int vidioc_vin_set_lowpw_cfg(struct file *file, struct v4l2_fh *fh,
+			struct sensor_lowpw_cfg *cfg)
+{
+	struct vin_core *vinc = video_drvdata(file);
+	struct v4l2_subdev *sd = vinc->vid_cap.pipe.sd[VIN_IND_SENSOR];
+	struct sensor_info *info = container_of(sd, struct sensor_info, sd);
+
+	if (vin_streaming(&vinc->vid_cap) == 0)
+		return -1;
+
+	info->lowpw_en = cfg->lowpw_en;
+	if (cfg->lowpw_en) {
+		if ((info->frame_mode == SENSOR_ONE_FRAME) && (cfg->frame_mode == SENSOR_MULTI_FRAME)) { /* one_frame change to multi_frame */
+			mutex_lock(&info->lock);
+			if (info->stby_flags == STBY_ISOFF) {
+				mutex_unlock(&info->lock);
+				return -EBUSY;
+			}
+			mutex_unlock(&info->lock);
+			info->frame_mode = cfg->frame_mode;
+			v4l2_subdev_call(vinc->vid_cap.pipe.sd[VIN_IND_SENSOR], core, ioctl,
+					SET_SENSOR_MULTI_FRAME, NULL);
+		} else {
+			info->frame_mode = cfg->frame_mode;
+		}
+	} else
+		info->frame_mode = SENSOR_MULTI_FRAME;
+
+	return 0;
+}
+
+static int vidioc_vin_get_mipi_clk_dly(struct file *file, struct v4l2_fh *fh,
+			unsigned int *clk_dly)
+{
+#if defined MIPI_COMBO_CSI
+	struct vin_core *vinc = video_drvdata(file);
+	struct vin_vid_cap *cap = &vinc->vid_cap;
+
+	if (cap->pipe.sd[VIN_IND_MIPI] == NULL)
+		return -1;
+	*clk_dly = sunxi_mipi_get_deskew(cap->pipe.sd[VIN_IND_MIPI]);
+#endif
+	return 0;
+}
+
+static int vidioc_vin_set_mipi_clk_dly(struct file *file, struct v4l2_fh *fh,
+			unsigned int *delay)
+{
+#if defined MIPI_COMBO_CSI
+	struct vin_core *vinc = video_drvdata(file);
+	struct vin_vid_cap *cap = &vinc->vid_cap;
+	int ret;
+
+	if (cap->pipe.sd[VIN_IND_MIPI] == NULL)
+		return -1;
+	ret = sunxi_mipi_set_deskew(cap->pipe.sd[VIN_IND_MIPI], *delay);
+	return ret;
+#endif
+	return 0;
+}
+
+static int vidioc_vin_get_mipi_clk_error(struct file *file, struct v4l2_fh *fh,
+			unsigned int *mipi_err)
+{
+#if defined MIPI_COMBO_CSI
+	struct vin_core *vinc = video_drvdata(file);
+	struct vin_vid_cap *cap = &vinc->vid_cap;
+
+	if (cap->pipe.sd[VIN_IND_MIPI] == NULL)
+		return -1;
+	*mipi_err = sunxi_mipi_get_error(cap->pipe.sd[VIN_IND_MIPI]);
+#endif
+	return 0;
+}
+
+/* must set after VIDIOC_S_INPUT and before VIDIOC_STREAMON */
+static int vidioc_set_tdmtime_embed(struct file *file, struct v4l2_fh *fh,
+			unsigned int *tdmtime_embed_en)
+{
+#if defined SUPPORT_ISP_TDM && defined TDM_V230 && defined OUTPUT_EMBED_DATA
+	struct vin_core *vinc = video_drvdata(file);
+	struct vin_vid_cap *cap = &vinc->vid_cap;
+	struct isp_dev *isp = container_of(cap->pipe.sd[VIN_IND_ISP], struct isp_dev, subdev);
+	struct scaler_dev *scaler = container_of(cap->pipe.sd[VIN_IND_SCALER], struct scaler_dev, subdev);
+	struct tdm_rx_dev *tdm_rx = NULL;
+	struct tdm_dev *tdm = NULL;
+
+	if (vinc->tdm_rx_sel == 0xff)
+		return -1;
+
+	tdm_rx = container_of(cap->pipe.sd[VIN_IND_TDM_RX], struct tdm_rx_dev, subdev);
+	tdm = container_of(tdm_rx, struct tdm_dev, tdm_rx[tdm_rx->id]);
+
+	vin_print("video%d %s tdm time embed\n", vinc->id, *tdmtime_embed_en == 0 ? "close" : "open");
+
+	if ((tdm->work_mode == TDM_OFFLINE) && *tdmtime_embed_en) {
+		tdm->time_embed_en = true;
+		isp->time_embed_en = true;
+		scaler->time_embed_en = true;
+		vinc->time_embed_en = true;
+	} else {
+		tdm->time_embed_en = false;
+		isp->time_embed_en = false;
+		scaler->time_embed_en = false;
+		vinc->time_embed_en = false;
+	}
+#endif
+	return 0;
+}
+
+/* must set after VIDIOC_S_INPUT and before VIDIOC_STREAMON */
+static int vidioc_set_ispbe_info_embed(struct file *file, struct v4l2_fh *fh,
+			unsigned int *ispbe_info_embed_en)
+{
+#if defined OUTPUT_EMBED_DATA
+	struct vin_core *vinc = video_drvdata(file);
+	struct vin_vid_cap *cap = &vinc->vid_cap;
+	struct isp_dev *isp = container_of(cap->pipe.sd[VIN_IND_ISP], struct isp_dev, subdev);
+	struct scaler_dev *scaler = container_of(cap->pipe.sd[VIN_IND_SCALER], struct scaler_dev, subdev);
+	struct vin_core *vinc_bind = NULL;
+
+	vin_print("video%d %s ispbe info embed\n", vinc->id, *ispbe_info_embed_en == 0 ? "close" : "open");
+
+	if (*ispbe_info_embed_en) {
+		isp->ispbe_info_embed_en = true;
+		scaler->ispbe_info_embed_en = true;
+		vinc->ispbe_info_embed_en = true;
+		if (vinc->dma_merge_mode) {
+			if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
+				vinc_bind = vin_core_gbl[vinc->id - 1];
+				struct vin_vid_cap *cap = &vinc_bind->vid_cap;
+				isp = container_of(cap->pipe.sd[VIN_IND_ISP], struct isp_dev, subdev);
+				scaler = container_of(cap->pipe.sd[VIN_IND_SCALER], struct scaler_dev, subdev);
+				isp->ispbe_info_embed_en = true;
+				scaler->ispbe_info_embed_en = true;
+				vinc_bind->ispbe_info_embed_en = true;
+				vin_print("video%d %s ispbe info embed\n", vinc_bind->id, *ispbe_info_embed_en == 0 ? "close" : "open");
+			}
+		}
+	} else {
+		isp->ispbe_info_embed_en = false;
+		scaler->ispbe_info_embed_en = false;
+		vinc->ispbe_info_embed_en = false;
+		if (vinc->dma_merge_mode) {
+			if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
+				vinc_bind = vin_core_gbl[vinc->id - 1];
+				struct vin_vid_cap *cap = &vinc_bind->vid_cap;
+				isp = container_of(cap->pipe.sd[VIN_IND_ISP], struct isp_dev, subdev);
+				scaler = container_of(cap->pipe.sd[VIN_IND_SCALER], struct scaler_dev, subdev);
+				isp->ispbe_info_embed_en = false;
+				scaler->ispbe_info_embed_en = false;
+				vinc_bind->ispbe_info_embed_en = false;
+			}
+		}
+	}
+#endif
+	return 0;
+}
+
+/* must set after VIDIOC_S_INPUT and before VIDIOC_S_FMT */
+static int vidioc_set_vipp_cascade(struct file *file, struct v4l2_fh *fh,
+			unsigned int *vipp_cascade_id)
+{
+#if defined VIPP_ALLMASK_BK
+	struct vin_core *vinc = video_drvdata(file);
+	unsigned char logic_id = dma_virtual_find_logic[vinc->id];
+	struct vin_core *logic_vinc = vin_core_gbl[logic_id];
+
+	if (vipp_virtual_find_sel[vinc->vipp_sel] == vipp_virtual_find_sel[*vipp_cascade_id]) {
+		logic_vinc->vipp_cascade_en = 0;
+		return -1;
+	}
+
+	logic_vinc->vipp_cascade_en = 1;
+	logic_vinc->vipp_cascade_id = vipp_virtual_find_sel[*vipp_cascade_id];
+
+	vin_print("logic_vipp%d input from logic_vipp%d\n", vipp_virtual_find_sel[vinc->vipp_sel], vipp_virtual_find_sel[*vipp_cascade_id]);
+#endif
+	return 0;
+}
+
+/* must set after VIDIOC_S_INPUT and before VIDIOC_STREAMON */
+static int vidioc_set_aiisp_mode(struct file *file, struct v4l2_fh *fh,
+			struct tdm_aiisp_cfg *aiisp_cfg)
+{
+#if defined SUPPORT_ISP_TDM && defined TDM_V230
+	struct vin_core *vinc = video_drvdata(file);
+	struct vin_vid_cap *cap = &vinc->vid_cap;
+	struct tdm_rx_dev *tdm_rx = NULL;
+
+	if (vinc->tdm_rx_sel == 0xff)
+		return -1;
+
+	tdm_rx = container_of(cap->pipe.sd[VIN_IND_TDM_RX], struct tdm_rx_dev, subdev);
+
+	vin_print("video%d:tdm work mode is %s, aiisp switch is %s, offset is %d, mode is %d\n", vinc->id,
+			aiisp_cfg->tdm_isp_mode == TDM_NORMAL ? "normal mode" : (aiisp_cfg->tdm_isp_mode == TDM_SOFTWARE ? "software mode" : "aiisp mode"),
+			aiisp_cfg->aiisp_switch == AIISP_SWITCH_ON ? "on" : "off",
+			aiisp_cfg->aiisp_offset, aiisp_cfg->aiisp_mode);
+	cap->tdm_isp_mode = aiisp_cfg->tdm_isp_mode;
+	cap->aiisp_switch = aiisp_cfg->aiisp_switch;
+	tdm_rx->aiisp_switch = aiisp_cfg->aiisp_switch;
+
+	if (aiisp_cfg->tdm_isp_mode == TDM_SOFTWARE) {
+		tdm_rx->tdm_rtt_mode = RX_TO_TX_SOFTWARE_CFG;
+	} else if (aiisp_cfg->tdm_isp_mode == TDM_AIISP || aiisp_cfg->tdm_isp_mode == TDM_NORMAL) {
+		if (aiisp_cfg->tdm_isp_mode == TDM_AIISP)
+			tdm_rx->tdm_rtt_mode = RX_TO_TX_AI_ISP;
+		else if (aiisp_cfg->tdm_isp_mode == TDM_NORMAL)
+			tdm_rx->tdm_rtt_mode = RX_TO_TX_ISP;
+
+		if (aiisp_cfg->tdm_isp_mode == TDM_AIISP || tdm_rx->aiisp_switch == AIISP_SWITCH_ON) {
+			if (aiisp_cfg->aiisp_offset == AIISP_OFFSET0) {
+				tdm_rx->rx_aiisp_cfg.w_offset = 128;
+				tdm_rx->rx_aiisp_cfg.h_offset = 5;
+			} else if (aiisp_cfg->aiisp_offset == AIISP_OFFSET1) {
+				tdm_rx->rx_aiisp_cfg.w_offset = 128;
+				tdm_rx->rx_aiisp_cfg.h_offset = 7;
+			} else if (aiisp_cfg->aiisp_offset == AIISP_OFFSET2) {
+				tdm_rx->rx_aiisp_cfg.w_offset = 128;
+				tdm_rx->rx_aiisp_cfg.h_offset = 9;
+			} else {
+				vin_err("aiisp offset%d not support\n", aiisp_cfg->aiisp_offset);
+			}
+
+			if (aiisp_cfg->aiisp_mode == AIISP_MODE0) {
+				tdm_rx->rx_aiisp_cfg.rx_aiisp_cfg0.rx_blc_en = 1;
+				tdm_rx->rx_aiisp_cfg.rx_aiisp_cfg0.rx_inv_blc_en = 1;
+				tdm_rx->rx_aiisp_cfg.rx_aiisp_cfg0.rx_normal_en = 1;
+				tdm_rx->rx_aiisp_cfg.rx_aiisp_cfg0.rx_inv_normal_en = 1;
+				tdm_rx->rx_aiisp_cfg.rx_aiisp_cfg0.rx_gamma_en = 1;
+				tdm_rx->rx_aiisp_cfg.rx_aiisp_cfg0.rx_inv_gamma_en = 1;
+				tdm_rx->rx_aiisp_cfg.rx_aiisp_cfg0.rx_tx_blc_en = 1;
+				tdm_rx->rx_aiisp_cfg.rx_aiisp_cfg0.rx_tx_inv_blc_en = 1;
+				tdm_rx->rx_aiisp_cfg.rx_aiisp_cfg0.rx_tx_normal_en = 1;
+				tdm_rx->rx_aiisp_cfg.rx_aiisp_cfg0.rx_tx_inv_normal_en = 1;
+			} else if (aiisp_cfg->aiisp_mode == AIISP_MODE1) {
+				tdm_rx->rx_aiisp_cfg.rx_aiisp_cfg0.rx_blc_en = 0;
+				tdm_rx->rx_aiisp_cfg.rx_aiisp_cfg0.rx_inv_blc_en = 0;
+				tdm_rx->rx_aiisp_cfg.rx_aiisp_cfg0.rx_normal_en = 0;
+				tdm_rx->rx_aiisp_cfg.rx_aiisp_cfg0.rx_inv_normal_en = 0;
+				tdm_rx->rx_aiisp_cfg.rx_aiisp_cfg0.rx_gamma_en = 0;
+				tdm_rx->rx_aiisp_cfg.rx_aiisp_cfg0.rx_inv_gamma_en = 0;
+				tdm_rx->rx_aiisp_cfg.rx_aiisp_cfg0.rx_tx_blc_en = 0;
+				tdm_rx->rx_aiisp_cfg.rx_aiisp_cfg0.rx_tx_inv_blc_en = 0;
+				tdm_rx->rx_aiisp_cfg.rx_aiisp_cfg0.rx_tx_normal_en = 0;
+				tdm_rx->rx_aiisp_cfg.rx_aiisp_cfg0.rx_tx_inv_normal_en = 0;
+			} else {
+				vin_err("aiisp mode%d now not support\n", aiisp_cfg->aiisp_mode);
+				return -1;
+			}
+		}
+	} else {
+		vin_err("tdm_isp_mode is %d, not support\n", aiisp_cfg->tdm_isp_mode);
+		return -1;
+	}
+
+#endif
+	return 0;
+}
+
+/* must set after VIDIOC_STREAMON */
+static int vidioc_get_aiisp_information(struct file *file, struct v4l2_fh *fh,
+			struct tdm_aiisp_inform *aiisp_inform)
+{
+#if defined SUPPORT_ISP_TDM && defined TDM_V230
+	struct vin_core *vinc = video_drvdata(file);
+	struct vin_vid_cap *cap = &vinc->vid_cap;
+	struct tdm_rx_dev *tdm_rx = NULL;
+	int i;
+
+	if (!vin_streaming(cap)) {
+		vin_err("video%d has not stream on\n", vinc->id);
+		return -1;
+	}
+
+	if (vinc->tdm_rx_sel == 0xff)
+		return -1;
+
+	tdm_rx = container_of(cap->pipe.sd[VIN_IND_TDM_RX], struct tdm_rx_dev, subdev);
+
+	if (tdm_rx->tdm_rtt_mode != RX_TO_TX_AI_ISP)
+		return -1;
+
+	aiisp_inform->rx_id = tdm_rx->id;
+	aiisp_inform->line_stride = tdm_rx->rx_aiisp_cfg.rx_line_stride1 << 2;
+	aiisp_inform->width = tdm_rx->width;
+	aiisp_inform->height = tdm_rx->height;
+	vin_print("aiisp information: rx_id:%d, line_stride:%d, width*height:%d*%d\n", aiisp_inform->rx_id, aiisp_inform->line_stride, aiisp_inform->width, aiisp_inform->height);
+
+	if (tdm_rx->buf_cnt > 3) {
+		vin_err("aiisp mode tdm buffer count is valid to 3\n");
+		return -1;
+	}
+	aiisp_inform->buf_cnt = tdm_rx->buf_cnt;
+	for (i = 0; i < tdm_rx->buf_cnt; i++) {
+		aiisp_inform->aiisp_addr[i].buf_id = i;
+		aiisp_inform->aiisp_addr[i].waddr = (unsigned int)tdm_rx->buf[i].dma_addr;
+		aiisp_inform->aiisp_addr[i].raddr = (unsigned int)tdm_rx->buf[i].dma_addr + (tdm_rx->rx_aiisp_cfg.rx_addr_offset1 << 2);
+		vin_print("buf%d: waddr is 0x%x, raddr is 0x%x\n", i, aiisp_inform->aiisp_addr[i].waddr, aiisp_inform->aiisp_addr[i].raddr);
+	}
+#endif
+	return 0;
+}
+
+/* must set after VIDIOC_STREAMON */
+static int vidioc_aiisp_switch(struct file *file, struct v4l2_fh *fh,
+			enum aiisp_switch_dir *aiisp_dir)
+{
+#if defined SUPPORT_ISP_TDM && defined TDM_V230
+	struct vin_core *vinc = video_drvdata(file);
+	struct vin_vid_cap *cap = &vinc->vid_cap;
+	struct tdm_rx_dev *tdm_rx = NULL;
+	struct tdm_dev *tdm = NULL;
+
+	if (!vin_streaming(cap)) {
+		vin_err("video%d has not stream on\n", vinc->id);
+		return -1;
+	}
+
+	if (vinc->tdm_rx_sel == 0xff)
+		return -1;
+
+	tdm_rx = container_of(cap->pipe.sd[VIN_IND_TDM_RX], struct tdm_rx_dev, subdev);
+	tdm = container_of(tdm_rx, struct tdm_dev, tdm_rx[tdm_rx->id]);
+
+	if (tdm_rx->aiisp_switch == AIISP_SWITCH_ON) {
+		csic_tdm_rx_aiisp_switch(tdm->id, tdm_rx->id, *aiisp_dir);
+		vin_print("rx%d %s\n", tdm_rx->id, *aiisp_dir == AIISP_SWITCH_NONE ? "aiisp awitch none" : (*aiisp_dir == AIISP_TO_NORISP ? "aiisp switch to normal isp" : "normal switch to aiisp isp"));
+	} else
+		vin_err("aiisp switch is off, cannot switch\n");
+#endif
+	return 0;
+}
+
+static int vidioc_set_isp_onech_ini_combine(struct file *file, struct v4l2_fh *fh,
+			struct isp_ocic_cfg *cfg)
+{
+#if defined ISP_610
+	struct vin_core *vinc = video_drvdata(file);
+	struct vin_vid_cap *cap = &vinc->vid_cap;
+	struct isp_dev *isp = container_of(cap->pipe.sd[VIN_IND_ISP], struct isp_dev, subdev);
+
+	if (cfg->isp_ocic_en) {
+		if (isp->ini_mode == ISP_INI_MULTICH) {
+			vin_err("isp int mode is multi channel mode, cannot set to one channel mode\n");
+			return -EBUSY;
+		}
+
+		isp->ini_mode = ISP_INI_INTERVAL;
+		if (cfg->interval > 16) {
+			vin_err("isp%d not support more than 16 frame ini combine\n", isp->id);
+			isp->int_cmb_interval = 16;
+		} else
+			isp->int_cmb_interval = cfg->interval;
+		vin_print("isp%d set one channel ini combine, interval is %d\n", isp->id, isp->int_cmb_interval);
+	} else {
+		if (isp->ini_mode != ISP_INI_MULTICH)
+			isp->ini_mode = ISP_INI_NORMAL;
+	}
+#endif
+	return 0;
+}
+
+static int vidioc_set_isp_multich_ini_combine(struct file *file, struct v4l2_fh *fh,
+			struct isp_mcic_cfg *cfg)
+{
+#if defined ISP_610
+	struct vin_core *vinc = video_drvdata(file);
+	struct vin_vid_cap *cap = &vinc->vid_cap;
+	struct isp_dev *isp = container_of(cap->pipe.sd[VIN_IND_ISP], struct isp_dev, subdev);
+
+	if (cfg->ch_cfg[0].isp_mcic_en || cfg->ch_cfg[1].isp_mcic_en) {
+		if (isp->ini_mode == ISP_INI_INTERVAL) {
+			vin_err("isp int mode is one channel mode, cannot set to multi channel mode\n");
+			return -EBUSY;
+		}
+
+		isp->ini_mode = ISP_INI_MULTICH;
+		isp->int_cmb_interval = 0;
+		memcpy(&isp->mcic_cfg, cfg, sizeof(struct isp_mcic_cfg));
+		vin_print("0 isp_mcic_sel is 0x%x\n", cfg->ch_cfg[0].isp_mcic_sel);
+		vin_print("isp%d set multi channel ini combine\n", isp->id);
+	} else {
+		if (isp->ini_mode != ISP_INI_INTERVAL)
+			isp->ini_mode = ISP_INI_NORMAL;
+	}
+#endif
 	return 0;
 }
 
@@ -3738,13 +5126,31 @@ static long vin_param_handler(struct file *file, void *priv,
 	case VIDIOC_GET_ISP_CFG_ATTR:
 		ret = vidioc_get_isp_attr_cfg(file, fh, param);
 		break;
-#if IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
 	case VIDIOC_GET_ISP_ENCPP_CFG_ATTR:
 		ret = vin_get_isp_encpp_attr_cfg(file, fh, param);
 		break;
+#if defined CONFIG_ISP_SERVER_MELIS
+	case VIDIOC_GET_ISP_SEI_INFO:
+		ret = vidioc_get_isp_sei_info(file, fh, param);
+		break;
 #endif
+	case VIDIOC_SET_TDM_DEPTH:
+		ret = vidioc_set_tdm_depth_cfg(file, fh, param);
+		break;
 	case VIDIOC_SET_PHY2VIR:
 		ret = vidioc_set_phy2vir_cfg(file, fh, param);
+		break;
+	case VIDIOC_SET_D3DLBCRATIO:
+		ret = vidioc_set_d3d_lbc_ratio(file, fh, param);
+		break;
+	case VIDIOC_SET_BKBUFFER_ALIGN:
+		ret = vidioc_set_bkbuffer_align(file, fh, param);
+		break;
+	case VIDIOC_SET_BK_SET_WSTRIDE:
+		ret = vidioc_set_bk_width_stride(file, fh, param);
+		break;
+	case VIDIOC_SET_TDM_DROP_FRAME:
+		ret = vidioc_set_tdm_drop_frame(file, fh, param);
 		break;
 	case VIDIOC_MERGE_INT_CH_CFG:
 		ret = vidioc_merge_int_ch_cfg(file, fh, param);
@@ -3752,8 +5158,56 @@ static long vin_param_handler(struct file *file, void *priv,
 	case VIDIOC_TVIN_INIT:
 		ret = vidioc_tvin_init(file, fh, param);
 		break;
+	case VIDIOC_SET_TDM_RXBUF_CNT:
+		ret = vidioc_set_tdm_rxbuf_cnt(file, fh, param);
+		break;
 	case VIDIOC_SET_DMA_MERGE:
 		ret = vidioc_set_dma_merge(file, fh, param);
+		break;
+	case VIDIOC_VIN_SET_LDCI_MODE:
+		ret = vidioc_set_isp_ldci_mode(file, fh, param);
+		break;
+	case VIDIOC_VIN_SET_DMA_OVERLAY:
+		ret = vidioc_set_dma_overlay(file, fh, param);
+		break;
+	case VIDIOC_VIN_SET_SCALER_RESOLUTION:
+		ret = vidioc_set_sclaer_resolution(file, fh, param);
+		break;
+	case VIDIOC_VIN_LOWPW_EN:
+		ret = vidioc_vin_set_lowpw_cfg(file, fh, param);
+		break;
+	case VIDIOC_VIN_GET_MIPI_CLK_DLY:
+		ret = vidioc_vin_get_mipi_clk_dly(file, fh, param);
+		break;
+	case VIDIOC_VIN_SET_MIPI_CLK_DLY:
+		ret = vidioc_vin_set_mipi_clk_dly(file, fh, param);
+		break;
+	case VIDIOC_VIN_GET_MIPI_CLK_ERROR:
+		ret = vidioc_vin_get_mipi_clk_error(file, fh, param);
+		break;
+	case VIDIOC_VIN_SET_TDMTIME_EMBED:
+		ret = vidioc_set_tdmtime_embed(file, fh, param);
+		break;
+	case VIDIOC_VIN_SET_ISPFE_EMBED:
+		ret = vidioc_set_ispbe_info_embed(file, fh, param);
+		break;
+	case VIDIOC_VIN_SET_VIPP_CASCADE:
+		ret = vidioc_set_vipp_cascade(file, fh, param);
+		break;
+	case VIDIOC_VIN_SET_AIISP_MODE:
+		ret = vidioc_set_aiisp_mode(file, fh, param);
+		break;
+	case VIDIOC_VIN_GET_AIISP_INFORM:
+		ret = vidioc_get_aiisp_information(file, fh, param);
+		break;
+	case VIDIOC_VIN_AIISP_SWITCH:
+		ret = vidioc_aiisp_switch(file, fh, param);
+		break;
+	case VIDIOC_VIN_SET_ISP_OCIC:
+		ret = vidioc_set_isp_onech_ini_combine(file, fh, param);
+		break;
+	case VIDIOC_VIN_SET_ISP_MCIC:
+		ret = vidioc_set_isp_multich_ini_combine(file, fh, param);
 		break;
 	default:
 		ret = -ENOTTY;
@@ -3792,6 +5246,11 @@ static int vin_dfs_handler(struct vin_md *vind, bool en)
 		"SYSTEM=CAMERA",
 		NULL,
 		NULL};
+
+	if (en && vind->dfs_handler_count++ > 0)
+		return 0;
+	if (!en && --vind->dfs_handler_count > 0)
+		return 0;
 
 	if (en)
 		envp[1] = "EVENT=ON";
@@ -3837,7 +5296,7 @@ static int vin_open(struct file *file)
 	dramfreq_master_access(MASTER_CSI, true);
 #endif
 
-	vin_log(VIN_LOG_VIDEO, "video%d open\n", vinc->id);
+	vin_print("video%d open\n", vinc->id);
 	mutex_unlock(&cap->vdev.entity.graph_obj.mdev->graph_mutex);
 	return 0;
 }
@@ -3868,18 +5327,21 @@ static int vin_close(struct file *file)
 	if (!cap->pipe.sd[VIN_IND_SENSOR] || !cap->pipe.sd[VIN_IND_SENSOR]->entity.use_count) {
 		mutex_unlock(&cap->vdev.entity.graph_obj.mdev->graph_mutex);
 		vb2_fop_release(file);
-		set_bit(VIN_LPM, &cap->state);
 		clear_bit(VIN_BUSY, &cap->state);
-		if (cap->pipe.sd[VIN_IND_SENSOR])
+		if (cap->pipe.sd[VIN_IND_SENSOR] && !vin_lpm(cap)) {
+			set_bit(VIN_LPM, &cap->state);
 			vin_err("%s is not used, video%d cannot be close!\n", cap->pipe.sd[VIN_IND_SENSOR]->name, vinc->id);
-		return -1;
+			return -1;
+		} else {
+			goto early_return;
+		}
 	}
 
 	if (vin_streaming(cap)) {
 		clear_bit(VIN_STREAM, &cap->state);
 		vin_pipeline_call(vinc, set_stream, &cap->pipe, 0);
-		if (vinc->dma_merge_mode == 1) {
-			if (vinc->id % 4 == 1 && vin_core_gbl[vinc->id - 1]) {
+		if (vinc->dma_merge_mode) {
+			if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
 				vinc_bind = vin_core_gbl[vinc->id - 1];
 				clear_bit(VIN_STREAM, &vinc_bind->vid_cap.state);
 				vin_pipeline_call(vinc_bind, set_stream, &vinc_bind->vid_cap.pipe, 0);
@@ -3892,8 +5354,8 @@ static int vin_close(struct file *file)
 		set_bit(VIN_LPM, &cap->state);
 		__csi_isp_setup_link(vinc, 0);
 		__vin_sensor_setup_link(vinc, module, valid_idx, 0);
-		if (vinc->dma_merge_mode == 1) {
-			if (vinc->id % 4 == 1 && vin_core_gbl[vinc->id - 1]) {
+		if (vinc->dma_merge_mode) {
+			if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
 				vinc_bind = vin_core_gbl[vinc->id - 1];
 				__csi_isp_setup_link(vinc_bind, 0);
 				__vin_sensor_setup_link(vinc_bind, module, valid_idx, 0);
@@ -3916,18 +5378,22 @@ static int vin_close(struct file *file)
 
 	v4l2_subdev_call(cap->pipe.sd[VIN_IND_ISP], core, init, 0);
 
-	if (vinc->dma_merge_mode == 1) {
-		if (vinc->id % 4 == 1 && vin_core_gbl[vinc->id - 1]) {
+	if (vinc->dma_merge_mode) {
+		if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
 			vinc_bind = vin_core_gbl[vinc->id - 1];
 			ret = vin_pipeline_call(vinc_bind, close, &vinc_bind->vid_cap.pipe);
 			if (ret)
 				vin_err("vin pipeline close failed!\n");
 
 			v4l2_subdev_call(vinc_bind->vid_cap.pipe.sd[VIN_IND_ISP], core, init, 0);
+			clear_bit(VIN_BUSY, &vinc_bind->vid_cap.state);
 			vinc_bind->dma_merge_mode = 0;
 		}
 	}
 	vinc->dma_merge_mode = 0;
+
+	vinc->once_resume = false;
+	memset(&vinc->vid_cap.dma_overlay, 0, sizeof(struct dma_overlay_ctx));
 
 #ifdef SUPPORT_PTN_LARGE
 	if ((vinc->large_image == 2) && vinc->ptn_cfg.ptn_en) {
@@ -3939,6 +5405,8 @@ static int vin_close(struct file *file)
 	mutex_unlock(&cap->vdev.entity.graph_obj.mdev->graph_mutex);
 
 	ret = vb2_fop_release(file); /* vb2_queue_release(&cap->vb_vidq); */
+
+early_return:
 #if IS_ENABLED(CONFIG_DEVFREQ_DRAM_FREQ_WITH_SOFT_NOTIFY)
 	dramfreq_master_access(MASTER_CSI, false);
 #endif
@@ -3946,7 +5414,7 @@ static int vin_close(struct file *file)
 	vin_dfs_handler(vind, 0);
 #endif
 	clear_bit(VIN_BUSY, &cap->state);
-	vin_log(VIN_LOG_VIDEO, "video%d close\n", vinc->id);
+	vin_print("video%d close\n", vinc->id);
 	return 0;
 }
 
@@ -3984,6 +5452,8 @@ static int vin_try_ctrl(struct v4l2_ctrl *ctrl)
 	 * V4L2_CTRL_FLAG_VOLATILE, s_ctrl would not be called
 	  */
 	switch (ctrl->id) {
+	case V4L2_CID_VFLIP:
+	case V4L2_CID_HFLIP:
 	case V4L2_CID_EXPOSURE:
 	case V4L2_CID_EXPOSURE_ABSOLUTE:
 	case V4L2_CID_GAIN:
@@ -4075,7 +5545,7 @@ static int vin_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 
 int sensor_flip_option(struct vin_vid_cap *cap, struct v4l2_control c)
 {
-#if !defined ISP_600
+#if !defined ISP_600 && !defined ISP_610
 	struct v4l2_subdev *isp = cap->pipe.sd[VIN_IND_ISP];
 	struct v4l2_subdev *csi =  cap->pipe.sd[VIN_IND_CSI];
 	struct v4l2_subdev *sensor = cap->pipe.sd[VIN_IND_SENSOR];
@@ -4090,8 +5560,13 @@ int sensor_flip_option(struct vin_vid_cap *cap, struct v4l2_control c)
 	int sensor_fmt_code = 0;
 	int ret;
 	mutex_lock(&cap->vdev.entity.graph_obj.mdev->graph_mutex);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	isp_stream_count = isp_device->stream_count;
+	isp_device->stream_count = 0;
+#else
 	isp_stream_count = isp_device->subdev.entity.stream_count;
 	isp_device->subdev.entity.stream_count = 0;
+#endif
 	csic_prs_capture_stop(csi_device->id);
 
 	ret = v4l2_s_ctrl(NULL, sensor->ctrl_handler, &c);
@@ -4156,10 +5631,16 @@ int sensor_flip_option(struct vin_vid_cap *cap, struct v4l2_control c)
 			vinc = vind->vinc[i];
 
 			vinc->vid_cap.frame_delay_cnt = 2;
+#if !defined VIPP_213 && !defined CSIC_DMA_VER_150_000
 			vipp_disable(vinc->vipp_sel);
 			vipp_top_clk_en(vinc->vipp_sel, 0);
-			csic_dma_int_clear_status(vinc->vipp_sel, DMA_INT_ALL);
-			csic_dma_top_disable(vinc->vipp_sel);
+			csic_dma_int_clear_status(vinc->id, DMA_INT_ALL);
+			csic_dma_top_disable(vinc->id);
+#else
+			vipp_chn_cap_disable(vinc->vipp_sel);
+			csic_dma_int_clear_status(vinc->id, DMA_INT_ALL);
+			csic_dma_top_disable(vinc->id);
+#endif
 		}
 	}
 
@@ -4173,9 +5654,14 @@ int sensor_flip_option(struct vin_vid_cap *cap, struct v4l2_control c)
 		if (vind->vinc[i]->csi_sel == csi_device->id) {
 			vinc = vind->vinc[i];
 
-			csic_dma_top_enable(vinc->vipp_sel);
+#if !defined VIPP_213 && !defined CSIC_DMA_VER_150_000
+			csic_dma_top_enable(vinc->id);
 			vipp_top_clk_en(vinc->vipp_sel, 1);
 			vipp_enable(vinc->vipp_sel);
+#else
+			csic_dma_top_enable(vinc->id);
+			vipp_chn_cap_enable(vinc->vipp_sel);
+#endif
 			vinc->vin_status.frame_cnt = 0;
 			vinc->vin_status.lost_cnt = 0;
 		}
@@ -4199,15 +5685,22 @@ int sensor_flip_option(struct vin_vid_cap *cap, struct v4l2_control c)
 
 	csic_prs_capture_start(csi_device->id, csi_device->bus_info.ch_total_num, &mode);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	isp_device->stream_count = isp_stream_count;
+#else
 	isp_device->subdev.entity.stream_count = isp_stream_count;
+#endif
 	mutex_unlock(&cap->vdev.entity.graph_obj.mdev->graph_mutex);
-#else /* else ISP_600 */
+#else /* else ISP_600/ISP_610 */
 	struct v4l2_subdev *isp = cap->pipe.sd[VIN_IND_ISP];
 	struct v4l2_subdev *sensor = cap->pipe.sd[VIN_IND_SENSOR];
 	struct isp_dev *isp_device = v4l2_get_subdevdata(isp);
+	struct vin_md *vind = dev_get_drvdata(isp->v4l2_dev->dev);
+	struct vin_core *vinc = NULL;
+	struct vin_core *vinc_bind = NULL;
 	int input_seq;
 	int sensor_fmt_code = 0;
-	int ret;
+	int ret, i;
 
 	ret = v4l2_s_ctrl(NULL, sensor->ctrl_handler, &c);
 	if (ret < 0) {
@@ -4243,10 +5736,44 @@ int sensor_flip_option(struct vin_vid_cap *cap, struct v4l2_control c)
 			input_seq = ISP_BGGR;
 			break;
 		}
-	vin_log(VIN_LOG_VIDEO, "sensor_flip_option sensor_fmt=%d\n", input_seq);
-	isp_device->isp_fmt->infmt = input_seq;
+		vin_log(VIN_LOG_VIDEO, "sensor_flip_option sensor_fmt=%d\n", input_seq);
+		isp_device->d3d_rec_reset = 1;
+		isp_device->isp_fmt->infmt = input_seq;
+		for (i = 0; i < VIN_MAX_DEV; i++) {
+			if (vind->vinc[i] == NULL)
+				continue;
+			if (!vin_streaming(&vind->vinc[i]->vid_cap))
+				continue;
+
+			if (vind->vinc[i]->isp_sel == isp_device->id) {
+				vinc = vind->vinc[i];
+				vinc->vid_cap.frame_delay_cnt = 3;
+				vinc->vid_cap.frame.fmt.mbus_code = sensor_fmt_code;
+			}
+		}
 	}
-	cap->frame_delay_cnt = 3;
+
+	if (cap->vinc->dma_merge_mode) {
+		if (cap->vinc->id % 4 == 1 && vin_core_gbl[cap->vinc->id - 1]) {
+			vinc_bind = vin_core_gbl[cap->vinc->id - 1];
+			isp = vinc_bind->vid_cap.pipe.sd[VIN_IND_ISP];
+			isp_device = v4l2_get_subdevdata(isp);
+
+			isp_device->isp_fmt->infmt = input_seq;
+			for (i = 0; i < VIN_MAX_DEV; i++) {
+				if (vind->vinc[i] == NULL)
+					continue;
+				if (!vin_streaming(&vind->vinc[i]->vid_cap))
+					continue;
+
+				if (vind->vinc[i]->isp_sel == isp_device->id) {
+					vinc = vind->vinc[i];
+					vinc->vid_cap.frame_delay_cnt = 3;
+					vinc->vid_cap.frame.fmt.mbus_code = sensor_fmt_code;
+				}
+			}
+		}
+	}
 #endif
 	return ret;
 }
@@ -4261,10 +5788,26 @@ static int vin_s_ctrl(struct v4l2_ctrl *ctrl)
 	struct v4l2_subdev *isp = cap->pipe.sd[VIN_IND_ISP];
 	struct actuator_ctrl_word_t vcm_ctrl;
 	struct v4l2_control c;
-#ifndef CONFIG_ENABLE_SENSOR_FLIP_OPTION
+#if !IS_ENABLED(CONFIG_ENABLE_SENSOR_FLIP_OPTION)
 	struct csic_dma_flip flip;
 #endif
 	int ret = 0;
+
+	/*
+	 * make sure g_ctrl will get the value that hardware is using
+	 * so that ctrl->flags should be V4L2_CTRL_FLAG_VOLATILE, after s_ctrl
+	  */
+	switch (ctrl->id) {
+	case V4L2_CID_VFLIP:
+	case V4L2_CID_HFLIP:
+	case V4L2_CID_EXPOSURE:
+	case V4L2_CID_EXPOSURE_ABSOLUTE:
+	case V4L2_CID_GAIN:
+		ctrl->flags |= V4L2_CTRL_FLAG_VOLATILE;
+		break;
+	default:
+		break;
+	}
 
 	c.id = ctrl->id;
 	c.value = ctrl->val;
@@ -4289,16 +5832,17 @@ static int vin_s_ctrl(struct v4l2_ctrl *ctrl)
 #else
 	case V4L2_CID_VFLIP:
 		if (cap->frame.fmt.fourcc == V4L2_PIX_FMT_LBC_2_0X ||
-		    cap->frame.fmt.fourcc == V4L2_PIX_FMT_LBC_2_5X ||
-		    cap->frame.fmt.fourcc == V4L2_PIX_FMT_LBC_1_0X) {
-			vin_warn("when out fmt is LBC, FLIP is not support!\n");
-			return -1;
+			cap->frame.fmt.fourcc == V4L2_PIX_FMT_LBC_2_5X ||
+			cap->frame.fmt.fourcc == V4L2_PIX_FMT_LBC_1_5X ||
+			cap->frame.fmt.fourcc == V4L2_PIX_FMT_LBC_1_0X) {
+				vin_warn("when out fmt is LBC, FLIP is not support!\n");
+				return -1;
 		}
 		cap->vinc->vflip = c.value;
 		if (!vin_lpm(cap)) {
 			flip.hflip_en = cap->vinc->hflip;
 			flip.vflip_en = cap->vinc->vflip;
-			csic_dma_flip_en(cap->vinc->vipp_sel, &flip);
+			csic_dma_flip_en(cap->vinc->id, &flip);
 			__osd_reg_setup(cap->vinc, &cap->osd);
 			return 0;
 		} else {
@@ -4307,16 +5851,17 @@ static int vin_s_ctrl(struct v4l2_ctrl *ctrl)
 		}
 	case V4L2_CID_HFLIP:
 		if (cap->frame.fmt.fourcc == V4L2_PIX_FMT_LBC_2_0X ||
-		    cap->frame.fmt.fourcc == V4L2_PIX_FMT_LBC_2_5X ||
-		    cap->frame.fmt.fourcc == V4L2_PIX_FMT_LBC_1_0X) {
-			vin_warn("when out fmt is LBC, FLIP is not support!\n");
-			return -1;
+			cap->frame.fmt.fourcc == V4L2_PIX_FMT_LBC_2_5X ||
+			cap->frame.fmt.fourcc == V4L2_PIX_FMT_LBC_1_5X ||
+			cap->frame.fmt.fourcc == V4L2_PIX_FMT_LBC_1_0X) {
+				vin_warn("when out fmt is LBC, FLIP is not support!\n");
+				return -1;
 		}
 		cap->vinc->hflip = c.value;
 		if (!vin_lpm(cap)) {
 			flip.hflip_en = cap->vinc->hflip;
 			flip.vflip_en = cap->vinc->vflip;
-			csic_dma_flip_en(cap->vinc->vipp_sel, &flip);
+			csic_dma_flip_en(cap->vinc->id, &flip);
 			__osd_reg_setup(cap->vinc, &cap->osd);
 			return 0;
 		} else {
@@ -4490,7 +6035,7 @@ static const struct v4l2_ioctl_ops vin_ioctl_ops = {
 	.vidioc_querybuf = vb2_ioctl_querybuf,
 	.vidioc_qbuf = vb2_ioctl_qbuf,
 	.vidioc_dqbuf = vb2_ioctl_dqbuf,
-	.vidioc_expbuf = vb2_ioctl_expbuf,
+	.vidioc_expbuf = vidioc_expbuf,
 	.vidioc_enum_input = vidioc_enum_input,
 	.vidioc_g_input = vidioc_g_input,
 	.vidioc_s_input = vidioc_s_input,
@@ -4591,11 +6136,30 @@ int vin_open_special(int id)
 }
 EXPORT_SYMBOL(vin_open_special);
 
-int vin_s_input_special(int id, int i)
+int vin_s_dma_merge_mode_special(int id, int merge_mode)
 {
 	struct vin_core *vinc = vin_core_gbl[id];
-	struct vin_md *vind = NULL;
-	struct vin_vid_cap *cap = NULL;
+
+	if (merge_mode < 0 || merge_mode > 3) {
+		vin_err("dma_merge_mode = %d, please check it!!!\n", merge_mode);
+		return -1;
+	}
+
+	vinc->dma_merge_mode = merge_mode;
+	vin_print("[%s] vinc%d dma_merge_mode = %d\n", __func__, vinc->id, vinc->dma_merge_mode);
+	if (vinc->dma_merge_mode > 0) {
+		if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1])
+			vin_core_gbl[vinc->id - 1]->dma_merge_mode = merge_mode;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(vin_s_dma_merge_mode_special);
+
+int __vin_s_input_special(struct vin_core *vinc, int i)
+{
+	struct vin_md *vind = dev_get_drvdata(vinc->v4l2_dev->dev);
+	struct vin_vid_cap *cap = &vinc->vid_cap;
 	struct modules_config *module = NULL;
 	struct sensor_instance *inst = NULL;
 	struct sensor_info *info = NULL;
@@ -4616,8 +6180,6 @@ int vin_s_input_special(int id, int i)
 		return -EINVAL;
 	}
 
-	vind = dev_get_drvdata(vinc->v4l2_dev->dev);
-	cap = &vinc->vid_cap;
 	i = i > 1 ? 0 : i;
 
 	if (i == 0)
@@ -4641,6 +6203,10 @@ int vin_s_input_special(int id, int i)
 		vin_err("csi&isp setup link failed\n");
 		return -EINVAL;
 	}
+
+#if IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
+	vin_set_sensor_init_from_partition(&vinc->vid_cap, module->modules.sensor[valid_idx].sd);
+#endif
 
 	ret = vin_pipeline_call(vinc, open, &cap->pipe, &cap->vdev.entity, true);
 	if (ret < 0) {
@@ -4684,12 +6250,34 @@ int vin_s_input_special(int id, int i)
 
 	return ret;
 }
-EXPORT_SYMBOL(vin_s_input_special);
 
-int vin_s_parm_special(int id, void *priv,
-			 struct v4l2_streamparm *parms)
+int vin_s_input_special(int id, int i)
 {
 	struct vin_core *vinc = vin_core_gbl[id];
+	__maybe_unused struct vin_core *vinc_bind = NULL;
+	int ret;
+
+	ret = __vin_s_input_special(vinc, i);
+	if (ret < 0)
+		return ret;
+
+	if (vinc->dma_merge_mode) {
+		if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
+			vinc_bind = vin_core_gbl[vinc->id - 1];
+			set_bit(VIN_BUSY, &vinc_bind->vid_cap.state);
+			ret = __vin_s_input_special(vinc_bind, i);
+			if (ret < 0)
+				return ret;
+		}
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(vin_s_input_special);
+
+int __vin_s_parm_special(struct vin_core *vinc,
+			 struct v4l2_streamparm *parms)
+{
 	struct vin_vid_cap *cap = &vinc->vid_cap;
 	struct sensor_instance *inst = get_valid_sensor(vinc);
 	int ret = 0;
@@ -4699,6 +6287,16 @@ int vin_s_parm_special(int id, void *priv,
 		parms->parm.capture.capturemode = V4L2_MODE_PREVIEW;
 	}
 	cap->capture_mode = parms->parm.capture.capturemode;
+	if (vinc->dma_merge_mode == 1)
+		/* large_image 4 means DMA_STITCH_2IN1_LINNER */
+		parms->parm.capture.reserved[2] = 3;
+	else if (vinc->dma_merge_mode == 2) {
+		/* large_image 4 means DMA_STITCH_HORIZONTAL */
+		parms->parm.capture.reserved[2] = 4;
+	} else if (vinc->dma_merge_mode == 3) {
+		/* large_image 4 means DMA_STITCH_VERTICAL */
+		parms->parm.capture.reserved[2] = 5;
+	}
 	vinc->large_image = parms->parm.capture.reserved[2];
 	ret = sensor_s_parm(cap->pipe.sd[VIN_IND_SENSOR], parms);
 	if (ret < 0)
@@ -4711,7 +6309,40 @@ int vin_s_parm_special(int id, void *priv,
 		if (ret < 0)
 			vin_warn("v4l2 subdev isp s_parm error!\n");
 	}
+#ifdef SUPPORT_ISP_TDM
+	if (vinc->tdm_rx_sel != 0xff && cap->pipe.sd[VIN_IND_TDM_RX]) {
+		ret = sunxi_tdm_subdev_s_parm(cap->pipe.sd[VIN_IND_TDM_RX], parms);
+	}
+#endif
+	if (ret < 0)
+		vin_warn("v4l2 subdev tdm s_parm error!\n");
+	ret = sunxi_scaler_subdev_s_parm(cap->pipe.sd[VIN_IND_SCALER], parms);
+	if (ret < 0)
+		vin_warn("v4l2 subdev scaler s_parm error!\n");
 	return ret;
+}
+
+int vin_s_parm_special(int id, void *priv,
+			 struct v4l2_streamparm *parms)
+{
+	struct vin_core *vinc = vin_core_gbl[id];
+	__maybe_unused struct vin_core *vinc_bind = NULL;
+	int ret = 0;
+
+	ret = __vin_s_parm_special(vinc, parms);
+	if (ret < 0)
+		return ret;
+
+	if (vinc->dma_merge_mode) {
+		if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
+			vinc_bind = vin_core_gbl[vinc->id - 1];
+			ret = __vin_s_parm_special(vinc_bind, parms);
+			if (ret < 0)
+				return ret;
+		}
+	}
+
+	return 0;
 }
 EXPORT_SYMBOL(vin_s_parm_special);
 
@@ -4760,6 +6391,7 @@ int vin_close_special(int id)
 	struct list_head *done = &vinc->vid_cap.vidq_done;
 	struct modules_config *module = &vind->modules[vinc->sensor_sel];
 	int valid_idx = module->sensors.valid_idx;
+	__maybe_unused struct vin_core *vinc_bind = NULL;
 	int ret;
 
 	INIT_LIST_HEAD(active);
@@ -4785,7 +6417,7 @@ int vin_close_special(int id)
 
 	if (vin_streaming(cap)) {
 #if VIN_FALSE
-#if IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
+#if IS_ENABLED(CONFIG_ISP_SPECIAL_LDCI)
 		isp = container_of(cap->pipe.sd[VIN_IND_ISP], struct isp_dev, subdev);
 		if (isp->gtm_type == 4) {
 			if ((vinc->id == 0) && (!check_ldci_video_relate(vinc->id, LDCI0_VIDEO_CHN))) {
@@ -4798,12 +6430,27 @@ int vin_close_special(int id)
 #endif
 		clear_bit(VIN_STREAM, &cap->state);
 		vin_pipeline_call(vinc, set_stream, &cap->pipe, 0);
+		if (vinc->dma_merge_mode) {
+			if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
+				vinc_bind = vin_core_gbl[vinc->id - 1];
+				clear_bit(VIN_STREAM, &vinc_bind->vid_cap.state);
+				vin_pipeline_call(vinc_bind, set_stream, &vinc_bind->vid_cap.pipe, 0);
+			}
+		}
 	}
 
 	if (!vin_lpm(cap)) {
 			set_bit(VIN_LPM, &cap->state);
 		__csi_isp_setup_link(vinc, 0);
 		__vin_sensor_setup_link(vinc, module, valid_idx, 0);
+
+		if (vinc->dma_merge_mode) {
+			if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
+				vinc_bind = vin_core_gbl[vinc->id - 1];
+				__csi_isp_setup_link(vinc_bind, 0);
+				__vin_sensor_setup_link(vinc_bind, module, valid_idx, 0);
+			}
+		}
 	}
 
 	ret = vin_pipeline_call(vinc, close, &cap->pipe);
@@ -4814,6 +6461,23 @@ int vin_close_special(int id)
 
 	/* software */
 	clear_bit(VIN_BUSY, &cap->state);
+	if (vinc->dma_merge_mode) {
+		if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
+			vinc_bind = vin_core_gbl[vinc->id - 1];
+			ret = vin_pipeline_call(vinc_bind, close, &vinc_bind->vid_cap.pipe);
+			if (ret)
+				vin_err("vin pipeline close failed!\n");
+
+			v4l2_subdev_call(vinc_bind->vid_cap.pipe.sd[VIN_IND_ISP], core, init, 0);
+			clear_bit(VIN_BUSY, &vinc_bind->vid_cap.state);
+			vinc_bind->dma_merge_mode = 0;
+		}
+	}
+	vinc->dma_merge_mode = 0;
+
+	vinc->once_resume = false;
+	memset(&vinc->vid_cap.dma_overlay, 0, sizeof(struct dma_overlay_ctx));
+
 	mutex_unlock(&cap->vdev.entity.graph_obj.mdev->graph_mutex);
 #if IS_ENABLED(CONFIG_DEVFREQ_DRAM_FREQ_WITH_SOFT_NOTIFY)
 	dramfreq_master_access(MASTER_CSI, false);
@@ -4826,8 +6490,25 @@ EXPORT_SYMBOL(vin_close_special);
 int vin_s_fmt_special(int id, struct v4l2_format *f)
 {
 	struct vin_core *vinc = vin_core_gbl[id];
+	__maybe_unused struct vin_core *vinc_bind = NULL;
+	int ret;
 
-	return __vin_set_fmt(vinc, f);
+	ret =  __vin_set_fmt(vinc, f);
+	if (ret < 0) {
+		vin_err("set fmt%d error\n", vinc->id);
+		return ret;
+	}
+
+	if (vinc->dma_merge_mode) {
+		if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
+			vinc_bind = vin_core_gbl[vinc->id - 1];
+			ret = __vin_set_fmt(vinc_bind, f);
+			if (ret < 0)
+				vin_err("set fmt%d error\n", vinc->id - 1);
+		}
+	}
+
+	return ret;
 }
 EXPORT_SYMBOL(vin_s_fmt_special);
 
@@ -4924,7 +6605,8 @@ int vin_qbuffer_special(int id, struct vin_buffer *buf)
 		return -1;
 	}
 
-	buf->dmabuf = dma_buf_get(buf->dmabuf_fd);
+	//buf->dmabuf = dma_buf_get(buf->dmabuf_fd);
+	get_dma_buf(buf->dmabuf);
 
 	attachment = dma_buf_attach(buf->dmabuf, dev);
 	if (IS_ERR(attachment)) {
@@ -4945,7 +6627,7 @@ int vin_qbuffer_special(int id, struct vin_buffer *buf)
 	buf->attachment = attachment;
 	buf->sgt = sgt;
 
-	buf->paddr = (void *)sg_dma_address(sgt->sgl);
+	buf->paddr = (void *)(uintptr_t)sg_dma_address(sgt->sgl);
 
 	spin_lock_irqsave(&cap->slock, flags);
 	list_add_tail(&buf->list, &cap->vidq_active);
@@ -4961,7 +6643,6 @@ err_buf_put:
 	return -ENOMEM;
 }
 EXPORT_SYMBOL(vin_qbuffer_special);
-
 
 int vin_rt_dqbuffer_special(int id, struct vin_buffer **buf)
 {
@@ -5009,16 +6690,20 @@ int vin_rt_qbuffer_special(int id, struct vin_buffer *buf)
 }
 EXPORT_SYMBOL(vin_rt_qbuffer_special);
 
-
-
 int vin_streamon_special(int video_id, enum v4l2_buf_type i)
 {
 	struct vin_core *vinc = vin_core_gbl[video_id];
+	__maybe_unused struct vin_core *vinc_bind = NULL;
 	struct vin_vid_cap *cap = &vinc->vid_cap;
 	struct vin_md *vind = dev_get_drvdata(vinc->v4l2_dev->dev);
 	struct modules_config *module = &vind->modules[vinc->sensor_sel];
 	int valid_idx = module->sensors.valid_idx;
 	__maybe_unused struct isp_dev *isp = NULL;
+	__maybe_unused struct vin_buffer *buf;
+	__maybe_unused struct list_head *buf_next;
+	__maybe_unused int sensorA_frame_offset;
+	__maybe_unused int sensorB_frame_offset;
+	struct scaler_dev *scaler = NULL;
 	int ret = 0;
 	int wth;
 
@@ -5066,6 +6751,57 @@ int vin_streamon_special(int video_id, enum v4l2_buf_type i)
 		clear_bit(VIN_LPM, &cap->state);
 	}
 	mutex_lock(&cap->vdev.entity.graph_obj.mdev->graph_mutex);
+#if IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
+	vin_set_from_partition(&vinc->vid_cap);
+#endif
+
+	if (vinc->large_image == 5) {
+		if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
+			if (cap->dma_overlay.enable) {
+				if (cap->dma_overlay.logo_data) {
+					vinc_bind = vin_core_gbl[vinc->id - 1];
+					scaler = container_of(vinc_bind->vid_cap.pipe.sd[VIN_IND_SCALER], struct scaler_dev, subdev);
+					sensorA_frame_offset = scaler->para.width * scaler->para.height;
+					scaler = container_of(vinc->vid_cap.pipe.sd[VIN_IND_SCALER], struct scaler_dev, subdev);
+					sensorB_frame_offset = scaler->para.width * scaler->para.height;
+					buf_next = cap->vidq_active.next;
+					while (buf_next !=  &cap->vidq_active) {
+						buf = list_entry(buf_next, struct vin_buffer, list);
+						vin_log(VIN_LOG_LARGE, "buf_addr (0x%p, 0x%p), sensorA_frame_offset = %d, sensorB_frame_offset = %d, dma_overlay_offset = %d\n",
+							buf->vir_addr, buf->paddr, sensorA_frame_offset, sensorB_frame_offset, cap->dma_overlay.overlay_offset);
+						/*
+							SensorA
+							logo
+							SensorB
+						*/
+						/*  copy_from_user_Y */
+						memcpy((buf->vir_addr + sensorA_frame_offset), cap->dma_overlay.logo_data, cap->dma_overlay.overlay_offset);
+						/* copy_from_user_UV */
+						memcpy((buf->vir_addr + sensorA_frame_offset + (roundup(cap->dma_overlay.height, 16) * roundup(cap->dma_overlay.width, 16)) +
+						sensorB_frame_offset + (sensorA_frame_offset >> 1)), &cap->dma_overlay.logo_data[cap->dma_overlay.overlay_offset], (cap->dma_overlay.overlay_offset >> 1));
+						buf_next = buf_next->next;
+					}
+					vfree(cap->dma_overlay.logo_data);
+				} else {
+					vin_err("logo_data is NULL!!!\n");
+				}
+			} else {
+				vin_warn("dma_overlay.enable = %d, it will not insert logo\n", cap->dma_overlay.enable);
+			}
+		}
+	}
+
+	if (vinc->dma_merge_mode) {
+		if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
+			vinc_bind = vin_core_gbl[vinc->id - 1];
+			ret = vin_pipeline_call(vinc_bind, set_stream, &vinc_bind->vid_cap.pipe, vinc_bind->stream_idx);
+			if (ret < 0)
+				vin_err("video%d %s error!\n", vinc_bind->id, __func__);
+			set_bit(VIN_STREAM, &vinc_bind->vid_cap.state);
+		}
+		vin_set_next_buf_addr(vinc);
+	}
+
 	ret = vin_pipeline_call(cap->vinc, set_stream, &cap->pipe, cap->vinc->stream_idx);
 	if (ret < 0)
 		vin_err("video%d %s error!\n", vinc->id, __func__);
@@ -5079,7 +6815,7 @@ int vin_streamon_special(int video_id, enum v4l2_buf_type i)
 	 */
 	mutex_unlock(&cap->vdev.entity.graph_obj.mdev->graph_mutex);
 
-#if IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
+#if IS_ENABLED(CONFIG_ISP_SPECIAL_LDCI)
 	isp = container_of(cap->pipe.sd[VIN_IND_ISP], struct isp_dev, subdev);
 	if (isp->gtm_type == 4) {
 		if ((vinc->id == 0) && (!check_ldci_video_relate(vinc->id, LDCI0_VIDEO_CHN))) {
@@ -5126,6 +6862,7 @@ int vin_streamoff_special(int video_id, enum v4l2_buf_type i)
 	struct modules_config *module = &vind->modules[vinc->sensor_sel];
 	int valid_idx = module->sensors.valid_idx;
 	__maybe_unused struct isp_dev *isp = NULL;
+	__maybe_unused struct vin_core *vinc_bind = NULL;
 	int ret = 0;
 
 	if (!vin_streaming(cap)) {
@@ -5133,7 +6870,7 @@ int vin_streamoff_special(int video_id, enum v4l2_buf_type i)
 		goto streamoff_error;
 	}
 
-#if IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
+#if IS_ENABLED(CONFIG_ISP_SPECIAL_LDCI)
 	isp = container_of(cap->pipe.sd[VIN_IND_ISP], struct isp_dev, subdev);
 	if (isp->gtm_type == 4) {
 		if ((vinc->id == 0) && (!check_ldci_video_relate(vinc->id, LDCI0_VIDEO_CHN))) {
@@ -5149,6 +6886,16 @@ int vin_streamoff_special(int video_id, enum v4l2_buf_type i)
 	mutex_lock(&cap->vdev.entity.graph_obj.mdev->graph_mutex);
 	clear_bit(VIN_STREAM, &cap->state);
 	vin_pipeline_call(vinc, set_stream, &cap->pipe, 0);
+	if (vinc->dma_merge_mode) {
+		if (vinc->id % 2  == 1 && vin_core_gbl[vinc->id - 1]) {
+			vinc_bind = vin_core_gbl[vinc->id - 1];
+			clear_bit(VIN_STREAM, &vinc_bind->vid_cap.state);
+			clear_bit(VIN_BUSY, &vinc_bind->vid_cap.state);
+			vin_pipeline_call(vinc_bind, set_stream, &vinc_bind->vid_cap.pipe, 0);
+			__csi_isp_setup_link(vinc_bind, 0);
+			__vin_sensor_setup_link(vinc_bind, module, valid_idx, 0);
+		}
+	}
 	set_bit(VIN_LPM, &cap->state);
 	__csi_isp_setup_link(vinc, 0);
 	__vin_sensor_setup_link(vinc, module, valid_idx, 0);
@@ -5163,7 +6910,6 @@ streamoff_error:
 	return ret;
 }
 EXPORT_SYMBOL(vin_streamoff_special);
-#endif
 
 void vin_register_buffer_done_callback(int id, void *func)
 {
@@ -5195,6 +6941,42 @@ int vin_get_encpp_cfg(int id, unsigned char ctrl_id, void *value)
 	case ISP_CTRL_ENCODER_2DNR_CFG:
 		*(struct encoder_2dnr_config *)value = isp->encoder_2dnr_cfg;
 		break;
+	case ISP_CTRL_ENCPP_AE_STATS: {
+		struct isp_cfg_attr_data *isp_cfg;
+		isp_cfg = kzalloc(sizeof(struct isp_cfg_attr_data), GFP_KERNEL);
+		if (!isp_cfg) {
+			return -ENOMEM;
+		}
+		isp_cfg->cfg_id = ISP_CTRL_AE_STATS;
+		vin_get_isp_attr_cfg_ctrl(vinc, isp_cfg);
+		memcpy((unsigned char *)value, isp_cfg->ae_stat_avg, ISP_AE_ROW*ISP_AE_COL*sizeof(unsigned char));
+		kfree(isp_cfg);
+		break;
+	}
+	case ISP_CTRL_ENCPP_AE_EV_LV: {
+		struct isp_cfg_attr_data *isp_cfg;
+		isp_cfg = kzalloc(sizeof(struct isp_cfg_attr_data), GFP_KERNEL);
+		if (!isp_cfg) {
+			return -ENOMEM;
+		}
+		isp_cfg->cfg_id = ISP_CTRL_AE_EV_LV;
+		vin_get_isp_attr_cfg_ctrl(vinc, isp_cfg);
+		*(int *)value = isp_cfg->ae_ev_lv;
+		kfree(isp_cfg);
+		break;
+	}
+	case ISP_CTRL_ENCPP_AE_WEIGHT_LUM: {
+		struct isp_cfg_attr_data *isp_cfg;
+		isp_cfg = kzalloc(sizeof(struct isp_cfg_attr_data), GFP_KERNEL);
+		if (!isp_cfg) {
+			return -ENOMEM;
+		}
+		isp_cfg->cfg_id = ISP_CTRL_AE_WEIGHT_LUM;
+		vin_get_isp_attr_cfg_ctrl(vinc, isp_cfg);
+		*(int *)value = isp_cfg->ae_weight_lum;
+		kfree(isp_cfg);
+		break;
+	}
 	default:
 		vin_err("%s: Unknown ctrl.\n", __FUNCTION__);
 		return -1;
@@ -5212,7 +6994,9 @@ int vin_set_ve_online_cfg_special(int id, struct csi_ve_online_cfg *cfg)
 * 1 means support, 0 means not support.
 */
 #if IS_ENABLED(CONFIG_ARCH_SUN300IW1)
-	int csi_ve_online_video[VIN_MAX_DEV] = {1, 1, 1, 1, 1, 1, 1, 1};
+	int csi_ve_online_video[VIN_MAX_DEV] = {1, 1, 1, 1, 1, 1};
+#elif IS_ENABLED(CONFIG_ARCH_SUN252IW1)
+	int csi_ve_online_video[VIN_MAX_DEV] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 #else
 	int csi_ve_online_video[VIN_MAX_DEV] = {0};
 #endif
@@ -5262,7 +7046,7 @@ int vin_set_tdm_speeddn_cfg_special(int id, struct tdm_speeddn_cfg *cfg)
 		}
 
 		mipi = container_of(cap->pipe.sd[VIN_IND_MIPI], struct mipi_dev, subdev);
-		mipi->cmb_csi_cfg.pix_num = cfg->pix_num;
+		mipi->cmb_csi_cfg.pix_num = (enum cmb_csi_pix_num)cfg->pix_num;
 	}
 
 	if (vinc->tdm_rx_sel != 0xff) {
@@ -5281,6 +7065,31 @@ int vin_set_tdm_speeddn_cfg_special(int id, struct tdm_speeddn_cfg *cfg)
 	return 0;
 }
 EXPORT_SYMBOL(vin_set_tdm_speeddn_cfg_special);
+
+#if defined CONFIG_ISP_SERVER_MELIS
+int vin_get_isp_sei_info_special(int id, void *value)
+{
+	int ret = 0;
+	struct vin_core *vinc = vin_core_gbl[id];
+	struct isp_sei_info *pInfo = (struct isp_sei_info *)value;
+
+	ret = vin_get_isp_sei_info_ctrl(vinc, pInfo);
+
+	return ret;
+}
+EXPORT_SYMBOL(vin_get_isp_sei_info_special);
+
+int vin_get_sensor_info_special(int id, struct sensor_config *sensor_cfg)
+{
+	int ret = 0;
+	struct vin_core *vinc = vin_core_gbl[id];
+
+	ret = v4l2_subdev_call(vinc->vid_cap.pipe.sd[VIN_IND_SENSOR], core, ioctl, VIDIOC_VIN_SENSOR_CFG_REQ, sensor_cfg);
+
+	return ret;
+}
+EXPORT_SYMBOL(vin_get_sensor_info_special);
+#endif
 
 int vin_s_fmt_overlay_special(int id, struct v4l2_format *f)
 {
@@ -5453,6 +7262,70 @@ int vin_get_isp_attr_cfg_special(int id, void *value)
 }
 EXPORT_SYMBOL(vin_get_isp_attr_cfg_special);
 
+void vin_tunning_ctrl_special(int id, void *value)
+{
+#if IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
+	struct vin_core *vinc = vin_core_gbl[id];
+	struct sensor_info *info = container_of(vinc->vid_cap.pipe.sd[VIN_IND_SENSOR], struct sensor_info, sd);
+	struct isp_dev *isp = v4l2_get_subdevdata(vinc->vid_cap.pipe.sd[VIN_IND_ISP]);
+	struct tunning_ctl_data *cfg = (struct tunning_ctl_data *)value;
+	unsigned char timeout_cnt = 100;
+	int i, data[3];
+
+	if (cfg->cfg_id == ISP_CTRL_GET_SENSOR_CFG) {
+		cfg->sensor_cfg.isp_id = vinc->isp_sel;
+		cfg->sensor_cfg.sensor_width = info->current_wins->width;
+		cfg->sensor_cfg.sensor_height = info->current_wins->height;
+		cfg->sensor_cfg.act_fps = info->current_wins->fps_fixed;
+		cfg->sensor_cfg.wdr = info->current_wins->wdr_mode;
+	} else if (cfg->cfg_id == ISP_CTRL_RPBUF_INIT) {
+		data[0] = VIN_SET_TUNNING_CTRL;
+		data[1] = cfg->cfg_id;
+		data[2] = ISP_RPBUF_TUNNING_LEN;
+		isp_rpmsg_send(isp, data, 3*4);
+		isp_tunning_rpbuf_create(isp);
+	} else if (cfg->cfg_id == ISP_CTRL_RPBUF_RELEASE) {
+		data[0] = VIN_SET_TUNNING_CTRL;
+		data[1] = cfg->cfg_id;
+		isp_rpmsg_send(isp, data, 3*4);
+		isp_tunning_rpbuf_destroy(isp);
+	} else if (cfg->cfg_id == ISP_CTRL_GET_ISP_PARAM) {
+		isp->isp_tunning_update = 0;
+		data[0] = VIN_SET_TUNNING_CTRL;
+		data[1] = cfg->cfg_id;
+		isp_rpmsg_send(isp, data, 3*4);
+
+		for (i = 0; i < timeout_cnt; i++) {
+			/* wait for isp_tunning_update ok */
+			if (isp->isp_tunning_update)
+				break;
+			usleep_range(500, 550);
+		}
+
+		if (i == timeout_cnt) {
+			vin_err("ISP_CTRL_GET_ISP_PARAM timeout!!!\n");
+			return;
+		}
+		isp_tunning_save_buf(isp, cfg->path, cfg->cfg_id);
+	} else if (cfg->cfg_id == ISP_CTRL_SET_ISP_PARAM) {
+		isp_tunning_rpbuf_send(isp, cfg->path, cfg->cfg_id);
+	} else if (cfg->cfg_id == ISP_CTRL_GET_LOG) {
+		isp_tunning_save_buf(isp, cfg->path, cfg->cfg_id);
+
+		data[0] = VIN_SET_TUNNING_CTRL;
+		data[1] = cfg->cfg_id;
+		isp_rpmsg_send(isp, data, 3*4);
+	} else if (cfg->cfg_id == ISP_CTRL_GET_3A_STAT) {
+		isp_tunning_save_buf(isp, cfg->path, cfg->cfg_id);
+
+		data[0] = VIN_SET_TUNNING_CTRL;
+		data[1] = cfg->cfg_id;
+		isp_rpmsg_send(isp, data, 3*4);
+	}
+#endif
+}
+EXPORT_SYMBOL(vin_tunning_ctrl_special);
+
 void vin_get_sensor_name_special(int id, char *name)
 {
 	struct vin_core *vinc = vin_core_gbl[id];
@@ -5576,6 +7449,31 @@ int vin_set_phy2vir_special(int id, struct isp_memremap_cfg *isp_memremap)
 }
 EXPORT_SYMBOL(vin_set_phy2vir_special);
 
+int vin_set_dma_overlay_special(int id, void *value)
+{
+	int ret = 0;
+	struct vin_core *vinc = vin_core_gbl[id];
+	struct dma_overlay_para *dma_overlay_data = (struct dma_overlay_para *)value;
+
+	ret = __vidioc_set_dma_overlay(vinc, dma_overlay_data);
+
+	return ret;
+}
+EXPORT_SYMBOL(vin_set_dma_overlay_special);
+
+int vin_set_sclaer_resolution_special(int id, void *value)
+{
+	int ret = 0;
+	struct vin_core *vinc = vin_core_gbl[id];
+	struct dma_merge_scaler_cfg *sensor_scaler_cfg = (struct dma_merge_scaler_cfg *)value;
+
+	ret = __vidioc_set_sclaer_resolution(vinc, sensor_scaler_cfg);
+
+	return ret;
+}
+EXPORT_SYMBOL(vin_set_sclaer_resolution_special);
+#endif
+
 void vin_isp_reset_done_callback(int id, void *func)
 {
 	struct vin_core *vinc = vin_core_gbl[id];
@@ -5583,6 +7481,255 @@ void vin_isp_reset_done_callback(int id, void *func)
 	vinc->vid_cap.online_csi_reset_callback = func;
 }
 EXPORT_SYMBOL(vin_isp_reset_done_callback);
+
+int vin_set_lowpw_cfg_special(int id, struct sensor_lowpw_cfg *cfg)
+{
+	struct vin_core *vinc = vin_core_gbl[id];
+	struct v4l2_subdev *sd = vinc->vid_cap.pipe.sd[VIN_IND_SENSOR];
+	struct sensor_info *info = container_of(sd, struct sensor_info, sd);
+
+	if (vin_streaming(&vinc->vid_cap) == 0)
+		return -1;
+
+	info->lowpw_en = cfg->lowpw_en;
+	if (cfg->lowpw_en) {
+		if ((info->frame_mode == SENSOR_ONE_FRAME) && (cfg->frame_mode == SENSOR_MULTI_FRAME)) { /* one_frame change to multi_frame */
+			mutex_lock(&info->lock);
+			if (info->stby_flags == STBY_ISOFF) {
+				mutex_unlock(&info->lock);
+				return -EBUSY;
+			}
+			mutex_unlock(&info->lock);
+			info->frame_mode = cfg->frame_mode;
+			v4l2_subdev_call(vinc->vid_cap.pipe.sd[VIN_IND_SENSOR], core, ioctl,
+					SET_SENSOR_MULTI_FRAME, NULL);
+		} else {
+			info->frame_mode = cfg->frame_mode;
+		}
+	} else
+		info->frame_mode = SENSOR_MULTI_FRAME;
+
+	return 0;
+}
+EXPORT_SYMBOL(vin_set_lowpw_cfg_special);
+
+#if IS_ENABLED(CONFIG_ISP_REG_DEBUG_NODE)
+static void vin_isp_reg_buf_fmt(char *str_out, char *buf, unsigned int cnt)
+{
+	int i, pos = 0, *int_ptr = (int *)buf;
+
+	str_out[pos++] = '\t';
+
+	for (i = 0; i < cnt; i++) {
+		sprintf(&str_out[pos], "0x%08x, ", *int_ptr++);
+		pos += 12;
+	}
+
+	/** if cnt == 0, make string out to be '\n' + '\0';
+	  * else (cnt > 0), make the last string above ' ' to be '\n' and then add '\0'.
+	  */
+
+	str_out[pos - 1] = '\n';
+	str_out[pos++] = '\0';
+}
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+int vin_get_isp_reg(int id, int act_flag, char *save_path)
+{
+	loff_t pos = 0;
+	char fmt_str[100];
+	struct isp_dev *isp;
+	struct vin_core *vinc;
+	int i, cur_offset = 0;
+	struct file *save_file_fd = NULL;
+
+	const char load_reg_array_start[]    = "\nunsigned int isp_save_reg_day[ISP_LOAD_REG_SIZE >> 2] = {\n";
+	const char fe_table_array_start[]    = "\nunsigned int isp_save_fe_table_day[ISP_FE_TABLE_SIZE >> 2] = {\n";
+	const char bayer_table_array_start[] = "\nunsigned int isp_save_bayer_table_day[ISP_BAYER_TABLE_SIZE >> 2] = {\n";
+	const char rgb_table_array_start[]   = "\nunsigned int isp_save_rgb_table_day[ISP_RGB_TABLE_SIZE >> 2] = {\n";
+	const char yuv_table_array_start[]   = "\nunsigned int isp_save_yuv_table_day[ISP_YUV_TABLE_SIZE >> 2] = {\n";
+	const char common_array_end[]        = "};\n";
+
+	if (id >= VIN_MAX_DEV) {
+		vin_err("vin core global id error!!!\n");
+		return -1;
+	}
+
+	if (act_flag != 0 && act_flag != 1) {
+		vin_err("No support action flag-[%d], please use 0 to print or 1 to save fo file!!!\n", act_flag);
+		return -1;
+	}
+
+	if (act_flag == 1 && save_path == NULL) {
+		vin_err("Save file path is NULL!!!\n");
+		return -1;
+	}
+
+	vinc = vin_core_gbl[id];
+	if (vinc == NULL) {
+		vin_err("vin core global pointer is NULL!!!\n");
+		return -1;
+	}
+
+	isp = v4l2_get_subdevdata(vinc->vid_cap.pipe.sd[VIN_IND_ISP]);
+	if (isp == NULL) {
+		vin_err("ISP device is NULL!!!\n");
+		return -1;
+	}
+
+	if (act_flag == 0) {
+		printk("\n------ print ISP REG <start> -------\n");
+	} else if (act_flag == 1) {
+		printk("\n------ save ISP REG to file: %s -------\n", save_path);
+		save_file_fd = filp_open(save_path, O_WRONLY | O_CREAT | O_TRUNC, 0777);
+		if (save_file_fd == NULL) {
+			vin_err("open %s failed!!!\n", save_path);
+			return -1;
+		}
+	}
+
+#define PRINT_OR_SAVE_ISP_REG_PART(offet, array_start, size)                            		\
+	do {                                                                                		\
+		cur_offset += offet;                                                            	\
+		if (act_flag == 0) {                                                            	\
+			printk(KERN_EMERG "%s", array_start);                                       	\
+		} else if (act_flag == 1) {                                                     	\
+			kernel_write(save_file_fd, array_start, strlen(array_start), &pos);            	\
+		}                                                                               	\
+		for (i = 0; i < size / 4; i += 8) {                                             	\
+			memset(fmt_str, 0, sizeof(fmt_str));                                        	\
+			vin_isp_reg_buf_fmt(fmt_str, isp->load_shadow + cur_offset + i * 4,         	\
+				(size / 4 - i >= 8) ? 8 : size / 4 - i);                                \
+			if (act_flag == 0) {                                                        	\
+				printk(KERN_EMERG "%s", fmt_str);                                       \
+			} else if (act_flag == 1) {                                                 	\
+				kernel_write(save_file_fd, fmt_str, strlen(fmt_str), &pos);                \
+			}                                                                           	\
+		}                                                                               	\
+		if (act_flag == 0) {                                                            	\
+			printk(KERN_EMERG "%s", common_array_end);                                  	\
+		} else if (act_flag == 1) {                                                     	\
+			kernel_write(save_file_fd, common_array_end, strlen(common_array_end), &pos);	\
+		}                                                                               	\
+	} while (0)
+
+	PRINT_OR_SAVE_ISP_REG_PART(0, load_reg_array_start, ISP_LOAD_REG_SIZE);
+	PRINT_OR_SAVE_ISP_REG_PART(ISP_LOAD_REG_SIZE, fe_table_array_start, ISP_FE_TBL_SIZE);
+	PRINT_OR_SAVE_ISP_REG_PART(ISP_FE_TBL_SIZE, bayer_table_array_start, ISP_BAYER_TABLE_SIZE);
+	PRINT_OR_SAVE_ISP_REG_PART(ISP_BAYER_TABLE_SIZE, rgb_table_array_start, ISP_RGB_TABLE_SIZE);
+	PRINT_OR_SAVE_ISP_REG_PART(ISP_RGB_TABLE_SIZE, yuv_table_array_start, ISP_YUV_TABLE_SIZE);
+
+	if (act_flag == 0) {
+		printk("\n------ print ISP REG <end> -------\n");
+	} else if (act_flag == 1) {
+		filp_close(save_file_fd, NULL);
+		printk("\n------ save ISP REG to %s success. ------\n", save_path);
+	}
+
+	return 0;
+}
+#else
+int vin_get_isp_reg(int id, int act_flag, char *save_path)
+{
+	loff_t pos = 0;
+	char fmt_str[100];
+	mm_segment_t old_fs;
+	struct isp_dev *isp;
+	struct vin_core *vinc;
+	int i, cur_offset = 0;
+	struct file *save_file_fd = NULL;
+
+	const char load_reg_array_start[]    = "\nunsigned int isp_save_reg_day[ISP_LOAD_REG_SIZE >> 2] = {\n";
+	const char fe_table_array_start[]    = "\nunsigned int isp_save_fe_table_day[ISP_FE_TABLE_SIZE >> 2] = {\n";
+	const char bayer_table_array_start[] = "\nunsigned int isp_save_bayer_table_day[ISP_BAYER_TABLE_SIZE >> 2] = {\n";
+	const char rgb_table_array_start[]   = "\nunsigned int isp_save_rgb_table_day[ISP_RGB_TABLE_SIZE >> 2] = {\n";
+	const char yuv_table_array_start[]   = "\nunsigned int isp_save_yuv_table_day[ISP_YUV_TABLE_SIZE >> 2] = {\n";
+	const char common_array_end[]        = "};\n";
+
+	if (id >= VIN_MAX_DEV) {
+		vin_err("vin core global id error!!!\n");
+		return -1;
+	}
+
+	if (act_flag != 0 && act_flag != 1) {
+		vin_err("No support action flag-[%d], please use 0 to print or 1 to save fo file!!!\n", act_flag);
+		return -1;
+	}
+
+	if (act_flag == 1 && save_path == NULL) {
+		vin_err("Save file path is NULL!!!\n");
+		return -1;
+	}
+
+	vinc = vin_core_gbl[id];
+	if (vinc == NULL) {
+		vin_err("vin core global pointer is NULL!!!\n");
+		return -1;
+	}
+
+	isp = v4l2_get_subdevdata(vinc->vid_cap.pipe.sd[VIN_IND_ISP]);
+	if (isp == NULL) {
+		vin_err("ISP device is NULL!!!\n");
+		return -1;
+	}
+
+	old_fs = get_fs();
+	if (act_flag == 0) {
+		printk("\n------ print ISP REG <start> -------\n");
+	} else if (act_flag == 1) {
+		printk("\n------ save ISP REG to file: %s -------\n", save_path);
+		save_file_fd = filp_open(save_path, O_WRONLY | O_CREAT | O_TRUNC, 0777);
+		if (save_file_fd == NULL) {
+			vin_err("open %s failed!!!\n", save_path);
+			return -1;
+		}
+		old_fs = get_fs();
+		set_fs(KERNEL_DS);
+	}
+
+#define PRINT_OR_SAVE_ISP_REG_PART(offet, array_start, size)                            		\
+	do {                                                                                		\
+		cur_offset += offet;                                                            	\
+		if (act_flag == 0) {                                                            	\
+			printk(KERN_EMERG "%s", array_start);                                       	\
+		} else if (act_flag == 1) {                                                     	\
+			kernel_write(save_file_fd, array_start, strlen(array_start), &pos);            	\
+		}                                                                               	\
+		for (i = 0; i < size / 4; i += 8) {                                             	\
+			memset(fmt_str, 0, sizeof(fmt_str));                                        	\
+			vin_isp_reg_buf_fmt(fmt_str, isp->load_shadow + cur_offset + i * 4,         	\
+				(size / 4 - i >= 8) ? 8 : size / 4 - i);                                \
+			if (act_flag == 0) {                                                        	\
+				printk(KERN_EMERG "%s", fmt_str);                                       \
+			} else if (act_flag == 1) {                                                 	\
+				kernel_write(save_file_fd, fmt_str, strlen(fmt_str), &pos);                \
+			}                                                                           	\
+		}                                                                               	\
+		if (act_flag == 0) {                                                            	\
+			printk(KERN_EMERG "%s", common_array_end);                                  	\
+		} else if (act_flag == 1) {                                                     	\
+			kernel_write(save_file_fd, common_array_end, strlen(common_array_end), &pos);	\
+		}                                                                               	\
+	} while (0)
+
+	PRINT_OR_SAVE_ISP_REG_PART(0, load_reg_array_start, ISP_LOAD_REG_SIZE);
+	PRINT_OR_SAVE_ISP_REG_PART(ISP_LOAD_REG_SIZE, fe_table_array_start, ISP_FE_TBL_SIZE);
+	PRINT_OR_SAVE_ISP_REG_PART(ISP_FE_TBL_SIZE, bayer_table_array_start, ISP_BAYER_TABLE_SIZE);
+	PRINT_OR_SAVE_ISP_REG_PART(ISP_BAYER_TABLE_SIZE, rgb_table_array_start, ISP_RGB_TABLE_SIZE);
+	PRINT_OR_SAVE_ISP_REG_PART(ISP_RGB_TABLE_SIZE, yuv_table_array_start, ISP_YUV_TABLE_SIZE);
+
+	if (act_flag == 0) {
+		printk("\n------ print ISP REG <end> -------\n");
+	} else if (act_flag == 1) {
+		set_fs(old_fs);
+		filp_close(save_file_fd, NULL);
+		printk("\n------ save ISP REG to %s success. ------\n", save_path);
+	}
+
+	return 0;
+}
+#endif
+#endif
 
 static const struct v4l2_ctrl_config ae_win_ctrls[] = {
 	{
@@ -5791,7 +7938,11 @@ int vin_init_controls(struct v4l2_ctrl_handler *hdl, struct vin_vid_cap *cap)
 	if (ctrl != NULL)
 		ctrl->flags |= V4L2_CTRL_FLAG_VOLATILE;
 	ctrl = v4l2_ctrl_new_std(hdl, &vin_ctrl_ops, V4L2_CID_HFLIP, 0, 1, 1, 0);
+	if (ctrl != NULL)
+		ctrl->flags |= V4L2_CTRL_FLAG_VOLATILE;
 	ctrl = v4l2_ctrl_new_std(hdl, &vin_ctrl_ops, V4L2_CID_VFLIP, 0, 1, 1, 0);
+	if (ctrl != NULL)
+		ctrl->flags |= V4L2_CTRL_FLAG_VOLATILE;
 	v4l2_ctrl_new_std_menu(hdl, &vin_ctrl_ops,
 			       V4L2_CID_POWER_LINE_FREQUENCY,
 			       V4L2_CID_POWER_LINE_FREQUENCY_AUTO, 0,
@@ -5925,6 +8076,9 @@ int vin_init_video(struct v4l2_device *v4l2_dev, struct vin_vid_cap *cap)
 		}
 		cap->dma_parms_alloc = true;
 	}
+#if IS_ENABLED(CONFIG_VIN_USE_ION_SIZE_POOL_HEAP)
+	cap->dev->dma_ops = &vin_dma_ops;
+#endif
 	/*  initialize queue  */
 	q = &cap->vb_vidq;
 	q->type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
@@ -5948,9 +8102,9 @@ int vin_init_video(struct v4l2_device *v4l2_dev, struct vin_vid_cap *cap)
 	ret = media_entity_pads_init(&cap->vdev.entity, 1, &cap->vd_pad);
 	if (ret)
 		return ret;
-
+#if VIN_FALSE
 	INIT_WORK(&cap->s_stream_task, __vin_s_stream_handle);
-
+#endif
 	cap->state = 0;
 	cap->registered = 1;
 	/*  initial state  */
@@ -5987,46 +8141,50 @@ static int vin_video_core_s_power(struct v4l2_subdev *sd, int on)
 	return 0;
 }
 
-#if defined CSIC_DMA_VER_140_000
-static void vin_streamoff_logic_isp(unsigned char virtual_id)
+__maybe_unused static bool vin_check_raw_fmt(struct vin_core *vinc)
 {
-#if defined SUPPORT_ISP_TDM && defined TDM_V200
-	struct vin_core *vinc = vin_core_gbl[virtual_id];
 	struct vin_vid_cap *cap = &vinc->vid_cap;
-	struct tdm_rx_dev *tdm_rx = NULL;
-	struct tdm_dev *tdm = NULL;
-	unsigned char logic_id = vipp_virtual_find_logic[vinc->vipp_sel];
-	struct scaler_dev *logic_scaler = glb_vipp[logic_id];
+	bool ret;
 
-	vipp_cap_disable(logic_scaler->id);
-	vipp_top_clk_en(logic_scaler->id, 0);
-
-	if (vinc->tdm_rx_sel != 0xff) {
-		tdm_rx = container_of(cap->pipe.sd[VIN_IND_TDM_RX], struct tdm_rx_dev, subdev);
-		tdm = container_of(tdm_rx, struct tdm_dev, tdm_rx[tdm_rx->id]);
-
-		if (tdm->stream_cnt == 0) {
-			bsp_isp_top_capture_stop(tdm->id);
-			bsp_isp_enable(tdm->id, 0);
-			bsp_isp_sram_boot_mode_ctrl(tdm->id, SRAM_BOOT_MODE);
-
-			csic_tdm_set_speed_dn(tdm->id, 0);
-			csic_tdm_tx_cap_disable(tdm->id);
-			csic_tdm_tx_disable(tdm->id);
-			csic_tdm_disable(tdm->id);
-			csic_tdm_top_disable(tdm->id);
-			sunxi_tdm_buffer_free(tdm->id);
-		}
+	switch (cap->frame.fmt.fourcc) {
+	case V4L2_PIX_FMT_SBGGR8:
+	case V4L2_PIX_FMT_SGBRG8:
+	case V4L2_PIX_FMT_SGRBG8:
+	case V4L2_PIX_FMT_SRGGB8:
+	case V4L2_PIX_FMT_SBGGR10:
+	case V4L2_PIX_FMT_SGBRG10:
+	case V4L2_PIX_FMT_SGRBG10:
+	case V4L2_PIX_FMT_SRGGB10:
+	case V4L2_PIX_FMT_SBGGR12:
+	case V4L2_PIX_FMT_SGBRG12:
+	case V4L2_PIX_FMT_SGRBG12:
+	case V4L2_PIX_FMT_SRGGB12:
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
+	case V4L2_PIX_FMT_SBGGR14:
+	case V4L2_PIX_FMT_SGBRG14:
+	case V4L2_PIX_FMT_SGRBG14:
+	case V4L2_PIX_FMT_SRGGB14:
+#endif
+	case V4L2_PIX_FMT_SBGGR16:
+	case V4L2_PIX_FMT_SGBRG16:
+	case V4L2_PIX_FMT_SGRBG16:
+	case V4L2_PIX_FMT_SRGGB16:
+		ret = true;
+		break;
+	default:
+		ret = false;
+		break;
 	}
-#endif
+
+	return ret;
 }
-#endif
 
 static int vin_subdev_logic_s_stream(unsigned char virtual_id, int on)
 {
-#if defined CSIC_DMA_VER_140_000
+#if defined CSIC_DMA_VER_140_000 || defined CSIC_DMA_VER_150_000
 	unsigned char logic_id = dma_virtual_find_logic[virtual_id];
 	struct vin_core *logic_vinc = vin_core_gbl[logic_id];
+	__maybe_unused int i;
 
 	if (logic_vinc->work_mode == BK_ONLINE && virtual_id != logic_id) {
 		vin_err("video%d work on online mode, video%d cannot to work!!\n", logic_id, virtual_id);
@@ -6040,22 +8198,34 @@ static int vin_subdev_logic_s_stream(unsigned char virtual_id, int on)
 
 	if (on) {
 		csic_dma_top_enable(logic_id);
-		csic_dma_mul_ch_enable(logic_id, logic_vinc->work_mode);
+		csic_dma_mul_ch_enable(logic_id, vin_check_raw_fmt(vin_core_gbl[virtual_id]) ? 0 : logic_vinc->work_mode);
+#if defined CSIC_DMA_VER_150_000
+		if (logic_vinc->work_mode) {
+			for (i = 0; i  < DMA_VIRTUAL_NUM; i++) {
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW22)
+				if (i % 4 >= 2)
+					continue;
+#endif
+				csic_clear_sram_data(logic_id + i);
+			}
+		}
+#endif
 		/* if (logic_vinc->id == CSI_VE_ONLINE_VIDEO && logic_vinc->ve_online_cfg.ve_online_en) {
 			csic_ve_online_hs_enable(logic_id);
 			logic_vinc->ve_ol_ch = CSI_VE_ONLINE_VIDEO;
 			csic_ve_online_ch_sel(logic_id, logic_vinc->ve_ol_ch);
 		} */
-		csic_dma_buf_length_software_enable(logic_vinc->vipp_sel, 0);
-		csi_dam_flip_software_enable(logic_vinc->vipp_sel, 0);
+		//csic_set_ve_info_valid_cycle(logic_vinc->id, 0xf);
+		csic_dma_buf_length_software_enable(logic_vinc->id, 0);
+		csi_dam_flip_software_enable(logic_vinc->id, 0);
 		//csic_dma_top_interrupt_en(logic_id, VIDEO_INPUT_TO_INT | CLR_FS_FRM_CNT_INT | FS_PUL_INT);//for debug
 	} else {
 		//csic_dma_top_interrupt_disable(logic_id, DMA_TOP_INT_ALL);
+#ifdef VIPP_ALLMASK_BK
+		logic_vinc->vipp_cascade_en = 0;
+#endif
 		csic_ve_online_hs_disable(logic_id);
 		csic_dma_top_disable(logic_id);
-		if (logic_vinc->work_mode == BK_OFFLINE) {
-			vin_streamoff_logic_isp(virtual_id);
-		}
 	}
 	vin_log(VIN_LOG_FMT, "dma%d top init by video%d, %s\n", logic_id, virtual_id, on ? "steram on" : "steam off");
 #endif
@@ -6071,15 +8241,27 @@ static int vin_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 	struct dma_output_size size;
 	struct dma_buf_len buf_len;
 	struct dma_flip_size flip_size;
+	__maybe_unused struct dma_capture_status cap_status;
+	__maybe_unused int i;
 	struct sensor_output_fmt sensor_fmt;
 	int flag = 0;
 	int flip_mul = 2;
 	int ch_id = 0;
+	unsigned int output_width;
+	struct scaler_dev *scaler = NULL;
+	struct vin_core *vinc_bind = NULL;
+	struct scaler_dev *scaler_bind = NULL;
+	__maybe_unused unsigned int ini_en = 0;
 
 	if (enable) {
 		memset(&cfg, 0, sizeof(cfg));
 		memset(&size, 0, sizeof(size));
 		memset(&buf_len, 0, sizeof(buf_len));
+
+		if (cap->width_stride_en)
+			output_width = roundup(cap->frame.o_width, VIN_ALIGN_WIDTH);
+		else
+			output_width = cap->frame.o_width;
 
 		switch (cap->frame.fmt.field) {
 		case V4L2_FIELD_ANY:
@@ -6127,7 +8309,7 @@ static int vin_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 		case V4L2_PIX_FMT_NV12M:
 		case V4L2_PIX_FMT_FBC:
 			cfg.fmt = flag ? FRAME_UV_CB_YUV420 : FIELD_UV_CB_YUV420;
-			buf_len.buf_len_y = cap->frame.o_width;
+			buf_len.buf_len_y = output_width;
 			buf_len.buf_len_c = buf_len.buf_len_y;
 			break;
 		case V4L2_PIX_FMT_LBC_2_0X:
@@ -6141,35 +8323,35 @@ static int vin_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 		case V4L2_PIX_FMT_NV21:
 		case V4L2_PIX_FMT_NV21M:
 			cfg.fmt = flag ? FRAME_VU_CB_YUV420 : FIELD_VU_CB_YUV420;
-			buf_len.buf_len_y = cap->frame.o_width;
+			buf_len.buf_len_y = output_width;
 			buf_len.buf_len_c = buf_len.buf_len_y;
 			break;
 		case V4L2_PIX_FMT_YVU420:
 		case V4L2_PIX_FMT_YUV420:
 		case V4L2_PIX_FMT_YUV420M:
 			cfg.fmt = flag ? FRAME_PLANAR_YUV420 : FIELD_PLANAR_YUV420;
-			buf_len.buf_len_y = cap->frame.o_width;
+			buf_len.buf_len_y = output_width;
 			buf_len.buf_len_c = buf_len.buf_len_y >> 1;
 			break;
 		case V4L2_PIX_FMT_GREY:
 			cfg.fmt = flag ? FRAME_CB_YUV400 : FIELD_CB_YUV400;
-			buf_len.buf_len_y = cap->frame.o_width;
+			buf_len.buf_len_y = output_width;
 			break;
 		case V4L2_PIX_FMT_YUV422P:
 			cfg.fmt = flag ? FRAME_PLANAR_YUV422 : FIELD_PLANAR_YUV422;
-			buf_len.buf_len_y = cap->frame.o_width;
+			buf_len.buf_len_y = output_width;
 			buf_len.buf_len_c = buf_len.buf_len_y >> 1;
 			break;
 		case V4L2_PIX_FMT_NV61:
 		case V4L2_PIX_FMT_NV61M:
 			cfg.fmt = flag ? FRAME_VU_CB_YUV422 : FIELD_VU_CB_YUV422;
-			buf_len.buf_len_y = cap->frame.o_width;
+			buf_len.buf_len_y = output_width;
 			buf_len.buf_len_c = buf_len.buf_len_y;
 			break;
 		case V4L2_PIX_FMT_NV16:
 		case V4L2_PIX_FMT_NV16M:
 			cfg.fmt = flag ? FRAME_UV_CB_YUV422 : FIELD_UV_CB_YUV422;
-			buf_len.buf_len_y = cap->frame.o_width;
+			buf_len.buf_len_y = output_width;
 			buf_len.buf_len_c = buf_len.buf_len_y;
 			break;
 		case V4L2_PIX_FMT_SBGGR8:
@@ -6178,7 +8360,7 @@ static int vin_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 		case V4L2_PIX_FMT_SRGGB8:
 			flip_mul = 1;
 			cfg.fmt = flag ? FRAME_RAW_8 : FIELD_RAW_8;
-			buf_len.buf_len_y = cap->frame.o_width;
+			buf_len.buf_len_y = output_width;
 			buf_len.buf_len_c = buf_len.buf_len_y;
 			break;
 		case V4L2_PIX_FMT_SBGGR10:
@@ -6187,7 +8369,7 @@ static int vin_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 		case V4L2_PIX_FMT_SRGGB10:
 			flip_mul = 1;
 			cfg.fmt = flag ? FRAME_RAW_10 : FIELD_RAW_10;
-			buf_len.buf_len_y = cap->frame.o_width * 2;
+			buf_len.buf_len_y = output_width * 2;
 			buf_len.buf_len_c = buf_len.buf_len_y;
 			break;
 		case V4L2_PIX_FMT_SBGGR12:
@@ -6196,10 +8378,10 @@ static int vin_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 		case V4L2_PIX_FMT_SRGGB12:
 			flip_mul = 1;
 			cfg.fmt = flag ? FRAME_RAW_12 : FIELD_RAW_12;
-			buf_len.buf_len_y = cap->frame.o_width * 2;
+			buf_len.buf_len_y = output_width * 2;
 			buf_len.buf_len_c = buf_len.buf_len_y;
 			break;
-#if defined CSIC_DMA_VER_140_000
+#if defined CSIC_DMA_VER_140_000 || defined CSIC_DMA_VER_150_000
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 		case V4L2_PIX_FMT_SBGGR14:
 		case V4L2_PIX_FMT_SGBRG14:
@@ -6224,7 +8406,7 @@ static int vin_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 		case V4L2_PIX_FMT_RGB24:
 		case V4L2_PIX_FMT_BGR24:
 			cfg.fmt = FIELD_RGB888;
-			buf_len.buf_len_y = cap->frame.o_width * 3;
+			buf_len.buf_len_y = output_width * 3;
 			buf_len.buf_len_c = buf_len.buf_len_y;
 			break;
 		case V4L2_PIX_FMT_RGB565:
@@ -6234,7 +8416,7 @@ static int vin_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 			break;
 		default:
 			cfg.fmt = flag ? FRAME_UV_CB_YUV420 : FIELD_UV_CB_YUV420;
-			buf_len.buf_len_y = cap->frame.o_width;
+			buf_len.buf_len_y = output_width;
 			buf_len.buf_len_c = buf_len.buf_len_y;
 			break;
 		}
@@ -6248,7 +8430,7 @@ static int vin_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 
 		if (vin_subdev_logic_s_stream(vinc->id, enable))
 			return -1;
-#if defined CSIC_DMA_VER_140_000
+#if defined CSIC_DMA_VER_140_000 || defined CSIC_DMA_VER_150_000
 		if (vinc->ve_online_cfg.ve_online_support_flag == 1 && vinc->ve_online_cfg.ve_online_en) {
 			/* if OLD_ONLINE_ENCODE_SOLUTION is used, run the csic_ve_online_ch_sel function to set the ve online coding channel.
 				otherwise, run NEW_ONLINE_ENCODE_SOLUTION and csic_dma_ve_online_sensor_chn_en to set the ve online coding channel.*/
@@ -6260,12 +8442,69 @@ static int vin_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 			csic_ve_online_hs_enable(vinc->id);
 		}
 #endif
-		csic_dma_config(vinc->vipp_sel, &cfg);
-		size.hor_len = vinc->isp_dbg.debug_en ? 0 : cap->frame.o_width;
-		size.ver_len = vinc->isp_dbg.debug_en ? 0 : cap->frame.o_height;
+		csic_dma_config(vinc->id, &cfg);
+		size.hor_len = vinc->isp_dbg.debug_en ? 0 : output_width;
+		if (vinc->large_image == 5) {
+			scaler = container_of(vinc->vid_cap.pipe.sd[VIN_IND_SCALER], struct scaler_dev, subdev);
+			if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
+				vinc_bind = vin_core_gbl[vinc->id - 1];
+				scaler_bind = container_of(vinc_bind->vid_cap.pipe.sd[VIN_IND_SCALER], struct scaler_dev, subdev);
+				if (scaler->para.width != scaler_bind->para.width) {
+					vin_err("vinc%d:(%d, %d), vinc%d:(%d, %d), width is not the same, please check!!\n",
+						vinc_bind->id, scaler_bind->para.width, scaler_bind->para.height,
+						vinc->id, scaler->para.width, scaler->para.height);
+						return -1;
+				}
+				if (vinc->vid_cap.dma_overlay.enable) {
+					if ((scaler->para.height + scaler_bind->para.height + vinc->vid_cap.dma_overlay.height) > cap->frame.o_height) {
+						vin_err("vinc%d:(%d, %d) + vinc%d:(%d, %d) + dma_overlay:(%d, %d), the height is more than cap->frame_size (%d, %d)!!!!\n",
+							vinc_bind->id, scaler_bind->para.width, scaler_bind->para.height,
+							vinc->id, scaler->para.width, scaler->para.height,
+							vinc->vid_cap.dma_overlay.width, vinc->vid_cap.dma_overlay.height,
+							cap->frame.o_width, cap->frame.o_height);
+						return -1;
+					}
+				} else {
+					if ((scaler->para.height + scaler_bind->para.height) > cap->frame.o_height) {
+						vin_err("vinc%d:(%d, %d) + vinc%d:(%d, %d), the height is more than cap->frame_size (%d, %d)!!!!\n",
+							vinc_bind->id, scaler_bind->para.width, scaler_bind->para.height,
+							vinc->id, scaler->para.width, scaler->para.height,
+							cap->frame.o_width, cap->frame.o_height);
+						return -1;
+					}
+				}
+			}
+			vin_log(VIN_LOG_LARGE, "[%s] vinc%d cap->frame_size (%d, %d), dma_overlay (%d, %d), scaler->para (%d, %d)\n",
+				__func__, vinc->id, cap->frame.o_width, cap->frame.o_height,
+				cap->dma_overlay.width, cap->dma_overlay.height, scaler->para.width, scaler->para.height);
+			size.ver_len = vinc->isp_dbg.debug_en ? 0 : (scaler->para.height);
+		} else {
+			if (vinc->large_image == 4) {
+				if (vinc->id % 2 == 1 && vin_core_gbl[vinc->id - 1]) {
+					vinc_bind = vin_core_gbl[vinc->id - 1];
+					scaler_bind = container_of(vinc_bind->vid_cap.pipe.sd[VIN_IND_SCALER], struct scaler_dev, subdev);
+					scaler = container_of(vinc->vid_cap.pipe.sd[VIN_IND_SCALER], struct scaler_dev, subdev);
+					if ((scaler->para.width + scaler_bind->para.width) > cap->frame.o_width) {
+						vin_err("vinc%d:(%d, %d) + vinc%d:(%d, %d), the width is more than cap->frame_size (%d, %d)!!!!\n",
+							vinc_bind->id, scaler_bind->para.width, scaler_bind->para.height,
+							vinc->id, scaler->para.width, scaler->para.height,
+							cap->frame.o_width, cap->frame.o_height);
+							return -1;
+					} else if ((scaler->para.height != scaler_bind->para.height) || (scaler->para.height > cap->frame.o_height) ||
+						(scaler_bind->para.height > cap->frame.o_height)) {
+						vin_err("vinc%d:(%d, %d), vinc%d:(%d, %d), cap->frame_size: (%d, %d), please check height!!\n",
+							vinc_bind->id, scaler_bind->para.width, scaler_bind->para.height,
+							vinc->id, scaler->para.width, scaler->para.height,
+							cap->frame.o_width, cap->frame.o_height);
+							return -1;
+					}
+				}
+			}
+			size.ver_len = vinc->isp_dbg.debug_en ? 0 : cap->frame.o_height;
+		}
 		size.hor_start = vinc->isp_dbg.debug_en ? 0 : cap->frame.offs_h;
 		size.ver_start = vinc->isp_dbg.debug_en ? 0 : cap->frame.offs_v;
-		flip_size.hor_len = vinc->isp_dbg.debug_en ? 0 : cap->frame.o_width * flip_mul;
+		flip_size.hor_len = vinc->isp_dbg.debug_en ? 0 : output_width * flip_mul;
 		flip_size.ver_len = vinc->isp_dbg.debug_en ? 0 : cap->frame.o_height;
 		flip.hflip_en = vinc->hflip;
 		flip.vflip_en = vinc->vflip;
@@ -6275,94 +8514,109 @@ static int vin_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 			flip_size.hor_len /= 2;
 		}
 
-		csic_dma_output_size_cfg(vinc->vipp_sel, &size);
-		/*  csic_dma_10bit_cut2_8bit_enable(vinc->vipp_sel);  */
+		csic_dma_output_size_cfg(vinc->id, &size);
+		/* csic_dma_10bit_cut2_8bit_enable(vinc->id); */
 
-#if !defined CSIC_DMA_VER_140_000
+#if !defined CSIC_DMA_VER_140_000 && !defined CSIC_DMA_VER_150_000
 		switch (cap->frame.fmt.fourcc) {
 		case V4L2_PIX_FMT_FBC:
-			csic_dma_buf_length_software_enable(vinc->vipp_sel, 0);
-			csi_dam_flip_software_enable(vinc->vipp_sel, 0);
-			csic_dma_flip_en(vinc->vipp_sel, &flip);
-			csic_fbc_enable(vinc->vipp_sel);
+			csic_dma_buf_length_software_enable(vinc->id, 0);
+			csi_dam_flip_software_enable(vinc->id, 0);
+			csic_dma_flip_en(vinc->id, &flip);
+			csic_fbc_enable(vinc->id);
 			break;
 		case V4L2_PIX_FMT_LBC_2_0X:
 		case V4L2_PIX_FMT_LBC_2_5X:
 		case V4L2_PIX_FMT_LBC_1_0X:
 		case V4L2_PIX_FMT_LBC_1_5X:
-			csi_dam_flip_software_enable(vinc->vipp_sel, 1);
+			csi_dam_flip_software_enable(vinc->id, 1);
 #if IS_ENABLED(CONFIG_ARCH_SUN8IW16P1)
-			csic_dma_buf_length_software_enable(vinc->vipp_sel, 1);
+			csic_dma_buf_length_software_enable(vinc->id, 1);
 #else
-			csic_dma_buf_length_software_enable(vinc->vipp_sel, 0);
+			csic_dma_buf_length_software_enable(vinc->id, 0);
 #endif
-			csic_lbc_enable(vinc->vipp_sel);
-			csic_lbc_cmp_ratio(vinc->vipp_sel, &cap->lbc_cmp);
+			csic_lbc_enable(vinc->id);
+			csic_lbc_cmp_ratio(vinc->id, &cap->lbc_cmp);
 			break;
 		default:
-			csic_dma_buf_length_software_enable(vinc->vipp_sel, 0);
-			csi_dam_flip_software_enable(vinc->vipp_sel, 0);
-			csic_dma_flip_en(vinc->vipp_sel, &flip);
-			csic_dma_enable(vinc->vipp_sel);
+			csic_dma_buf_length_software_enable(vinc->id, 0);
+			csi_dam_flip_software_enable(vinc->id, 0);
+			csic_dma_flip_en(vinc->id, &flip);
+			csic_dma_enable(vinc->id);
 			break;
 		}
 
-		csic_dma_buffer_length(vinc->vipp_sel, &buf_len);
-		csic_dma_flip_size(vinc->vipp_sel, &flip_size);
+		csic_dma_buffer_length(vinc->id, &buf_len);
+		csic_dma_flip_size(vinc->id, &flip_size);
 
 		/*  give up line_cnt interrupt. process in vsync and frame_done isr. */
-		/* csic_dma_line_cnt(vinc->vipp_sel, cap->frame.o_height / 16 * 12); */
-		csic_frame_cnt_enable(vinc->vipp_sel);
+		/* csic_dma_line_cnt(vinc->id, cap->frame.o_height / 16 * 12); */
+		csic_frame_cnt_enable(vinc->id);
 
 #ifndef BUF_AUTO_UPDATE
 		vin_set_next_buf_addr(vinc);
-		csic_dma_top_enable(vinc->vipp_sel);
+		csic_dma_top_enable(vinc->id);
 
-		csic_dma_int_clear_status(vinc->vipp_sel, DMA_INT_ALL);
+		csic_dma_int_clear_status(vinc->id, DMA_INT_ALL);
 
-		csic_dma_int_enable(vinc->vipp_sel, DMA_INT_BUF_0_OVERFLOW | DMA_INT_BUF_1_OVERFLOW |
+		csic_dma_int_enable(vinc->id, DMA_INT_BUF_0_OVERFLOW | DMA_INT_BUF_1_OVERFLOW |
 			DMA_INT_BUF_2_OVERFLOW | DMA_INT_HBLANK_OVERFLOW | DMA_INT_VSYNC_TRIG |
 			DMA_INT_CAPTURE_DONE | DMA_INT_FRAME_DONE | DMA_INT_LBC_HB);
 #else
-		csic_dma_top_enable(vinc->vipp_sel);
+		csic_dma_top_enable(vinc->id);
 		vin_set_next_buf_addr(vinc);
 
-		csic_dma_int_clear_status(vinc->vipp_sel, DMA_INT_ALL);
+		csic_dma_int_clear_status(vinc->id, DMA_INT_ALL);
 
-		csic_dma_int_enable(vinc->vipp_sel, DMA_INT_BUF_0_OVERFLOW | DMA_INT_BUF_1_OVERFLOW |
+		csic_dma_int_enable(vinc->id, DMA_INT_BUF_0_OVERFLOW | DMA_INT_BUF_1_OVERFLOW |
 			DMA_INT_BUF_2_OVERFLOW | DMA_INT_HBLANK_OVERFLOW | DMA_INT_VSYNC_TRIG |
 			DMA_INT_CAPTURE_DONE | DMA_INT_STORED_FRM_CNT | DMA_INT_FRM_LOST | DMA_INT_LBC_HB);
 #endif
-#else /* else CSIC_DMA_VER_140_000 */
-		csic_dma_buffer_length(vinc->vipp_sel, &buf_len);
-		csic_dma_flip_size(vinc->vipp_sel, &flip_size);
+#else /* else CSIC_DMA_VER_140_000/CSIC_DMA_VER_150_000 */
+		csic_dma_buffer_length(vinc->id, &buf_len);
+		csic_dma_flip_size(vinc->id, &flip_size);
 		/* bk hardware frame counter enable */
-		/*csic_total_frm_cnt_mode(vinc->vipp_sel, FRAME_DONE);
-		csic_total_frm_cnt_enable(vinc->vipp_sel);*/
-
-#ifndef BUF_AUTO_UPDATE
-		if (vinc->large_image != 3)
-			vin_set_next_buf_addr(vinc);
-
-		csic_dma_int_clear_status(vinc->vipp_sel, DMA_INT_ALL);
-		csic_dma_int_enable(vinc->vipp_sel, DMA_INT_BUF_0_OVERFLOW | DMA_INT_HBLANK_OVERFLOW |
-			DMA_INT_VSYNC_TRIG | DMA_INT_CAPTURE_DONE | DMA_INT_FRAME_DONE | DMA_INT_LBC_HB);
-#else
-		if (vinc->large_image != 3)
-			vin_set_next_buf_addr(vinc);
-
-		csic_dma_int_clear_status(vinc->vipp_sel, DMA_INT_ALL);
-		csic_dma_int_enable(vinc->vipp_sel, DMA_INT_BUF_0_OVERFLOW | DMA_INT_HBLANK_OVERFLOW |
-			DMA_INT_VSYNC_TRIG | DMA_INT_CAPTURE_DONE | DMA_INT_STORED_FRM_CNT |
-			DMA_INT_FRM_LOST | DMA_INT_LBC_HB);
+		/*csic_total_frm_cnt_mode(vinc->id, FRAME_DONE);
+		csic_total_frm_cnt_enable(vinc->id);*/
+#if defined OUTPUT_EMBED_DATA
+		if (vinc->time_embed_en || vinc->ispbe_info_embed_en)
+			csic_dma_embedded_data_wr_en(vinc->id, 1);
+		else
+			csic_dma_embedded_data_wr_en(vinc->id, 0);
 #endif
-		if ((vinc->dma_merge_mode == 1) && (vinc->vipp_sel % 4 == 0))
-			csic_dma_int_disable(vinc->vipp_sel, DMA_INT_ALL);
+#ifndef BUF_AUTO_UPDATE
+		if (vinc->dma_merge_mode == 0)
+			vin_set_next_buf_addr(vinc);
 
-		csic_dma_int_enable(vinc->vipp_sel, DMA_INT_ADDR_NO_READY | DMA_INT_ADDR_OVERFLOW);
+		csic_dma_int_clear_status(vinc->id, DMA_INT_ALL);
+		ini_en |= DMA_INT_BUF_0_OVERFLOW | DMA_INT_HBLANK_OVERFLOW |
+			DMA_INT_VSYNC_TRIG | DMA_INT_CAPTURE_DONE | DMA_INT_FRAME_DONE | DMA_INT_LBC_HB |
+			DMA_INT_FRM_LOST;
+#if defined CSIC_DMA_VER_150_000
+		ini_en |= DMA_INT_PARA_LOAD_UNFINISH_TRIG;
+#endif
+		csic_dma_int_enable(vinc->id, ini_en);
+#else
+		if (vinc->dma_merge_mode == 0)
+			vin_set_next_buf_addr(vinc);
 
-		if (vinc->large_image != 3) {
-			csic_dma_int_enable(vinc->vipp_sel, DMA_INT_PIXEL_MISS | DMA_INT_LINE_MISS);
+		csic_dma_int_clear_status(vinc->id, DMA_INT_ALL);
+		ini_en |= DMA_INT_BUF_0_OVERFLOW | DMA_INT_HBLANK_OVERFLOW |
+			DMA_INT_VSYNC_TRIG | DMA_INT_CAPTURE_DONE | DMA_INT_STORED_FRM_CNT |
+			DMA_INT_FRM_LOST | DMA_INT_LBC_HB;
+		csic_dma_int_enable(vinc->id, ini_en);
+#endif
+		if ((vinc->large_image >= 3) && (vinc->id % 4 == 0))
+			csic_dma_int_disable(vinc->id, DMA_INT_ALL);
+
+#if defined CSIC_DMA_VER_150_000
+		csic_frame_redundant_err_mask_en(vinc->id); //DMA_INT_PIXEL_REDUNDANT and DMA_INT_LINE_REDUNDANT mask
+#endif
+
+		/*csic_dma_int_enable(vinc->id, DMA_INT_ADDR_NO_READY | DMA_INT_ADDR_OVERFLOW); // for debug*/
+
+		if (vinc->dma_merge_mode == 0) {
+			csic_dma_int_enable(vinc->id, DMA_INT_PIXEL_MISS | DMA_INT_LINE_MISS);
 		}
 
 		switch (cap->frame.fmt.fourcc) {
@@ -6370,48 +8624,68 @@ static int vin_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 		case V4L2_PIX_FMT_LBC_2_5X:
 		case V4L2_PIX_FMT_LBC_1_5X:
 		case V4L2_PIX_FMT_LBC_1_0X:
-			csic_lbc_enable(vinc->vipp_sel);
-			csic_lbc_cmp_ratio(vinc->vipp_sel, &cap->lbc_cmp);
+			csic_lbc_enable(vinc->id);
+			csic_lbc_cmp_ratio(vinc->id, &cap->lbc_cmp);
 			break;
 		default:
-			csic_dma_flip_en(vinc->vipp_sel, &flip);
-			csic_dma_enable(vinc->vipp_sel);
+			csic_dma_flip_en(vinc->id, &flip);
+			csic_dma_enable(vinc->id);
 			break;
 		}
 #endif
 	} else {
 		vinc->tvin.flag = false;
-#if !defined CSIC_DMA_VER_140_000
-		csic_dma_top_disable(vinc->vipp_sel);
+#if !defined CSIC_DMA_VER_140_000 && !defined CSIC_DMA_VER_150_000
+		csic_dma_top_disable(vinc->id);
 #endif
-		csic_dma_int_disable(vinc->vipp_sel, DMA_INT_ALL);
-		csic_dma_int_clear_status(vinc->vipp_sel, DMA_INT_ALL);
+		csic_dma_int_disable(vinc->id, DMA_INT_ALL);
+		csic_dma_int_clear_status(vinc->id, DMA_INT_ALL);
 		switch (cap->frame.fmt.fourcc) {
 		case V4L2_PIX_FMT_FBC:
-			csic_fbc_disable(vinc->vipp_sel);
+			csic_fbc_disable(vinc->id);
 			break;
 		case V4L2_PIX_FMT_LBC_2_0X:
 		case V4L2_PIX_FMT_LBC_2_5X:
 		case V4L2_PIX_FMT_LBC_1_0X:
-		case V4L2_PIX_FMT_LBC_1_5X:
-			csic_lbc_disable(vinc->vipp_sel);
+#if defined CSIC_DMA_VER_140_000 || defined CSIC_DMA_VER_150_000
+			csic_dma_disable(vinc->id);
+			for (i = 0; i < 200; i++) { /* 200 = 200*0.5 = 100ms */
+				csic_dma_cap_status(vinc->id, &cap_status);
+				if (cap_status.scap_sta == 0)
+					break;
+				usleep_range(500, 510);
+			}
+			vin_log(VIN_LOG_FMT, "LBC:video%d wait %d/2(ms) to close!\n", vinc->id, i/2);
+#endif
+			csic_lbc_disable(vinc->id);
 			break;
 		default:
-			csic_dma_disable(vinc->vipp_sel);
+			csic_dma_disable(vinc->id);
 			break;
 		}
 		vin_subdev_logic_s_stream(vinc->id, enable);
-#if IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
+#if IS_ENABLED(CONFIG_ISP_SPECIAL_LDCI)
 		cancel_work_sync(&vinc->ldci_buf_send_task);
 #endif
+#if defined ISP_600
+		cancel_work_sync(&vinc->set_ldci_frame_task);
+#endif
+		cancel_work_sync(&vinc->set_sensor_oneframe_task);
 		if (vinc->ptn_cfg.ptn_en) {
 			vinc->ptn_cfg.ptn_en = 0;
 			if (vinc->ptn_cfg.ptn_buf.vir_addr)
 				os_mem_free(&vinc->pdev->dev, &vinc->ptn_cfg.ptn_buf);
 		}
+		cap->width_stride_en = false;
+		cap->lbc_align_en = false;
+		cap->yuv_align_en = false;
 	}
 
 	vin_log(VIN_LOG_FMT, "csic_dma%d %s, %d*%d hoff: %d voff: %d\n",
+		vinc->id, enable ? "stream on" : "stream off",
+		cap->frame.o_width, cap->frame.o_height,
+		cap->frame.offs_h, cap->frame.offs_v);
+	vin_log(VIN_LOG_LARGE, "csic_dma%d %s, %d*%d hoff: %d voff: %d\n",
 		vinc->id, enable ? "stream on" : "stream off",
 		cap->frame.o_width, cap->frame.o_height,
 		cap->frame.offs_h, cap->frame.offs_v);

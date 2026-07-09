@@ -282,12 +282,6 @@ static int sunxi_insmod_ohci(struct platform_device *pdev)
 		DMSG_WARN("%s()%d WARN: get hci regulator failed\n", __func__, __LINE__);
 		sunxi_ohci->hci_regulator = NULL;
 	}
-
-	sunxi_ohci->vbusin = regulator_get(dev, "vbusin");
-	if (IS_ERR(sunxi_ohci->vbusin)) {
-		DMSG_WARN("%s()%d WARN: get vbusin failed\n", __func__, __LINE__);
-		sunxi_ohci->vbusin = NULL;
-	}
 	/* ochi start to work */
 	sunxi_start_ohci(sunxi_ohci);
 
@@ -388,9 +382,6 @@ static int sunxi_rmmod_ohci(struct platform_device *pdev)
 
 	if (sunxi_ohci->hci_regulator)
 		regulator_put(sunxi_ohci->hci_regulator);
-
-	if (sunxi_ohci->vbusin)
-		regulator_put(sunxi_ohci->vbusin);
 
 	sunxi_ohci->hcd = NULL;
 
@@ -567,7 +558,6 @@ static int sunxi_ohci_hcd_suspend(struct device *dev)
 		DMSG_ERR("ERR: ohci is null\n");
 		return 0;
 	}
-	atomic_set(&hci_thread_suspend_flag, 1);
 
 	if (sunxi_ohci->wakeup_suspend == USB_STANDBY) {
 		DMSG_INFO("[%s] usb suspend\n", sunxi_ohci->hci_name);
@@ -626,7 +616,6 @@ static int sunxi_ohci_hcd_suspend(struct device *dev)
 
 		cancel_work_sync(&sunxi_ohci->resume_work);
 		sunxi_stop_ohci(sunxi_ohci);
-		sunxi_hci_set_vbus(sunxi_ohci, 0);
 
 	}
 
@@ -640,7 +629,6 @@ static void sunxi_ohci_resume_work(struct work_struct *work)
 	sunxi_ohci = container_of(work, struct sunxi_hci_hcd, resume_work);
 
 	sunxi_ohci_set_vbus(sunxi_ohci, 1);
-	sunxi_hci_set_vbus(sunxi_ohci, 1);
 }
 
 static int sunxi_ohci_hcd_resume(struct device *dev)
@@ -730,7 +718,6 @@ static int sunxi_ohci_hcd_resume(struct device *dev)
 
 		schedule_work(&sunxi_ohci->resume_work);
 	}
-	atomic_set(&hci_thread_suspend_flag, 0);
 
 	return 0;
 }

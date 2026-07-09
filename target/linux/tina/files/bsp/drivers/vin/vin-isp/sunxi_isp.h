@@ -23,12 +23,16 @@
 #include "../vin-video/vin_core.h"
 #if IS_ENABLED(CONFIG_ARCH_SUN8IW16P1)
 #include "isp520/isp520_reg_cfg.h"
-#elif defined CONFIG_ARCH_SUN8IW19P1
+#elif IS_ENABLED(CONFIG_ARCH_SUN8IW19P1)
 #include "isp521/isp521_reg_cfg.h"
-#elif defined CONFIG_ARCH_SUN50IW10
+#elif IS_ENABLED(CONFIG_ARCH_SUN50IW10) || IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 #include "isp522/isp522_reg_cfg.h"
-#elif defined CONFIG_ARCH_SUN55IW3 || defined CONFIG_ARCH_SUN55IW6 || defined CONFIG_ARCH_SUN60IW1 || defined CONFIG_ARCH_SUN60IW2 || defined CONFIG_ARCH_SUN300IW1
+#elif IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) ||\
+	 IS_ENABLED(CONFIG_ARCH_SUN60IW1) || IS_ENABLED(CONFIG_ARCH_SUN60IW2) ||\
+	 IS_ENABLED(CONFIG_ARCH_SUN300IW1) || IS_ENABLED(CONFIG_ARCH_SUN65IW1)
 #include "isp600/isp600_reg_cfg.h"
+#elif IS_ENABLED(CONFIG_ARCH_SUN252IW1)
+#include "isp610/isp610_reg_cfg.h"
 #else
 #include "isp500/isp500_reg_cfg.h"
 #endif
@@ -41,8 +45,8 @@
 #include <linux/rpbuf.h>
 #include <linux/aw_rpmsg.h>
 #include "../vin-rp/vin_rp.h"
-#include "isp_comm.h"
 #endif
+#include "isp_comm.h"
 
 enum isp_pad {
 	ISP_PAD_SINK,
@@ -58,6 +62,9 @@ enum encpp_ctrl_id {
 	ISP_CTRL_ENCPP_DYNAMIC_CFG,
 	ISP_CTRL_ENCODER_3DNR_CFG,
 	ISP_CTRL_ENCODER_2DNR_CFG,
+	ISP_CTRL_ENCPP_AE_STATS,
+	ISP_CTRL_ENCPP_AE_EV_LV,
+	ISP_CTRL_ENCPP_AE_WEIGHT_LUM,
 };
 
 enum isp_work_mode {
@@ -88,6 +95,12 @@ enum isp_byr_max_bit {
 	BYR_RAW_20 = 4,
 };
 
+enum isp_ini_mode {
+	ISP_INI_NORMAL = 0,
+	ISP_INI_INTERVAL,
+	ISP_INI_MULTICH,
+};
+
 struct isp_pix_fmt {
 	u32 mbus_code;
 	enum isp_input_seq infmt;
@@ -116,7 +129,7 @@ struct isp_dev {
 	struct vin_mm isp_save;
 	struct vin_mm isp_lut_tbl;
 	struct vin_mm isp_drc_tbl;
-#if !defined ISP_600
+#if !defined ISP_600 && !defined ISP_610
 	struct vin_mm d3d_pingpong[3];
 	struct vin_mm wdr_pingpong[2];
 #if IS_ENABLED(CONFIG_ARCH_SUN8IW19P1)
@@ -136,6 +149,24 @@ struct isp_dev {
 	char save_get_flag;
 	bool load_select; /*load_select = 0 select load_para[0], load_select = 1 select load_para[1]*/
 	bool d3d_rec_reset;
+	unsigned int d3d_lbc_ratio;
+	unsigned int ldci_select;
+#if defined ISP_610
+	enum isp_lbc_align_choose align_choose;
+	struct vin_mm d2d_pingpong;
+	unsigned int d2d_raw_size;
+	struct isp_stat_config stat_cfg;
+
+	int top_irq;
+	enum isp_ini_mode ini_mode;
+	unsigned char int_cmb_interval;
+	struct isp_mcic_cfg mcic_cfg;
+	unsigned int update_table_flag;
+#ifdef OUTPUT_EMBED_DATA
+	bool time_embed_en;
+	bool ispbe_info_embed_en;
+#endif
+#endif
 #endif
 	struct isp_size err_size;
 	struct isp_size save_size;
@@ -176,6 +207,14 @@ struct isp_dev {
 #else
 	char load_shadow[ISP_LOAD_DRAM_SIZE];
 #endif
+#if defined ISP_600
+	char nr_msc_load_save[ISP_MSC_NR_TBL_SIZE];
+	char ae_stat_save[ISP_AE_REG_SIZE];
+	char af_stat_save[ISP_AF_REG_SIZE];
+	char awb_stat_save[ISP_AWB_REG_SIZE];
+	char hist_stat_save[ISP_HIST_REG_SIZE];
+	char init_done_flag;
+#endif
 	bool first_init_server;
 	bool isp_server_reset;
 	struct device_node *isp_reserved_np;
@@ -186,6 +225,7 @@ struct isp_dev {
 	struct rpbuf_buffer *load_buffer;
 	struct rpbuf_buffer *save_buffer;
 	struct rpbuf_buffer *ldci_buffer;
+	struct rpbuf_buffer *tunning_buffer;
 	char gtm_type;
 
 	struct rpmsg_device *rpmsg;
@@ -197,7 +237,11 @@ struct isp_dev {
 	struct encoder_3dnr_config encoder_3dnr_cfg;
 	struct encoder_2dnr_config encoder_2dnr_cfg;
 	struct isp_cfg_attr_data isp_cfg_attr;
+	struct melis_isp_info_node isp_info_node;
+	unsigned char isp_tunning_update;
 #endif
+	const char *rpmsg_ser_name;
+	bool pm_status;
 };
 
 void sunxi_isp_reset(struct isp_dev *isp);

@@ -201,7 +201,7 @@ gceSTATUS npu_regulator_enable(struct device_node *node)
 
 	if (aw_driver.vol) {
 		if (npu_regulator != 0)
-			regulator_set_voltage(aw_driver.regulator, aw_driver.vol, aw_driver.vol);
+			regulator_set_voltage(aw_driver.regulator, aw_driver.vol, INT_MAX);
 	}
 
 	if (regulator_enable(aw_driver.regulator)) {

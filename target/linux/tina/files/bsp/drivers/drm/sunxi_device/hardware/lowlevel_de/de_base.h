@@ -28,6 +28,8 @@
 #define SET_BITS(shift, width, reg, val) \
 	(((reg) & CLRMASK(width, shift)) | ((val) << (shift)))
 
+extern short g_gamma_funcs[17][1024];
+
 enum de_format_space {
 	DE_FORMAT_SPACE_RGB = 0,
 	DE_FORMAT_SPACE_YUV,
@@ -97,6 +99,12 @@ enum enhance_init_state {
 	ENHANCE_TIGERLCD_ON  = 0x00000002,
 	/* module is turned off by tigerlcd*/
 	ENHANCE_TIGERLCD_OFF = 0x00000003,
+};
+
+enum de_offline_mode_status {
+	OFFLINE_BLD_FINISH = 1 << 24,
+	OFFLINE_BLD_TIMEOUT = 1 << 28,
+	OFFLINE_BLD_MASK = OFFLINE_BLD_FINISH | OFFLINE_BLD_TIMEOUT,
 };
 
 typedef struct _demo_win_percent {

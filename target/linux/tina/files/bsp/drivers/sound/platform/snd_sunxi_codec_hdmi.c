@@ -278,7 +278,7 @@ void snd_sunxi_hdmi_shutdown(void)
 {
 	SND_LOG_DEBUG("\n");
 
-	g_hdmi_priv.update_param = 0;
+	memset(&g_hdmi_priv, 0, sizeof(struct sunxi_hdmi_priv));
 
 	if (g_hdmi_func.hdmi_audio_enable)
 		g_hdmi_func.hdmi_audio_enable(0, 1);

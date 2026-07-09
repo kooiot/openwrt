@@ -179,6 +179,24 @@ config SENSOR_NVP6158C
 	tristate "use nvp6158c driver"
 	default n
 
+menu "select nvp6158c mode"
+	depends on SENSOR_NVP6158C
+
+config NVP6158C_ONE_TIME_SETTING
+	bool "use one-time write configuration of nvp6158c "
+	default n
+
+choice
+	prompt "select bt656 or bt1120"
+	default BT1120
+config BT1120
+	bool "use bt1120 fmt"
+config BT656
+	bool "use bt656 fmt"
+endchoice
+
+endmenu
+
 config SENSOR_NVP6324
 	tristate "use nvp6324 driver"
 	default n

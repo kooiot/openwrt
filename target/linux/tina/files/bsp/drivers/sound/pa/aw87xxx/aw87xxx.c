@@ -1752,6 +1752,12 @@ static int aw87xxx_dtsi_parse(struct aw87xxx *aw87xxx,
 				vol_desc->vol_min);
 	}
 
+	/* add psy for battery det */
+	aw87xxx->psy = devm_power_supply_get_by_phandle(aw87xxx->dev,
+								"det_battery_supply");
+	if (!aw87xxx->psy || IS_ERR(aw87xxx->psy))
+		AW_DEV_LOGE(aw87xxx->dev, "get det_battery_supply failed\n");
+
 	aw87xxx_device_parse_port_id_dt(&aw87xxx->aw_dev);
 	aw87xxx_device_parse_topo_id_dt(&aw87xxx->aw_dev);
 
@@ -1790,7 +1796,7 @@ static struct aw87xxx *aw87xxx_malloc_init(struct i2c_client *client)
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
 static int aw87xxx_i2c_probe(struct i2c_client *client)
-#elif
+#else
 static int aw87xxx_i2c_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 #endif

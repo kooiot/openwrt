@@ -40,6 +40,9 @@
 #define ISP_LCA_MAX 11
 #define ISP_WDR_CFG_MAX 28
 #define ISP_CFA_MAX 3
+#if IS_ENABLED(CONFIG_ARCH_SUN300IW1)
+#define ISP_AWB_MAX 2
+#endif
 #define ISP_RAW_CH_MAX 4
 #define GTM_LUM_IDX_NUM 9
 #define GTM_VAR_IDX_NUM 9
@@ -58,11 +61,23 @@
 #define ISP_DENOISE_COMM_MAX 33
 #define ISP_TDF_COMM_MAX 45
 #define ENCPP_SHARP_COMM_MAX 10
+#if IS_ENABLED(CONFIG_ARCH_SUN300IW1)
+#define TEMP_COMP_MAX 14
+#else
 #define TEMP_COMP_MAX 12
+#endif
 
 #define ISP_MSC_TBL_SIZE 484
 #define ISP_AE_ROW 18
 #define ISP_AE_COL 24
+
+#define ISP_HIST_NUM 256
+
+#define ISP_AWB_ROW	24
+#define ISP_AWB_COL	32
+
+#define ISP_D3D_K_ROW 24
+#define ISP_D3D_K_COL 32
 
 #define PLTM_MAX_STAGE 4
 struct isp_rgb2rgb_gain_offset {
@@ -154,56 +169,224 @@ struct isp_encpp_cfg_attr_data {
 	struct encoder_2dnr_config encoder_2dnr_cfg;
 };
 
-typedef enum {
-	/*isp_ctrl*/
-	ISP_CTRL_MODULE_EN = 0,
-	ISP_CTRL_DIGITAL_GAIN,
-	ISP_CTRL_PLTMWDR_STR,
-	ISP_CTRL_DN_STR,
-	ISP_CTRL_3DN_STR,
-	ISP_CTRL_HIGH_LIGHT,
-	ISP_CTRL_BACK_LIGHT,
-	ISP_CTRL_WB_MGAIN,
-	ISP_CTRL_AGAIN_DGAIN,
-	ISP_CTRL_COLOR_EFFECT,
-	ISP_CTRL_AE_ROI,
-	ISP_CTRL_AF_METERING,
-	ISP_CTRL_COLOR_TEMP,
-	ISP_CTRL_EV_IDX,
-	ISP_CTRL_MAX_EV_IDX,
-	ISP_CTRL_PLTM_HARDWARE_STR,
-	ISP_CTRL_ISO_LUM_IDX,
-	ISP_CTRL_COLOR_SPACE,
-	ISP_CTRL_VENC2ISP_PARAM,
-	ISP_CTRL_NPU_NR_PARAM,
-	ISP_CTRL_TOTAL_GAIN,
-	ISP_CTRL_AE_EV_LV,
-	ISP_CTRL_AE_EV_LV_ADJ,
-	ISP_CTRL_AE_WEIGHT_LUM,
-	ISP_CTRL_AE_LOCK,
-	ISP_CTRL_AE_TABLE,
-	ISP_CTRL_AE_STATS,
-	ISP_CTRL_IR_STATUS,
-	ISP_CTRL_IR_AWB_GAIN,
-	ISP_CTRL_READ_BIN_PARAM,
-	ISP_CTRL_AE_ROI_TARGET,
-} hw_isp_ctrl_cfg_ids;
-
-struct ae_table {
-	unsigned int min_exp;
-	unsigned int max_exp;
-	unsigned int min_gain;
-	unsigned int max_gain;
-	unsigned int min_iris;
-	unsigned int max_iris;
+#define RPMEG_BUF_LEN 124
+#define LIBS_VER_STR_LEN 48
+#define ISP_CFG_VER_STR_LEN 48
+struct melis_isp_info_node {
+	unsigned int exp_val;
+	unsigned int exp_time;
+	unsigned int gain_val;
+	unsigned int total_gain_val;
+	unsigned int lum_idx;
+	unsigned short awb_color_temp;
+	unsigned short awb_rgain;
+	unsigned short awb_bgain;
+	int contrast_level;
+	int brightness_level;
+	int sharpness_level;
+	int saturation_level;
+	int tdf_level;
+	int denoise_level;
+	int pltmwdr_level;
+	int pltmwdr_next_stren;
+	unsigned char libs_version[LIBS_VER_STR_LEN];
+	char isp_cfg_version[ISP_CFG_VER_STR_LEN];
+	unsigned char update_flag;
 };
 
-struct ae_table_info {
-	struct ae_table ae_tbl[10];
-	int length;
-	int ev_step;
-	int shutter_shift;
+enum melis_isp_info_type {
+	EXP_VAL = 0,
+	EXP_TIME = 1,
+	GAIN_VAL,
+	TOTAL_GAIN_VAL,
+	LUM_IDX,
+	COLOR_TEMP,
+	AWB_RGAIN,
+	AWB_BGAIN,
+	CONTRAST_LEVEL,
+	BRIGHTNESS_LEVEL,
+	SHARPNESS_LEVEL,
+	SATURATION_LEVEL,
+	TDNF_LEVEL,
+	DENOISE_LEVEL,
+	PLTM_LEVEL,
+	PLTM_NEXT_STREN,
+
+	LIBS_VER_STR,
+	ISP_CFG_VER_STR = ((LIBS_VER_STR_LEN >> 2) + LIBS_VER_STR),
+	MELIS_ISP_INFO_MAX = (ISP_CFG_VER_STR + (ISP_CFG_VER_STR_LEN >> 2)),
 };
+
+//typedef enum {
+//	/*isp_ctrl*/
+//	ISP_CTRL_MODULE_EN = 0,
+//	ISP_CTRL_DIGITAL_GAIN,
+//	ISP_CTRL_PLTMWDR_STR,
+//	ISP_CTRL_DN_STR,
+//	ISP_CTRL_3DN_STR,
+//	ISP_CTRL_HIGH_LIGHT,
+//	ISP_CTRL_BACK_LIGHT,
+//	ISP_CTRL_WB_MGAIN,
+//	ISP_CTRL_AGAIN_DGAIN,
+//	ISP_CTRL_COLOR_EFFECT,
+//	ISP_CTRL_AE_ROI,
+//	ISP_CTRL_AF_METERING,
+//	ISP_CTRL_COLOR_TEMP,
+//	ISP_CTRL_EV_IDX,
+//	ISP_CTRL_MAX_EV_IDX,
+//	ISP_CTRL_PLTM_HARDWARE_STR,
+//	ISP_CTRL_ISO_LUM_IDX,
+//	ISP_CTRL_COLOR_SPACE,
+//	ISP_CTRL_VENC2ISP_PARAM,
+//	ISP_CTRL_NPU_NR_PARAM,
+//	ISP_CTRL_TOTAL_GAIN,
+//	ISP_CTRL_AE_EV_LV,
+//	ISP_CTRL_AE_EV_LV_ADJ,
+//	ISP_CTRL_AE_WEIGHT_LUM,
+//	ISP_CTRL_AE_LOCK,
+//	ISP_CTRL_AE_FACE_CFG,
+//	ISP_CTRL_MIPI_SWITCH,
+//	ISP_CTRL_AE_TABLE,
+//	ISP_CTRL_AE_STATS,
+//	ISP_CTRL_IR_STATUS,
+//	ISP_CTRL_IR_AWB_GAIN,
+//	ISP_CTRL_READ_BIN_PARAM,
+//	ISP_CTRL_AE_ROI_TARGET,
+//} hw_isp_ctrl_cfg_ids;
+
+//struct ae_table {
+//	unsigned int min_exp;
+//	unsigned int max_exp;
+//	unsigned int min_gain;
+//	unsigned int max_gain;
+//	unsigned int min_iris;
+//	unsigned int max_iris;
+//};
+
+//struct ae_table_info {
+//	struct ae_table ae_tbl[10];
+//	int length;
+//	int ev_step;
+//	int shutter_shift;
+//};
+
+//typedef enum {
+//	/*tunning_ctrl*/
+//	ISP_CTRL_GET_SENSOR_CFG = 0,
+//	ISP_CTRL_RPBUF_INIT,
+//	ISP_CTRL_RPBUF_RELEASE,
+//	ISP_CTRL_GET_ISP_PARAM,
+//	ISP_CTRL_SET_ISP_PARAM,
+//	ISP_CTRL_GET_LOG,
+//	ISP_CTRL_GET_3A_STAT,
+//} hw_tunning_ctrl_ids;
+
+struct isp_ae_log_cfg {
+	HW_S32 ae_frame_id;
+	HW_U32 ev_sensor_exp_line;
+	HW_U32 ev_exposure_time;
+	HW_U32 ev_analog_gain;
+	HW_U32 ev_digital_gain;
+	HW_U32 ev_total_gain;
+	HW_U32 ev_idx;
+	HW_U32 ev_idx_max;
+	HW_U32 ev_lv;
+	HW_U32 ev_lv_adj;
+	HW_S32 ae_target;
+	HW_S32 ae_avg_lum;
+	HW_S32 ae_weight_lum;
+	HW_S32 ae_delta_exp_idx;
+	HW_U32 ev_sensor_exp_line_short;
+	HW_U32 ev_exposure_time_short;
+	HW_U32 ev_analog_gain_short;
+	HW_U32 ev_digital_gain_short;
+	HW_U32 ratio_lm;
+	HW_U16 ae_mode;
+};
+
+struct isp_awb_log_cfg {
+	HW_S32 awb_frame_id;
+	HW_U16 r_gain;
+	HW_U16 gr_gain;
+	HW_U16 gb_gain;
+	HW_U16 b_gain;
+	HW_S32 color_temp_output;
+	HW_S32 color_temp_target;
+	HW_U16 LightWinNum[10];
+	HW_U16 LightTempMean[10];
+};
+
+struct isp_af_log_cfg {
+	HW_S32 af_frame_id;
+	HW_U32 last_code_output;
+	HW_U32 real_code_output;
+	HW_U32 std_code_output;
+};
+
+struct isp_iso_log_cfg {
+	HW_U32 gain_idx;
+	HW_U32 lum_idx;
+	HW_S16 temp_enable;
+	HW_S16 temperature;
+	HW_S16 temperature_param[TEMP_COMP_MAX];
+};
+
+struct isp_pltm_log_cfg {
+	HW_U16 pltm_auto_stren;
+	HW_U16 pltm_sharp_ss_compensation;
+	HW_U16 pltm_sharp_ls_compensation;
+	HW_U16 pltm_d2d_compensation;
+	HW_U16 pltm_d3d_compensation;
+	HW_U16 pltm_dark_block_num;
+	HW_S32 cur_pic_lum;
+	HW_S32 tar_pic_lum;
+};
+
+struct isp_log_cfg {
+	struct isp_ae_log_cfg ae_log;
+	struct isp_awb_log_cfg awb_log;
+	struct isp_af_log_cfg af_log;
+	struct isp_iso_log_cfg iso_log;
+	struct isp_pltm_log_cfg pltm_log;
+};
+
+struct isp_ae_stats_s {
+	HW_U32 win_pix_n;
+	HW_U32 avg[ISP_AE_ROW*ISP_AE_COL];
+	HW_U32 hist[ISP_HIST_NUM];
+	HW_U32 hist1[ISP_HIST_NUM];
+};
+
+struct isp_awb_stats_s {
+	HW_U32 awb_avg_r[ISP_AWB_ROW][ISP_AWB_COL];	/*range 0~2048*/
+	HW_U32 awb_avg_g[ISP_AWB_ROW][ISP_AWB_COL];
+	HW_U32 awb_avg_b[ISP_AWB_ROW][ISP_AWB_COL];
+	HW_U32 avg[ISP_AWB_ROW][ISP_AWB_COL];
+};
+
+struct isp_d3d_k_stats_s {
+	HW_U8 k_stat[ISP_D3D_K_ROW][ISP_D3D_K_COL];
+	HW_U8 k_start_avg;
+};
+
+//struct tunning_sensor_cfg {
+//	unsigned char isp_id;
+//	unsigned short sensor_width;
+//	unsigned short sensor_height;
+//	unsigned short act_fps;
+//	unsigned char wdr;
+//};
+
+struct tunning_special_ctrl {
+	unsigned char ir;
+	unsigned char colorspace;
+};
+
+//struct tunning_ctl_data {
+//	unsigned short cfg_id;
+//	char path[100];
+//	struct tunning_sensor_cfg sensor_cfg;
+//};
 
 enum set_bin_step {
 	SET_BIN_TEST_3A_TUNING = 0,

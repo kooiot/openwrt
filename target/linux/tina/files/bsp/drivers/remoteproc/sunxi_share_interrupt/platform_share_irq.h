@@ -22,4 +22,8 @@
 #include "sun55iw6-share-irq.h"
 #endif
 
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW22P1)
+#include "sun8iw22-share-irq.h"
+#endif
+
 #endif /* __PLATFORM_SHARE_IRQ_H__ */

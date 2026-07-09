@@ -149,11 +149,11 @@
 #define FMINLEN				27
 #define ADC1_DSM_DITHER_LVL		24
 #define LINEINLEN			23
-#define IOPAAF2S			20
+#define ADC1_IOPAAF2S			20
 #define LINEINLG			18
 #define FMINLG				16
 #define ADC1_DSM_RST			13
-#define ADC1_MIC_ST			12
+#define ADC1_MIC_START_CTRL		12
 #define ADC1_PGA_GAIN_CTRL		8
 #define ADC1_IOPAAF			6
 #define ADC1_IOPSDM1			4
@@ -167,13 +167,14 @@
 #define ADC2_DITHER_CTRL		29
 #define MIC2_SIN_EN			28
 #define FMINREN				27
+#define CROSSTALK_AVOID_EN		26
 #define ADC2_DSM_DITHER_LVL		24
 #define LINEINREN			23
-#define IOPAAF2S			20
+#define ADC2_IOPAAF2S			20
 #define LINEINRG			18
 #define FMINRG				16
 #define ADC2_DSM_RST			13
-#define ADC2_MIC_ST			12
+#define ADC2_MIC_START_CTRL		12
 #define ADC2_PGA_GAIN_CTRL		8
 #define ADC2_IOPAAF			6
 #define ADC2_IOPSDM1			4
@@ -184,7 +185,7 @@
 /* SUNXI_DAC_REG : 0x310 */
 #define DAC_CH_NOL_EN			31
 #define DAC_CH_EN                       30
-#define DAC_CH_DLYSET                   29
+#define DAC_CH_DLYSET                   28
 #define DAC_CH_CKSET                    26
 #define CKDAC_DLYSET                    24
 #define LOUT_CH_EN                      23
@@ -198,6 +199,7 @@
 #define DACLMUTE			12
 #define LINEOUTREN			11
 #define DACRMUTE			10
+#define CKDAC_DLYSET			8
 #define LINEOUT_VOL			0
 
 /* SUNXI_RAMP_REG : 0x31C */
@@ -240,7 +242,7 @@
 #define HPFB_IN_EN			17
 #define RAMP_FINAL_CTRL			16
 #define RAMP_OUT_EN			15
-#define RAMP_FINAL_STATE_RES		13
+#define RAMP_FILTER			8
 #define HP_CHOPPER_EN			7
 #define HP_CH_NOL_EN			6
 #define HP_CHOPPER_CKS			4
@@ -273,6 +275,12 @@
 #define INPUT1_SHIFT			0
 #define INPUT2_SHIFT			1
 
+/* for input gain Switch */
+#define FMINL_GAIN_SHIFT			0
+#define FMINR_GAIN_SHIFT			1
+#define LINEINL_GAIN_SHIFT			2
+#define LINEINR_GAIN_SHIFT			3
+
 struct sunxi_codec_mem {
 	struct resource res;
 	void __iomem *membase;
@@ -282,7 +290,8 @@ struct sunxi_codec_mem {
 
 struct sunxi_codec_clk {
 	/* parent */
-	struct clk *clk_pll_audio1;
+	struct clk *clk_pll_audio1_div5;
+	struct clk *clk_pll_audio0_1x;
 	/* module */
 	struct clk *clk_audio_dac;
 	struct clk *clk_audio_adc;
@@ -296,9 +305,8 @@ struct sunxi_audio_status {
 	bool spk;
 
 	struct mutex acf_mutex; /* audio capture function mutex lock */
-	bool mic1;
-	bool mic2;
-	bool mic3;
+	bool adc1;
+	bool adc2;
 };
 
 struct sunxi_codec_dts {
@@ -321,10 +329,6 @@ struct sunxi_codec_dts {
 	u32 adc1_gain;
 	u32 adc2_gain;
 	u32 hpout_gain;
-	u32 fminl_gain;
-	u32 fminr_gain;
-	u32 lineinl_gain;
-	u32 lineinr_gain;
 };
 
 struct sunxi_codec {

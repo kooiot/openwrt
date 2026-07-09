@@ -68,9 +68,6 @@ CONFIG_KERNEL_H	   := $(RELATIVE_OUT)/config_kernel.h
 # Convert commas to spaces in $(D). This is so you can say "make
 # D=config-changes,freeze-config" and have $(filter config-changes,$(D))
 # still work.
-comma := ,
-empty :=
-space := $(empty) $(empty)
 override D := $(subst $(comma),$(space),$(D))
 
 ifneq ($(INTERNAL_CLOBBER_ONLY),true)
@@ -140,6 +137,22 @@ ALL_LDFLAGS :=
 -include $(CONFIG_KERNEL_MK)
 # OK to change now
 
+define is-host-os
+$(if $(HOST_OS),$(if $(filter $(1),$(HOST_OS)),true),$(error HOST_OS not set))
+endef
+
+define is-not-host-os
+$(if $(HOST_OS),$(if $(filter-out $(1),$(HOST_OS)),true),$(error HOST_OS not set))
+endef
+
+define is-target-os
+$(if $(TARGET_OS),$(if $(filter $(1),$(TARGET_OS)),true),$(error TARGET_OS not set))
+endef
+
+define is-not-target-os
+$(if $(TARGET_OS),$(if $(filter-out $(1),$(TARGET_OS)),true),$(error TARGET_OS not set))
+endef
+
 # If we haven't set host/target archs, set some sensible defaults now.
 # This allows things like prune.sh to work
 ifeq ($(HOST_PRIMARY_ARCH),)
@@ -147,8 +160,24 @@ ifneq ($(FORCE_ARCH),)
 HOST_PRIMARY_ARCH := host_x86_64
 HOST_32BIT_ARCH := host_i386
 
-_ALL_ARCHS := \
- $(filter-out %target_neutral.mk,$(wildcard $(MAKE_TOP)/moduledefs/target_*.mk))
+# We set HOST_ALL_ARCH this way, as HOST_32BIT_ARCH may be overridden on the
+# command line.
+ifeq ($(HOST_PRIMARY_ARCH),$(HOST_32BIT_ARCH))
+HOST_ALL_ARCH := $(HOST_PRIMARY_ARCH)
+else
+HOST_ALL_ARCH := $(HOST_PRIMARY_ARCH) $(HOST_32BIT_ARCH)
+endif
+
+_ALL_NEUTRINO_ARCHS := $(wildcard $(MAKE_TOP)/moduledefs/target_nto*.mk)
+
+ifeq ($(SUPPORT_NEUTRINO_PLATFORM),)
+ _ALL_ARCHS := \
+  $(filter-out %target_neutral.mk $(_ALL_NEUTRINO_ARCHS),\
+   $(wildcard $(MAKE_TOP)/moduledefs/target_*.mk))
+else
+ _ALL_ARCHS := $(_ALL_NEUTRINO_ARCHS)
+endif
+
 TARGET_PRIMARY_ARCH := \
  $(patsubst $(MAKE_TOP)/moduledefs/%.mk,%,$(word 1, $(_ALL_ARCHS)))
 
@@ -163,7 +192,7 @@ HOST_32BIT_OUT       := $(RELATIVE_OUT)/$(HOST_32BIT_ARCH)
 TARGET_OUT           := $(RELATIVE_OUT)/$(TARGET_PRIMARY_ARCH)
 TARGET_PRIMARY_OUT   := $(RELATIVE_OUT)/$(TARGET_PRIMARY_ARCH)
 TARGET_NEUTRAL_OUT   := $(RELATIVE_OUT)/target_neutral
-BRIDGE_SOURCE_ROOT   := $(call if-exists,$(TOP)/generated,$(TARGET_NEUTRAL_OUT)/intermediates)
+BRIDGE_SOURCE_ROOT   := $(call if-exists,$(TOP)/generated/$(PVR_ARCH),$(TARGET_NEUTRAL_OUT)/intermediates)
 GENERATED_CODE_OUT   := $(TARGET_NEUTRAL_OUT)/intermediates
 DOCS_OUT             := $(RELATIVE_OUT)/doc
 
@@ -186,14 +215,33 @@ OUT_SUBDIRS := $(addprefix $(RELATIVE_OUT)/,$(TARGET_ALL_ARCH)) \
 $(OUT_SUBDIRS):
 	$(make-directory)
 
+ifeq ($(PVR_CREATE_TARGET_PRIMARY_OUT_LINK),1)
+TARGET_PRIMARY_OUT_LINK := $(RELATIVE_OUT)/target_primary
+.SECONDARY: $(TARGET_PRIMARY_OUT_LINK)
+$(TARGET_PRIMARY_OUT_LINK):
+	$(LN) $(TARGET_PRIMARY_ARCH) $@
+
+$(TARGET_PRIMARY_OUT): | $(TARGET_PRIMARY_OUT_LINK)
+endif
+
 ifneq ($(INTERNAL_CLOBBER_ONLY),true)
 -include $(MAKE_TOP)/pvrversion.mk
 -include $(MAKE_TOP)/llvm.mk
--include $(MAKE_TOP)/common/bridges.mk
+ifeq ($(SERVICES_SC),1)
+ -include $(MAKE_TOP)/common/bridges_sc.mk
+else
+ -include $(MAKE_TOP)/common/bridges.mk
+endif
 endif
 
 ifeq ($(INTERNAL_CLOBBER_ONLY)$(SUPPORT_ANDROID_PLATFORM)$(SUPPORT_NEUTRINO_PLATFORM)$(SUPPORT_INTEGRITY_PLATFORM),)
  # doing a Linux build.  We need to worry about sysroots.
+
+ # The directories containing linux window system related components
+ LWS_DIR           := $(TOP)/lws
+ LWS_TARBALL_DIR   ?= $(TOP)/external/lws
+ LWS_PATCH_DIR     := $(LWS_DIR)/dist/patches
+ LWS_GIT_PATCH_DIR := $(LWS_DIR)/patches
 
  ifneq ($(SUPPORT_BUILD_LWS),)
   -include $(MAKE_TOP)/lwsconf.mk
@@ -244,10 +292,15 @@ ifneq ($(KERNEL_COMPONENTS),)
 build: kbuild
 endif
 
-# "make bridges" makes all the modules which are bridges. This is used by
-# builds which ship pregenerated bridge headers.
-ifneq ($(BRIDGE_SOURCE_ROOT),$(TOP)/generated)
+# The 'bridges' target is used to make all the modules that are of the bridge
+# type. One of its main uses is to pregenerate the bridge files for inclusion
+# into the DDK source packages. Since there is no need and no facility to
+# generate the bridge files when the pregenerated files exist, make the target
+# a no-op in this case.
 .PHONY: bridges
+ifeq ($(BRIDGE_SOURCE_ROOT),$(TOP)/generated/$(PVR_ARCH))
+bridges:
+else
 bridges: $(BRIDGES)
 endif
 
@@ -289,9 +342,6 @@ ALL_MODULES := $(filter-out $(ALL_BAD_MODULES),$(ALL_MODULES))
 kbuild install:
 
 ifneq ($(INTERNAL_CLOBBER_ONLY),true)
- ifeq ($(SUPPORT_ANDROID_PLATFORM)$(SUPPORT_NEUTRINO_PLATFORM)$(SUPPORT_INTEGRITY_PLATFORM),)
-  -include $(MAKE_TOP)/packaging.mk
- endif
  -include $(MAKE_TOP)/scripts.mk
  -include $(MAKE_TOP)/kbuild/kbuild.mk
 endif
@@ -386,6 +436,7 @@ firmware: $(FW_COMPONENTS)
 .PHONY: clean clobber
 clean: MODULE_DIRS_TO_REMOVE := $(OUT_SUBDIRS)
 clean:
+	$(if $(TARGET_PRIMARY_OUT_LINK),$(RM) $(TARGET_PRIMARY_OUT_LINK))
 	$(clean-dirs)
 clobber: MODULE_DIRS_TO_REMOVE := $(OUT)
 clobber:

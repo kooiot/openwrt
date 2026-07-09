@@ -51,8 +51,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /***************************************************************************/
 
-#if !defined(__PVRSRVPOOL_H__)
-#define __PVRSRVPOOL_H__
+#if !defined(PVRSRVPOOL_H)
+#define PVRSRVPOOL_H
 
 /**************************************************************************/ /*!
  @Description  Callback function called during creation of the new element. This
@@ -108,7 +108,7 @@ void PVRSRVPoolDestroy(PVRSRV_POOL *psPool);
 
 /**************************************************************************/ /*!
  @Function     PVRSRVPoolGet
- @Description  Retrieves an entry form a pool. If no free elements are
+ @Description  Retrieves an entry from a pool. If no free elements are
                available new entry will be allocated.
  @Input        psPool          Pointer to the pool.
  @Output       hToken          Pointer to the entry handle.
@@ -132,4 +132,4 @@ PVRSRV_ERROR PVRSRVPoolGet(PVRSRV_POOL *psPool,
 PVRSRV_ERROR PVRSRVPoolPut(PVRSRV_POOL *psPool,
 						PVRSRV_POOL_TOKEN hToken);
 
-#endif /* __PVRSRVPOOL_H__ */
+#endif /* PVRSRVPOOL_H */

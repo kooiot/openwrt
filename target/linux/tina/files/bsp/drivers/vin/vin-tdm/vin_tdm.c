@@ -19,21 +19,29 @@
 #include <linux/platform_device.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/aw_rpmsg.h>
 #include <linux/delay.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-mediabus.h>
 #include <media/v4l2-subdev.h>
 #include "vin_tdm.h"
 #include "../vin-video/vin_video.h"
-
+#if IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
+#include "../vin-rp/vin_rp.h"
+#endif
 #define TDM_MODULE_NAME "vin_tdm"
+#define TDM_RX_BUFFER_FIFO 16
 
 struct tdm_dev *glb_tdm[VIN_MAX_TDM];
 
 #if IS_ENABLED(CONFIG_TDM_LBC_EN)
-#define TDM_LBC_RATIO			393	/*1.0x:1024; 1.5x:683; 2.0x 512; 2.6x:393; 3x:342; 3.5x:293; 4x:256*/
+#define TDM_LBC_RATIO			393	/*1.0x:1024; 1.5x:683; 1.67x:613; 2.0x 512; 2.6x:393; 2.8x:366; 3x:342; 3.5x:293; 4x:256*/
 #else
 #define TDM_LBC_RATIO			1024
+#endif
+
+#if IS_ENABLED(CONFIG_TDM_OFFLINE_HANDLE_RAW)
+#define TDM_BUF_FILL_LEN        64
 #endif
 
 static struct tdm_format sunxi_tdm_formats[] = {
@@ -119,6 +127,11 @@ static void tdm_rx_bufs_free(struct tdm_rx_dev *tdm_rx)
 		if (!buf->virt_addr)
 			continue;
 
+/* #if IS_ENABLED(CONFIG_TDM_OFFLINE_HANDLE_RAW)
+		if (!IS_ERR(buf->dmabuf))
+			dma_buf_put(buf->dmabuf);
+#endif  */
+
 		mm->vir_addr = buf->virt_addr;
 		mm->dma_addr = buf->dma_addr;
 		os_mem_free(&tdm->pdev->dev, mm);
@@ -157,7 +170,16 @@ static int tdm_rx_bufs_alloc(struct tdm_rx_dev *tdm_rx, u32 size, u32 count)
 			vin_err("%s: Can't acquire memory for DMA buffer %d\n",	tdm_rx->subdev.name, i);
 			return -ENOMEM;
 		}
-		vin_log(VIN_LOG_TDM, "rx%d:buf%d:dma_addr is 0x%px ~ 0x%px\n", tdm_rx->id, i, buf->dma_addr, buf->dma_addr + size);
+#if IS_ENABLED(CONFIG_TDM_OFFLINE_HANDLE_RAW)
+	/*	buf->dmabuf = ion_share_dma_buf(mm->client, mm->handle);
+		if (IS_ERR(buf->dmabuf)) {
+			vin_err("ion_share_dma_buf failed!!\n");
+		} */
+		list_add_tail(&buf->list, &tdm->rx_active[tdm_rx->id]);
+		buf->state = TDMSTAT_IDLE;
+		buf->id = i;
+#endif
+		vin_log(VIN_LOG_TDM, "rx%d:buf%d:dma_addr is 0x%lx ~ 0x%lx\n", tdm_rx->id, i, (long)buf->dma_addr, (long)(buf->dma_addr + size));
 	}
 
 	vin_log(VIN_LOG_TDM, "%s: allocing buffers successfully, buf_cnt and size is %d and %d.\n",
@@ -167,7 +189,7 @@ static int tdm_rx_bufs_alloc(struct tdm_rx_dev *tdm_rx, u32 size, u32 count)
 	return 0;
 }
 
-#ifdef TDM_V200
+#if defined TDM_V200 || defined TDM_V230
 static void tdm_set_tx_blank(struct tdm_dev *tdm)
 {
 	csic_tdm_omode(tdm->id, 1);
@@ -181,6 +203,7 @@ static void tdm_set_tx_blank(struct tdm_dev *tdm)
 
 static void tdm_rx_lbc_cal_para(struct tdm_rx_dev *tdm_rx)
 {
+#if defined TDM_V200
 	struct tdm_rx_lbc *lbc = &tdm_rx->lbc;
 	unsigned int width_stride;
 	unsigned int bit_depth;
@@ -188,6 +211,7 @@ static void tdm_rx_lbc_cal_para(struct tdm_rx_dev *tdm_rx)
 	unsigned int mb_min_bits_ratio = 820;/*default*/
 	unsigned int align = 256;
 	unsigned int mb_len = 48;
+	unsigned int width;
 
 	if (TDM_LBC_RATIO != 1024 && tdm_rx->tdm_fmt->input_bit_width == RAW_10BIT)
 		lbc->cmp_ratio = 293;/*3.5x*/
@@ -214,10 +238,14 @@ static void tdm_rx_lbc_cal_para(struct tdm_rx_dev *tdm_rx)
 		lbc->is_lossy = 1;
 
 	lbc->mb_th = 0x18;/*12, 24, 36, 48*/
-	lbc->mb_num = clamp((int)DIV_ROUND_UP(tdm_rx->format.width, mb_len), 3, 88);
+	if (tdm_rx->large_image == 3)
+		width = tdm_rx->format.width / 2 + vin_set_large_overlayer(tdm_rx->format.width);
+	else
+		width = tdm_rx->format.width;
+	lbc->mb_num = clamp((int)DIV_ROUND_UP(width, mb_len), 3, 88);
 
 	bit_depth = 12;
-	width_stride = ALIGN(tdm_rx->format.width, 48);
+	width_stride = ALIGN(width, 48);
 	if (lbc->is_lossy) {
 		lbc->line_tar_bits = roundup((lbc->cmp_ratio * width_stride * bit_depth) / 1024, align);
 		lbc->line_tar_bits = min(lbc->line_tar_bits, roundup(width_stride * bit_depth, align));
@@ -231,6 +259,205 @@ static void tdm_rx_lbc_cal_para(struct tdm_rx_dev *tdm_rx)
 		lbc->line_max_bit = roundup(width_stride / 24 * (bit_depth * 24 + 24 + 2), align);
 	lbc->mb_min_bit = clamp((int)((lbc->cmp_ratio * bit_depth * mb_len) / 1024 / 2 * mb_min_bits_ratio / 1024), 36, 288);
 	lbc->gbgr_ratio = 0x200;
+#else /* TDM_V230 */
+	struct tdm_dev *tdm = container_of(tdm_rx, struct tdm_dev, tdm_rx[tdm_rx->id]);
+	struct tdm_rx_lbc *lbc = &tdm_rx->lbc;
+	unsigned int align = 256;
+	unsigned int mb_len = 32;
+	unsigned int mb_num_in_frame;
+	unsigned int mb_max_bits_ratio = 204;
+	unsigned int width;
+	unsigned int width_stride;
+	int i;
+
+	if (tdm_rx->large_image == 3)
+		width = tdm_rx->format.width / 2 + vin_set_large_overlayer(tdm_rx->format.width);
+	else
+		width = tdm_rx->format.width;
+
+	lbc->cmp_ratio = clamp(TDM_LBC_RATIO, 256, 1024);
+	if (lbc->cmp_ratio >= 393) /* 2.6x */
+		lbc->rc_ctrl_mode = 0;
+	else if (lbc->cmp_ratio >= 366) /* 2.8x */
+		lbc->rc_ctrl_mode = 1;
+	else
+		vin_err("tdm lbc not support ratio mora than 2.8x");
+
+	if (width < 128 || tdm_rx->format.height < 64) {
+		vin_err("tdm lbc not support (width < 128), (height < 64)\n");
+	} else if ((width < 1280 || tdm_rx->format.height < 64) && lbc->rc_ctrl_mode == 0) {
+		lbc->cmp_ratio = 1024;
+		vin_warn("tdm lbc default to 1x\n");
+	} else if ((width < 960 || tdm_rx->format.height < 64) && lbc->rc_ctrl_mode == 1) {
+		lbc->cmp_ratio = 1024;
+		vin_warn("tdm lbc default to 1x\n");
+	}
+
+	if (tdm_rx->tdm_fmt->input_bit_width == 8) {
+		unsigned char default_minqp_8[] = {0, 0, 0, 1, 2, 2, 3, 6};
+		unsigned char default_maxqp_8[] = {1, 2, 3, 3, 4, 5, 6, 7};
+		unsigned int default_threshold_8[] = {480, 896, 1248, 1536, 1760, 1920, 2016, 2048};
+		int default_tar_bits_cfg_8[] = {0, 0, 0, 0, -8, -16, -24, -32};
+
+		for (i = 0; i < tdm_rx->tdm_fmt->input_bit_width; i++) {
+			lbc->lbc_min_qp[i] = default_minqp_8[i];
+			lbc->lbc_max_qp[i] = default_maxqp_8[i];
+			lbc->lbc_thresh[i] = default_threshold_8[i];
+			lbc->lbc_tar_bits_adj[i] = default_tar_bits_cfg_8[i];
+		}
+		lbc->glb_max_k = 3;
+		lbc->glb_max_quo = 10;
+
+		if (lbc->cmp_ratio <= 410)
+			lbc->start_qp = 1;
+		else
+			lbc->start_qp = 0;
+	} else if (tdm_rx->tdm_fmt->input_bit_width == 10) {
+		unsigned char default_minqp_10[] = {0, 0, 1, 1, 2, 2, 3, 4, 5, 7};
+		unsigned char default_maxqp_10[] = {1, 2, 3, 3, 4, 5, 5, 6, 7, 9};
+		unsigned int default_threshold_10[] = {776, 1472, 2088, 2620, 3072, 3440, 3724, 3932, 4052, 4096};
+		int default_tar_bits_cfg_10[] = {0, 0, 0, 0, -8, -16, -24, -32, -40, -48};
+
+		for (i = 0; i < tdm_rx->tdm_fmt->input_bit_width; i++) {
+			lbc->lbc_min_qp[i] = default_minqp_10[i];
+			lbc->lbc_max_qp[i] = default_maxqp_10[i];
+			lbc->lbc_thresh[i] = default_threshold_10[i];
+			lbc->lbc_tar_bits_adj[i] = default_tar_bits_cfg_10[i];
+		}
+		lbc->glb_max_k = 4;
+		lbc->glb_max_quo = 10;
+
+		if (lbc->cmp_ratio >= 512)
+			lbc->start_qp = 0;
+		else if (lbc->cmp_ratio >= 393)
+			lbc->start_qp = 1;
+		else
+			lbc->start_qp = 2;
+	} else if (tdm_rx->tdm_fmt->input_bit_width == 12) {
+		unsigned char default_minqp_12[] = {0, 0, 1, 1, 2, 2, 3, 3, 4, 5, 6, 9};
+		unsigned char default_maxqp_12[] = {2, 3, 4, 5, 5, 5, 6, 7, 8, 8, 9, 11};
+		unsigned int default_threshold_12[] = {652, 1248, 1792, 2272, 2700, 3072, 3384, 3640, 3840, 3980, 4064, 4096};
+		int default_tar_bits_cfg_12[] = {0, 0, 0, 0, 0, -8, -16, -24, -32, -40, -48, -56};
+
+		for (i = 0; i < tdm_rx->tdm_fmt->input_bit_width; i++) {
+			lbc->lbc_min_qp[i] = default_minqp_12[i];
+			lbc->lbc_max_qp[i] = default_maxqp_12[i];
+			lbc->lbc_thresh[i] = default_threshold_12[i];
+			lbc->lbc_tar_bits_adj[i] = default_tar_bits_cfg_12[i];
+		}
+		lbc->glb_max_k = 5;
+		lbc->glb_max_quo = 10;
+
+		if (lbc->cmp_ratio >= 613)
+			lbc->start_qp = 0;
+		else if (lbc->cmp_ratio >= 512)
+			lbc->start_qp = 1;
+		else if (lbc->cmp_ratio >= 341)
+			lbc->start_qp = 2;
+		else
+			lbc->start_qp = 2;
+	} else if (tdm_rx->tdm_fmt->input_bit_width == 14) {
+		unsigned char default_minqp_14[] = {0, 0, 1, 1, 3, 3, 3, 3, 4, 4, 4, 5, 6, 10};
+		unsigned char default_maxqp_14[] = {3, 4, 4, 4, 5, 5, 5, 6, 7, 8, 9, 10, 10, 13};
+		unsigned int default_threshold_14[] = {564, 1086, 1566, 2006, 2402, 2758, 3072, 3342, 3572, 3760, 3906, 4012, 4074, 4096};
+		int default_tar_bits_cfg_14[] = {0, 0, 0, 0, 0, 0, -8, -16, -24, -32, -40, -48, -56, -64};
+
+		for (i = 0; i < tdm_rx->tdm_fmt->input_bit_width; i++) {
+			lbc->lbc_min_qp[i] = default_minqp_14[i];
+			lbc->lbc_max_qp[i] = default_maxqp_14[i];
+			lbc->lbc_thresh[i] = default_threshold_14[i];
+			lbc->lbc_tar_bits_adj[i] = default_tar_bits_cfg_14[i];
+		}
+		lbc->glb_max_k = 6;
+		lbc->glb_max_quo = 10;
+
+		if (lbc->cmp_ratio >= 613)
+			lbc->start_qp = 0;
+		else if (lbc->cmp_ratio >= 512)
+			lbc->start_qp = 1;
+		else if (lbc->cmp_ratio >= 341)
+			lbc->start_qp = 2;
+		else
+			lbc->start_qp = 2;
+	} else if (tdm_rx->tdm_fmt->input_bit_width == 16) {
+		unsigned char default_minqp_16[] = {0, 0, 1, 1, 3, 3, 3, 3, 3, 3, 5, 5, 5, 7, 9, 13};
+		unsigned char default_maxqp_16[] = {4, 4, 5, 6, 7, 7, 7, 7, 8, 9, 10, 11, 12, 13, 13, 15};
+		unsigned int default_threshold_16[] = {330, 690, 1024, 1392, 1792, 2160, 2496, 2800, 3072, 3312, 3696, 3840, 3952, 4032, 3840, 4096};
+		int default_tar_bits_cfg_16[] = {0, 0, 0, 0, 0, 0, 0, -8, -16, -24, -32, -40, -48, -56, -64, -72};
+
+
+		for (i = 0; i < tdm_rx->tdm_fmt->input_bit_width; i++) {
+			lbc->lbc_min_qp[i] = default_minqp_16[i];
+			lbc->lbc_max_qp[i] = default_maxqp_16[i];
+			lbc->lbc_thresh[i] = default_threshold_16[i];
+			lbc->lbc_tar_bits_adj[i] = default_tar_bits_cfg_16[i];
+		}
+		lbc->glb_max_k = 6;
+		lbc->glb_max_quo = 10;
+
+		if (lbc->cmp_ratio >= 613)
+			lbc->start_qp = 0;
+		else if (lbc->cmp_ratio >= 512)
+			lbc->start_qp = 1;
+		else if (lbc->cmp_ratio >= 341)
+			lbc->start_qp = 2;
+		else
+			lbc->start_qp = 2;
+	}
+	lbc->std_qp = tdm_rx->tdm_fmt->input_bit_width - 1;
+
+	if (lbc->cmp_ratio == 1024)
+		lbc->is_lossy = 0;
+	else
+		lbc->is_lossy = 1;
+
+	lbc->mb_num_in_line = DIV_ROUND_UP(width, mb_len);
+	mb_num_in_frame = lbc->mb_num_in_line * tdm_rx->format.height;
+	mb_max_bits_ratio = 204;
+
+	lbc->ptr_buffer_fullness_max = lbc->lbc_thresh[tdm_rx->tdm_fmt->input_bit_width - 1];
+	lbc->ptr_buffer_thr = lbc->lbc_thresh[tdm_rx->tdm_fmt->input_bit_width / 2];
+	if (lbc->cmp_ratio >= 613)
+		lbc->ptr_buffer_init = lbc->lbc_thresh[0];
+	else if (lbc->cmp_ratio >= 512)
+		lbc->ptr_buffer_init = lbc->lbc_thresh[1];
+	else
+		lbc->ptr_buffer_init = lbc->lbc_thresh[2];
+	lbc->ptr_buffer_init = clamp(lbc->ptr_buffer_init, (unsigned int)0, (unsigned int)2047);
+
+	align = (tdm->align_choose == ALIGN_512) ? 512 : 256;
+	width_stride = ALIGN(width, 32);
+	if (lbc->is_lossy) {
+		lbc->line_tar_bit = roundup(lbc->cmp_ratio * mb_len * tdm_rx->tdm_fmt->input_bit_width * lbc->mb_num_in_line / 1024, align);
+		lbc->line_tar_bit = min(lbc->line_tar_bit, roundup(tdm_rx->tdm_fmt->input_bit_width * width_stride, align));
+		lbc->line_max_bit = roundup((mb_max_bits_ratio + 1024) * lbc->line_tar_bit / 1024, align);
+		if (lbc->rc_ctrl_mode) {
+			lbc->frame_tar_bit = roundup(lbc->cmp_ratio * mb_len * tdm_rx->tdm_fmt->input_bit_width * mb_num_in_frame / 1024, align);
+		} else {
+			lbc->frame_tar_bit = lbc->line_tar_bit * tdm_rx->format.height;
+		}
+	} else {
+		lbc->line_tar_bit = roundup((mb_len * tdm_rx->tdm_fmt->input_bit_width + 3 + 1) * lbc->mb_num_in_line, align);
+		lbc->line_max_bit = lbc->line_tar_bit;
+		lbc->frame_tar_bit = lbc->line_tar_bit * tdm_rx->format.height;
+	}
+
+	if (lbc->rc_ctrl_mode == 0) {
+		lbc->tar_bits = lbc->line_tar_bit / lbc->mb_num_in_line - DIV_ROUND_UP(lbc->ptr_buffer_fullness_max - lbc->ptr_buffer_init, lbc->mb_num_in_line);
+	} else {
+		lbc->tar_bits = mb_len * tdm_rx->tdm_fmt->input_bit_width * lbc->cmp_ratio / 1024 - DIV_ROUND_UP(lbc->ptr_buffer_fullness_max - lbc->ptr_buffer_init, mb_num_in_frame);
+	}
+	lbc->tar_bits_line_rc = lbc->line_max_bit / lbc->mb_num_in_line - DIV_ROUND_UP(lbc->ptr_buffer_fullness_max - lbc->ptr_buffer_init, lbc->mb_num_in_line);
+
+
+	for (i = 0; i < tdm_rx->tdm_fmt->input_bit_width; i++) {
+		lbc->lbc_tar_bits_adj[i] = max(0, min((int)(mb_len * tdm_rx->tdm_fmt->input_bit_width), (int)lbc->tar_bits + lbc->lbc_tar_bits_adj[i]));
+	}
+
+	for (int i = 0; i < 5; i++) {
+		lbc->lbc_pre_bits_adj[i] = mb_len * i / 2;
+	}
+#endif
 }
 
 static void tdm_rx_cpy(struct tdm_rx_dev *source, struct tdm_rx_dev *rx)
@@ -372,6 +599,12 @@ static int tdm_is_wdr_working(struct tdm_rx_dev *tdm_rx)
 static int tdm_set_rx_cfg(struct tdm_rx_dev *tdm_rx, unsigned int en)
 {
 	struct tdm_dev *tdm = container_of(tdm_rx, struct tdm_dev, tdm_rx[tdm_rx->id]);
+	__maybe_unused unsigned int rx_line_stride0;
+	__maybe_unused unsigned int align;
+#if defined TDM_V230
+	__maybe_unused struct rx_coef_offset normalize_coef_ofs;
+	__maybe_unused struct rx_coef_offset inv_normalize_coef_ofs;
+#endif
 	u32 size = 0, tatol;
 	u16 rx_pkg_line_words = 0;
 	int ret, i;
@@ -379,17 +612,41 @@ static int tdm_set_rx_cfg(struct tdm_rx_dev *tdm_rx, unsigned int en)
 	unsigned int overlayer;
 
 	if (en) {
+#if defined TDM_V200
+		tdm_rx->width = tdm_rx->format.width;
+		tdm_rx->height = tdm_rx->format.height;
+		/* vin_print("tdm_rx(%d, %d), tdm_rx->format(%d, %d)\n", tdm_rx->width, tdm_rx->height, tdm_rx->format.width, tdm_rx->format.height); */
 		if (tdm_rx->large_image == 3) {
 			overlayer = vin_set_large_overlayer(tdm_rx->format.width);
-			if (tdm_rx->id == 0)
-				tdm_rx->format.width = tdm_rx->format.width / 2 + overlayer;
-			else if (tdm_rx->id == 1)
-				tdm_rx->format.width = tdm_rx->format.width / 2 + overlayer;
+			if (tdm_rx->id % 2 == 0) {
+				tdm_rx->width = tdm_rx->format.width / 2 + overlayer;
+				if (tdm_rx->id == 0) {
+					if (csic_tdm_get_tx_chn_cfg_mode(tdm->id) == CH2_3)
+						csic_tdm_set_tx_chn_cfg_mode(tdm->id, CH0_1_AND_CH2_3);
+					else
+						csic_tdm_set_tx_chn_cfg_mode(tdm->id, CH0_1);
+				} else if (tdm_rx->id == 2) {
+					if (csic_tdm_get_tx_chn_cfg_mode(tdm->id) == CH0_1)
+						csic_tdm_set_tx_chn_cfg_mode(tdm->id, CH0_1_AND_CH2_3);
+					else
+						csic_tdm_set_tx_chn_cfg_mode(tdm->id, CH2_3);
+				}
+			} else if (tdm_rx->id % 2 == 1)
+				tdm_rx->width = tdm_rx->format.width / 2 + overlayer;
 		}
 		csic_tdm_rx_set_min_ddr_size(tdm->id, tdm_rx->id, DDRSIZE_512b);
 		csic_tdm_rx_input_bit(tdm->id, tdm_rx->id, tdm_rx->tdm_fmt->input_type);
 		csic_tdm_rx_input_fmt(tdm->id, tdm_rx->id, tdm_rx->tdm_fmt->raw_fmt);
-		csic_tdm_rx_input_size(tdm->id, tdm_rx->id, tdm_rx->format.width, tdm_rx->format.height);
+		csic_tdm_rx_input_size(tdm->id, tdm_rx->id, tdm_rx->width, tdm_rx->format.height);
+
+#if IS_ENABLED(CONFIG_TDM_OFFLINE_HANDLE_RAW)
+		if (tdm_rx->id != 0 && tdm_rx->id != 1) {
+			vin_err("tdm set raw only support tdm_rx0/1\n");
+			return -1;
+		}
+		INIT_LIST_HEAD(&tdm->rx_active[tdm_rx->id]);
+		INIT_LIST_HEAD(&tdm->rx_done[tdm_rx->id]);
+#endif
 
 		tatol = get_chn_use_tatol(tdm);
 		vin_log(VIN_LOG_TDM, "work tatol %d\n", tatol);
@@ -402,30 +659,20 @@ static int tdm_set_rx_cfg(struct tdm_rx_dev *tdm_rx, unsigned int en)
 			csic_tdm_rx_head_fifo_depth(tdm->id, tdm_rx->id, tdm_rx->ws.head_fifo_depth);
 #endif
 		} else {
-#if IS_ENABLED(CONFIG_WDR)
-			if (tdm_rx->ws.data_fifo_depth && tdm_rx->ws.head_fifo_depth) {
-#if IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN60IW1)
-				csic_tdm_rx_data_fifo_depth(tdm->id, tdm_rx->id, tdm_rx->ws.data_fifo_depth);
-				csic_tdm_rx_head_fifo_depth(tdm->id, tdm_rx->id, tdm_rx->ws.head_fifo_depth);
-#else
-				csic_tdm_rx_data_fifo_depth(tdm->id, tdm_rx->id, MAX_RX_DATA_FIFO_DEPTH / 4);
-				csic_tdm_rx_head_fifo_depth(tdm->id, tdm_rx->id, MAX_RX_HEAD_FIFO_DEPTH / 4);
-#endif
-			} else {
-				csic_tdm_rx_data_fifo_depth(tdm->id, tdm_rx->id, (512)/4);
-				csic_tdm_rx_head_fifo_depth(tdm->id, tdm_rx->id, (32)/4);
-			}
+#if IS_ENABLED(CONFIG_AVG_TDM_FIFO)
+			csic_tdm_rx_data_fifo_depth(tdm->id, tdm_rx->id, MAX_RX_DATA_FIFO_DEPTH / 4);
+			csic_tdm_rx_head_fifo_depth(tdm->id, tdm_rx->id, MAX_RX_HEAD_FIFO_DEPTH / 4);
 #else
 			if (tdm_rx->ws.data_fifo_depth && tdm_rx->ws.head_fifo_depth) {
 				csic_tdm_rx_data_fifo_depth(tdm->id, tdm_rx->id, tdm_rx->ws.data_fifo_depth);
 				csic_tdm_rx_head_fifo_depth(tdm->id, tdm_rx->id, tdm_rx->ws.head_fifo_depth);
 			} else {
 				if (tdm_rx->id == 0 || tdm_rx->id == 1) {
-					csic_tdm_rx_data_fifo_depth(tdm->id, tdm_rx->id, (512)/2);
-					csic_tdm_rx_head_fifo_depth(tdm->id, tdm_rx->id, (32)/2);
+					csic_tdm_rx_data_fifo_depth(tdm->id, tdm_rx->id, (MAX_RX_DATA_FIFO_DEPTH)/2);
+					csic_tdm_rx_head_fifo_depth(tdm->id, tdm_rx->id, (MAX_RX_HEAD_FIFO_DEPTH)/2);
 				} else {
-					csic_tdm_rx_data_fifo_depth(tdm->id, tdm_rx->id, (512)/4);
-					csic_tdm_rx_head_fifo_depth(tdm->id, tdm_rx->id, (32)/4);
+					csic_tdm_rx_data_fifo_depth(tdm->id, tdm_rx->id, (MAX_RX_DATA_FIFO_DEPTH)/4);
+					csic_tdm_rx_head_fifo_depth(tdm->id, tdm_rx->id, (MAX_RX_HEAD_FIFO_DEPTH)/4);
 					vin_warn("use ioctl VIDIOC_SET_TDM_DEPTH setting max_ch to make work stable!\n");
 				}
 			}
@@ -433,13 +680,13 @@ static int tdm_set_rx_cfg(struct tdm_rx_dev *tdm_rx, unsigned int en)
 		}
 		if (tdm_rx->ws.pkg_en) {
 			csic_tdm_rx_pkg_enable(tdm->id, tdm_rx->id);
-			rx_pkg_line_words = DIV_ROUND_UP(tdm_rx->tdm_fmt->input_bit_width * tdm_rx->format.width, 32);
+			rx_pkg_line_words = DIV_ROUND_UP(tdm_rx->tdm_fmt->input_bit_width * tdm_rx->width, 32);
 			csic_tdm_rx_pkg_line_words(tdm->id, tdm_rx->id, ALIGN(rx_pkg_line_words, 8));
 		} else if (tdm_rx->ws.lbc_en) {
 			if (tdm_rx->id >= 2) {
-				vin_err("Only tdm_rx0/1 support lbc!, set to pkg\n");
+				vin_err("tdm_rx%d not support lbc!, set to pkg\n", tdm_rx->id);
 				csic_tdm_rx_pkg_enable(tdm->id, tdm_rx->id);
-				rx_pkg_line_words = DIV_ROUND_UP(tdm_rx->tdm_fmt->input_bit_width * tdm_rx->format.width, 32);
+				rx_pkg_line_words = DIV_ROUND_UP(tdm_rx->tdm_fmt->input_bit_width * tdm_rx->width, 32);
 				csic_tdm_rx_pkg_line_words(tdm->id, tdm_rx->id, ALIGN(rx_pkg_line_words, 8));
 			} else {
 				csic_tdm_rx_lbc_enable(tdm->id, tdm_rx->id);
@@ -458,16 +705,19 @@ static int tdm_set_rx_cfg(struct tdm_rx_dev *tdm_rx, unsigned int en)
 			csic_tdm_rx_sync_enable(tdm->id, tdm_rx->id);
 		}
 
-		tdm_rx->width = tdm_rx->format.width;
-		tdm_rx->height = tdm_rx->format.height;
-
 		if (tdm->work_mode == TDM_ONLINE) {
 			if (tdm_rx->ws.pkg_en || tdm_rx->ws.lbc_en)
 				tdm_buf_num = 1;
 			else
 				tdm_buf_num = 0;
 		} else {
-#ifndef CONFIG_TDM_ONE_BUFFER
+#if IS_ENABLED(CONFIG_TDM_OFFLINE_HANDLE_RAW)
+			if (tdm_rx->set_buf_cnt)
+				tdm_buf_num = tdm_rx->set_buf_cnt;
+			else
+				tdm_buf_num = 5;
+#else
+#if !IS_ENABLED(CONFIG_TDM_ONE_BUFFER)
 			if (tdm_rx->sensor_fps <= 30)
 				tdm_buf_num = 2;
 			else if (tdm_rx->sensor_fps <= 60)
@@ -479,23 +729,67 @@ static int tdm_set_rx_cfg(struct tdm_rx_dev *tdm_rx, unsigned int en)
 #else
 			tdm_buf_num = 1;
 #endif
+#endif
 		}
 		if (tdm_buf_num) {
-			if (tdm_rx->ws.pkg_en)
+			if (tdm_buf_num > TDM_BUFS_NUM) {
+				vin_err("tdm rx buffer number %d more than TDM_BUFS_NUM(%d), set to TDM_BUFS_NUM\n", tdm_buf_num, TDM_BUFS_NUM);
+				tdm_buf_num = TDM_BUFS_NUM;
+			}
+			if (tdm_rx->ws.pkg_en) {
+#if IS_ENABLED(CONFIG_TDM_OFFLINE_HANDLE_RAW)
+				size = ALIGN(tdm_rx->width * tdm_rx->tdm_fmt->input_bit_width, 512) * tdm_rx->height / 8 + ALIGN(tdm_rx->height, 64) + TDM_BUF_FILL_LEN;
+#else
 				size = ALIGN(tdm_rx->width * tdm_rx->tdm_fmt->input_bit_width, 512) * tdm_rx->height / 8 + ALIGN(tdm_rx->height, 64);
-			else if (tdm_rx->ws.lbc_en)
+#endif
+			} else if (tdm_rx->ws.lbc_en)
 				size = ALIGN(rx_pkg_line_words, 8) * tdm_rx->height * 4 + ALIGN(tdm_rx->height, 64);
 			ret = tdm_rx_bufs_alloc(tdm_rx, size, tdm_buf_num);
 			if (ret)
 				return ret;
-#ifndef CONFIG_TDM_ONE_BUFFER
+#if !IS_ENABLED(CONFIG_TDM_ONE_BUFFER)
 			csic_tdm_rx_set_buf_num(tdm->id, tdm_rx->id, tdm_buf_num - 1);
 			for (i = 0; i < tdm_buf_num; i++) {
+#if IS_ENABLED(CONFIG_TDM_OFFLINE_HANDLE_RAW)
+				csic_tdm_rx_set_address(tdm->id, tdm_rx->id, (unsigned long)tdm_rx->buf[i].dma_addr + TDM_BUF_FILL_LEN);
+#else
 				csic_tdm_rx_set_address(tdm->id, tdm_rx->id, (vin_dma_addr_t)tdm_rx->buf[i].dma_addr);
+#endif
 			}
 
 			for (i = 0; i < 16 - tdm_buf_num; i++)
 				csic_tdm_rx_set_address(tdm->id, tdm_rx->id, 0);
+#else /* CONFIG_TDM_ONE_BUFFER */
+#if IS_ENABLED(CONFIG_TDM_ONE_BUFFER_WITH_TWORX)
+			for (j = 0 ; j < TDM_RX_NUM; j++) {
+				if (tdm->tdm_rx_buf_en[j] == 1) {
+					vin_print("tdm_rx%d use tdm_rx%d buffer\n", tdm_rx->id, j);
+					csic_tdm_rx_set_buf_num(tdm->id, tdm_rx->id, (tdm_buf_num + 1) - 1);
+					for (i = 0; i < tdm_buf_num; i++) {
+						csic_tdm_rx_set_address(tdm->id, tdm_rx->id, (unsigned long)tdm->tdm_rx[j].buf[i].dma_addr);
+						csic_tdm_rx_set_address(tdm->id, tdm_rx->id, (unsigned long)tdm->tdm_rx[j].buf[i].dma_addr);
+					}
+					for (i = 0; i < TDM_RX_BUFFER_FIFO - (tdm_buf_num + 1); i++) {
+						csic_tdm_rx_set_address(tdm->id, tdm_rx->id, 0);
+					}
+					break;
+				}
+			}
+			if (j == TDM_RX_NUM) {
+				vin_print("tdm_rx%d to alloc buffer\n", tdm_rx->id);
+				ret = tdm_rx_bufs_alloc(tdm_rx, size, tdm_buf_num);
+				if (ret)
+					return ret;
+				/* tdm need two buffer */
+				csic_tdm_rx_set_buf_num(tdm->id, tdm_rx->id, (tdm_buf_num + 1) - 1);
+				for (i = 0; i < tdm_buf_num; i++) {
+					csic_tdm_rx_set_address(tdm->id, tdm_rx->id, (unsigned long)tdm_rx->buf[i].dma_addr);
+					csic_tdm_rx_set_address(tdm->id, tdm_rx->id, (unsigned long)tdm_rx->buf[i].dma_addr);
+				}
+				for (i = 0; i < TDM_RX_BUFFER_FIFO - (tdm_buf_num + 1); i++) {
+					csic_tdm_rx_set_address(tdm->id, tdm_rx->id, 0);
+				}
+			}
 #else
 			/* tdm need two buffer */
 			csic_tdm_rx_set_buf_num(tdm->id, tdm_rx->id, (tdm_buf_num + 1) - 1);
@@ -503,6 +797,238 @@ static int tdm_set_rx_cfg(struct tdm_rx_dev *tdm_rx, unsigned int en)
 				csic_tdm_rx_set_address(tdm->id, tdm_rx->id, (vin_dma_addr_t)tdm_rx->buf[i].dma_addr);
 				csic_tdm_rx_set_address(tdm->id, tdm_rx->id, (vin_dma_addr_t)tdm_rx->buf[i].dma_addr);
 			}
+			for (i = 0; i < TDM_RX_BUFFER_FIFO - (tdm_buf_num + 1); i++) {
+				csic_tdm_rx_set_address(tdm->id, tdm_rx->id, 0);
+			}
+#endif
+#endif
+
+#else /* TDM_V230 */
+		tdm_rx->width = tdm_rx->format.width;
+		tdm_rx->height = tdm_rx->format.height;
+		if (tdm_rx->large_image == 3) {
+			overlayer = vin_set_large_overlayer(tdm_rx->format.width);
+			csic_tdm_rx_seq_init(tdm->id, tdm_rx->id, 1);
+			if (tdm_rx->id % 2 == 0) {
+				tdm_rx->width = tdm_rx->format.width / 2 + overlayer;
+				if (tdm_rx->id == 0) {
+					if (csic_tdm_get_tx_chn_cfg_mode(tdm->id) == CH2_3)
+						csic_tdm_set_tx_chn_cfg_mode(tdm->id, CH0_1_AND_CH2_3);
+					else
+						csic_tdm_set_tx_chn_cfg_mode(tdm->id, CH0_1);
+				} else if (tdm_rx->id == 2) {
+					if (csic_tdm_get_tx_chn_cfg_mode(tdm->id) == CH0_1)
+						csic_tdm_set_tx_chn_cfg_mode(tdm->id, CH0_1_AND_CH2_3);
+					else
+						csic_tdm_set_tx_chn_cfg_mode(tdm->id, CH2_3);
+				}
+			} else if (tdm_rx->id % 2 == 1)
+				tdm_rx->width = tdm_rx->format.width / 2 + overlayer;
+		}
+		csic_tdm_rx_set_min_ddr_size(tdm->id, tdm_rx->id, DDRSIZE_256b);
+		csic_tdm_rx_start_mode(tdm->id, tdm_rx->id, tdm_rx->ws.tx_start_mode);
+		csic_tdm_rx_pre_w_para_en(tdm->id, tdm_rx->id, tdm_rx->ws.pre_w_para_en);
+		if (tdm_rx->tdm_rtt_mode == RX_TO_TX_ISP || tdm_rx->tdm_rtt_mode == RX_TO_TX_AI_ISP) {
+			if (tdm_rx->tdm_rtt_mode == RX_TO_TX_ISP) {
+				csic_tdm_rx_normal_en(tdm->id, tdm_rx->id, 1);
+				csic_tdm_rx_awnn_en(tdm->id, tdm_rx->id, 0);
+				csic_tdm_rx_to_tx_mode(tdm->id, tdm_rx->id, RX_TO_TX_ISP);
+			} else if (tdm_rx->tdm_rtt_mode == RX_TO_TX_AI_ISP) {
+				csic_tdm_rx_normal_en(tdm->id, tdm_rx->id, 0);
+				csic_tdm_rx_awnn_en(tdm->id, tdm_rx->id, 1);
+				csic_tdm_rx_to_tx_mode(tdm->id, tdm_rx->id, RX_TO_TX_AI_ISP);
+			}
+
+			if (tdm_rx->tdm_rtt_mode == RX_TO_TX_AI_ISP || tdm_rx->aiisp_switch == AIISP_SWITCH_ON) {
+				csic_tdm_rx_set_blc_offset(tdm->id, tdm_rx->id, &tdm_rx->rx_aiisp_cfg.rx_blc_ofs);
+				normalize_coef_ofs.r_coef = clamp(256 * (1023 / (1023 - tdm_rx->rx_aiisp_cfg.rx_blc_ofs.r_offset)), 0, 511);
+				normalize_coef_ofs.g_coef = clamp(256 * (1023 / (1023 - tdm_rx->rx_aiisp_cfg.rx_blc_ofs.g_offset)), 0, 511);
+				normalize_coef_ofs.b_coef = clamp(256 * (1023 / (1023 - tdm_rx->rx_aiisp_cfg.rx_blc_ofs.b_offset)), 0, 511);
+				csic_tdm_rx_set_normalize_coef(tdm->id, tdm_rx->id, &normalize_coef_ofs);
+				inv_normalize_coef_ofs.r_coef = clamp(256 * ((1023 - tdm_rx->rx_aiisp_cfg.rx_blc_ofs.r_offset) / 1023), 0, 511);
+				inv_normalize_coef_ofs.g_coef = clamp(256 * ((1023 - tdm_rx->rx_aiisp_cfg.rx_blc_ofs.g_offset) / 1023), 0, 511);
+				inv_normalize_coef_ofs.b_coef = clamp(256 * ((1023 - tdm_rx->rx_aiisp_cfg.rx_blc_ofs.b_offset) / 1023), 0, 511);
+				csic_tdm_rx_set_inv_normalize_coef(tdm->id, tdm_rx->id, &inv_normalize_coef_ofs);
+				csic_tdm_rx_aiisp_cfg0(tdm->id, tdm_rx->id, &tdm_rx->rx_aiisp_cfg.rx_aiisp_cfg0);
+
+				tdm_rx->rx_aiisp_cfg.rx_addr_offset1 = ((ALIGN(tdm_rx->width * 2, 64) + ALIGN(tdm_rx->rx_aiisp_cfg.w_offset, 64)) * tdm_rx->rx_aiisp_cfg.h_offset + tdm_rx->rx_aiisp_cfg.w_offset) >> 2;
+				csic_tdm_rx_set_address_offset1(tdm->id, tdm_rx->id, tdm_rx->rx_aiisp_cfg.rx_addr_offset1);
+
+				tdm_rx->rx_aiisp_cfg.rx_hwc_fifo_addr = 0;
+				csic_tdm_rx_hwc_fifo_set_address(tdm->id, tdm_rx->id, tdm_rx->rx_aiisp_cfg.rx_hwc_fifo_addr);
+
+				tdm_rx->rx_aiisp_cfg.rx_buf_ov_rx_offset = tdm_rx->rx_aiisp_cfg.h_offset;
+				tdm_rx->rx_aiisp_cfg.rx_buf_ov_tx_offset = 0;
+				csic_tdm_rx_set_line_offset(tdm->id, tdm_rx->id, tdm_rx->rx_aiisp_cfg.rx_buf_ov_rx_offset, tdm_rx->rx_aiisp_cfg.rx_buf_ov_tx_offset);
+			}
+		} else { /* RX_TO_TX_SOFTWARE_CFG */
+			csic_tdm_rx_normal_en(tdm->id, tdm_rx->id, 1);
+			csic_tdm_rx_awnn_en(tdm->id, tdm_rx->id, 0);
+			csic_tdm_rx_to_tx_mode(tdm->id, tdm_rx->id, RX_TO_TX_SOFTWARE_CFG);
+			INIT_LIST_HEAD(&tdm->rx_active[tdm_rx->id]);
+			INIT_LIST_HEAD(&tdm->rx_done[tdm_rx->id]);
+			vin_warn("tdm software not support\n");
+		}
+		csic_tdm_rx_input_bit(tdm->id, tdm_rx->id, tdm_rx->tdm_fmt->input_type);
+		csic_tdm_rx_input_fmt(tdm->id, tdm_rx->id, tdm_rx->tdm_fmt->raw_fmt);
+		csic_tdm_rx_input_size(tdm->id, tdm_rx->id, tdm_rx->width, tdm_rx->format.height);
+
+		tatol = get_chn_use_tatol(tdm);
+		vin_log(VIN_LOG_TDM, "work tatol %d\n", tatol);
+		csic_tdm_rx_head_fifo_depth(tdm->id, tdm_rx->id, MAX_RX_HEAD_FIFO_DEPTH / 4);
+		if (tdm_rx->id == 0) {
+			csic_tdm_rx_data_fifo_depth(tdm->id, tdm_rx->id, RX0_DATA_FIFO_DEPTH);
+		} else if (tdm_rx->id == 1) {
+			csic_tdm_rx_data_fifo_depth(tdm->id, tdm_rx->id, RX1_DATA_FIFO_DEPTH);
+		} else if (tdm_rx->id == 2) {
+			csic_tdm_rx_data_fifo_depth(tdm->id, tdm_rx->id, RX2_DATA_FIFO_DEPTH);
+		} else {
+			csic_tdm_rx_data_fifo_depth(tdm->id, tdm_rx->id, RX3_DATA_FIFO_DEPTH);
+		}
+
+		if (tdm_rx->ws.pkg_en) {
+			csic_tdm_rx_pkg_enable(tdm->id, tdm_rx->id);
+
+			if (tdm_rx->aiisp_switch == AIISP_SWITCH_ON) {
+				tdm_rx->rx_aiisp_cfg.rx_line_stride1 = DIV_ROUND_UP((ALIGN(tdm_rx->width * 2, 64) + ALIGN(tdm_rx->rx_aiisp_cfg.w_offset, 64)) * 8, 32);
+				csic_tdm_rx_set_line_stride1(tdm->id, tdm_rx->id, tdm_rx->rx_aiisp_cfg.rx_line_stride1);
+
+				rx_pkg_line_words = DIV_ROUND_UP(tdm_rx->tdm_fmt->input_bit_width * tdm_rx->width, 32);
+				csic_tdm_rx_pkg_line_words(tdm->id, tdm_rx->id, ALIGN(rx_pkg_line_words, 8));
+
+				align = (tdm->align_choose == ALIGN_512) ? 512 : 256;
+				rx_line_stride0 = roundup(ALIGN(rx_pkg_line_words, 8) * 32, align) / 32;
+				csic_tdm_rx_set_line_stride0(tdm->id, tdm_rx->id, ALIGN(rx_line_stride0, 8));
+			} else {
+				if (tdm_rx->tdm_rtt_mode == RX_TO_TX_AI_ISP) {
+					tdm_rx->rx_aiisp_cfg.rx_line_stride1 = DIV_ROUND_UP((ALIGN(tdm_rx->width * 2, 64) + ALIGN(tdm_rx->rx_aiisp_cfg.w_offset, 64)) * 8, 32);
+					csic_tdm_rx_set_line_stride1(tdm->id, tdm_rx->id, tdm_rx->rx_aiisp_cfg.rx_line_stride1);
+				} else { /* RX_TO_TX_ISP & RX_TO_TX_SOFTWARE_CFG */
+					rx_pkg_line_words = DIV_ROUND_UP(tdm_rx->tdm_fmt->input_bit_width * tdm_rx->width, 32);
+					csic_tdm_rx_pkg_line_words(tdm->id, tdm_rx->id, ALIGN(rx_pkg_line_words, 8));
+
+					align = (tdm->align_choose == ALIGN_512) ? 512 : 256;
+					rx_line_stride0 = roundup(ALIGN(rx_pkg_line_words, 8) * 32, align) / 32;
+					csic_tdm_rx_set_line_stride0(tdm->id, tdm_rx->id, ALIGN(rx_line_stride0, 8));
+				}
+			}
+		} else if (tdm_rx->ws.lbc_en) {
+			csic_tdm_rx_lbc_enable(tdm->id, tdm_rx->id);
+			tdm_rx_lbc_cal_para(tdm_rx);
+			csic_tdm_lbc_cfg(tdm->id, tdm_rx->id, &tdm_rx->lbc);
+
+			align = (tdm->align_choose == ALIGN_512) ? 512 : 256;
+			rx_line_stride0 = roundup(tdm_rx->lbc.line_max_bit, align) / 32;
+			csic_tdm_rx_set_line_stride0(tdm->id, tdm_rx->id, ALIGN(rx_line_stride0, 8));
+
+			if (tdm->work_mode == TDM_OFFLINE)
+				tdm_rx->ws.line_num_ddr_en = 1;
+			else
+				tdm_rx->ws.line_num_ddr_en = 0;
+			csic_tdm_rx_set_line_num_ddr(tdm->id, tdm_rx->id, tdm_rx->ws.line_num_ddr_en);
+		} else if (tdm_rx->ws.sync_en) {
+			csic_tdm_rx_sync_enable(tdm->id, tdm_rx->id);
+		}
+
+		if (tdm->work_mode == TDM_ONLINE) {
+			if (tdm_rx->ws.pkg_en || tdm_rx->ws.lbc_en)
+				tdm_buf_num = 1;
+			else
+				tdm_buf_num = 0;
+		} else {
+#if !IS_ENABLED(CONFIG_TDM_ONE_BUFFER)
+			if (tdm_rx->tdm_rtt_mode == RX_TO_TX_AI_ISP || tdm_rx->aiisp_switch == AIISP_SWITCH_ON) {
+				if (tdm_rx->set_buf_cnt)
+					tdm_buf_num = tdm_rx->set_buf_cnt;
+				else
+					tdm_buf_num = 3;
+			} else if (tdm_rx->tdm_rtt_mode == RX_TO_TX_ISP) {
+				if (tdm_rx->sensor_fps <= 30)
+					tdm_buf_num = 2;
+				else if (tdm_rx->sensor_fps <= 60)
+					tdm_buf_num = 3;
+				else if (tdm_rx->sensor_fps <= 120)
+					tdm_buf_num = 4;
+				else
+					tdm_buf_num = TDM_BUFS_NUM;
+			} else { /* RX_TO_TX_SOFTWARE_CFG */
+				if (tdm_rx->set_buf_cnt)
+					tdm_buf_num = tdm_rx->set_buf_cnt;
+				else
+					tdm_buf_num = 5;
+			}
+#else
+			tdm_buf_num = 1;
+#endif
+
+		}
+		if (tdm_buf_num) {
+			if (tdm_buf_num > TDM_BUFS_NUM) {
+				vin_err("tdm rx buffer number %d more than TDM_BUFS_NUM(%d), set to TDM_BUFS_NUM\n", tdm_buf_num, TDM_BUFS_NUM);
+				tdm_buf_num = TDM_BUFS_NUM;
+			}
+			if (tdm_rx->ws.pkg_en) {
+				if (tdm_rx->tdm_rtt_mode == RX_TO_TX_AI_ISP || tdm_rx->aiisp_switch == AIISP_SWITCH_ON) {
+					size = ALIGN(tdm_rx->rx_aiisp_cfg.rx_line_stride1, 64) * 4 * (tdm_rx->height / 2 + tdm_rx->rx_aiisp_cfg.h_offset);
+				} else {/* RX_TO_TX_ISP & RX_TO_TX_SOFTWARE_CFG */
+					size = ALIGN(rx_line_stride0, 64) * 4 * tdm_rx->height;
+				}
+			} else if (tdm_rx->ws.lbc_en) {
+				size = ALIGN(rx_line_stride0, 2) * 4 * tdm_rx->height + ALIGN(tdm_rx->height, 64);
+			}
+			ret = tdm_rx_bufs_alloc(tdm_rx, size, tdm_buf_num);
+			if (ret)
+				return ret;
+#if !IS_ENABLED(CONFIG_TDM_ONE_BUFFER)
+			csic_tdm_rx_set_buf_num(tdm->id, tdm_rx->id, tdm_buf_num - 1);
+			csic_tdm_rx_set_io_tpye(tdm->id, tdm_rx->id, TDM_RX_ADDRESS);
+			for (i = 0; i < tdm_buf_num; i++) {
+				csic_tdm_rx_set_io_index(tdm->id, tdm_rx->id, i);
+				csic_tdm_rx_set_address(tdm->id, tdm_rx->id, (vin_dma_addr_t)tdm_rx->buf[i].dma_addr);
+			}
+#else /* CONFIG_TDM_ONE_BUFFER */
+#if IS_ENABLED(CONFIG_TDM_ONE_BUFFER_WITH_TWORX)
+			for (j = 0 ; j < TDM_RX_NUM; j++) {
+				if (tdm->tdm_rx_buf_en[j] == 1) {
+					vin_print("tdm_rx%d use tdm_rx%d buffer\n", tdm_rx->id, j);
+					csic_tdm_rx_set_buf_num(tdm->id, tdm_rx->id, (tdm_buf_num + 1) - 1);
+					csic_tdm_rx_set_io_tpye(tdm->id, tdm_rx->id, TDM_RX_ADDRESS);
+					for (i = 0; i < tdm_buf_num; i++) {
+						csic_tdm_rx_set_io_index(tdm->id, tdm_rx->id, i);
+						csic_tdm_rx_set_address(tdm->id, tdm_rx->id, (unsigned long)tdm->tdm_rx[j].buf[i].dma_addr);
+						csic_tdm_rx_set_io_index(tdm->id, tdm_rx->id, i + 1);
+						csic_tdm_rx_set_address(tdm->id, tdm_rx->id, (unsigned long)tdm->tdm_rx[j].buf[i].dma_addr);
+					}
+					break;
+				}
+			}
+			if (j == TDM_RX_NUM) {
+				vin_print("tdm_rx%d to alloc buffer\n", tdm_rx->id);
+				ret = tdm_rx_bufs_alloc(tdm_rx, size, tdm_buf_num);
+				if (ret)
+					return ret;
+				/* tdm need two buffer */
+				csic_tdm_rx_set_buf_num(tdm->id, tdm_rx->id, (tdm_buf_num + 1) - 1);
+				csic_tdm_rx_set_io_tpye(tdm->id, tdm_rx->id, TDM_RX_ADDRESS);
+				for (i = 0; i < tdm_buf_num; i++) {
+					csic_tdm_rx_set_io_index(tdm->id, tdm_rx->id, i);
+					csic_tdm_rx_set_address(tdm->id, tdm_rx->id, (unsigned long)tdm_rx->buf[i].dma_addr);
+					csic_tdm_rx_set_io_index(tdm->id, tdm_rx->id, i + 1);
+					csic_tdm_rx_set_address(tdm->id, tdm_rx->id, (unsigned long)tdm_rx->buf[i].dma_addr);
+				}
+			}
+#else
+			/* tdm need two buffer */
+			csic_tdm_rx_set_buf_num(tdm->id, tdm_rx->id, (tdm_buf_num + 1) - 1);
+			csic_tdm_rx_set_io_tpye(tdm->id, tdm_rx->id, TDM_RX_ADDRESS);
+			for (i = 0; i < tdm_buf_num; i++) {
+				csic_tdm_rx_set_io_index(tdm->id, tdm_rx->id, i);
+				csic_tdm_rx_set_address(tdm->id, tdm_rx->id, (vin_dma_addr_t)tdm_rx->buf[i].dma_addr);
+				csic_tdm_rx_set_io_index(tdm->id, tdm_rx->id, i + 1);
+				csic_tdm_rx_set_address(tdm->id, tdm_rx->id, (vin_dma_addr_t)tdm_rx->buf[i].dma_addr);
+			}
+#endif
+#endif
 #endif
 		} else
 			csic_tdm_rx_set_buf_num(tdm->id, tdm_rx->id, 0);
@@ -512,11 +1038,48 @@ static int tdm_set_rx_cfg(struct tdm_rx_dev *tdm_rx, unsigned int en)
 		else
 			csic_tdm_rx_tx_disable(tdm->id, tdm_rx->id);
 	} else {
+		if (tdm_rx->large_image == 3) {
+			if (csic_tdm_get_tx_chn_cfg_mode(tdm->id) == CH0_1_AND_CH2_3) {
+				if (tdm_rx->id == 0)
+					csic_tdm_set_tx_chn_cfg_mode(tdm->id, CH2_3);
+				else if (tdm_rx->id == 2)
+					csic_tdm_set_tx_chn_cfg_mode(tdm->id, CH0_1);
+			} else {
+				csic_tdm_set_tx_chn_cfg_mode(tdm->id, TX_NONE);
+#if defined TDM_V230
+				csic_tdm_rx_seq_init(tdm->id, tdm_rx->id, 0);
+#endif
+			}
+		} else {
+			if (((tdm_rx->id == 0 || tdm_rx->id == 1) && csic_tdm_get_tx_chn_cfg_mode(tdm->id) == CH2_3)) {
+				csic_tdm_set_tx_chn_cfg_mode(tdm->id, CH2_3);
+			} else if (((tdm_rx->id == 2 || tdm_rx->id == 3) && csic_tdm_get_tx_chn_cfg_mode(tdm->id) == CH0_1)) {
+				csic_tdm_set_tx_chn_cfg_mode(tdm->id, CH0_1);
+			} else {
+				csic_tdm_set_tx_chn_cfg_mode(tdm->id, TX_NONE);
+#if defined TDM_V230
+				csic_tdm_rx_seq_init(tdm->id, tdm_rx->id, 0);
+#endif
+			}
+		}
 		csic_tdm_rx_tx_disable(tdm->id, tdm_rx->id);
 		csic_tdm_rx_pkg_disable(tdm->id, tdm_rx->id);
 		csic_tdm_rx_lbc_disable(tdm->id, tdm_rx->id);
 		csic_tdm_rx_sync_disable(tdm->id, tdm_rx->id);
 		csic_tdm_rx_set_line_num_ddr(tdm->id, tdm_rx->id, 0);
+
+		tdm_rx->set_buf_cnt = 0;
+#if defined TDM_V230
+		tdm_rx->tdm_rtt_mode = RX_TO_TX_ISP;
+		memset(&tdm_rx->rx_aiisp_cfg, 0, sizeof(struct rx_aiisp_cfg_t));
+		if (tdm_rx->tdm_rtt_mode == RX_TO_TX_SOFTWARE_CFG) {
+			INIT_LIST_HEAD(&tdm->rx_done[tdm_rx->id]);
+		}
+#else
+#if IS_ENABLED(CONFIG_TDM_OFFLINE_HANDLE_RAW)
+		INIT_LIST_HEAD(&tdm->rx_done[tdm_rx->id]);
+#endif
+#endif
 	}
 
 	vin_log(VIN_LOG_TDM, "tdm%d set rx%d tx en OK!\n", tdm->id, tdm_rx->id);
@@ -581,13 +1144,18 @@ static int tdm_cal_rx_chn_cfg_mode(struct tdm_rx_dev *tdm_rx, enum rx_chn_cfg_mo
 		tdm->id, tdm->work_mode ? "offline":"online", *mode);
 	return 0;
 }
-#else /* else not TDM_V200 */
+#else /* else not TDM_V200 or TDM_V230 */
 static void tdm_set_tx_blank(struct tdm_dev *tdm)
 {
 	csic_tdm_omode(tdm->id, 1);
 	csic_tdm_set_hblank(tdm->id, TDM_TX_HBLANK);
+#if IS_ENABLED(CONFIG_TDM_OFFLINE_HANDLE_RAW)
+	csic_tdm_set_bblank_fe(tdm->id, TDM_TX_VBLANK);
+	csic_tdm_set_bblank_be(tdm->id, 0);
+#else
 	csic_tdm_set_bblank_fe(tdm->id, TDM_TX_VBLANK/2);
 	csic_tdm_set_bblank_be(tdm->id, TDM_TX_VBLANK/2);
+#endif
 }
 
 static int tdm_set_rx_cfg(struct tdm_rx_dev *tdm_rx, unsigned int en)
@@ -597,6 +1165,11 @@ static int tdm_set_rx_cfg(struct tdm_rx_dev *tdm_rx, unsigned int en)
 	int ret, i;
 
 	csic_tdm_rx_set_buf_num(tdm->id, tdm_rx->id, TDM_BUFS_NUM - 1);
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW22)
+	if (tdm_rx->id == 1) {
+		csic_tdm_rx_ch0_en(tdm->id, 0, 1);
+	}
+#endif
 	csic_tdm_rx_ch0_en(tdm->id, tdm_rx->id, 1);
 	csic_tdm_rx_set_min_ddr_size(tdm->id, tdm_rx->id, DDRSIZE_256b);
 	csic_tdm_rx_input_bit(tdm->id, tdm_rx->id, tdm_rx->tdm_fmt->input_type);
@@ -617,11 +1190,12 @@ static int tdm_set_rx_cfg(struct tdm_rx_dev *tdm_rx, unsigned int en)
 }
 #endif
 
-#ifdef TDM_V200
+#if defined TDM_V200 || defined TDM_V230
 static int sunxi_tdm_top_s_stream(struct tdm_rx_dev *rx, int enable)
 {
 	struct tdm_dev *tdm = container_of(rx, struct tdm_dev, tdm_rx[rx->id]);
 	unsigned int ini_en = 0;
+	__maybe_unused u64 cur_time;
 
 	if (tdm->work_mode == TDM_ONLINE && rx->id != 0) {
 		vin_err("tdm%d work on online mode, tdm_rx%d cannot to work!!\n", tdm->id, rx->id);
@@ -642,6 +1216,25 @@ static int sunxi_tdm_top_s_stream(struct tdm_rx_dev *rx, int enable)
 		csic_tdm_set_rx_chn_cfg_mode(tdm->id, tdm->ws.rx_chn_mode);
 		csic_tdm_set_tx_chn_cfg_mode(tdm->id, tdm->ws.tx_chn_mode);
 		csic_tdm_set_work_mode(tdm->id, tdm->work_mode);
+
+#if defined TDM_V230
+		tdm->align_choose = ALIGN_256;
+		csic_tdm_set_lbc_align_choose(tdm->id, tdm->align_choose);
+#endif
+#if defined OUTPUT_EMBED_DATA
+		if (tdm->time_embed_en) {
+#if defined FPGA_VER
+			csic_tdm_set_clk_freq(tdm->id, 24 - 1);
+#else
+			csic_tdm_set_clk_freq(tdm->id, DIV_ROUND_UP(rx->isp_clk, 1000*1000) - 1);
+#endif
+			csic_tdm_time_embed_en(tdm->id, 1);
+			cur_time = ktime_get_ns();
+			csic_tdm_set_time_base(tdm->id, cur_time >> 10);
+			/* vin_print("first set base time is 0x%llx\n", cur_time >> 10); // for embed time debug */
+		} else
+			csic_tdm_time_embed_en(tdm->id, 0);
+#endif
 /*		if (tdm->work_mode == TDM_OFFLINE)
 			tdm->ws.speed_dn_en = 1;
 */
@@ -658,24 +1251,21 @@ static int sunxi_tdm_top_s_stream(struct tdm_rx_dev *rx, int enable)
 			csic_tdm_set_tx_id0_fifo_depth(tdm->id, tdm->tx_cfg.head_depth, tdm->tx_cfg.data_depth);
 			csic_tdm_set_tx_t2_cycle(tdm->id, tdm->tx_cfg.t2_cycle = 0xfa0);
 		} else {
-			if (rx->ws.data_fifo_depth && rx->ws.head_fifo_depth) {
+			if (tdm->tx_cfg.data_depth && tdm->tx_cfg.head_depth) {
 #if IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN60IW1)
-				csic_tdm_set_tx_fifo_depth(tdm->id, rx->ws.head_fifo_depth, min(rx->ws.data_fifo_depth, (u16)192));
+				csic_tdm_set_tx_fifo_depth(tdm->id, tdm->tx_cfg.head_depth, min(tdm->tx_cfg.data_depth, (u16)192));
 #else
 				csic_tdm_fifo_mode(tdm->id, tdm->tx_cfg.fifo_mode);
 				csic_tdm_set_tx_fifo_depth(tdm->id, tdm->tx_cfg.head_depth, tdm->tx_cfg.data_depth);
 				csic_tdm_set_tx_id0_fifo_depth(tdm->id, tdm->tx_cfg.head_depth, tdm->tx_cfg.data_depth);
 #endif
 			} else {
-#if IS_ENABLED(CONFIG_WDR)
-				csic_tdm_set_tx_fifo_depth(tdm->id, 32/4, 512/4);
+#if IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN60IW1)
+				csic_tdm_set_tx_fifo_depth(tdm->id, MAX_TX_HEAD_FIFO_DEPTH/2, min(MAX_TX_DATA_FIFO_DEPTH/2, (u16)192));
 #else
-				if (rx->id == 0 || rx->id == 1) {
-					csic_tdm_set_tx_fifo_depth(tdm->id, 32/2, min(512/2, 192));
-				} else {
-					csic_tdm_set_tx_fifo_depth(tdm->id, 32/4, 512/4);
-					vin_warn("use ioctl VIDIOC_SET_TDM_DEPTH setting max_ch to make work stable!\n");
-				}
+				csic_tdm_fifo_mode(tdm->id, tdm->tx_cfg.fifo_mode);
+				csic_tdm_set_tx_fifo_depth(tdm->id, MAX_TX_HEAD_FIFO_DEPTH/2, MAX_TX_DATA_FIFO_DEPTH/2);
+				csic_tdm_set_tx_id0_fifo_depth(tdm->id, MAX_TX_HEAD_FIFO_DEPTH/2, MAX_TX_DATA_FIFO_DEPTH/2);
 #endif
 			}
 			csic_tdm_set_tx_t2_cycle(tdm->id, tdm->tx_cfg.t2_cycle = 0x0);
@@ -684,13 +1274,43 @@ static int sunxi_tdm_top_s_stream(struct tdm_rx_dev *rx, int enable)
 			csic_tdm_set_tx_data_rate(tdm->id, tdm->tx_cfg.valid_num, tdm->tx_cfg.invalid_num);
 		}
 		csic_tdm_tx_enable(tdm->id);
+#if !IS_ENABLED(CONFIG_TDM_OFFLINE_HANDLE_RAW)
 		csic_tdm_tx_cap_enable(tdm->id);
+#else
+		tdm->tx_busy = false;
+		tdm->tx_now_id = 0xff;
+		tdm->tx_next_id = 0xff;
+#endif
+
 		ini_en = RX_FRM_LOST_INT_EN | RX_FRM_ERR_INT_EN | RX_BTYPE_ERR_INT_EN |
-				RX_BUF_FULL_INT_EN | RX_HB_SHORT_INT_EN | RX_FIFO_FULL_INT_EN |
-				TDM_LBC_ERR_INT_EN | TDM_FIFO_UNDER_INT_EN | SPEED_DN_FIFO_FULL_INT_EN |
-				SPEED_DN_HSYNC_INT_EN | RX_CHN_CFG_MODE_INT_EN | TX_CHN_CFG_MODE_INT_EN |
-				RDM_LBC_FIFO_FULL_INT_EN;
-#if IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN60IW1) || IS_ENABLED(CONFIG_ARCH_SUN60IW2) || IS_ENABLED(CONFIG_ARCH_SUN300IW1)
+			RX_BUF_FULL_INT_EN | RX_HB_SHORT_INT_EN | RX_FIFO_FULL_INT_EN |
+			TDM_LBC_ERR_INT_EN | TDM_FIFO_UNDER_INT_EN |
+			RX_CHN_CFG_MODE_INT_EN | TX_CHN_CFG_MODE_INT_EN;
+#if defined TDM_V230
+		ini_en |= SPEED_DN_HSYNC_INT_EN | TDM_LBD_ERR_INT_EN | SPEED_DN_FIFO_FULL_INT_EN |
+			AWNN_ID_BACK_ERR_INT_EN | RX_LBC_MUX_CONF_TIME_OUT_INT_EN |
+			RX_2TO1_FIFO_OV_INT_EN | AWNN_TIME_OUT_BY_AWNN_INT_EN | RX_W_ADDR_EXCEED_INT_EN;
+		/*
+		ini_en |= AWNN_ID_FRM_DONE_INT_EN;
+		ini_en |= RX0_FRM_START_INT_EN | RX1_FRM_START_INT_EN | RX2_FRM_START_INT_EN | RX3_FRM_START_INT_EN;
+		ini_en |= RX0_N_LINE_START_INT_EN | RX1_N_LINE_START_INT_EN | RX2_N_LINE_START_INT_EN | RX3_N_LINE_START_INT_EN;
+		*/
+#else /* TDM_V200 */
+#if IS_ENABLED(CONFIG_ARCH_SUN65IW1)
+		/*
+		ini_en |= RX0_FRM_START_INT_EN | RX1_FRM_START_INT_EN | RX2_FRM_START_INT_EN | RX3_FRM_START_INT_EN;
+		ini_en |= RX0_N_LINE_START_INT_EN | RX1_N_LINE_START_INT_EN | RX2_N_LINE_START_INT_EN | RX3_N_LINE_START_INT_EN;
+		*/
+#else
+		ini_en |= SPEED_DN_FIFO_FULL_INT_EN | SPEED_DN_HSYNC_INT_EN | RDM_LBC_FIFO_FULL_INT_EN;
+#endif
+#endif
+#if IS_ENABLED(CONFIG_TDM_OFFLINE_HANDLE_RAW)
+		ini_en |= TX_FRM_DONE_INT_EN | RX0_FRM_DONE_INT_EN | RX1_FRM_DONE_INT_EN;
+#endif
+#if IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) ||\
+	 IS_ENABLED(CONFIG_ARCH_SUN60IW1) || IS_ENABLED(CONFIG_ARCH_SUN60IW2) ||\
+	  IS_ENABLED(CONFIG_ARCH_SUN300IW1) || IS_ENABLED(CONFIG_ARCH_SUN65IW1)
 		if (tdm->work_mode == TDM_ONLINE && tdm->ws.speed_dn_en) {
 			if (rx->ws.wdr_mode == ISP_NORMAL_MODE)
 				ini_en |= RX0_FRM_DONE_INT_EN;
@@ -700,6 +1320,13 @@ static int sunxi_tdm_top_s_stream(struct tdm_rx_dev *rx, int enable)
 #endif
 		csic_tdm_int_clear_status(tdm->id, TDM_INT_ALL);
 		csic_tdm_int_enable(tdm->id, ini_en);
+#if IS_ENABLED(CONFIG_ARCH_SUN65IW1)
+		csic_tdm_set_line_int_num(tdm->id, 0, 120);
+		csic_tdm_set_line_int_num(tdm->id, 1, 120);
+		csic_tdm_set_line_int_num(tdm->id, 2, 120);
+		csic_tdm_set_line_int_num(tdm->id, 3, 120);
+#endif
+		tdm->tdm_task_resetting_flag = false;
 		vin_log(VIN_LOG_TDM, "tdm%d open first, setting the interrupt and tx configuration!\n", tdm->id);
 
 	} else {
@@ -760,9 +1387,10 @@ static void tdm_set_rx_data_rate(struct tdm_rx_dev *tdm_rx, unsigned int en)
 	unsigned int width[TDM_RX_NUM], height[TDM_RX_NUM], fps[TDM_RX_NUM], vts[TDM_RX_NUM];
 	bool rx_stream[TDM_RX_NUM] = {false, false, false, false};
 	unsigned int wh_fps = 0, vw_fps = 0, hh_fps = 0, vh_fps = 0;
-	__maybe_unused unsigned int vb_percentage[TDM_RX_NUM], vb_percent_min = 100, isp_need_clk;
+	__maybe_unused unsigned int vb_percentage[TDM_RX_NUM], vb_percent_min = 100, isp_need_clk, onebuffer_isp_need_clk;
 	unsigned int isp_clk = 0;
 	unsigned int i;
+	unsigned int n_rx_use = 0;
 
 	if (tdm->work_mode == TDM_ONLINE || !tdm->ws.speed_dn_en)
 		return;
@@ -773,16 +1401,24 @@ static void tdm_set_rx_data_rate(struct tdm_rx_dev *tdm_rx, unsigned int en)
 		height[tdm_rx->id] = tdm_rx->format.height;
 		fps[tdm_rx->id] = tdm_rx->sensor_fps;
 		vts[tdm_rx->id] = tdm_rx->vts;
+#if !IS_ENABLED(CONFIG_TDM_ONE_BUFFER)
 		isp_clk = tdm_rx->isp_clk / 100 * 90; /* 90% */
+#else
+		isp_clk = tdm_rx->isp_clk;
+#endif
 	} else {
 		rx_stream[tdm_rx->id] = false;
 		width[tdm_rx->id] = 0;
 		height[tdm_rx->id] = 0;
 		fps[tdm_rx->id] = 0;
 		vts[tdm_rx->id] = 0;
+#if !IS_ENABLED(CONFIG_TDM_ONE_BUFFER)
 		isp_clk = tdm_rx->isp_clk / 100 * 90; /* 90% */
+#else
+		isp_clk = tdm_rx->isp_clk;
+#endif
 	}
-	vin_log(VIN_LOG_TDM, "tdm_rx%d %s, size is %dfps@%dx%d, isp_clk is %d\n",
+	vin_print("tdm_rx%d %s, size is %dfps@%dx%d, isp_clk is %d\n",
 		tdm_rx->id, en ? "enable" : "disable",
 		tdm_rx->sensor_fps, tdm_rx->format.width, tdm_rx->format.height,
 		tdm_rx->isp_clk);
@@ -794,42 +1430,46 @@ static void tdm_set_rx_data_rate(struct tdm_rx_dev *tdm_rx, unsigned int en)
 		height[chn_fmt->rx_dev->id] = chn_fmt->rx_dev->format.height;
 		fps[chn_fmt->rx_dev->id] = chn_fmt->rx_dev->sensor_fps;
 		vts[chn_fmt->rx_dev->id] = chn_fmt->rx_dev->vts;
+		vin_print("at the same time tdm_rx%d %s, size is %dfps@%dx%d, vts is %d\n",
+				chn_fmt->rx_dev->id, "enabled",
+				chn_fmt->rx_dev->sensor_fps, chn_fmt->rx_dev->format.width, chn_fmt->rx_dev->format.height,
+				chn_fmt->rx_dev->vts);
 	}
-	vin_log(VIN_LOG_TDM, "at the same time tdm_rx%d %s, size is %dfps@%dx%d, vts is %d\n",
-		chn_fmt->rx_dev->id, "enabled",
-		chn_fmt->rx_dev->sensor_fps, chn_fmt->rx_dev->format.width, chn_fmt->rx_dev->format.height,
-		chn_fmt->rx_dev->vts);
 	for (i = 0; i < TDM_RX_NUM; i++) {
 		if (rx_stream[i] == false) {
 			width[i] = 0;
 			height[i] = 0;
 			fps[i] = 0;
 			vts[i] = 0;
-		}
+		} else
+			n_rx_use++;
 	}
+
 
 	/*
 	 * m: valid num, n: invalid num, m + n = 255
 	 * rx0 real work clock num: sum0 = ((w0*(255/m)+hb)*h0+(w0+hb)*vb)*fps0
-	 * rx0 real work clock num: sum1 = ((w1*(255/m)+hb)*h1+(w1+hb)*vb)*fps1
-	 * rx0 real work clock num: sum2 = ((w2*(255/m)+hb)*h2+(w2+hb)*vb)*fps2
-	 * rx0 real work clock num: sum3 = ((w3*(255/m)+hb)*h3+(w3+hb)*vb)*fps3
+	 * rx1 real work clock num: sum1 = ((w1*(255/m)+hb)*h1+(w1+hb)*vb)*fps1
+	 * rx2 real work clock num: sum2 = ((w2*(255/m)+hb)*h2+(w2+hb)*vb)*fps2
+	 * rx3 real work clock num: sum3 = ((w3*(255/m)+hb)*h3+(w3+hb)*vb)*fps3
 	 * sum0 + sum1 + sum2 + sum3 = isp_clk
 	 * 255/m * wh_fps = (isp_clk - hh_fps - vw_fps - vh_fps)
 	 *
 	 * tdm one buffer:
 	 * sum0 + sum1 + sum2 + sum3 = isp_need_clk_cycle
-	 * 255/m * wh_fps + hh_fps + vw_fps + vh_fps = isp_need_clk_cycle
-	 * (isp_need_clk_cycle/isp_clk = T) < (T1 = 1* vb% = 1 * ((vs - w)/vs)
+	 * wh_fps + hh_fps + vw_fps + vh_fps = isp_need_clk_cycle
+	 * isp_need_clk_cycle = isp_need_clk_cycle / (n - 1), n mean use n rx
+	 * (isp_need_clk_cycle/onebuffer_isp_need_clk = T) < (T1 = 1* vb% = 1 * ((vs - w)/vs)
+	 * onebuffer_isp_need_clk / isp_clk = m/255
 	 */
-#ifndef CONFIG_TDM_ONE_BUFFER
+#if !IS_ENABLED(CONFIG_TDM_ONE_BUFFER)
 	for (i = 0; i < TDM_RX_NUM; i++) {
 		wh_fps += (width[i] * height[i] * fps[i]);
-		hh_fps += (TDM_TX_HBLANK * height[i] * fps[i]);
+		hh_fps += (TDM_TX_HBLANK_OFFLINE * height[i] * fps[i]);
 		vw_fps += (TDM_TX_VBLANK * width[i] * fps[i]);
-		vh_fps += (TDM_TX_HBLANK * TDM_TX_VBLANK * fps[i]);
+		vh_fps += (TDM_TX_HBLANK_OFFLINE * TDM_TX_VBLANK * fps[i]);
 	}
-	vin_log(VIN_LOG_TDM, "wh_fps %d, hh_fps %d, vw_fps %d, vh_fps %d\n", wh_fps, hh_fps, vw_fps, vh_fps);
+	vin_print("wh_fps %d, hh_fps %d, vw_fps %d, vh_fps %d\n", wh_fps, hh_fps, vw_fps, vh_fps);
 
 	if (wh_fps) {
 		wh_fps = roundup(wh_fps, 100);
@@ -855,12 +1495,16 @@ static void tdm_set_rx_data_rate(struct tdm_rx_dev *tdm_rx, unsigned int en)
 		if (vb_percentage[i] != 0)
 			vb_percent_min = min(vb_percent_min, vb_percentage[i]);
 	}
-	isp_need_clk = isp_clk / 100 * vb_percent_min;
-	if (wh_fps) {
-		wh_fps = roundup(wh_fps, 100);
-		tdm->tx_cfg.valid_num = DIV_ROUND_UP(10 * 255 * 128 / (128 * ((isp_need_clk - hh_fps - vw_fps - vh_fps) / 100) / (wh_fps / 100)), 10);
-	} else
-		tdm->tx_cfg.valid_num = 0;
+	isp_need_clk = wh_fps + hh_fps + vw_fps + vh_fps;
+	if (n_rx_use > 1)
+		isp_need_clk = isp_need_clk / n_rx_use * (n_rx_use - 1);
+	onebuffer_isp_need_clk = isp_need_clk / vb_percent_min * 100;
+
+	vin_print("wh_fps %d, hh_fps %d, vw_fps %d, vh_fps %d, vb_percent_min is %d, isp_need_clk is %d, onebuffer_isp_need_clk is %d\n",
+					wh_fps, hh_fps, vw_fps, vh_fps, vb_percent_min, isp_need_clk, onebuffer_isp_need_clk);
+
+	tdm->tx_cfg.valid_num = onebuffer_isp_need_clk / (isp_clk / 255);
+	tdm->tx_cfg.valid_num += 8;
 #endif
 	if (tdm->tx_cfg.valid_num > 255) {
 		tdm->tx_cfg.valid_num = 255;
@@ -871,7 +1515,7 @@ static void tdm_set_rx_data_rate(struct tdm_rx_dev *tdm_rx, unsigned int en)
 	else
 		tdm->tx_cfg.invalid_num = 0;
 	csic_tdm_set_tx_data_rate(tdm->id, tdm->tx_cfg.valid_num, tdm->tx_cfg.invalid_num);
-	vin_log(VIN_LOG_TDM, "tdm_rx%d %s, tx valid_num is %d, invalid_num is %d\n",
+	vin_print("tdm_rx%d %s, tx valid_num is %d, invalid_num is %d\n",
 				tdm_rx->id, en ? "enable" : "disable", tdm->tx_cfg.valid_num, tdm->tx_cfg.invalid_num);
 #endif
 }
@@ -906,7 +1550,7 @@ static int sunxi_tdm_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 		break;
 	}
 	if (enable) {
-#ifdef TDM_V200
+#if defined TDM_V200 || defined TDM_V230
 		tdm_rx->ws.wdr_mode = res->res_wdr_mode;
 		if (tdm_check_wdr_mode(tdm_rx)) {
 			tdm_rx->streaming = false;
@@ -924,6 +1568,23 @@ static int sunxi_tdm_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 		chn_fmt->rx_dev = tdm_rx;
 		tdm_save_wdr_mode(tdm_rx, chn_fmt);
 		tdm->rx_stream_cnt[tdm_rx->id] = 0;
+#if defined TDM_V230
+		tdm_rx->ws.tx_start_mode = AFTER_EX_FINISH;
+		if (tdm->work_mode == TDM_OFFLINE) {
+			if (tdm_rx->ws.tx_start_mode == AFTER_EX_N_LINE)
+				tdm_rx->ws.pre_w_para_en = 1;
+			else
+				tdm_rx->ws.pre_w_para_en = 0;
+		} else {
+			tdm_rx->ws.pre_w_para_en = 1;
+		}
+
+		if ((tdm_rx->tdm_rtt_mode != RX_TO_TX_ISP) && (tdm_rx->ws.wdr_mode == ISP_3FDOL_WDR_MODE || tdm_rx->ws.wdr_mode == ISP_DOL_WDR_MODE)) {
+			vin_err("aiisp or software mode cannot effect in wdr mode\n");
+			tdm_rx->tdm_rtt_mode = RX_TO_TX_ISP;
+		}
+
+#endif
 		if (tdm_rx->ws.wdr_mode == ISP_3FDOL_WDR_MODE) {
 			vin_log(VIN_LOG_FMT, "rx%d wdr mode is 3f wdr\n", tdm_rx->id);
 			tdm->ws.tdm_en = 1;
@@ -981,10 +1642,11 @@ static int sunxi_tdm_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 #endif
 			tdm_rx->ws.tx_func_en = 1;
 			if (tdm_rx->id == 0) {
-#if IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN300IW1)
+#if IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) ||\
+	 IS_ENABLED(CONFIG_ARCH_SUN300IW1) || IS_ENABLED(CONFIG_ARCH_SUN65IW1)
 				tdm_rx->ws.pkg_en = 1;
 				tdm_rx->ws.lbc_en = 0;
-#else
+#else /*  CONFIG_ARCH_SUN60IW1 or CONFIG_ARCH_SUN60IW2 or CONFIG_ARCH_SUN252IW1 */
 				tdm_rx->ws.pkg_en = 0;
 				tdm_rx->ws.lbc_en = 1;
 #endif
@@ -1038,12 +1700,18 @@ static int sunxi_tdm_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 #endif
 				tdm_rx->ws.tx_func_en = 1;
 				if (tdm_rx->id == 0 || tdm_rx->id == 1) {
-#if IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN300IW1)
+#if IS_ENABLED(CONFIG_TDM_OFFLINE_HANDLE_RAW)
 					tdm_rx->ws.pkg_en = 1;
 					tdm_rx->ws.lbc_en = 0;
 #else
+#if IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) ||\
+	 IS_ENABLED(CONFIG_ARCH_SUN300IW1) || IS_ENABLED(CONFIG_ARCH_SUN65IW1)
+					tdm_rx->ws.pkg_en = 1;
+					tdm_rx->ws.lbc_en = 0;
+#else /* CONFIG_ARCH_SUN60IW1 or CONFIG_ARCH_SUN60IW2 or CONFIG_ARCH_SUN252IW1 */
 					tdm_rx->ws.pkg_en = 0;
 					tdm_rx->ws.lbc_en = 1;
+#endif
 #endif
 					tdm_rx->ws.sync_en = 0;
 #if !defined(CONFIG_ARCH_SUN55IW3) && !defined(CONFIG_ARCH_SUN60IW1)
@@ -1051,14 +1719,29 @@ static int sunxi_tdm_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 					tdm_rx->ws.head_fifo_depth = MAX_RX_HEAD_FIFO_DEPTH/2;
 #endif
 				} else {
+#if IS_ENABLED(CONFIG_ARCH_SUN252IW1)
+					if (tdm_rx->id == 2) {
+						tdm_rx->ws.pkg_en = 0;
+						tdm_rx->ws.lbc_en = 1;
+					} else {
+						tdm_rx->ws.pkg_en = 1;
+						tdm_rx->ws.lbc_en = 0;
+					}
+#else
+					tdm_rx->ws.pkg_en = 1;
+					tdm_rx->ws.lbc_en = 0;
+#endif
+					tdm_rx->ws.sync_en = 0;
+					tdm_rx->ws.data_fifo_depth = MAX_RX_DATA_FIFO_DEPTH/4;
+					tdm_rx->ws.head_fifo_depth = MAX_RX_HEAD_FIFO_DEPTH/4;
+				}
+#if defined TDM_V230
+				if (tdm_rx->tdm_rtt_mode != RX_TO_TX_ISP || tdm_rx->aiisp_switch == AIISP_SWITCH_ON) {
 					tdm_rx->ws.pkg_en = 1;
 					tdm_rx->ws.lbc_en = 0;
 					tdm_rx->ws.sync_en = 0;
-#if !defined(CONFIG_ARCH_SUN55IW3) && !defined(CONFIG_ARCH_SUN60IW1)
-					tdm_rx->ws.data_fifo_depth = MAX_RX_DATA_FIFO_DEPTH/4;
-					tdm_rx->ws.head_fifo_depth = MAX_RX_HEAD_FIFO_DEPTH/4;
-#endif
 				}
+#endif
 			} else {
 				tdm->ws.tdm_en = 1;
 #if IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN60IW1)
@@ -1109,7 +1792,7 @@ static int sunxi_tdm_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 			csic_tdm_rx_cap_enable(tdm->id, tdm_rx3->id);
 			vin_log(VIN_LOG_FMT, "rx3 init end\n");
 		}
-#else  /* else not TDM_V200 */
+#else  /* else not TDM_V200 or TDM_V230 */
 		tdm->stream_cnt++;
 		tdm_rx->stream_cnt++;
 
@@ -1136,11 +1819,16 @@ static int sunxi_tdm_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 			csic_tdm_tx_cap_enable(tdm->id);
 			vin_log(VIN_LOG_TDM, "tdm%d open first, setting the interrupt and tx configuration!\n", tdm->id);
 		}
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW22)
+		csic_tdm_rx_enable(tdm->id, 0);
+		csic_tdm_rx_enable(tdm->id, 1);
+#else
 		csic_tdm_rx_enable(tdm->id, tdm_rx->id);
+#endif
 		csic_tdm_rx_cap_enable(tdm->id, tdm_rx->id);
 #endif
 	} else {
-#ifdef TDM_V200
+#if defined TDM_V200 || defined TDM_V230
 		if (!tdm_rx->streaming)
 			return 0;
 		if (tdm_rx->ws.wdr_mode == ISP_3FDOL_WDR_MODE) {
@@ -1210,12 +1898,16 @@ static int sunxi_tdm_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 				tdm_rx_bufs_free(tdm_rx3);
 		}
 
-		cancel_work_sync(&tdm->tdm_reset_task);
-#else /* else not TDM_V200 */
+#else /* else not TDM_V200 or TDM_V230 */
 		tdm->stream_cnt--;
 		if (tdm->stream_cnt == 0) {
 			csic_tdm_int_disable(tdm->id, TDM_INT_ALL);
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW22)
+			for (i = 0; i < TDM_RX_NUM; i++)
+				csic_tdm_rx_cap_disable(tdm->id, i);
+#else
 			csic_tdm_rx_cap_disable(tdm->id, tdm_rx->id);
+#endif
 			csic_tdm_tx_cap_disable(tdm->id);
 			csic_tdm_top_disable(tdm->id);
 
@@ -1225,8 +1917,17 @@ static int sunxi_tdm_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 				tdm->tdm_rx[i].stream_cnt = 0;
 			}
 			vin_log(VIN_LOG_TDM, "tdm%d close, closing the interrupt and tx/rx configuration!\n", tdm->id);
-		} else
-			vin_warn("TDM is used, cannot stream off!\n");
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW22)
+		} else if (tdm_rx->id == 1) {
+			csic_tdm_rx_cap_disable(tdm->id, 1);
+			tdm->tdm_rx[1].stream_cnt = 0;
+		} else {
+			csic_tdm_rx_cap_disable(tdm->id, 0);
+			tdm->tdm_rx[0].stream_cnt = 0;
+#endif
+		}
+		usleep_range(200000, 200500);
+		vin_log(VIN_LOG_TDM, "Sleep 100ms after closing the TDM-RX captrue en\n");
 #endif
 	}
 
@@ -1315,7 +2016,7 @@ static int sunxi_tdm_subdev_set_fmt(struct v4l2_subdev *sd,
 		*mf = fmt->format;
 		if (fmt->which == V4L2_SUBDEV_FORMAT_ACTIVE) {
 			tdm_rx->tdm_fmt = tdm_fmt;
-#ifdef TDM_V200
+#if defined TDM_V200 || defined TDM_V230
 			res = (void *)mf->reserved;
 			if (res->res_wdr_mode == ISP_DOL_WDR_MODE) {
 				if (tdm_rx->id == 0)
@@ -1385,8 +2086,9 @@ static int sunxi_tdm_subdev_set_fmt(struct v4l2_subdev *sd,
 		*mf = fmt->format;
 		if (fmt->which == V4L2_SUBDEV_FORMAT_ACTIVE) {
 			tdm_rx->tdm_fmt = tdm_fmt;
-#ifdef TDM_V200
+#if defined TDM_V200 || defined TDM_V230
 			res = (void *)mf->reserved;
+			tdm_rx->ws.wdr_mode = res->res_wdr_mode;
 			if (res->res_wdr_mode == ISP_DOL_WDR_MODE) {
 				if (tdm_rx->id == 0)
 					glb_tdm[tdm->id]->tdm_rx[1].tdm_fmt = tdm_fmt;
@@ -1407,6 +2109,332 @@ static int sunxi_tdm_subdev_set_fmt(struct v4l2_subdev *sd,
 }
 #endif
 
+#if IS_ENABLED(CONFIG_TDM_OFFLINE_HANDLE_RAW)
+static int __tdm_set_map(struct v4l2_subdev *sd, struct isp_tdm_map_cfg *map)
+{
+/*
+	struct tdm_rx_dev *tdm_rx = v4l2_get_subdevdata(sd);
+	unsigned long viraddr;
+	struct vm_area_struct *vma;
+	struct tdm_buffer *buf = NULL;
+
+	if (map->en && tdm_rx->buf_cnt == 0) {
+		vin_err("tdm_rx%d buffer is free, cannot mmap\n", tdm_rx->id);
+		return -1;
+	}
+
+	if (map->en && (map->mmap_buf_id > tdm_rx->buf_cnt)) {
+		vin_err("mmap buf%d is not exist, the most is %d\n", map->mmap_buf_id, tdm_rx->buf_cnt);
+		return -1;
+	}
+
+	buf = &tdm_rx->buf[map->mmap_buf_id];
+	if (map->en) {
+		viraddr = vm_mmap(NULL, 0, tdm_rx->buf_size, PROT_READ, MAP_SHARED | MAP_NORESERVE, 0);
+		vma = find_vma(current->mm, viraddr);
+		dma_buf_mmap(buf->dmabuf, vma, 0);
+
+		map->vir_addr = (void *)viraddr;
+		map->size = tdm_rx->buf_size;
+		buf->user_viraddr = (void *)viraddr;
+		vin_print("%s: map is 0x%lx, size is %d!\n", __func__, viraddr, tdm_rx->buf_size);
+	} else {
+		if (!buf->user_viraddr) {
+			vin_err("ummap buf%d is not exist", map->mmap_buf_id);
+			return 0;
+		}
+		vin_print("%s: ummap is 0x%lx, size is %d!\n", __func__, (unsigned long)buf->user_viraddr, tdm_rx->buf_size);
+		vm_munmap((unsigned long)buf->user_viraddr, tdm_rx->buf_size);
+		buf->user_viraddr = NULL;
+	}
+*/
+	vin_err("tdm not support mmap buf to user\n");
+	return 0;
+}
+
+static int __tdm_dqbuf(struct v4l2_subdev *sd, struct vin_isp_tdm_event_status *state)
+{
+	struct tdm_rx_dev *tdm_rx = v4l2_get_subdevdata(sd);
+	struct tdm_dev *tdm = container_of(tdm_rx, struct tdm_dev, tdm_rx[tdm_rx->id]);
+	unsigned int i, delay_cnt = 10;
+	struct tdm_buffer *buf = NULL;
+	unsigned long flags;
+	unsigned int rx_other = 0xff;
+	unsigned char tdm_rx_num = 2;
+
+	if (tdm_rx->buf_cnt == 0) {
+		vin_err("tdm_rx%d buffer is free, cannot dqbuf\n", tdm_rx->id);
+		spin_lock_irqsave(&tdm->slock, flags);
+		tdm->tx_next_id = 0xff;
+		for (i = tdm_rx->id + 1; i < tdm_rx_num + tdm_rx->id; i++) {
+			if (tdm->rx_done[i%tdm_rx_num].next != NULL && !list_empty(&tdm->rx_done[i%tdm_rx_num])) {
+				tdm->tx_next_id = i%tdm_rx_num;
+				break;
+			}
+		}
+
+		if (tdm->tx_next_id != 0xff) {
+			if (tdm->rx_done[tdm->tx_next_id].next != NULL && !list_empty(&tdm->rx_done[tdm->tx_next_id])) {
+				buf = list_entry(tdm->rx_done[tdm->tx_next_id].next, struct tdm_buffer, list);
+				if (buf->state == TDMSTAT_USER_SET) {
+					csic_tdm_tx_cap_enable(tdm->id);
+					for (i = 0; i < 10; i++)
+						;
+					csic_tdm_tx_cap_disable(tdm->id);
+
+					tdm->tx_busy = true;
+					tdm->tx_now_id = tdm->tx_next_id;
+					for (i = tdm->tx_now_id + 1; i < tdm_rx_num + tdm->tx_now_id; i++) {
+						if (tdm->rx_done[i%tdm_rx_num].next != NULL && !list_empty(&tdm->rx_done[i%tdm_rx_num])) {
+							tdm->tx_next_id = i%tdm_rx_num;
+							break;
+						}
+					}
+					if (i == tdm_rx_num + tdm->tx_now_id) {
+						if (list_empty(&tdm->rx_done[tdm->tx_now_id]) || tdm->rx_done[tdm->tx_now_id].next->next == &tdm->rx_done[tdm->tx_now_id]) {
+							tdm->tx_next_id = 0xff;
+						} else {
+							tdm->tx_next_id = tdm->tx_now_id;
+						}
+					}
+
+					vin_print("but tdm_rx%d buf%d state is TDMSTAT_USER_SET, set to isp%d, tx next id is %d\n", tdm->tx_now_id, buf->id, tdm->tx_now_id, tdm->tx_next_id);
+				}
+			}
+		}
+		spin_unlock_irqrestore(&tdm->slock, flags);
+		return -1;
+	}
+
+	if (state->buf_id > tdm_rx->buf_cnt) {
+		vin_err("dqbuf%d is not exist, the most is %d\n", state->buf_id, tdm_rx->buf_cnt);
+		return -1;
+	}
+
+	spin_lock_irqsave(&tdm->slock, flags);
+
+	buf = &tdm_rx->buf[state->buf_id];
+	if (buf->state != TDMSTAT_RX_SET) {
+		vin_warn("buf%d get from user, but buf state is %s\n", state->buf_id, buf->state == TDMSTAT_TX_SET ? "TDMSTAT_TX_SET" : (buf->state == TDMSTAT_USER_SET ? "TDMSTAT_USER_SET" : "TDMSTAT_IDLE"));
+		spin_unlock_irqrestore(&tdm->slock, flags);
+		return 0;
+	}
+
+	buf->state = TDMSTAT_USER_SET;
+
+	if (tdm->tx_next_id != tdm_rx->id) {
+		vin_log(VIN_LOG_TDM, "tdm_rx%d get buf%d from user, but next id is tdm_rx%d\n", tdm_rx->id, state->buf_id, tdm->tx_next_id);
+		spin_unlock_irqrestore(&tdm->slock, flags);
+		return 0;
+	} else {
+		if (tdm->tx_busy == true) {
+			vin_log(VIN_LOG_TDM, "tdm_rx%d get buf%d from user, but now tx is busy\n", tdm_rx->id, state->buf_id);
+			spin_unlock_irqrestore(&tdm->slock, flags);
+			return 0;
+		}
+	}
+
+	tdm->tdm_tx_work = true;
+
+	csic_tdm_tx_cap_enable(tdm->id);
+	for (i = 0; i < delay_cnt; i++)
+		;
+	csic_tdm_tx_cap_disable(tdm->id);
+
+	tdm->tx_busy = true;
+	tdm->tx_now_id = tdm_rx->id;
+	for (i = tdm->tx_now_id + 1; i < tdm_rx_num + tdm->tx_now_id; i++) {
+		if (tdm->rx_done[i%tdm_rx_num].next != NULL && !list_empty(&tdm->rx_done[i%tdm_rx_num])) {
+			tdm->tx_next_id = i%tdm_rx_num;
+			break;
+		}
+	}
+
+	if (i == tdm_rx_num + tdm->tx_now_id) {
+		if (tdm->rx_done[tdm->tx_now_id].next != NULL && tdm->rx_done[tdm->tx_now_id].next->next == &tdm->rx_done[tdm->tx_now_id]) {
+			tdm->tx_next_id = 0xff;
+		} else {
+			tdm->tx_next_id = tdm->tx_now_id;
+		}
+	}
+
+	if (tdm_rx->id == 0) {
+		rx_other = 1;
+	} else if (tdm_rx->id == 1) {
+		rx_other = 0;
+	}
+
+	if (rx_other != 0xff) {
+		for (i = rx_other + 1; i < tdm_rx_num + rx_other; i++) {
+			if (tdm->rx_done[i%tdm_rx_num].next != NULL && !list_empty(&tdm->rx_done[i%tdm_rx_num])) {
+				tdm->tx_next_id_other = i%tdm_rx_num;
+				break;
+			}
+		}
+		if (i == tdm_rx_num + rx_other) {
+			if (tdm->rx_done[rx_other].next != NULL && tdm->rx_done[rx_other].next->next == &tdm->rx_done[rx_other]) {
+				tdm->tx_next_id_other = 0xff;
+			} else {
+				tdm->tx_next_id_other = rx_other;
+			}
+		}
+	}
+
+	vin_log(VIN_LOG_TDM, "tdm_rx%d get buf%d from user, tx_next_id is %d\n", tdm_rx->id, state->buf_id, tdm->tx_next_id);
+
+	spin_unlock_irqrestore(&tdm->slock, flags);
+
+	return 0;
+}
+
+static int __tdm_request_data(struct v4l2_subdev *sd, struct vin_isp_tdm_data *data)
+{
+	struct tdm_rx_dev *tdm_rx = v4l2_get_subdevdata(sd);
+	struct tdm_buffer *buf = NULL;
+	int ret = 0;
+
+	if (tdm_rx->buf_cnt == 0) {
+		vin_err("tdm_rx%d buffer is free, cannot memcpy\n", tdm_rx->id);
+		return -EBUSY;
+	}
+
+	if (data->req_buf_id > tdm_rx->buf_cnt) {
+		vin_err("memcpy buf%d is not exist, the most is %d\n", data->req_buf_id, tdm_rx->buf_cnt);
+		return -EBADF;
+	}
+
+	if (data->buf_size < tdm_rx->buf_size) {
+		vin_err("%s: userspace's buffer size is not enough.\n", sd->name);
+		return -EINVAL;
+	}
+
+	buf = &tdm_rx->buf[data->req_buf_id];
+	ret = copy_to_user(data->buf, buf->virt_addr, tdm_rx->buf_size);
+	if (ret) {
+		vin_err("%s: failed copying %d bytes of tdm data\n", sd->name, ret);
+		return -EFAULT;
+	}
+
+	return ret;
+}
+
+static int __tdm_send_data(struct v4l2_subdev *sd, struct vin_isp_tdm_data *data)
+{
+	struct tdm_rx_dev *tdm_rx = v4l2_get_subdevdata(sd);
+	struct tdm_buffer *buf = NULL;
+	int ret = 0;
+
+	if (tdm_rx->buf_cnt == 0) {
+		vin_err("tdm_rx%d buffer is free, cannot memcpy\n", tdm_rx->id);
+		return -EBUSY;
+	}
+
+	if (data->req_buf_id > tdm_rx->buf_cnt) {
+		vin_err("memcpy buf%d is not exist, the most is %d\n", data->req_buf_id, tdm_rx->buf_cnt);
+		return -EBADF;
+	}
+
+	if (data->buf_size < tdm_rx->buf_size) {
+		vin_err("%s: userspace's buffer size is not enough.\n", sd->name);
+		return -EINVAL;
+	}
+
+	buf = &tdm_rx->buf[data->req_buf_id];
+	ret = copy_from_user(buf->virt_addr, data->buf, tdm_rx->buf_size);
+	if (ret) {
+		vin_err("%s: failed copying %d bytes of tdm data\n", sd->name, ret);
+		return -EFAULT;
+	}
+
+	return ret;
+}
+
+static long sunxi_tdm_subdev_ioctl(struct v4l2_subdev *sd, unsigned int cmd,
+				   void *arg)
+{
+	int ret = 0;
+
+	switch (cmd) {
+	case VIDIOC_VIN_TDM_MAP:
+		ret = __tdm_set_map(sd, (struct isp_tdm_map_cfg *)arg);
+		break;
+	case VIDIOC_VIN_TDM_DQBUF:
+		ret = __tdm_dqbuf(sd, (struct vin_isp_tdm_event_status *)arg);
+		break;
+	case VIDIOC_VIN_TDM_REQ_DATA:
+		ret = __tdm_request_data(sd, (struct vin_isp_tdm_data *)arg);
+		break;
+	case VIDIOC_VIN_TDM_SEND_DATA:
+		ret = __tdm_send_data(sd, (struct vin_isp_tdm_data *)arg);
+		break;
+	default:
+		return -ENOIOCTLCMD;
+	}
+
+	return ret;
+}
+
+static void isp_tdm_queue_event(struct tdm_rx_dev *tdm_rx, struct tdm_buffer *buf)
+{
+#if VIN_TRUE /* send buf to linux user space */
+	struct video_device *vdev = tdm_rx->subdev.devnode;
+	struct v4l2_event event;
+	struct vin_isp_tdm_event_status *status = (void *)event.u.data;
+
+	memset(&event, 0, sizeof(event));
+	status->dev_id = tdm_rx->id;
+	status->iommu_buf = buf->dma_addr;
+	status->buf_size = tdm_rx->buf_size;
+	status->buf_id = buf->id;
+	status->fill_len = TDM_BUF_FILL_LEN;
+	status->head_len = ALIGN(tdm_rx->height, 64);
+	vin_log(VIN_LOG_TDM, "tdm%d event sent to buf%d user\n", tdm_rx->id, buf->id);
+
+	event.type = tdm_rx->event_type;
+	v4l2_event_queue(vdev, &event);
+#else /* send buf to linux rt-media */
+	struct vin_isp_tdm_event_status status;
+	status.dev_id = tdm_rx->id;
+	status.iommu_buf = buf->dma_addr;
+	status.buf_size = tdm_rx->buf_size;
+	status.buf_id = buf->id;
+	status.fill_len = TDM_BUF_FILL_LEN;
+	status.head_len = ALIGN(tdm_rx->height, 64);
+	vin_log(VIN_LOG_TDM, "tdm%d event sent to buf%d user, callback %p\n", tdm_rx->id, buf->id, tdm_rx->tdm_buffer_done_callback);
+
+	if (tdm_rx->tdm_buffer_done_callback)
+		tdm_rx->tdm_buffer_done_callback(&status);
+	else
+		__tdm_dqbuf(&tdm_rx->subdev, &status);
+#endif
+}
+
+int sunxi_tdm_subscribe_event(struct v4l2_subdev *sd,
+				  struct v4l2_fh *fh,
+				  struct v4l2_event_subscription *sub)
+{
+	struct tdm_rx_dev *tdm_rx = v4l2_get_subdevdata(sd);
+
+	if (sub->type != tdm_rx->event_type)
+		return -EINVAL;
+
+	vin_log(VIN_LOG_TDM, "tdm_rx%d receive user subscribe_event\n", tdm_rx->id);
+
+	return v4l2_event_subscribe(fh, sub, 8, NULL);
+}
+#endif
+
+static const struct v4l2_subdev_core_ops sunxi_tdm_subdev_core_ops = {
+#if IS_ENABLED(CONFIG_TDM_OFFLINE_HANDLE_RAW)
+	.subscribe_event = sunxi_tdm_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+	.ioctl = sunxi_tdm_subdev_ioctl,
+#if IS_ENABLED(CONFIG_COMPAT)
+	.compat_ioctl32 = NULL,
+#endif
+#endif
+};
+
 static const struct v4l2_subdev_video_ops sunxi_tdm_subdev_video_ops = {
 	.s_stream = sunxi_tdm_subdev_s_stream,
 };
@@ -1417,6 +2445,7 @@ static const struct v4l2_subdev_pad_ops sunxi_tdm_subdev_pad_ops = {
 };
 
 static struct v4l2_subdev_ops sunxi_tdm_subdev_ops = {
+	.core = &sunxi_tdm_subdev_core_ops,
 	.video = &sunxi_tdm_subdev_video_ops,
 	.pad = &sunxi_tdm_subdev_pad_ops,
 };
@@ -1426,10 +2455,12 @@ static int __tdm_init_subdev(struct tdm_rx_dev *tdm_rx)
 	struct v4l2_subdev *sd = &tdm_rx->subdev;
 	int ret;
 
+	tdm_rx->event_type = V4L2_EVENT_VIN_TDM;
+
 	mutex_init(&tdm_rx->subdev_lock);
 	v4l2_subdev_init(sd, &sunxi_tdm_subdev_ops);
 	sd->grp_id = VIN_GRP_ID_TDM_RX;
-	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	sd->flags |= V4L2_SUBDEV_FL_HAS_EVENTS | V4L2_SUBDEV_FL_HAS_DEVNODE;
 	snprintf(sd->name, sizeof(sd->name), "sunxi_tdm_rx.%u", tdm_rx->id);
 	v4l2_set_subdevdata(sd, tdm_rx);
 
@@ -1444,7 +2475,7 @@ static int __tdm_init_subdev(struct tdm_rx_dev *tdm_rx)
 	return 0;
 }
 
-#ifdef TDM_V200
+#if defined TDM_V200 || defined TDM_V230
 static void __sunxi_tdm_wdr_reset(struct tdm_dev *tdm)
 {
 #if 1
@@ -1492,6 +2523,8 @@ static void __sunxi_tdm_wdr_reset(struct tdm_dev *tdm)
 				csic_prs_disable(vinc->csi_sel);
 				csic_isp_bridge_disable(0);
 
+				csic_tdm_tx_cap_disable(tdm->id);
+				csic_tdm_tx_disable(tdm->id);
 				csic_tdm_disable(0);
 				csic_tdm_top_disable(0);
 
@@ -1508,8 +2541,8 @@ static void __sunxi_tdm_wdr_reset(struct tdm_dev *tdm)
 			vipp_clear_status(vinc->vipp_sel, VIPP_STATUS_ALL);
 			vipp_top_clk_en(vinc->vipp_sel, 0);
 
-			csic_dma_int_clear_status(vinc->vipp_sel, DMA_INT_ALL);
-			csic_dma_top_disable(vinc->vipp_sel);
+			csic_dma_int_clear_status(vinc->id, DMA_INT_ALL);
+			csic_dma_top_disable(vinc->id);
 		}
 	}
 
@@ -1526,7 +2559,7 @@ static void __sunxi_tdm_wdr_reset(struct tdm_dev *tdm)
 		if (vind->vinc[i]->tdm_rx_sel == tdm_rx->id) {
 			vinc = vind->vinc[i];
 
-			csic_dma_top_enable(vinc->vipp_sel);
+			csic_dma_top_enable(vinc->id);
 
 			vipp_clear_status(vinc->vipp_sel, VIPP_STATUS_ALL);
 			vipp_cap_enable(vinc->vipp_sel);
@@ -1555,9 +2588,11 @@ static void __sunxi_tdm_wdr_reset(struct tdm_dev *tdm)
 				if (line_num_set) {
 					csic_tdm_rx_set_line_num_ddr(tdm->id, tdm_rx->id, 1);//delayline > 64
 					line_num_set = 0;
+					vin_print("tdm_rx%d set line number ddr to 1, delay line more than 128\n", tdm_rx->id);
 				} else {
 					csic_tdm_rx_set_line_num_ddr(tdm->id, tdm_rx->id, 0);//delayline < 64
 					line_num_set = 1;
+					vin_print("tdm_rx%d set line number ddr to 0, delay line less than 128\n", tdm_rx->id);
 				}
 				csic_tdm_rx_enable(0, vinc->tdm_rx_sel);
 				csic_tdm_rx_cap_enable(0, vinc->tdm_rx_sel);
@@ -1650,10 +2685,22 @@ static void __sunxi_tdm_reset_v2(struct tdm_dev *tdm)
 				flags = 0;
 			}
 
+			switch (vinc->vid_cap.frame.fmt.fourcc) {
+			case V4L2_PIX_FMT_LBC_2_0X:
+			case V4L2_PIX_FMT_LBC_2_5X:
+			case V4L2_PIX_FMT_LBC_1_5X:
+			case V4L2_PIX_FMT_LBC_1_0X:
+				csic_lbc_disable(vinc->id);
+				break;
+			default:
+				csic_dma_disable(vinc->id);
+				break;
+			}
+
 			vipp_chn_cap_disable(vinc->vipp_sel);
 
-			//csic_dma_int_clear_status(vinc->vipp_sel, DMA_INT_ALL);
-			//csic_dma_top_disable(vinc->vipp_sel);
+			//csic_dma_int_clear_status(vinc->id, DMA_INT_ALL);
+			//csic_dma_top_disable(vinc->id);
 		}
 	}
 
@@ -1672,11 +2719,24 @@ static void __sunxi_tdm_reset_v2(struct tdm_dev *tdm)
 		if (vind->vinc[i]->tdm_rx_sel == tdm_rx->id) {
 			vinc = vind->vinc[i];
 
-			//csic_dma_top_enable(vinc->vipp_sel);
+			switch (vinc->vid_cap.frame.fmt.fourcc) {
+			case V4L2_PIX_FMT_LBC_2_0X:
+			case V4L2_PIX_FMT_LBC_2_5X:
+			case V4L2_PIX_FMT_LBC_1_5X:
+			case V4L2_PIX_FMT_LBC_1_0X:
+				csic_lbc_enable(vinc->id);
+				break;
+			default:
+				csic_dma_enable(vinc->id);
+				break;
+			}
 
 			vipp_chn_cap_enable(vinc->vipp_sel);
 			vinc->vin_status.frame_cnt = 0;
 			vinc->vin_status.lost_cnt = 0;
+#if IS_ENABLED(CONFIG_TDM_ONE_BUFFER_WITH_TWORX)
+			vinc->vid_cap.frame_delay_cnt = 2;
+#endif
 
 			if (flags) {
 				isp = container_of(vinc->vid_cap.pipe.sd[VIN_IND_ISP], struct isp_dev, subdev);
@@ -1684,7 +2744,7 @@ static void __sunxi_tdm_reset_v2(struct tdm_dev *tdm)
 				bsp_isp_capture_start(isp->id);
 				isp->isp_frame_number = 0;
 
-				//csic_isp_bridge_enable(0);
+				csic_isp_bridge_enable(0);
 
 				csic_tdm_rx_enable(tdm->id, vinc->tdm_rx_sel);
 				csic_tdm_rx_cap_enable(tdm->id, vinc->tdm_rx_sel);
@@ -1736,155 +2796,224 @@ static void __sunxi_tdm_reset_v2_handle(struct work_struct *work)
 	struct isp_dev *isp = NULL;
 	struct prs_cap_mode mode = {.mode = VCAP};
 	bool reset_flag = 1;
-	int i = 0;
+	int i = 0, j = 0, k = 0;
 	bool need_ve_callback = false;
 	unsigned long flags;
+	struct dma_capture_status cap_status;
 	struct prs_signal_status prs_sig_status;
+	__maybe_unused struct tdm_buffer *buf = NULL;
 
-	/*****************stop*******************/
-	for (i = 0; i < VIN_MAX_DEV; i++) {
-		if (vind->vinc[i] == NULL)
+	if (tdm->stream_cnt == 0)
+		return;
+
+	mutex_lock(&vind->media_dev.graph_mutex);
+	vin_print("%s:workqueue tdm%d reset!!!\n", __func__, tdm->id);
+	for (k = 0; k < TDM_RX_NUM; k++) {
+		if (!tdm->tdm_rx_reset[k])
 			continue;
-		if (!vin_streaming(&vind->vinc[i]->vid_cap))
-			continue;
-		if (!tdm->tdm_rx_reset[vind->vinc[i]->tdm_rx_sel])
-			continue;
 
-		tdm_rx = &tdm->tdm_rx[vind->vinc[i]->tdm_rx_sel];
+		/*****************stop*******************/
+		for (i = 0; i < VIN_MAX_DEV; i++) {
+			if (vind->vinc[i] == NULL)
+				continue;
+			if (!vin_streaming(&vind->vinc[i]->vid_cap))
+				continue;
+			if (!tdm->tdm_rx_reset[vind->vinc[i]->tdm_rx_sel])
+				continue;
 
-		if (vind->vinc[i]->tdm_rx_sel == tdm_rx->id) {
-			vinc = vind->vinc[i];
-			vinc->vid_cap.frame_delay_cnt = 1;
-			if (i == 0)
-				need_ve_callback = true;
+			tdm_rx = &tdm->tdm_rx[k];
 
-			if (reset_flag) {
-				isp = container_of(vinc->vid_cap.pipe.sd[VIN_IND_ISP], struct isp_dev, subdev);
-				csi = container_of(vinc->vid_cap.pipe.sd[VIN_IND_CSI], struct csi_dev, subdev);
-				bsp_isp_set_para_ready(isp->id, PARA_NOT_READY);
+			if (vind->vinc[i]->tdm_rx_sel == tdm_rx->id) {
+				vinc = vind->vinc[i];
+				vinc->vid_cap.frame_delay_cnt += 1;
+				if (i == 0)
+					need_ve_callback = true;
+
+				if (reset_flag) {
+					isp = container_of(vinc->vid_cap.pipe.sd[VIN_IND_ISP], struct isp_dev, subdev);
+					csi = container_of(vinc->vid_cap.pipe.sd[VIN_IND_CSI], struct csi_dev, subdev);
+					bsp_isp_set_para_ready(isp->id, PARA_NOT_READY);
 #if IS_ENABLED(CONFIG_D3D)
-				bsp_isp_clr_d3d_rec_en(isp->id);
-				isp->d3d_rec_reset = 1;
+					bsp_isp_clr_d3d_rec_en(isp->id);
+					isp->d3d_rec_reset = 1;
 #endif
-				csic_prs_capture_stop(vinc->csi_sel);
-				if (csi->bus_info.bus_if == V4L2_MBUS_CSI2_DPHY) {
-					cmb_port_clr_ch0_int_status(vinc->mipi_sel);
-					for (i = 0; i < 200; i++) {
-						if (cmb_port_check_ch0_int_status(vinc->mipi_sel, CMB_MIPI_FRAME_END_SYNC_MASK))
+					csic_prs_capture_stop(vinc->csi_sel);
+					if (csi->bus_info.bus_if == V4L2_MBUS_CSI2_DPHY) {
+						cmb_port_clr_ch0_int_status(vinc->mipi_sel);
+						for (i = 0; i < 200; i++) {
+							if (cmb_port_check_ch0_int_status(vinc->mipi_sel, CMB_MIPI_FRAME_END_SYNC_MASK))
+								break;
+							usleep_range(500, 510);
+							if (i >= 199)
+								vin_warn("%s parser%d wait:%d/2 ms to close!\n", __func__, csi->id, i);
+						}
+						vin_warn("%s parser%d wait:%d/2 ms to close!\n", __func__, csi->id, i);
+					} else {
+						for (i = 0; i < 200; i++) {
+							memset(&prs_sig_status, 0, sizeof(struct prs_signal_status));
+							csic_prs_signal_status(csi->id, &prs_sig_status);
+							if (prs_sig_status.vsync_sta)
+								break;
+							usleep_range(500, 510);
+
+							if (i >= 199)
+								vin_warn("%s parser%d wait:%d/2 ms to close!\n", __func__, csi->id, i);
+						}
+					}
+					csic_prs_disable(vinc->csi_sel);
+					/* csic_isp_bridge_disable(0); */
+					csic_top_f2s0_bridge_en(vind->id, 0, vinc->tdm_rx_sel);
+
+					csic_tdm_rx_disable(tdm->id, vinc->tdm_rx_sel);
+					csic_tdm_rx_cap_disable(tdm->id, vinc->tdm_rx_sel);
+					vin_print("%s:workqueue tdm_rx%d reset!!!, isp frame count is %d\n", __func__, vinc->tdm_rx_sel, isp->isp_frame_number);
+					tdm_rx = &tdm->tdm_rx[vinc->tdm_rx_sel];
+					if (tdm_rx->ws.wdr_mode == ISP_DOL_WDR_MODE) {
+						csic_tdm_rx_disable(tdm->id, vinc->tdm_rx_sel + 1);
+						csic_tdm_rx_cap_disable(tdm->id, vinc->tdm_rx_sel + 1);
+						vin_print("%s:tdm_rx%d reset!!!\n", __func__, vinc->tdm_rx_sel + 1);
+					} else if (tdm_rx->ws.wdr_mode == ISP_3FDOL_WDR_MODE) {
+						csic_tdm_rx_disable(tdm->id, vinc->tdm_rx_sel + 1);
+						csic_tdm_rx_cap_disable(tdm->id, vinc->tdm_rx_sel + 1);
+						csic_tdm_rx_disable(tdm->id, vinc->tdm_rx_sel + 2);
+						csic_tdm_rx_cap_disable(tdm->id, vinc->tdm_rx_sel + 2);
+						vin_print("%s:tdm_rx%d && tdm_rx%d reset!!!\n", __func__, vinc->tdm_rx_sel + 1, vinc->tdm_rx_sel + 2);
+					}
+
+					bsp_isp_clr_irq_status(isp->id, ISP_IRQ_EN_ALL);
+					bsp_isp_capture_stop(isp->id);
+
+					reset_flag = 0;
+				}
+
+				switch (vinc->vid_cap.frame.fmt.fourcc) {
+				case V4L2_PIX_FMT_LBC_2_0X:
+				case V4L2_PIX_FMT_LBC_2_5X:
+				case V4L2_PIX_FMT_LBC_1_5X:
+				case V4L2_PIX_FMT_LBC_1_0X:
+#if defined CSIC_DMA_VER_140_000 || defined CSIC_DMA_VER_150_000
+					csic_dma_disable(vinc->id);
+					for (j = 0; j < 200; j++) { /* 200 = 200*0.5 = 100ms */
+						csic_dma_cap_status(vinc->id, &cap_status);
+						if (cap_status.scap_sta == 0)
 							break;
 						usleep_range(500, 510);
-						if (i >= 199)
-							vin_warn("%s parser%d wait:%d/2 ms to close!\n", __func__, csi->id, i);
 					}
-					vin_warn("%s parser%d wait:%d/2 ms to close!\n", __func__, csi->id, i);
-				} else {
-					for (i = 0; i < 200; i++) {
-						memset(&prs_sig_status, 0, sizeof(struct prs_signal_status));
-						csic_prs_signal_status(csi->id, &prs_sig_status);
-						if (prs_sig_status.vsync_sta)
+					vin_print("LBC:video%d wait %d/2(ms) to close!, csi frame count is %d\n", vinc->id, j, vinc->vin_status.frame_cnt);
+#endif
+					csic_lbc_disable(vinc->id);
+					break;
+				default:
+					csic_dma_disable(vinc->id);
+					vin_print("YUV:video%d close! csi frame count is %d\n", vinc->id, vinc->vin_status.frame_cnt);
+					break;
+				}
+				vipp_chn_cap_disable(vinc->vipp_sel);
+
+				//csic_dma_int_clear_status(vinc->id, DMA_INT_ALL);
+				//csic_dma_top_disable(vinc->id);
+			}
+		}
+
+		usleep_range(5000, 5200);
+
+		/*****************start*******************/
+		reset_flag = 1;
+		for (i = 0; i < VIN_MAX_DEV; i++) {
+			if (vind->vinc[i] == NULL)
+				continue;
+			if (!vin_streaming(&vind->vinc[i]->vid_cap))
+				continue;
+
+			tdm_rx = &tdm->tdm_rx[k];
+
+			if (vind->vinc[i]->tdm_rx_sel == tdm_rx->id) {
+				vinc = vind->vinc[i];
+
+				//csic_dma_top_enable(vinc->id);
+
+				vipp_chn_cap_enable(vinc->vipp_sel);
+
+				switch (vinc->vid_cap.frame.fmt.fourcc) {
+				case V4L2_PIX_FMT_LBC_2_0X:
+				case V4L2_PIX_FMT_LBC_2_5X:
+				case V4L2_PIX_FMT_LBC_1_5X:
+				case V4L2_PIX_FMT_LBC_1_0X:
+					csic_lbc_enable(vinc->id);
+					//vin_print("LBC:video%d open!\n", vinc->id);
+					break;
+				default:
+					csic_dma_enable(vinc->id);
+					//vin_print("YUV:video%d open!\n", vinc->id);
+					break;
+				}
+
+				vinc->vin_status.frame_cnt = 0;
+				vinc->vin_status.lost_cnt = 0;
+#if IS_ENABLED(CONFIG_TDM_ONE_BUFFER_WITH_TWORX)
+				vinc->vid_cap.frame_delay_cnt += 2;
+#endif
+
+				if (reset_flag) {
+					isp = container_of(vinc->vid_cap.pipe.sd[VIN_IND_ISP], struct isp_dev, subdev);
+					bsp_isp_set_para_ready(isp->id, PARA_READY);
+					bsp_isp_capture_start(isp->id);
+					isp->isp_frame_number = 0;
+
+					/* csic_isp_bridge_enable(0); */
+					csic_top_f2s0_bridge_en(vind->id, 1, vinc->tdm_rx_sel);
+#if IS_ENABLED(CONFIG_TDM_OFFLINE_HANDLE_RAW)
+					while (!list_empty(&tdm->rx_done[tdm_rx->id])) {
+						buf = list_entry(tdm->rx_done[tdm_rx->id].next, struct tdm_buffer, list);
+						buf->state = TDMSTAT_TX_SET;
+						list_move_tail(&buf->list, &tdm->rx_active[tdm_rx->id]);
+					}
+
+					for (j = 0; j < tdm_rx->buf_cnt; j++) {
+						buf = list_entry(tdm->rx_active[tdm_rx->id].next, struct tdm_buffer, list);
+						if (buf->id != 0) {
+							list_del(&buf->list);
+							list_add_tail(&buf->list, &tdm->rx_active[tdm_rx->id]);
+						} else
 							break;
-						usleep_range(500, 510);
-
-						if (i >= 199)
-							vin_warn("%s parser%d wait:%d/2 ms to close!\n", __func__, csi->id, i);
 					}
+#endif
+					csic_tdm_rx_enable(tdm->id, vinc->tdm_rx_sel);
+					csic_tdm_rx_cap_enable(tdm->id, vinc->tdm_rx_sel);
+					tdm_rx = &tdm->tdm_rx[vinc->tdm_rx_sel];
+					if (tdm_rx->ws.wdr_mode == ISP_DOL_WDR_MODE) {
+						csic_tdm_rx_enable(tdm->id, vinc->tdm_rx_sel + 1);
+						csic_tdm_rx_cap_enable(tdm->id, vinc->tdm_rx_sel + 1);
+					} else if (tdm_rx->ws.wdr_mode == ISP_3FDOL_WDR_MODE) {
+						csic_tdm_rx_enable(tdm->id, vinc->tdm_rx_sel + 1);
+						csic_tdm_rx_cap_enable(tdm->id, vinc->tdm_rx_sel + 1);
+						csic_tdm_rx_enable(tdm->id, vinc->tdm_rx_sel + 2);
+						csic_tdm_rx_cap_enable(tdm->id, vinc->tdm_rx_sel + 2);
+					}
+					csic_prs_enable(vinc->csi_sel);
+
+					csi = container_of(vinc->vid_cap.pipe.sd[VIN_IND_CSI], struct csi_dev, subdev);
+					csic_prs_capture_start(vinc->csi_sel, csi->bus_info.ch_total_num, &mode);
+					reset_flag = 0;
 				}
-				csic_prs_disable(vinc->csi_sel);
-				//csic_isp_bridge_disable(0);
-
-				csic_tdm_rx_disable(tdm->id, vinc->tdm_rx_sel);
-				csic_tdm_rx_cap_disable(tdm->id, vinc->tdm_rx_sel);
-				vin_print("%s:workqueue tdm_rx%d reset!!!, isp frame count is %d\n", __func__, vinc->tdm_rx_sel, isp->isp_frame_number);
-				tdm_rx = &tdm->tdm_rx[vinc->tdm_rx_sel];
-				if (tdm_rx->ws.wdr_mode == ISP_DOL_WDR_MODE) {
-					csic_tdm_rx_disable(tdm->id, vinc->tdm_rx_sel + 1);
-					csic_tdm_rx_cap_disable(tdm->id, vinc->tdm_rx_sel + 1);
-					vin_print("%s:tdm_rx%d reset!!!\n", __func__, vinc->tdm_rx_sel + 1);
-				} else if (tdm_rx->ws.wdr_mode == ISP_3FDOL_WDR_MODE) {
-					csic_tdm_rx_disable(tdm->id, vinc->tdm_rx_sel + 1);
-					csic_tdm_rx_cap_disable(tdm->id, vinc->tdm_rx_sel + 1);
-					csic_tdm_rx_disable(tdm->id, vinc->tdm_rx_sel + 2);
-					csic_tdm_rx_cap_disable(tdm->id, vinc->tdm_rx_sel + 2);
-					vin_print("%s:tdm_rx%d && tdm_rx%d reset!!!\n", __func__, vinc->tdm_rx_sel + 1, vinc->tdm_rx_sel + 2);
-				}
-
-				bsp_isp_clr_irq_status(isp->id, ISP_IRQ_EN_ALL);
-				bsp_isp_capture_stop(isp->id);
-
-				reset_flag = 0;
-			}
-
-			vipp_chn_cap_disable(vinc->vipp_sel);
-
-			//csic_dma_int_clear_status(vinc->vipp_sel, DMA_INT_ALL);
-			//csic_dma_top_disable(vinc->vipp_sel);
-		}
-	}
-
-	usleep_range(5000, 5200);
-
-	/*****************start*******************/
-	reset_flag = 1;
-	for (i = 0; i < VIN_MAX_DEV; i++) {
-		if (vind->vinc[i] == NULL)
-			continue;
-		if (!vin_streaming(&vind->vinc[i]->vid_cap))
-			continue;
-		if (!tdm->tdm_rx_reset[vind->vinc[i]->tdm_rx_sel])
-			continue;
-
-		tdm_rx = &tdm->tdm_rx[vind->vinc[i]->tdm_rx_sel];
-
-		if (vind->vinc[i]->tdm_rx_sel == tdm_rx->id) {
-			vinc = vind->vinc[i];
-
-			//csic_dma_top_enable(vinc->vipp_sel);
-
-			vipp_chn_cap_enable(vinc->vipp_sel);
-			vinc->vin_status.frame_cnt = 0;
-			vinc->vin_status.lost_cnt = 0;
-
-			if (reset_flag) {
-				isp = container_of(vinc->vid_cap.pipe.sd[VIN_IND_ISP], struct isp_dev, subdev);
-				bsp_isp_set_para_ready(isp->id, PARA_READY);
-				bsp_isp_capture_start(isp->id);
-				isp->isp_frame_number = 0;
-
-				//csic_isp_bridge_enable(0);
-
-				csic_tdm_rx_enable(tdm->id, vinc->tdm_rx_sel);
-				csic_tdm_rx_cap_enable(tdm->id, vinc->tdm_rx_sel);
-				tdm_rx = &tdm->tdm_rx[vinc->tdm_rx_sel];
-				if (tdm_rx->ws.wdr_mode == ISP_DOL_WDR_MODE) {
-					csic_tdm_rx_enable(tdm->id, vinc->tdm_rx_sel + 1);
-					csic_tdm_rx_cap_enable(tdm->id, vinc->tdm_rx_sel + 1);
-				} else if (tdm_rx->ws.wdr_mode == ISP_3FDOL_WDR_MODE) {
-					csic_tdm_rx_enable(tdm->id, vinc->tdm_rx_sel + 1);
-					csic_tdm_rx_cap_enable(tdm->id, vinc->tdm_rx_sel + 1);
-					csic_tdm_rx_enable(tdm->id, vinc->tdm_rx_sel + 2);
-					csic_tdm_rx_cap_enable(tdm->id, vinc->tdm_rx_sel + 2);
-				}
-				csic_prs_enable(vinc->csi_sel);
-
-				csi = container_of(vinc->vid_cap.pipe.sd[VIN_IND_CSI], struct csi_dev, subdev);
-				csic_prs_capture_start(vinc->csi_sel, csi->bus_info.ch_total_num, &mode);
-				reset_flag = 0;
 			}
 		}
 	}
-	mutex_unlock(&vind->media_dev.graph_mutex);
 
 	spin_lock_irqsave(&tdm->slock, flags);
-	if (vinc) {
-		tdm->tdm_rx_reset[vinc->tdm_rx_sel] = 0;
-		tdm_rx = &tdm->tdm_rx[vinc->tdm_rx_sel];
+	for (k = 0; k < TDM_RX_NUM; k++) {
+		if (!tdm->tdm_rx_reset[k])
+			continue;
+		tdm->tdm_rx_reset[k] = 0;
+		tdm_rx = &tdm->tdm_rx[k];
 		if (tdm_rx->ws.wdr_mode == ISP_DOL_WDR_MODE) {
-			tdm->tdm_rx_reset[vinc->tdm_rx_sel + 1] = 0;
+			tdm->tdm_rx_reset[k + 1] = 0;
 		} else if (tdm_rx->ws.wdr_mode == ISP_3FDOL_WDR_MODE) {
-			tdm->tdm_rx_reset[vinc->tdm_rx_sel + 1] = 0;
-			tdm->tdm_rx_reset[vinc->tdm_rx_sel + 2] = 0;
+			tdm->tdm_rx_reset[k + 1] = 0;
+			tdm->tdm_rx_reset[k + 2] = 0;
 		}
 	}
+	tdm->tdm_task_resetting_flag = false;
 
 	if (tdm->work_mode == TDM_ONLINE && need_ve_callback) {
 		vinc = vind->vinc[0];
@@ -1892,12 +3021,13 @@ static void __sunxi_tdm_reset_v2_handle(struct work_struct *work)
 			vinc->vid_cap.online_csi_reset_callback(vinc->id);
 	}
 	spin_unlock_irqrestore(&tdm->slock, flags);
+	mutex_unlock(&vind->media_dev.graph_mutex);
 }
 #endif
 
 static void __sunxi_tdm_reset(struct tdm_dev *tdm)
 {
-#ifndef TDM_V200
+#if !defined TDM_V200 && !defined TDM_V230
 	struct tdm_rx_dev *tdm_rx;
 	struct vin_md *vind = dev_get_drvdata(tdm->tdm_rx[0].subdev.v4l2_dev->dev);
 	struct vin_core *vinc = NULL;
@@ -1924,7 +3054,14 @@ static void __sunxi_tdm_reset(struct tdm_dev *tdm)
 
 				if (flags) {
 					csic_prs_capture_stop(vinc->csi_sel);
-
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW22)
+					csic_prs_disable(vinc->csi_sel);
+					if (vinc->isp_sel == 1) {
+						csic_top_f2s1_bridge_en(vind->id, 0, vinc->tdm_rx_sel);
+					} else {
+						csic_top_f2s0_bridge_en(vind->id, 0, vinc->tdm_rx_sel);
+					}
+#endif
 					csic_tdm_int_clear_status(tdm->id, TDM_INT_ALL);
 					csic_tdm_rx_cap_disable(tdm->id, tdm_rx->id);
 					csic_tdm_rx_disable(tdm->id, tdm_rx->id);
@@ -1933,23 +3070,36 @@ static void __sunxi_tdm_reset(struct tdm_dev *tdm)
 					csic_tdm_top_disable(tdm->id);
 
 					bsp_isp_clr_irq_status(vinc->isp_sel, ISP_IRQ_EN_ALL);
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW22)
+					for (w = 0; w < VIN_VIR_ISP; w++)
+#else
 					for (w = 0; w < VIN_MAX_ISP; w++)
+#endif
 						bsp_isp_enable(w, 0);
 					bsp_isp_capture_stop(vinc->isp_sel);
 				}
+#if defined VIPP_213
+				vipp_chn_cap_disable(vinc->vipp_sel);
+#else
 				vipp_disable(vinc->vipp_sel);
 				vipp_top_clk_en(vinc->vipp_sel, 0);
-				csic_dma_int_clear_status(vinc->vipp_sel, DMA_INT_ALL);
-				csic_dma_top_disable(vinc->vipp_sel);
+#endif
+#if defined CSIC_DMA_VER_150_000
+				csic_dma_disable(vinc->id);
+#else
+				csic_dma_int_clear_status(vinc->id, DMA_INT_ALL);
+				csic_dma_top_disable(vinc->id);
+#endif
 
+#if !IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 				if (flags) {
 					csic_prs_disable(vinc->csi_sel);
 					csic_isp_bridge_disable(0);
 				}
+#endif
 			}
 		}
 	}
-
 	/*****************start*******************/
 	for (i = 0; i < VIN_MAX_DEV; i++) {
 		if (vind->vinc[i] == NULL)
@@ -1963,20 +3113,37 @@ static void __sunxi_tdm_reset(struct tdm_dev *tdm)
 			if (vind->vinc[i]->tdm_rx_sel == tdm->tdm_rx[j].id) {
 				vinc = vind->vinc[i];
 				tdm_rx = &tdm->tdm_rx[j];
-
-				csic_dma_top_enable(vinc->vipp_sel);
+#if defined CSIC_DMA_VER_150_000
+				csic_dma_enable(vinc->id);
+#else
+				csic_dma_top_enable(vinc->id);
+#endif
+#if defined VIPP_213
+				vipp_chn_cap_enable(vinc->vipp_sel);
+#else
 				vipp_top_clk_en(vinc->vipp_sel, 1);
 				vipp_enable(vinc->vipp_sel);
+#endif
 				vinc->vin_status.frame_cnt = 0;
 				vinc->vin_status.lost_cnt = 0;
 
 				if (flags) {
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW22)
+					for (w = 0; w < VIN_VIR_ISP; w++)
+#else
 					for (w = 0; w < VIN_MAX_ISP; w++)
+#endif
 						bsp_isp_enable(w, 1);
 					bsp_isp_capture_start(vinc->isp_sel);
-
+#if !IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 					csic_isp_bridge_enable(0);
-
+#else
+					if (vinc->isp_sel == 1) {
+						csic_top_f2s1_bridge_en(vind->id, 1, vinc->tdm_rx_sel);
+					} else {
+						csic_top_f2s0_bridge_en(vind->id, 1, vinc->tdm_rx_sel);
+					}
+#endif
 					csic_tdm_top_enable(tdm->id);
 					csic_tdm_enable(tdm->id);
 					csic_tdm_tx_cap_enable(tdm->id);
@@ -1990,7 +3157,7 @@ static void __sunxi_tdm_reset(struct tdm_dev *tdm)
 		}
 	}
 
-#else /* else TDM_V200 */
+#else /* else TDM_V200 or TDM_V230 */
 #if VIN_FALSE
 	struct tdm_rx_dev *tdm_rx;
 	struct vin_md *vind = dev_get_drvdata(tdm->tdm_rx[0].subdev.v4l2_dev->dev);
@@ -2073,7 +3240,7 @@ static void __sunxi_tdm_reset(struct tdm_dev *tdm)
 
 static void tdm_rx_set_reset(struct tdm_dev *tdm, unsigned int rx_id)
 {
-#ifdef TDM_V200
+#if defined TDM_V200 || defined TDM_V230
 	if (tdm->work_mode == TDM_ONLINE)
 		return;
 	if (rx_id == 0) {
@@ -2095,6 +3262,8 @@ static void tdm_rx_set_reset(struct tdm_dev *tdm, unsigned int rx_id)
 		else
 			tdm->tdm_rx_reset[3] = 1;
 	}
+#else
+       tdm->tdm_rx_reset[rx_id] = 1;
 #endif
 }
 
@@ -2103,8 +3272,14 @@ static irqreturn_t tdm_isr(int irq, void *priv)
 	struct tdm_dev *tdm = (struct tdm_dev *)priv;
 	struct tdm_int_status status;
 	__maybe_unused unsigned int hb_min = 0xffff, hb_max = 0;
+	__maybe_unused struct tdm_buffer *buf = NULL;
 	unsigned int width = 0, height = 0;
 	unsigned long flags;
+	__maybe_unused bool reset_task_flag = 0;
+	__maybe_unused static int reset_task_num;
+	__maybe_unused unsigned int i;
+	__maybe_unused int tx_remain;
+
 
 	if (tdm->stream_cnt == 0) {
 		csic_tdm_int_clear_status(tdm->id, TDM_INT_ALL);
@@ -2128,7 +3303,7 @@ static irqreturn_t tdm_isr(int irq, void *priv)
 			csic_tdm_internal_clear_status0(tdm->id, RX1_FRM_LOST_PD);
 			tdm_rx_set_reset(tdm, 1);
 		}
-#ifdef TDM_V200
+#if defined TDM_V200 || defined TDM_V230
 		if (csic_tdm_internal_get_status0(tdm->id, RX2_FRM_LOST_PD)) {
 			vin_err("tdm%d rx2 frame lost!\n", tdm->id);
 			csic_tdm_internal_clear_status0(tdm->id, RX2_FRM_LOST_PD);
@@ -2139,7 +3314,7 @@ static irqreturn_t tdm_isr(int irq, void *priv)
 			csic_tdm_internal_clear_status0(tdm->id, RX3_FRM_LOST_PD);
 			tdm_rx_set_reset(tdm, 3);
 		}
-		schedule_work(&tdm->tdm_reset_task);
+		reset_task_flag = 1;
 #endif
 		__sunxi_tdm_reset(tdm);
 	}
@@ -2158,7 +3333,7 @@ static irqreturn_t tdm_isr(int irq, void *priv)
 			csic_tdm_internal_clear_status0(tdm->id, RX1_FRM_ERR_PD);
 			tdm_rx_set_reset(tdm, 1);
 		}
-#ifdef TDM_V200
+#if defined TDM_V200 || defined TDM_V230
 		if (csic_tdm_internal_get_status0(tdm->id, RX2_FRM_ERR_PD)) {
 			csic_tdm_rx_get_size(tdm->id, 0, &width, &height);
 			vin_err("tdm%d rx2 frame error! width is %d, height is %d\n", tdm->id, width, height);
@@ -2171,7 +3346,7 @@ static irqreturn_t tdm_isr(int irq, void *priv)
 			csic_tdm_internal_clear_status0(tdm->id, RX3_FRM_ERR_PD);
 			tdm_rx_set_reset(tdm, 3);
 		}
-		schedule_work(&tdm->tdm_reset_task);
+		reset_task_flag = 1;
 #endif
 		__sunxi_tdm_reset(tdm);
 	}
@@ -2188,7 +3363,7 @@ static irqreturn_t tdm_isr(int irq, void *priv)
 			csic_tdm_internal_clear_status0(tdm->id, RX1_BTYPE_ERR_PD);
 			tdm_rx_set_reset(tdm, 1);
 		}
-#ifdef TDM_V200
+#if defined TDM_V200 || defined TDM_V230
 		if (csic_tdm_internal_get_status0(tdm->id, RX2_BTYPE_ERR_PD)) {
 			vin_err("tdm%d rx2 btype error!\n", tdm->id);
 			csic_tdm_internal_clear_status0(tdm->id, RX2_BTYPE_ERR_PD);
@@ -2199,7 +3374,7 @@ static irqreturn_t tdm_isr(int irq, void *priv)
 			csic_tdm_internal_clear_status0(tdm->id, RX3_BTYPE_ERR_PD);
 			tdm_rx_set_reset(tdm, 3);
 		}
-		schedule_work(&tdm->tdm_reset_task);
+		reset_task_flag = 1;
 #endif
 		__sunxi_tdm_reset(tdm);
 	}
@@ -2216,7 +3391,7 @@ static irqreturn_t tdm_isr(int irq, void *priv)
 			csic_tdm_internal_clear_status0(tdm->id, RX1_BUF_FULL_PD);
 			tdm_rx_set_reset(tdm, 1);
 		}
-#ifdef TDM_V200
+#if defined TDM_V200 || defined TDM_V230
 		if (csic_tdm_internal_get_status0(tdm->id, RX2_BUF_FULL_PD)) {
 			vin_err("tdm%d rx2 buffer full!\n", tdm->id);
 			csic_tdm_internal_clear_status0(tdm->id, RX2_BUF_FULL_PD);
@@ -2227,12 +3402,17 @@ static irqreturn_t tdm_isr(int irq, void *priv)
 			csic_tdm_internal_clear_status0(tdm->id, RX3_BUF_FULL_PD);
 			tdm_rx_set_reset(tdm, 3);
 		}
-		schedule_work(&tdm->tdm_reset_task);
+#if defined TDM_V200
+		reset_task_flag = 1;
 #endif
+#endif
+
+#if !defined TDM_V230
 		__sunxi_tdm_reset(tdm);
+#endif
 	}
 
-#ifndef TDM_V200
+#if !defined TDM_V200 && !defined TDM_V230
 	if (status.rx_comp_err) {
 		csic_tdm_int_clear_status(tdm->id, RX_COMP_ERR_INT_EN);
 		if (csic_tdm_internal_get_status1(tdm->id, RX0_COMP_ERR_PD)) {
@@ -2261,7 +3441,7 @@ static irqreturn_t tdm_isr(int irq, void *priv)
 			csic_tdm_internal_clear_status1(tdm->id, RX1_HB_SHORT_PD);
 			tdm_rx_set_reset(tdm, 1);
 		}
-#ifdef TDM_V200
+#if defined TDM_V200 || defined TDM_V230
 		if (csic_tdm_internal_get_status1(tdm->id, RX2_HB_SHORT_PD)) {
 			csic_tdm_rx_get_hblank(tdm->id, 2, &hb_min, &hb_max);
 			vin_err("tdm%d rx2 hblank short! min is %d, max is %d\n", tdm->id, hb_min, hb_max);
@@ -2274,7 +3454,7 @@ static irqreturn_t tdm_isr(int irq, void *priv)
 			csic_tdm_internal_clear_status1(tdm->id, RX3_HB_SHORT_PD);
 			tdm_rx_set_reset(tdm, 3);
 		}
-		schedule_work(&tdm->tdm_reset_task);
+		reset_task_flag = 1;
 #endif
 		__sunxi_tdm_reset(tdm);
 	}
@@ -2291,7 +3471,7 @@ static irqreturn_t tdm_isr(int irq, void *priv)
 			csic_tdm_internal_clear_status1(tdm->id, RX1_FIFO_FULL_PD);
 			tdm_rx_set_reset(tdm, 1);
 		}
-#ifdef TDM_V200
+#if defined TDM_V200 || defined TDM_V230
 		if (csic_tdm_internal_get_status1(tdm->id, RX2_FIFO_FULL_PD)) {
 			vin_err("tdm%d rx2 write DMA fifo overflow!\n", tdm->id);
 			csic_tdm_internal_clear_status1(tdm->id, RX2_FIFO_FULL_PD);
@@ -2318,47 +3498,30 @@ static irqreturn_t tdm_isr(int irq, void *priv)
 			vin_err("tdm%d rx1 write line number fifo overflow from para_cfg!\n", tdm->id);
 			csic_tdm_internal_clear_status1(tdm->id, RX1_HEAD_FIFO_FULL_1);
 		}
-		schedule_work(&tdm->tdm_reset_task);
+#if defined TDM_V230
+		if (csic_tdm_internal_get_status1(tdm->id, RX2_HEAD_FIFO_FULL_0)) {
+			vin_err("tdm%d rx2 write line number fifo overflow from bandwidth!\n", tdm->id);
+			csic_tdm_internal_clear_status1(tdm->id, RX2_HEAD_FIFO_FULL_0);
+		}
+		if (csic_tdm_internal_get_status1(tdm->id, RX2_HEAD_FIFO_FULL_1)) {
+			vin_err("tdm%d rx2 write line number fifo overflow from para_cfg!\n", tdm->id);
+			csic_tdm_internal_clear_status1(tdm->id, RX2_HEAD_FIFO_FULL_1);
+		}
+		if (csic_tdm_internal_get_status1(tdm->id, RX3_HEAD_FIFO_FULL_0)) {
+			vin_err("tdm%d rx3 write line number fifo overflow from bandwidth!\n", tdm->id);
+			csic_tdm_internal_clear_status1(tdm->id, RX3_HEAD_FIFO_FULL_0);
+		}
+		if (csic_tdm_internal_get_status1(tdm->id, RX3_HEAD_FIFO_FULL_1)) {
+			vin_err("tdm%d rx3 write line number fifo overflow from para_cfg!\n", tdm->id);
+			csic_tdm_internal_clear_status1(tdm->id, RX3_HEAD_FIFO_FULL_1);
+		}
+#endif
+		reset_task_flag = 1;
 #endif
 		__sunxi_tdm_reset(tdm);
 	}
 
-#ifdef TDM_V200
-
-	if (status.rx0_frm_done) {
-		csic_tdm_int_clear_status(tdm->id, RX0_FRM_DONE_INT_EN);
-		vin_log(VIN_LOG_TDM, "tdm%d rx0 frame done!\n", tdm->id);
-#if IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN60IW1) || IS_ENABLED(CONFIG_ARCH_SUN60IW2) || IS_ENABLED(CONFIG_ARCH_SUN300IW1)
-		tdm->rx_stream_cnt[0]++;
-		if (tdm->rx_stream_cnt[0] > 100) {
-			csic_tdm_int_disable(tdm->id, RX0_FRM_DONE_INT_EN);
-			csic_tdm_int_enable(tdm->id, SPEED_DN_FIFO_FULL_INT_EN | SPEED_DN_FIFO_FULL_INT_EN);
-		}
-#endif
-	}
-	if (status.rx1_frm_done) {
-		csic_tdm_int_clear_status(tdm->id, RX1_FRM_DONE_INT_EN);
-		vin_log(VIN_LOG_TDM, "tdm%d rx1 frame done!\n", tdm->id);
-#if IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN60IW1) || IS_ENABLED(CONFIG_ARCH_SUN60IW2) || IS_ENABLED(CONFIG_ARCH_SUN300IW1)
-		tdm->rx_stream_cnt[1]++;
-		if (tdm->rx_stream_cnt[1] > 100) {
-			csic_tdm_int_disable(tdm->id, RX1_FRM_DONE_INT_EN);
-			csic_tdm_int_enable(tdm->id, SPEED_DN_FIFO_FULL_INT_EN | SPEED_DN_FIFO_FULL_INT_EN);
-		}
-#endif
-	}
-	if (status.rx2_frm_done) {
-		csic_tdm_int_clear_status(tdm->id, RX2_FRM_DONE_INT_EN);
-		vin_log(VIN_LOG_TDM, "tdm%d rx2 frame done!\n", tdm->id);
-	}
-	if (status.rx3_frm_done) {
-		csic_tdm_int_clear_status(tdm->id, RX3_FRM_DONE_INT_EN);
-		vin_log(VIN_LOG_TDM, "tdm%d rx3 frame done!\n", tdm->id);
-	}
-	if (status.tx_frm_done) {
-		csic_tdm_int_clear_status(tdm->id, TX_FRM_DONE_INT_EN);
-		vin_log(VIN_LOG_TDM, "tdm%d tx frame done!\n", tdm->id);
-	}
+#if defined TDM_V200 || defined TDM_V230
 	if (status.rx_chn_cfg_mode) {
 		csic_tdm_int_clear_status(tdm->id, RX_CHN_CFG_MODE_INT_EN);
 		vin_log(VIN_LOG_TDM, "tdm%d rx chn cfg!\n", tdm->id);
@@ -2368,6 +3531,7 @@ static irqreturn_t tdm_isr(int irq, void *priv)
 		vin_log(VIN_LOG_TDM, "tdm%d tx chn cfg!\n", tdm->id);
 	}
 
+#if !defined(CONFIG_ARCH_SUN65IW1)
 	if (status.speed_dn_hsync) {
 		csic_tdm_int_clear_status(tdm->id, SPEED_DN_HSYNC_INT_EN);
 		vin_err("tdm%d speed dn hsync!\n", tdm->id);
@@ -2377,6 +3541,7 @@ static irqreturn_t tdm_isr(int irq, void *priv)
 		csic_tdm_int_clear_status(tdm->id, SPEED_DN_FIFO_FULL_INT_EN);
 		vin_err("tdm%d speed dn fifo full!\n", tdm->id);
 	}
+#endif
 
 	if (status.tx_fifo_under) {
 		csic_tdm_int_clear_status(tdm->id, TDM_FIFO_UNDER_INT_EN);
@@ -2407,26 +3572,288 @@ static irqreturn_t tdm_isr(int irq, void *priv)
 			csic_tdm_internal_clear_status1(tdm->id, LBC1_ERROR);
 			tdm_rx_set_reset(tdm, 1);
 		}
-		schedule_work(&tdm->tdm_reset_task);
+#if defined TDM_V230
+		if (csic_tdm_internal_get_status1(tdm->id, LBC2_ERROR)) {
+			vin_err("tdm%d rx2 lbc error!\n", tdm->id);
+			csic_tdm_internal_clear_status1(tdm->id, LBC2_ERROR);
+			tdm_rx_set_reset(tdm, 2);
+		}
+		if (csic_tdm_internal_get_status1(tdm->id, LBC3_ERROR)) {
+			vin_err("tdm%d rx3 lbc error!\n", tdm->id);
+			csic_tdm_internal_clear_status1(tdm->id, LBC3_ERROR);
+			tdm_rx_set_reset(tdm, 3);
+		}
+#else
+		reset_task_flag = 1;
+#endif
 	}
 
+#if !defined(CONFIG_ARCH_SUN65IW1) && !defined TDM_V230
 	if (status.tdm_lbc_fifo_full) {
 		csic_tdm_int_clear_status(tdm->id, RDM_LBC_FIFO_FULL_INT_EN);
 		vin_err("tdm%d lbc fifo overflow!\n", tdm->id);
-		schedule_work(&tdm->tdm_reset_task);
+		reset_task_flag = 1;
 	}
-#else
-	if (status.rx_comp_err) {
-		csic_tdm_int_clear_status(tdm->id, RX_COMP_ERR_INT_EN);
-		if (csic_tdm_internal_get_status1(tdm->id, RX0_COMP_ERR_PD)) {
-			vin_err("tdm%d rx0 compose error!\n", tdm->id);
-			csic_tdm_internal_clear_status1(tdm->id, RX0_COMP_ERR_PD);
+#endif
+
+#if IS_ENABLED(CONFIG_ARCH_SUN65IW1) || defined TDM_V230
+	if (status.rx0_frm_start) {
+		csic_tdm_int_clear_status(tdm->id, RX0_FRM_START_INT_EN);
+		vin_log(VIN_LOG_TDM, "tdm%d rx0 frame start!\n", tdm->id);
+	}
+	if (status.rx1_frm_start) {
+		csic_tdm_int_clear_status(tdm->id, RX1_FRM_START_INT_EN);
+		vin_log(VIN_LOG_TDM, "tdm%d rx1 frame start!\n", tdm->id);
+	}
+	if (status.rx2_frm_start) {
+		csic_tdm_int_clear_status(tdm->id, RX2_FRM_START_INT_EN);
+		vin_log(VIN_LOG_TDM, "tdm%d rx2 frame start!\n", tdm->id);
+	}
+	if (status.rx3_frm_start) {
+		csic_tdm_int_clear_status(tdm->id, RX3_FRM_START_INT_EN);
+		vin_log(VIN_LOG_TDM, "tdm%d rx3 frame start!\n", tdm->id);
+	}
+
+	if (status.rx0_n_line_start) {
+		csic_tdm_int_clear_status(tdm->id, RX0_N_LINE_START_INT_EN);
+		vin_log(VIN_LOG_TDM, "tdm%d rx0 N line start!\n", tdm->id);
+	}
+	if (status.rx1_n_line_start) {
+		csic_tdm_int_clear_status(tdm->id, RX1_N_LINE_START_INT_EN);
+		vin_log(VIN_LOG_TDM, "tdm%d rx1 N line start!\n", tdm->id);
+	}
+	if (status.rx2_n_line_start) {
+		csic_tdm_int_clear_status(tdm->id, RX2_N_LINE_START_INT_EN);
+		vin_log(VIN_LOG_TDM, "tdm%d rx2 N line start!\n", tdm->id);
+	}
+	if (status.rx3_n_line_start) {
+		csic_tdm_int_clear_status(tdm->id, RX3_N_LINE_START_INT_EN);
+		vin_log(VIN_LOG_TDM, "tdm%d rx3 N line start!\n", tdm->id);
+	}
+#endif
+
+#if defined TDM_V230
+	if (status.tdm_lbd_err) {
+		csic_tdm_int_clear_status(tdm->id, TDM_LBD_ERR_INT_EN);
+		if (csic_tdm_internal_get_status2(tdm->id, TX_LBD0_ERR_PD)) {
+			vin_err("tdm%d tx lbd0 error!\n", tdm->id);
+			csic_tdm_internal_clear_status2(tdm->id, TX_LBD0_ERR_PD);
 		}
-		if (csic_tdm_internal_get_status1(tdm->id, RX1_COMP_ERR_PD)) {
-			vin_err("tdm%d rx1 compose error!\n", tdm->id);
-			csic_tdm_internal_clear_status1(tdm->id, RX1_COMP_ERR_PD);
+		if (csic_tdm_internal_get_status2(tdm->id, TX_LBD1_ERR_PD)) {
+			vin_err("tdm%d tx lbd1 error!\n", tdm->id);
+			csic_tdm_internal_clear_status2(tdm->id, TX_LBD1_ERR_PD);
 		}
-		__sunxi_tdm_reset(tdm);
+		if (csic_tdm_internal_get_status2(tdm->id, TX_LBD2_ERR_PD)) {
+			vin_err("tdm%d tx lbd2 error!\n", tdm->id);
+			csic_tdm_internal_clear_status2(tdm->id, TX_LBD2_ERR_PD);
+		}
+		reset_task_flag = 1;
+	}
+
+	if (status.awnn_id_back_err) {
+		csic_tdm_int_clear_status(tdm->id, AWNN_ID_BACK_ERR_INT_EN);
+		vin_err("tdm%d awnn return id error!\n", tdm->id);
+	}
+
+	if (status.rx_lbc_mux_conf_time_out) {
+		csic_tdm_int_clear_status(tdm->id, RX_LBC_MUX_CONF_TIME_OUT_INT_EN);
+		vin_err("tdm%d lbc time division multiplex conflict time out!\n", tdm->id);
+		if (csic_tdm_internal_get_status1(tdm->id, RX0_LBC_MUX_CONF_PD)) {
+			vin_err("tdm%d lbc time division multiplex conflict by rx0 using!\n", tdm->id);
+			csic_tdm_internal_clear_status1(tdm->id, RX0_LBC_MUX_CONF_PD);
+		}
+		if (csic_tdm_internal_get_status1(tdm->id, RX1_LBC_MUX_CONF_PD)) {
+			vin_err("tdm%d lbc time division multiplex conflict by rx1 using!\n", tdm->id);
+			csic_tdm_internal_clear_status1(tdm->id, RX1_LBC_MUX_CONF_PD);
+		}
+		if (csic_tdm_internal_get_status1(tdm->id, RX2_LBC_MUX_CONF_PD)) {
+			vin_err("tdm%d lbc time division multiplex conflict by rx2 using!\n", tdm->id);
+			csic_tdm_internal_clear_status1(tdm->id, RX2_LBC_MUX_CONF_PD);
+		}
+		if (csic_tdm_internal_get_status1(tdm->id, RX3_LBC_MUX_CONF_PD)) {
+			vin_err("tdm%d lbc time division multiplex conflict by rx3 using!\n", tdm->id);
+			csic_tdm_internal_clear_status1(tdm->id, RX3_LBC_MUX_CONF_PD);
+		}
+	}
+
+	if (status.awnn_id_frm_done) {
+		csic_tdm_int_clear_status(tdm->id, AWNN_ID_FRM_DONE_INT_EN);
+		/* vin_print("tdm%d awnn id frame finish!\n", tdm->id); */
+		if (csic_tdm_internal_get_status2(tdm->id, AWNN_ID0_FRM_DONE_PD)) {
+			vin_print("tdm%d awnn id0 frame finish!\n", tdm->id);
+			csic_tdm_internal_clear_status2(tdm->id, AWNN_ID0_FRM_DONE_PD);
+		}
+		if (csic_tdm_internal_get_status2(tdm->id, AWNN_ID1_FRM_DONE_PD)) {
+			vin_print("tdm%d awnn id1 frame finish!\n", tdm->id);
+			csic_tdm_internal_clear_status2(tdm->id, AWNN_ID1_FRM_DONE_PD);
+		}
+		if (csic_tdm_internal_get_status2(tdm->id, AWNN_ID2_FRM_DONE_PD)) {
+			vin_print("tdm%d awnn id2 frame finish!\n", tdm->id);
+			csic_tdm_internal_clear_status2(tdm->id, AWNN_ID2_FRM_DONE_PD);
+		}
+		if (csic_tdm_internal_get_status2(tdm->id, AWNN_ID3_FRM_DONE_PD)) {
+			vin_print("tdm%d awnn id3 frame finish!\n", tdm->id);
+			csic_tdm_internal_clear_status2(tdm->id, AWNN_ID3_FRM_DONE_PD);
+		}
+	}
+
+	if (status.rx_2to1_fifo_ov) {
+		csic_tdm_int_clear_status(tdm->id, RX_2TO1_FIFO_OV_INT_EN);
+		vin_err("tdm%d rx dual pixel to one pixel overflow!\n", tdm->id);
+		if (csic_tdm_internal_get_status2(tdm->id, RX0_2TO1_FIFO_OV_PD)) {
+			vin_err("tdm%d rx0 dual pixel to one pixel overflow!\n", tdm->id);
+			csic_tdm_internal_clear_status2(tdm->id, RX0_2TO1_FIFO_OV_PD);
+		}
+		if (csic_tdm_internal_get_status2(tdm->id, RX1_2TO1_FIFO_OV_PD)) {
+			vin_err("tdm%d rx1 dual pixel to one pixel overflow!\n", tdm->id);
+			csic_tdm_internal_clear_status2(tdm->id, RX1_2TO1_FIFO_OV_PD);
+		}
+		if (csic_tdm_internal_get_status2(tdm->id, RX2_2TO1_FIFO_OV_PD)) {
+			vin_err("tdm%d rx2 dual pixel to one pixel overflow!\n", tdm->id);
+			csic_tdm_internal_clear_status2(tdm->id, RX2_2TO1_FIFO_OV_PD);
+		}
+		if (csic_tdm_internal_get_status2(tdm->id, RX3_2TO1_FIFO_OV_PD)) {
+			vin_err("tdm%d rx3 dual pixel to one pixel overflow!\n", tdm->id);
+			csic_tdm_internal_clear_status2(tdm->id, RX3_2TO1_FIFO_OV_PD);
+		}
+	}
+
+	if (status.awnn_time_out_by_awnn) {
+		csic_tdm_int_clear_status(tdm->id, AWNN_TIME_OUT_BY_AWNN_INT_EN);
+		vin_err("tdm%d awnn time out statistics by awnn!\n", tdm->id);
+		if (csic_tdm_internal_get_status2(tdm->id, AWNN_ID0_TIME_OUT_BY_AWNN_PD)) {
+			vin_err("tdm%d awnn id0 time out by awnn!\n", tdm->id);
+			csic_tdm_internal_clear_status2(tdm->id, AWNN_ID0_TIME_OUT_BY_AWNN_PD);
+		}
+		if (csic_tdm_internal_get_status2(tdm->id, AWNN_ID1_TIME_OUT_BY_AWNN_PD)) {
+			vin_err("tdm%d awnn id1 time out by awnn!\n", tdm->id);
+			csic_tdm_internal_clear_status2(tdm->id, AWNN_ID1_TIME_OUT_BY_AWNN_PD);
+		}
+		if (csic_tdm_internal_get_status2(tdm->id, AWNN_ID2_TIME_OUT_BY_AWNN_PD)) {
+			vin_err("tdm%d awnn id2 time out by awnn!\n", tdm->id);
+			csic_tdm_internal_clear_status2(tdm->id, AWNN_ID2_TIME_OUT_BY_AWNN_PD);
+		}
+		if (csic_tdm_internal_get_status2(tdm->id, AWNN_ID3_TIME_OUT_BY_AWNN_PD)) {
+			vin_err("tdm%d awnn id3 time out by awnn!\n", tdm->id);
+			csic_tdm_internal_clear_status2(tdm->id, AWNN_ID3_TIME_OUT_BY_AWNN_PD);
+		}
+	}
+
+	if (status.rx_w_addr_exceed) {
+		csic_tdm_int_clear_status(tdm->id, RX_W_ADDR_EXCEED_INT_EN);
+		vin_err("tdm%d rx address write exceed limit!\n", tdm->id);
+		if (csic_tdm_internal_get_status1(tdm->id, EX0_W_ADDR_EXCEED_PD)) {
+			vin_err("tdm%d rx0 address write exceed limit!\n", tdm->id);
+			csic_tdm_internal_clear_status1(tdm->id, EX0_W_ADDR_EXCEED_PD);
+		}
+		if (csic_tdm_internal_get_status1(tdm->id, EX1_W_ADDR_EXCEED_PD)) {
+			vin_err("tdm%d rx1 address write exceed limit!\n", tdm->id);
+			csic_tdm_internal_clear_status1(tdm->id, EX1_W_ADDR_EXCEED_PD);
+		}
+		if (csic_tdm_internal_get_status1(tdm->id, EX2_W_ADDR_EXCEED_PD)) {
+			vin_err("tdm%d rx2 address write exceed limit!\n", tdm->id);
+			csic_tdm_internal_clear_status1(tdm->id, EX2_W_ADDR_EXCEED_PD);
+		}
+		if (csic_tdm_internal_get_status1(tdm->id, EX3_W_ADDR_EXCEED_PD)) {
+			vin_err("tdm%d rx3 address write exceed limit!\n", tdm->id);
+			csic_tdm_internal_clear_status1(tdm->id, EX3_W_ADDR_EXCEED_PD);
+		}
+	}
+
+#endif
+
+	if (status.rx0_frm_done) {
+		csic_tdm_int_clear_status(tdm->id, RX0_FRM_DONE_INT_EN);
+		vin_log(VIN_LOG_TDM, "tdm%d rx0 frame done!\n", tdm->id);
+		/* vin_print("cur time:0x%llx, base time:0x%x, cycle:%d\n", ktime_get_ns(), csic_tdm_rx_get_base_time(tdm->id, 0), csic_tdm_rx_get_cycle(tdm->id, 0)); // for embed time debug */
+#if !IS_ENABLED(CONFIG_TDM_OFFLINE_HANDLE_RAW)
+#if IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) ||\
+	 IS_ENABLED(CONFIG_ARCH_SUN60IW1) || IS_ENABLED(CONFIG_ARCH_SUN60IW2) ||\
+	 IS_ENABLED(CONFIG_ARCH_SUN65IW1)
+		tdm->rx_stream_cnt[0]++;
+		if (tdm->ws.speed_dn_en && tdm->rx_stream_cnt[0] > 100) {
+			csic_tdm_int_disable(tdm->id, RX0_FRM_DONE_INT_EN);
+#if !defined(CONFIG_ARCH_SUN65IW1)
+			csic_tdm_int_enable(tdm->id, SPEED_DN_FIFO_FULL_INT_EN | SPEED_DN_FIFO_FULL_INT_EN);
+#endif
+		}
+#endif
+#else /* IS_ENABLED(CONFIG_TDM_OFFLINE_HANDLE_RAW) */
+		if (tdm->tx_next_id == 0xff) {
+			tdm->tx_next_id = 0;
+		}
+		vin_log(VIN_LOG_TDM, "tdm%d rx0 frame done! tx_next_id is %d\n", tdm->id, tdm->tx_next_id);
+		buf = list_entry(tdm->rx_active[0].next, struct tdm_buffer, list);
+		if (buf->state != TDMSTAT_IDLE && buf->state != TDMSTAT_TX_SET) {
+			vin_warn("rx0 buf%d form tx used done, but buf state is %s\n", buf->id, buf->state == TDMSTAT_RX_SET ? "TDMSTAT_TX_SET" : "TDMSTAT_USER_SET");
+		}
+		buf->state = TDMSTAT_RX_SET;
+		list_move_tail(&buf->list, &tdm->rx_done[0]);
+		csic_tdm_tx_cap_disable(tdm->id);
+		isp_tdm_queue_event(&tdm->tdm_rx[0], buf);
+
+		if ((&tdm->rx_active[0]) == tdm->rx_active[0].next->next) {
+			csic_tdm_rx_cap_disable(tdm->id, 0);
+			vin_warn("Only one buffer left for tdm_rx0\n");
+		}
+#endif
+	}
+	if (status.rx1_frm_done) {
+		csic_tdm_int_clear_status(tdm->id, RX1_FRM_DONE_INT_EN);
+		vin_log(VIN_LOG_TDM, "tdm%d rx1 frame done!\n", tdm->id);
+#if !IS_ENABLED(CONFIG_TDM_OFFLINE_HANDLE_RAW)
+#if IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) ||\
+	 IS_ENABLED(CONFIG_ARCH_SUN60IW1) || IS_ENABLED(CONFIG_ARCH_SUN60IW2) ||\
+	 IS_ENABLED(CONFIG_ARCH_SUN65IW1)
+		tdm->rx_stream_cnt[1]++;
+		if (tdm->ws.speed_dn_en && tdm->rx_stream_cnt[1] > 100) {
+			csic_tdm_int_disable(tdm->id, RX1_FRM_DONE_INT_EN);
+#if !defined(CONFIG_ARCH_SUN65IW1)
+			csic_tdm_int_enable(tdm->id, SPEED_DN_FIFO_FULL_INT_EN | SPEED_DN_FIFO_FULL_INT_EN);
+#endif
+		}
+#endif
+#else /* IS_ENABLED(CONFIG_TDM_OFFLINE_HANDLE_RAW) */
+		if (tdm->tx_next_id == 0xff) {
+			tdm->tx_next_id = 1;
+		}
+		vin_log(VIN_LOG_TDM, "tdm%d rx0 frame done! tx_next_id is %d\n", tdm->id, tdm->tx_next_id);
+		buf = list_entry(tdm->rx_active[1].next, struct tdm_buffer, list);
+		if (buf->state != TDMSTAT_IDLE && buf->state != TDMSTAT_TX_SET) {
+			vin_warn("rx0 buf%d form tx used done, but buf state is %s\n", buf->id, buf->state == TDMSTAT_RX_SET ? "TDMSTAT_TX_SET" : "TDMSTAT_USER_SET");
+		}
+		buf->state = TDMSTAT_RX_SET;
+		list_move_tail(&buf->list, &tdm->rx_done[1]);
+		csic_tdm_tx_cap_disable(tdm->id);
+		isp_tdm_queue_event(&tdm->tdm_rx[1], buf);
+
+		if ((&tdm->rx_active[1]) == tdm->rx_active[1].next->next) {
+			csic_tdm_rx_cap_disable(tdm->id, 1);
+			vin_warn("Only one buffer left for tdm_rx1\n");
+		}
+#endif
+	}
+	if (status.rx2_frm_done) {
+		csic_tdm_int_clear_status(tdm->id, RX2_FRM_DONE_INT_EN);
+		vin_log(VIN_LOG_TDM, "tdm%d rx2 frame done!\n", tdm->id);
+	}
+	if (status.rx3_frm_done) {
+		csic_tdm_int_clear_status(tdm->id, RX3_FRM_DONE_INT_EN);
+		vin_log(VIN_LOG_TDM, "tdm%d rx3 frame done!\n", tdm->id);
+	}
+
+	if (status.tx_frm_done) {
+		csic_tdm_int_clear_status(tdm->id, TX_FRM_DONE_INT_EN);
+		tdm->tx_frame_cnt++;
+		vin_log(VIN_LOG_TDM, "tdm%d tx frame done!\n", tdm->id);
+	}
+
+	if (reset_task_flag && !tdm->tdm_task_resetting_flag && reset_task_num >= 10) {
+		tdm->tdm_task_resetting_flag = true;
+		schedule_work(&tdm->tdm_reset_task);
+		reset_task_num = 0;
+	} else {
+		reset_task_num++;
 	}
 #endif
 	spin_unlock_irqrestore(&tdm->slock, flags);
@@ -2457,6 +3884,7 @@ static int tdm_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
 	struct tdm_dev *tdm = NULL;
+	__maybe_unused char name[16];
 	unsigned int i;
 	int ret = 0;
 
@@ -2481,7 +3909,7 @@ static int tdm_probe(struct platform_device *pdev)
 	tdm->pdev = pdev;
 	tdm->stream_cnt = 0;
 
-#ifdef TDM_V200
+#if defined TDM_V200 || defined TDM_V230
 	tdm->work_mode = 0xff;
 	of_property_read_u32(np, "work_mode", &tdm->work_mode);
 	tdm->work_mode = clamp_t(unsigned int, tdm->work_mode, TDM_ONLINE, TDM_OFFLINE);
@@ -2501,13 +3929,14 @@ static int tdm_probe(struct platform_device *pdev)
 			vin_err("failed to get TDM IRQ resource\n");
 			goto unmap;
 		}
-#if !defined CONFIG_VIN_INIT_MELIS
+#if !IS_ENABLED(CONFIG_VIN_INIT_MELIS)
 		ret = request_irq(tdm->irq, tdm_isr, IRQF_SHARED, tdm->pdev->name, tdm);
 		if (ret) {
 			vin_err("tdm%d request tdm failed\n", tdm->id);
 			goto unmap;
 		}
-#if IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN60IW2)
+#if IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) ||\
+	 IS_ENABLED(CONFIG_ARCH_SUN60IW2) || IS_ENABLED(CONFIG_ARCH_SUN65IW1)
 		vin_iommu_en(ISP_IOMMU_MASTER, true);
 #endif
 #else
@@ -2520,7 +3949,16 @@ static int tdm_probe(struct platform_device *pdev)
 			}
 		} else {
 			sprintf(name, "tdm%d", tdm->id);
+#if IS_ENABLED(CONFIG_ARCH_SUN55IW3)
 			rpmsg_notify_add("7130000.e906_rproc", name, tdm_enable_irq, tdm);
+#else
+			of_property_read_string(np, "rpmsg-ser-name", &tdm->rpmsg_ser_name);
+			if (!tdm->rpmsg_ser_name) {
+				vin_err("tdm%d get rpmsg_ser_name falid\n", tdm->id);
+				goto unmap;
+			} else
+				rpmsg_notify_add(tdm->rpmsg_ser_name, name, tdm_enable_irq, tdm);
+#endif
 		}
 #endif
 	}
@@ -2560,7 +3998,18 @@ static int tdm_remove(struct platform_device *pdev)
 	struct tdm_dev *tdm = platform_get_drvdata(pdev);
 	struct v4l2_subdev *sd;
 	unsigned int i;
+	__maybe_unused char name[16];
 
+#if IS_ENABLED(CONFIG_VIN_INIT_MELIS)
+	if (tdm->delay_init) {
+		sprintf(name, "tdm%d", tdm->id);
+#if IS_ENABLED(CONFIG_ARCH_SUN55IW3)
+		rpmsg_notify_del("7130000.e906_rproc", name);
+#else
+		rpmsg_notify_del(tdm->rpmsg_ser_name, name);
+#endif
+	}
+#endif
 	platform_set_drvdata(pdev, NULL);
 
 	if (!tdm->is_empty) {
@@ -2593,6 +4042,19 @@ static struct platform_driver tdm_platform_driver = {
 		.of_match_table = sunxi_tdm_match,
 	}
 };
+
+void sunxi_tdm_sensor_blc(struct v4l2_subdev *sd, struct sensor_blc_offset *blc_ofs)
+{
+#if defined TDM_V230
+	struct tdm_rx_dev *tdm_rx = v4l2_get_subdevdata(sd);
+
+	tdm_rx->rx_aiisp_cfg.rx_blc_ofs.r_offset = clamp(blc_ofs->r_offset, (unsigned short)0, (unsigned short)511);
+	tdm_rx->rx_aiisp_cfg.rx_blc_ofs.g_offset = clamp(blc_ofs->g_offset, (unsigned short)0, (unsigned short)511);
+	tdm_rx->rx_aiisp_cfg.rx_blc_ofs.b_offset = clamp(blc_ofs->b_offset, (unsigned short)0, (unsigned short)511);
+
+	vin_print("sensor blc offset is %d/%d/%d\n", blc_ofs->r_offset, blc_ofs->g_offset, blc_ofs->b_offset);
+#endif
+}
 
 void sunxi_tdm_fps_clk(struct v4l2_subdev *sd, int fps, unsigned int isp_clk, unsigned int vts)
 {

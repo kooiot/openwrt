@@ -13,6 +13,7 @@ source "bsp/drivers/dma/Kconfig"
 source "bsp/drivers/rtc/Kconfig"
 source "bsp/drivers/bus/Kconfig"
 source "bsp/drivers/dumpreg/Kconfig"
+source "bsp/drivers/ddrecc/Kconfig"
 source "bsp/drivers/watchdog/Kconfig"
 source "bsp/drivers/iommu/Kconfig"
 source "bsp/drivers/mbus/Kconfig"
@@ -89,6 +90,7 @@ source "bsp/drivers/dsufreq/Kconfig"
 
 # AMP/XPU
 source "bsp/drivers/amp_timestamp/Kconfig"
+source "bsp/drivers/amp_rsc/Kconfig"
 source "bsp/drivers/msgbox/Kconfig"
 source "bsp/drivers/hwspinlock/Kconfig"
 source "bsp/drivers/remoteproc/Kconfig"
@@ -129,6 +131,12 @@ source "bsp/drivers/sram_ecc/Kconfig"
 
 # CAN
 source "bsp/drivers/can/Kconfig"
+
+# l3 cache
+source "bsp/drivers/l3_cache/Kconfig"
+
+# xenomai
+source "bsp/drivers/xenomai/Kconfig"
 
 # HZHY gpio driver
 source "bsp/drivers/hzhy_gpio/Kconfig"

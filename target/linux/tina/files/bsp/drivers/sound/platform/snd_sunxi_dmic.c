@@ -127,11 +127,10 @@ static int sunxi_dmic_dai_hw_params(struct snd_pcm_substream *substream,
 				    struct snd_soc_dai *dai)
 {
 	struct sunxi_dmic *dmic = snd_soc_dai_get_drvdata(dai);
+	struct sunxi_dmic_dts *dts = &dmic->dts;
 	struct regmap *regmap = dmic->mem.regmap;
 	unsigned int channels;
-	unsigned int channels_en[8] = {
-		0x0001, 0x0003, 0x0007, 0x000f, 0x001f, 0x003f, 0x007f, 0x00ff
-	};
+	unsigned int channels_en;
 	int i;
 
 	SND_LOG_DEBUG("\n");
@@ -186,11 +185,15 @@ static int sunxi_dmic_dai_hw_params(struct snd_pcm_substream *substream,
 	channels = params_channels(params);
 	regmap_update_bits(regmap, SUNXI_DMIC_CH_NUM, 0x7 << DMIC_CH_NUM,
 			   (channels - 1) << DMIC_CH_NUM);
-	regmap_update_bits(regmap, SUNXI_DMIC_EN, 0xFF << DATA_CH_EN,
-			   channels_en[channels - 1] << DATA_CH_EN);
-
-	/* enabled HPF */
-	regmap_write(regmap, SUNXI_DMIC_HPF_CTRL, channels_en[channels - 1]);
+	for (i = 0; i < channels; i++) {
+		channels_en = (dts->rx_chmap >> 4 * i) & 0xf;
+		regmap_update_bits(regmap, SUNXI_DMIC_EN, 0x1 << (DATA_CH_EN + channels_en),
+				   0x1 << (DATA_CH_EN + channels_en));
+		/* enabled HPF */
+		regmap_update_bits(regmap, SUNXI_DMIC_HPF_CTRL,
+				   0x1 << (HPF_DATA0_CHL_EN + channels_en),
+				   0x1 << (HPF_DATA0_CHL_EN + channels_en));
+	}
 
 	/* enable clk after set clk rate */
 	if (snd_dmic_clk_enable(dmic->clk)) {
@@ -297,7 +300,7 @@ static int sunxi_dmic_init(struct sunxi_dmic *dmic)
 {
 	struct sunxi_dmic_dts *dts = &dmic->dts;
 	struct regmap *regmap = dmic->mem.regmap;
-	unsigned int rx_dtime_map;
+	unsigned int rx_dtime_map = 0;
 
 	SND_LOG_DEBUG("\n");
 
@@ -322,11 +325,13 @@ static int sunxi_dmic_init(struct sunxi_dmic *dmic)
 	default:
 		break;
 	}
-	regmap_update_bits(regmap, SUNXI_DMIC_CTR, 0x3 << DMICFDT, rx_dtime_map << DMICFDT);
-	if (dts->rx_dtime)
+
+	if (dts->rx_dtime) {
+		regmap_update_bits(regmap, SUNXI_DMIC_CTR, 0x3 << DMICFDT, rx_dtime_map << DMICFDT);
 		regmap_update_bits(regmap, SUNXI_DMIC_CTR, 0x1 << DMICDFEN, 0x1 << DMICDFEN);
-	else
+	} else {
 		regmap_update_bits(regmap, SUNXI_DMIC_CTR, 0x1 << DMICDFEN, 0x0 << DMICDFEN);
+	}
 
 	/* disable rx_sync_en default */
 	regmap_update_bits(regmap, SUNXI_DMIC_EN, 0x1 << RX_SYNC_EN, 0x0 << RX_SYNC_EN);
@@ -772,6 +777,7 @@ static void snd_sunxi_dma_params_init(struct sunxi_dmic *dmic)
 	dmic->capture_dma_param.fifo_size = dts->capture_fifo_size;
 };
 
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 /* sysfs debug */
 static void snd_sunxi_dump_version(void *priv, char *buf, size_t *count)
 {
@@ -873,6 +879,7 @@ static int snd_sunxi_dump_store(void *priv, const char *buf, size_t count)
 
 	return 0;
 }
+#endif
 
 static int sunxi_dmic_dev_probe(struct platform_device *pdev)
 {
@@ -884,7 +891,9 @@ static int sunxi_dmic_dev_probe(struct platform_device *pdev)
 	struct sunxi_dmic_mem *mem;
 	struct sunxi_dmic_pinctl *pin;
 	struct sunxi_dmic_dts *dts;
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 	struct snd_sunxi_dump *dump;
+#endif
 
 	SND_LOG_DEBUG("\n");
 
@@ -899,7 +908,9 @@ static int sunxi_dmic_dev_probe(struct platform_device *pdev)
 	mem = &dmic->mem;
 	pin = &dmic->pin;
 	dts = &dmic->dts;
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 	dump = &dmic->dump;
+#endif
 	dmic->pdev = pdev;
 
 	ret = snd_sunxi_mem_init(pdev, mem);
@@ -957,6 +968,7 @@ static int sunxi_dmic_dev_probe(struct platform_device *pdev)
 		goto err_snd_sunxi_platform_register;
 	}
 
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 	snprintf(dmic->module_name, 32, "%s", "DMIC");
 	dump->name = dmic->module_name;
 	dump->priv = dmic;
@@ -967,6 +979,7 @@ static int sunxi_dmic_dev_probe(struct platform_device *pdev)
 	ret = snd_sunxi_dump_register(dump);
 	if (ret)
 		SND_LOG_WARN("snd_sunxi_dump_register failed\n");
+#endif
 
 	SND_LOG_DEBUG("register dmic platform success\n");
 
@@ -998,10 +1011,15 @@ static int sunxi_dmic_dev_remove(struct platform_device *pdev)
 	struct sunxi_dmic_mem *mem = &dmic->mem;
 	struct sunxi_dmic_pinctl *pin = &dmic->pin;
 	struct sunxi_dmic_dts *dts = &dmic->dts;
+
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 	struct snd_sunxi_dump *dump = &dmic->dump;
+#endif
 
 	/* remove components */
+#if IS_ENABLED(CONFIG_SND_SOC_SUNXI_DEBUG)
 	snd_sunxi_dump_unregister(dump);
+#endif
 	if (dts->rx_sync_en)
 		sunxi_rx_sync_remove(dts->rx_sync_domain);
 
@@ -1062,5 +1080,5 @@ module_exit(sunxi_dmic_dev_exit);
 
 MODULE_AUTHOR("Dby@allwinnertech.com");
 MODULE_LICENSE("GPL");
-MODULE_VERSION("1.0.10");
+MODULE_VERSION("1.0.11");
 MODULE_DESCRIPTION("sunxi soundcard platform of dmic");

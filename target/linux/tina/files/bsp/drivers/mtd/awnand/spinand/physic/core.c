@@ -67,8 +67,6 @@ int aw_spinand_chip_update_cfg(struct aw_spinand_chip *chip)
 		reg |= CFG_QUAD_ENABLE;
 	if (info->operation_opt(chip) & SPINAND_QUAD_NO_NEED_ENABLE)
 		reg &= ~CFG_QUAD_ENABLE;
-
-	//reg &= ~ CFG_QUAD_ENABLE;
 	ret = ops->set_otp(chip, reg);
 	if (ret) {
 		sunxi_err(NULL, "set otp register failed: val %d, ret %d\n", reg, ret);

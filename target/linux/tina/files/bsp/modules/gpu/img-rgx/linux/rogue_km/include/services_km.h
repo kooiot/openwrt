@@ -44,59 +44,74 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef SERVICES_KM_H
 #define SERVICES_KM_H
 
+#include "img_types.h"
+
 #if defined(SUPPORT_GPUVIRT_VALIDATION)
 #include "virt_validation_defs.h"
 #endif
 
 /*! 4k page size definition */
-#define PVRSRV_4K_PAGE_SIZE					4096UL      /*!< Size of a 4K Page */
+#define PVRSRV_4K_PAGE_SIZE					4096U      /*!< Size of a 4K Page */
 #define PVRSRV_4K_PAGE_SIZE_ALIGNSHIFT		12          /*!< Amount to shift an address by so that
                                                           it is always page-aligned */
 /*! 16k page size definition */
-#define PVRSRV_16K_PAGE_SIZE					16384UL      /*!< Size of a 16K Page */
+#define PVRSRV_16K_PAGE_SIZE					16384U      /*!< Size of a 16K Page */
 #define PVRSRV_16K_PAGE_SIZE_ALIGNSHIFT		14          /*!< Amount to shift an address by so that
                                                           it is always page-aligned */
 /*! 64k page size definition */
-#define PVRSRV_64K_PAGE_SIZE					65536UL      /*!< Size of a 64K Page */
+#define PVRSRV_64K_PAGE_SIZE					65536U      /*!< Size of a 64K Page */
 #define PVRSRV_64K_PAGE_SIZE_ALIGNSHIFT		16          /*!< Amount to shift an address by so that
                                                           it is always page-aligned */
 /*! 256k page size definition */
-#define PVRSRV_256K_PAGE_SIZE					262144UL      /*!< Size of a 256K Page */
+#define PVRSRV_256K_PAGE_SIZE					262144U      /*!< Size of a 256K Page */
 #define PVRSRV_256K_PAGE_SIZE_ALIGNSHIFT		18          /*!< Amount to shift an address by so that
                                                           it is always page-aligned */
 /*! 1MB page size definition */
-#define PVRSRV_1M_PAGE_SIZE					1048576UL      /*!< Size of a 1M Page */
+#define PVRSRV_1M_PAGE_SIZE					1048576U      /*!< Size of a 1M Page */
 #define PVRSRV_1M_PAGE_SIZE_ALIGNSHIFT		20          /*!< Amount to shift an address by so that
                                                           it is always page-aligned */
 /*! 2MB page size definition */
-#define PVRSRV_2M_PAGE_SIZE					2097152UL      /*!< Size of a 2M Page */
+#define PVRSRV_2M_PAGE_SIZE					2097152U      /*!< Size of a 2M Page */
 #define PVRSRV_2M_PAGE_SIZE_ALIGNSHIFT		21          /*!< Amount to shift an address by so that
                                                           it is always page-aligned */
 
 /*!
+ * @AddToGroup SRVConnectInterfaces
+ * @{
+ */
+
+#ifndef PVRSRV_DEV_CONNECTION_TYPEDEF
+#define PVRSRV_DEV_CONNECTION_TYPEDEF
+/*!
  * Forward declaration (look on connection.h)
  */
-typedef struct _PVRSRV_DEV_CONNECTION_ PVRSRV_DEV_CONNECTION;
+typedef struct PVRSRV_DEV_CONNECTION_TAG PVRSRV_DEV_CONNECTION;
+#endif
 
 /*!
-	Flags for Services connection.
-	Allows to define per-client policy for Services
-*/
+ * @Anchor SRV_FLAGS
+ * @Name SRV_FLAGS: Services connection flags
+ * Allows to define per-client policy for Services.
+ * @{
+ */
+
 /*
  *   Use of the 32-bit connection flags mask
  *   ( X = taken/in use, - = available/unused )
  *
- *   31  27     20             6   2 0
- *    |   |      |             |   | |
- *    X---XXXXXXXX-------------XXXXX--
+ *   31  27     20             6 4   0
+ *    |   |      |             | |   |
+ *    X---XXXXXXXX-------------XXX----
  */
 
-#define SRV_WORKEST_ENABLED             (1U << 2)  /*!< If Workload Estimation is enabled */
-#define SRV_PDVFS_ENABLED               (1U << 3)  /*!< If PDVFS is enabled */
-#define SRV_NO_HWPERF_CLIENT_STREAM     (1U << 4)  /*!< Don't create HWPerf for this connection */
-#define SRV_FLAGS_CLIENT_64BIT_COMPAT   (1U << 5)  /*!< This flags gets set if the client is 64 Bit compatible. */
-#define SRV_FLAGS_CLIENT_SLR_DISABLED   (1U << 6)  /*!< This flag is set if the client does not want Sync Lockup Recovery (SLR) enabled. */
-#define SRV_FLAGS_PDUMPCTRL             (1U << 31) /*!< PDump Ctrl client flag */
+#define SRV_NO_HWPERF_CLIENT_STREAM     (1UL << 4)  /*!< Don't create HWPerf for this connection */
+#define SRV_FLAGS_CLIENT_64BIT_COMPAT   (1UL << 5)  /*!< This flags gets set if the client is 64 Bit compatible. */
+#define SRV_FLAGS_CLIENT_SLR_DISABLED   (1UL << 6)  /*!< This flag is set if the client does not want Sync Lockup Recovery (SLR) enabled. */
+#define SRV_FLAGS_PDUMPCTRL             (1UL << 31) /*!< PDump Ctrl client flag */
+
+/*! @} SRV_FLAGS */
+
+/*! @} End of SRVConnectInterfaces */
 
 /*
  * Bits 20 - 27 are used to pass information needed for validation
@@ -125,21 +140,21 @@ typedef struct _PVRSRV_DEV_CONNECTION_ PVRSRV_DEV_CONNECTION;
 
 
 /* Size of pointer on a 64 bit machine */
-#define	POINTER_SIZE_64BIT	(8)
+#define	POINTER_SIZE_64BIT	(8U)
 
 
 /*
     Pdump flags which are accessible to Services clients
 */
-#define PDUMP_NONE          0x00000000UL /*<! No flags */
+#define PDUMP_NONE          0x00000000U /*<! No flags */
 
-#define PDUMP_BLKDATA       0x10000000UL /*<! This flag indicates block-mode PDump data to be recorded in
+#define PDUMP_BLKDATA       0x10000000U /*<! This flag indicates block-mode PDump data to be recorded in
                                                           Block script stream in addition to Main script stream,
                                                           if capture mode is set to BLOCKED */
 
-#define PDUMP_CONT          0x40000000UL /*<! Output this entry always regardless of framed capture range,
+#define PDUMP_CONT          0x40000000U /*<! Output this entry always regardless of framed capture range,
                                                           used by client applications being dumped. */
-#define PDUMP_PERSIST       0x80000000UL /*<! Output this entry always regardless of app and range,
+#define PDUMP_PERSIST       0x80000000U /*<! Output this entry always regardless of app and range,
                                                           used by persistent resources created after
                                                           driver initialisation that must appear in
                                                           all PDump captures in that session. */
@@ -153,13 +168,11 @@ typedef struct _PVRSRV_DEV_CONNECTION_ PVRSRV_DEV_CONNECTION;
 #define PDUMP_FRAME_UNSET           IMG_UINT32_MAX
 
 /* Status of the device. */
-typedef enum
-{
-	PVRSRV_DEVICE_STATUS_UNKNOWN,        /* status of the device is unknown */
-	PVRSRV_DEVICE_STATUS_OK,             /* the device is operational */
-	PVRSRV_DEVICE_STATUS_NOT_RESPONDING, /* the device is not responding */
-	PVRSRV_DEVICE_STATUS_DEVICE_ERROR    /* the device is not operational */
-} PVRSRV_DEVICE_STATUS;
+typedef IMG_UINT32 PVRSRV_DEVICE_STATUS;
+#define PVRSRV_DEVICE_STATUS_UNKNOWN        0U /* status of the device is unknown */
+#define PVRSRV_DEVICE_STATUS_OK             1U /* the device is operational */
+#define PVRSRV_DEVICE_STATUS_NOT_RESPONDING 2U /* the device is not responding */
+#define PVRSRV_DEVICE_STATUS_DEVICE_ERROR   3U /* the device is not operational */
 
 #endif /* SERVICES_KM_H */
 /**************************************************************************//**

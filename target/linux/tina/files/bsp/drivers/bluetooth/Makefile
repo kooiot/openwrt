@@ -9,5 +9,3 @@ obj-$(CONFIG_XR_BT_LPM)  += xradio_btlpm.o
 obj-$(CONFIG_BT_RTKBTUSB) += rtk_btusb.o
 obj-$(CONFIG_BT_RTKH5) += hci_rtk_h5.o
 ccflags-$(CONFIG_BT_RTKH5) += -I $(srctree)/drivers/bluetooth
-obj-$(CONFIG_BT_HCIBTUSB_RTLBTUSB) := rtk_bt_usb.o
-rtk_bt_usb-objs := rtk_bt.o rtk_misc.o rtk_coex.o

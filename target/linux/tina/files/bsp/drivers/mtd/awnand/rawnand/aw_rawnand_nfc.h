@@ -607,5 +607,24 @@ static inline void aw_host_nfc_set_dummy_byte(struct nfc_reg *nfc, int dummy_byt
 	AWRAWNAND_TRACE_NFC("Exit %s\n", __func__);
 }
 
+struct nfc_reg_save_val {
+	uint32_t timing_ctl_val;
+	uint32_t timing_cfg_val;
+	uint32_t efr_val;
+	uint32_t pat_id_val;
+	uint32_t dma_cnt_val;
+	uint32_t ctl_val;
+	uint32_t io_data_val;
+	uint32_t ddr2_spec_ctl_val;
+};
 
+int aw_host_set_interface(struct aw_nand_host *host);
+void aw_nfc_reg_save(struct nfc_reg *reg, struct nfc_reg_save_val *nfc_reg_save_val);
+void aw_nfc_reg_recover(struct nfc_reg *reg, struct nfc_reg_save_val *nfc_reg_save_val);
+int aw_host_set_pin(struct aw_nand_host *host);
+int aw_host_release_pin(struct aw_nand_host *host);
+int aw_host_requlator_request(struct aw_nand_host *host);
+int aw_host_requlator_release(struct aw_nand_host *host);
+int aw_host_clk_init(struct aw_nand_host *host);
+int aw_host_clk_deinit(struct aw_nand_host *host);
 #endif /*AW_RAWNAND_NFC*/

@@ -628,6 +628,8 @@ struct dw_hdmi_dev_s {
 	int   		plat_id;
 	int 		sw_init;
 
+	struct mutex  aud_lock_params;
+
 	struct dw_hdcp_s		hdcp_dev;
 	struct dw_video_s		video_dev;
 	struct dw_audio_s		audio_dev;

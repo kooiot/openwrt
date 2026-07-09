@@ -87,7 +87,7 @@ MODULE_LIBRARY_FLAGS += \
  $(if $(MODULE_HOST_BUILD),,$(MODULE_LIBGCC)) \
  $(addprefix -l, $(filter-out :%, $($(THIS_MODULE)_libs))) \
  $(addprefix -l, $(addsuffix .so, $(filter :%,$($(THIS_MODULE)_libs)))) \
- $(foreach _lib,$(filter-out :%.a, $($(THIS_MODULE)_extlibs)),$(if $(or $(MODULE_HOST_BUILD),$(filter undefined,$(origin lib$(_lib)_ldflags))),-l$(_lib),$(lib$(_lib)_ldflags))) \
+ $(foreach _lib,$(filter-out :%.a, $($(THIS_MODULE)_extlibs)),$(if $(or $(MODULE_HOST_BUILD),$(filter undefined,$(origin lib$(_lib)_ldflags))),-l$(_lib),$(lib$(_lib)_ldflags)))
 
 ifneq ($(MODULE_LIBRARY_FLAGS_SUBST),)
 $(foreach _s,$(MODULE_LIBRARY_FLAGS_SUBST),$(eval \
@@ -128,7 +128,7 @@ ifneq ($(SYSROOT),)
   PKG_CONFIG_LIBDIR := $(PKG_CONFIG_LIBDIR):${SYSROOT}/usr/lib64/pkgconfig
   PKG_CONFIG_LIBDIR := $(PKG_CONFIG_LIBDIR):${SYSROOT}/usr/lib/pkgconfig
   PKG_CONFIG_LIBDIR := $(PKG_CONFIG_LIBDIR):${SYSROOT}/usr/share/pkgconfig
-  PKG_CONFIF_LIBDIR := $(PKG_CONFIG_LIBDIR):${SYSROOT}/usr/lib64/driver/pkgconfig
+  PKG_CONFIG_LIBDIR := $(PKG_CONFIG_LIBDIR):${SYSROOT}/usr/lib64/driver/pkgconfig
   PKG_CONFIG_LIBDIR := $(PKG_CONFIG_LIBDIR):${SYSROOT}/usr/lib/driver/pkgconfig
 
   # SYSROOT doesn't always do the right thing. So explicitly add necessary
@@ -140,10 +140,24 @@ ifneq ($(SYSROOT),)
  endif
 endif
 
-ifneq ($(MODULE_ARCH_TAG),)
- MODULE_LIBRARY_DIR_FLAGS := $(subst _LLVM_ARCH_,$(MODULE_ARCH_TAG),$(MODULE_LIBRARY_DIR_FLAGS))
- MODULE_INCLUDE_FLAGS     := $(subst _LLVM_ARCH_,$(MODULE_ARCH_TAG),$(MODULE_INCLUDE_FLAGS))
+ifeq ($(PVR_NO_LLVM_ARCH_SUBST),1)
+ ifeq ($(MODULE_ARCH),$(TARGET_PRIMARY_ARCH))
+  MODULE_FLAGS_TAG := target
+ else
+  MODULE_FLAGS_TAG := native
+ endif
+else
+ ifneq ($(MODULE_ARCH_TAG),)
+  MODULE_FLAGS_TAG := $(MODULE_ARCH_TAG)
+ else
+  MODULE_FLAGS_TAG :=
+ endif
+endif
 
- MODULE_LIBRARY_DIR_FLAGS := $(subst _NNVM_ARCH_,$(MODULE_ARCH_TAG),$(MODULE_LIBRARY_DIR_FLAGS))
- MODULE_INCLUDE_FLAGS     := $(subst _NNVM_ARCH_,$(MODULE_ARCH_TAG),$(MODULE_INCLUDE_FLAGS))
+ifneq ($(MODULE_FLAGS_TAG),)
+ MODULE_LIBRARY_DIR_FLAGS := $(subst _LLVM_ARCH_,$(MODULE_FLAGS_TAG),$(MODULE_LIBRARY_DIR_FLAGS))
+ MODULE_INCLUDE_FLAGS     := $(subst _LLVM_ARCH_,$(MODULE_FLAGS_TAG),$(MODULE_INCLUDE_FLAGS))
+
+ MODULE_LIBRARY_DIR_FLAGS := $(subst _NNVM_ARCH_,$(MODULE_FLAGS_TAG),$(MODULE_LIBRARY_DIR_FLAGS))
+ MODULE_INCLUDE_FLAGS     := $(subst _NNVM_ARCH_,$(MODULE_FLAGS_TAG),$(MODULE_INCLUDE_FLAGS))
 endif

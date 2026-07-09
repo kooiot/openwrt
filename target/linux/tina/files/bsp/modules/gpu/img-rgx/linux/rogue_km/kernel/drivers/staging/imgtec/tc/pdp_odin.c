@@ -1,52 +1,55 @@
-/* -*- mode: c; indent-tabs-mode: t; c-basic-offset: 8; tab-width: 8 -*- */
-/* vi: set ts=8 sw=8 sts=8: */
-/*************************************************************************/ /*!
-@Codingstyle    LinuxKernel
-@Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
-@License        Dual MIT/GPLv2
-
-The contents of this file are subject to the MIT license as set out below.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-Alternatively, the contents of this file may be used under the terms of
-the GNU General Public License Version 2 ("GPL") in which case the provisions
-of GPL are applicable instead of those above.
-
-If you wish to allow use of your version of this file only under the terms of
-GPL, and not to allow others to use your version of this file under the terms
-of the MIT license, indicate your decision by deleting the provisions above
-and replace them with the notice and other provisions required by GPL as set
-out in the file called "GPL-COPYING" included in this distribution. If you do
-not delete the provisions above, a recipient may use your version of this file
-under the terms of either the MIT license or GPL.
-
-This License is also included in this distribution in the file called
-"MIT-COPYING".
-
-EXCEPT AS OTHERWISE STATED IN A NEGOTIATED AGREEMENT: (A) THE SOFTWARE IS
-PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
-BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE AND NONINFRINGEMENT; AND (B) IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/ /**************************************************************************/
+/*
+ * @Codingstyle LinuxKernel
+ * @Copyright   Copyright (c) Imagination Technologies Ltd. All Rights Reserved
+ * @License     Dual MIT/GPLv2
+ *
+ * The contents of this file are subject to the MIT license as set out below.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * Alternatively, the contents of this file may be used under the terms of
+ * the GNU General Public License Version 2 ("GPL") in which case the provisions
+ * of GPL are applicable instead of those above.
+ *
+ * If you wish to allow use of your version of this file only under the terms of
+ * GPL, and not to allow others to use your version of this file under the terms
+ * of the MIT license, indicate your decision by deleting the provisions above
+ * and replace them with the notice and other provisions required by GPL as set
+ * out in the file called "GPL-COPYING" included in this distribution. If you do
+ * not delete the provisions above, a recipient may use your version of this file
+ * under the terms of either the MIT license or GPL.
+ *
+ * This License is also included in this distribution in the file called
+ * "MIT-COPYING".
+ *
+ * EXCEPT AS OTHERWISE STATED IN A NEGOTIATED AGREEMENT: (A) THE SOFTWARE IS
+ * PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+ * BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+ * PURPOSE AND NONINFRINGEMENT; AND (B) IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 
 #include <linux/delay.h>
+#include <linux/kernel.h>
 
 #include "pdp_common.h"
 #include "pdp_odin.h"
 #include "odin_defs.h"
 #include "odin_regs.h"
+#include "orion_defs.h"
+#include "orion_regs.h"
+#include "pfim_defs.h"
+#include "pfim_regs.h"
 
 #define ODIN_PLL_REG(n)	((n) - ODN_PDP_P_CLK_OUT_DIVIDER_REG1)
 
@@ -57,6 +60,13 @@ struct odin_displaymode {
 	int m;		/* pixel clock multiplier */
 	int od1;	/* pixel clock output divider */
 	int od2;	/* mem clock output divider */
+};
+
+struct pfim_property {
+	u32 tiles_per_line;
+	u32 tile_type;
+	u32 tile_xsize;
+	u32 tile_ysize;
 };
 
 /*
@@ -84,6 +94,33 @@ static const struct odin_displaymode odin_modes[] = {
 	{.w = 800, .h = 600, .id = 2, .m = 20, .od1 = 25, .od2 = 7},
 	{.w = 640, .h = 480, .id = 1, .m = 12, .od1 = 48, .od2 = 9},
 	{.w = 0, .h = 0, .id = 0, .m = 0, .od1 = 0, .od2 = 0}
+};
+
+/*
+ * For Orion, only the listed modes below are supported.
+ * 1920x1080 mode is currently not supported.
+ */
+static const struct odin_displaymode orion_modes[] = {
+	{.w = 1280, .h = 720, .id = 5, .m = 37, .od1 = 10, .od2 = 7},
+	{.w = 1280, .h = 1024, .id = 1, .m = 12, .od1 = 11, .od2 = 10},
+	{.w = 1440, .h = 900, .id = 5, .m = 53, .od1 = 10, .od2 = 9},
+	{.w = 1280, .h = 960, .id = 5, .m = 51, .od1 = 10, .od2 = 9},
+	{.w = 1024, .h = 768, .id = 3, .m = 33, .od1 = 17, .od2 = 10},
+	{.w = 800, .h = 600, .id = 2, .m = 24, .od1 = 31, .od2 = 12},
+	{.w = 640, .h = 480, .id = 1, .m = 12, .od1 = 50, .od2 = 12},
+	{.w = 0, .h = 0, .id = 0, .m = 0, .od1 = 0, .od2 = 0}
+};
+
+static const struct pfim_property pfim_properties[] = {
+	[ODIN_PFIM_MOD_LINEAR]     = {0},
+	[ODIN_PFIM_FBCDC_8X8_V12]  = {.tiles_per_line = 8,
+				      .tile_type = ODN_PFIM_TILETYPE_8X8,
+				      .tile_xsize = 8,
+				      .tile_ysize = 8},
+	[ODIN_PFIM_FBCDC_16X4_V12] = {.tiles_per_line = 16,
+				      .tile_type = ODN_PFIM_TILETYPE_16X4,
+				      .tile_xsize = 16,
+				      .tile_ysize = 4},
 };
 
 static const u32 GRPH_SURF_OFFSET[] = {
@@ -267,6 +304,15 @@ static const u32 GRPH_BASEADDR_OFFSET[] = {
 	ODN_PDP_GRPH4BASEADDR_OFFSET
 };
 
+static const u32 ODN_INTERNAL_RESETN_PDP_MASK[] = {
+	ODN_INTERNAL_RESETN_PDP1_MASK,
+	ODN_INTERNAL_RESETN_PDP2_MASK
+};
+
+static const u32 ODN_INTERNAL_RESETN_PDP_SHIFT[]  = {
+	ODN_INTERNAL_RESETN_PDP1_SHIFT,
+	ODN_INTERNAL_RESETN_PDP2_SHIFT
+};
 
 static void get_odin_clock_settings(u32 value, u32 *lo_time, u32 *hi_time,
 				u32 *no_count, u32 *edge)
@@ -319,24 +365,32 @@ static void get_odin_clock_settings(u32 value, u32 *lo_time, u32 *hi_time,
 	*lo_time = lt;
 }
 
-static const struct odin_displaymode *get_odin_mode(int w, int h)
+static const struct odin_displaymode *get_odin_mode(int w, int h,
+						    enum pdp_odin_subversion pv)
 {
+	struct odin_displaymode *pdp_modes;
 	int n = 0;
 
-	do {
-		if ((odin_modes[n].w == w) && (odin_modes[n].h == h))
-			return odin_modes+n;
+	if (pv == PDP_ODIN_ORION)
+		pdp_modes = (struct odin_displaymode *)orion_modes;
+	else
+		pdp_modes = (struct odin_displaymode *)odin_modes;
 
-	} while (odin_modes[n++].w);
+	do {
+		if ((pdp_modes[n].w == w) && (pdp_modes[n].h == h))
+			return pdp_modes+n;
+
+	} while (pdp_modes[n++].w);
 
 	return NULL;
 }
 
 bool pdp_odin_clocks_set(struct device *dev,
 			 void __iomem *pdp_reg, void __iomem *pll_reg,
-			 u32 clock_freq,
+			 u32 clock_freq, u32 dev_num,
 			 void __iomem *odn_core_reg,
-			 u32 hdisplay, u32 vdisplay)
+			 u32 hdisplay, u32 vdisplay,
+			 enum pdp_odin_subversion pdpsubv)
 {
 	u32 value;
 	const struct odin_displaymode *odispl;
@@ -349,7 +403,7 @@ bool pdp_odin_clocks_set(struct device *dev,
 	core_rev = pdp_rreg32(odn_core_reg, ODN_PDP_CORE_REV_OFFSET);
 	dev_info(dev, "Odin-PDP CORE_REV %08X\n", core_rev);
 
-	odispl = get_odin_mode(hdisplay, vdisplay);
+	odispl = get_odin_mode(hdisplay, vdisplay, pdpsubv);
 	if (!odispl) {
 		dev_err(dev, "Display mode not supported.\n");
 		return false;
@@ -371,23 +425,31 @@ bool pdp_odin_clocks_set(struct device *dev,
 	 */
 
 	/*
-	 * Hold Odin PDP1 in reset while changing the clock regs.
-	 * Set the PDP1 bit of ODN_CORE_INTERNAL_RESETN low to reset.
+	 * Hold Odin PDP in reset while changing the clock regs.
+	 * Set the PDP bit of ODN_CORE_INTERNAL_RESETN low to reset.
 	 * set bit 3 to 0 (active low)
 	 */
-	value = core_rreg32(odn_core_reg, ODN_CORE_INTERNAL_RESETN);
-	value = REG_VALUE_LO(value, 1, ODN_INTERNAL_RESETN_PDP1_SHIFT,
-			     ODN_INTERNAL_RESETN_PDP1_MASK);
-	core_wreg32(odn_core_reg, ODN_CORE_INTERNAL_RESETN, value);
+	if (pdpsubv == PDP_ODIN_ORION) {
+		value = core_rreg32(odn_core_reg, SRS_CORE_SOFT_RESETN);
+		value = REG_VALUE_LO(value, 1, SRS_SOFT_RESETN_PDP_SHIFT,
+				     SRS_SOFT_RESETN_PDP_MASK);
+		core_wreg32(odn_core_reg, SRS_CORE_SOFT_RESETN, value);
+	} else {
+		value = core_rreg32(odn_core_reg, ODN_CORE_INTERNAL_RESETN);
+		value = REG_VALUE_LO(value, 1,
+				     ODN_INTERNAL_RESETN_PDP_SHIFT[dev_num],
+				     ODN_INTERNAL_RESETN_PDP_MASK[dev_num]);
+		core_wreg32(odn_core_reg, ODN_CORE_INTERNAL_RESETN, value);
+	}
 
 	/*
 	 * Hold the PDP MMCM in reset while changing the clock regs.
-	 * Set the PDP1 bit of ODN_CORE_CLK_GEN_RESET high to reset.
+	 * Set the PDP bit of ODN_CORE_CLK_GEN_RESET high to reset.
 	 */
 	value = core_rreg32(odn_core_reg, ODN_CORE_CLK_GEN_RESET);
 	value = REG_VALUE_SET(value, 0x1,
-			      ODN_INTERNAL_RESETN_PDP1_SHIFT,
-			      ODN_INTERNAL_RESETN_PDP1_MASK);
+			      ODN_CLK_GEN_RESET_PDP_MMCM_SHIFT,
+			      ODN_CLK_GEN_RESET_PDP_MMCM_MASK);
 	core_wreg32(odn_core_reg, ODN_CORE_CLK_GEN_RESET, value);
 
 	/* Pixel clock Input divider */
@@ -436,6 +498,19 @@ bool pdp_odin_clocks_set(struct device *dev,
 	value = REG_VALUE_SET(value, edge,
 			      ODN_PDP_PCLK_ODIV2_EDGE_SHIFT,
 			      ODN_PDP_PCLK_ODIV2_EDGE_MASK);
+	if (pdpsubv == PDP_ODIN_ORION) {
+		/*
+		 * Fractional divide for PLL registers currently does not work
+		 * on Sirius, as duly mentioned on the TRM. However, owing to
+		 * what most likely is a design flaw in the RTL, the
+		 * following register and a later one have their fractional
+		 * divide fields set to values other than 0 by default,
+		 * unlike on Odin. This prevents the PDP device from working
+		 * on Orion
+		 */
+		value = REG_VALUE_LO(value, 0x1F, SRS_PDP_PCLK_ODIV2_FRAC_SHIFT,
+				     SRS_PDP_PCLK_ODIV2_FRAC_MASK);
+	}
 	pll_wreg32(pll_reg, ODIN_PLL_REG(ODN_PDP_P_CLK_OUT_DIVIDER_REG2),
 		   value);
 
@@ -464,6 +539,11 @@ bool pdp_odin_clocks_set(struct device *dev,
 	value = REG_VALUE_SET(value, edge,
 			      ODN_PDP_PCLK_MUL2_EDGE_SHIFT,
 			      ODN_PDP_PCLK_MUL2_EDGE_MASK);
+	if (pdpsubv == PDP_ODIN_ORION) {
+		/* Zero out fractional divide fields */
+		value = REG_VALUE_LO(value, 0x1F, SRS_PDP_PCLK_MUL2_FRAC_SHIFT,
+				     SRS_PDP_PCLK_MUL2_FRAC_MASK);
+	}
 	pll_wreg32(pll_reg, ODIN_PLL_REG(ODN_PDP_P_CLK_MULTIPLIER_REG2),
 		   value);
 
@@ -497,11 +577,11 @@ bool pdp_odin_clocks_set(struct device *dev,
 
 	/*
 	 * Take the PDP MMCM out of reset.
-	 * Set the PDP1 bit of ODN_CORE_CLK_GEN_RESET to 0.
+	 * Set the PDP bit of ODN_CORE_CLK_GEN_RESET to 0.
 	 */
 	value = core_rreg32(odn_core_reg, ODN_CORE_CLK_GEN_RESET);
-	value = REG_VALUE_LO(value, 1, ODN_INTERNAL_RESETN_PDP1_SHIFT,
-			     ODN_INTERNAL_RESETN_PDP1_MASK);
+	value = REG_VALUE_LO(value, 1, ODN_CLK_GEN_RESET_PDP_MMCM_SHIFT,
+			     ODN_CLK_GEN_RESET_PDP_MMCM_MASK);
 	core_wreg32(odn_core_reg, ODN_CORE_CLK_GEN_RESET, value);
 
 	/*
@@ -530,13 +610,21 @@ bool pdp_odin_clocks_set(struct device *dev,
 	}
 
 	/*
-	 * Take Odin-PDP1 out of reset:
-	 * Set the PDP1 bit of ODN_CORE_INTERNAL_RESETN to 1.
+	 * Take Odin-PDP out of reset:
+	 * Set the PDP bit of ODN_CORE_INTERNAL_RESETN to 1.
 	 */
-	value = core_rreg32(odn_core_reg, ODN_CORE_INTERNAL_RESETN);
-	value = REG_VALUE_SET(value, 1, ODN_INTERNAL_RESETN_PDP1_SHIFT,
-			      ODN_INTERNAL_RESETN_PDP1_MASK);
-	core_wreg32(odn_core_reg, ODN_CORE_INTERNAL_RESETN, value);
+	if (pdpsubv == PDP_ODIN_ORION) {
+		value = core_rreg32(odn_core_reg, SRS_CORE_SOFT_RESETN);
+		value = REG_VALUE_SET(value, 1, SRS_SOFT_RESETN_PDP_SHIFT,
+				     SRS_SOFT_RESETN_PDP_MASK);
+		core_wreg32(odn_core_reg, SRS_CORE_SOFT_RESETN, value);
+	} else {
+		value = core_rreg32(odn_core_reg, ODN_CORE_INTERNAL_RESETN);
+		value = REG_VALUE_SET(value, 1,
+				      ODN_INTERNAL_RESETN_PDP_SHIFT[dev_num],
+				      ODN_INTERNAL_RESETN_PDP_MASK[dev_num]);
+		core_wreg32(odn_core_reg, ODN_CORE_INTERNAL_RESETN, value);
+	}
 
 	return true;
 }
@@ -633,7 +721,6 @@ void pdp_odin_set_vblank_enabled(struct device *dev, void __iomem *pdp_reg,
 	value = REG_VALUE_SET(value, enable ? 0x1 : 0x0,
 			      ODN_PDP_INTENAB_INTEN_VBLNK0_SHIFT,
 			      ODN_PDP_INTENAB_INTEN_VBLNK0_MASK);
-	value = enable ? (1 << ODN_PDP_INTENAB_INTEN_VBLNK0_SHIFT) : 0;
 	pdp_wreg32(pdp_reg, ODN_PDP_INTENAB_OFFSET, value);
 }
 
@@ -689,11 +776,212 @@ void pdp_odin_reset_planes(struct device *dev, void __iomem *pdp_reg)
 	pdp_wreg32(pdp_reg, GRPH_CTRL_OFFSET[3], 0x03000000);
 }
 
+static unsigned int pfim_pixel_format(u32 pdp_format)
+{
+	u32 pfim_pixformat;
+
+	switch (pdp_format) {
+	case ODN_PDP_SURF_PIXFMT_ARGB8888:
+		pfim_pixformat = ODN_PFIM_PIXFMT_ARGB8888;
+		break;
+	case ODN_PDP_SURF_PIXFMT_RGB565:
+		pfim_pixformat = ODN_PFIM_PIXFMT_RGB565;
+		break;
+	default:
+		WARN(true, "Unknown Odin pixel format: %u defaulting to ARGB8888\n",
+		     pdp_format);
+		pfim_pixformat = ODN_PFIM_PIXFMT_ARGB8888;
+	}
+
+	return pfim_pixformat;
+}
+
+static unsigned int pfim_tiles_line(u32 width,
+				    u32 pfim_format,
+				    u32 fbc_mode)
+{
+	u32 bpp;
+	u32 tpl;
+
+	switch (pfim_format) {
+	case ODN_PFIM_PIXFMT_ARGB8888:
+		bpp = 32;
+		break;
+	case ODN_PFIM_PIXFMT_RGB565:
+		bpp = 16;
+		break;
+	default:
+		WARN(true, "Unknown PFIM pixel format: %u, defaulting to 32 bpp\n",
+		     pfim_format);
+		bpp = 32;
+	}
+
+	if (fbc_mode < ODIN_PFIM_FBCDC_MAX) {
+		tpl = pfim_properties[fbc_mode].tiles_per_line;
+	} else {
+		WARN(true, "Unknown FBC compression format: %u, defaulting to 8X8_V12\n",
+		     fbc_mode);
+		tpl = pfim_properties[ODIN_PFIM_FBCDC_8X8_V12].tiles_per_line;
+	}
+
+	return ((width/tpl) / (32/bpp));
+}
+
+static void pfim_modeset(void __iomem *pfim_reg)
+{
+	u32 value;
+
+	/*
+	 * Odin PDP can address up to 32 bits of PCI BAR4,
+	 * so this register is not necessary
+	 */
+	pdp_wreg32(pfim_reg, CR_PFIM_FBDC_YARGB_BASE_ADDR_MSB, 0x00);
+
+	/*
+	 * Following registers are only used with YUV buffers,
+	 * which we currently do not support
+	 */
+	pdp_wreg32(pfim_reg, CR_PFIM_FBDC_UV_BASE_ADDR_LSB, 0x00);
+	pdp_wreg32(pfim_reg, CR_PFIM_FBDC_UV_BASE_ADDR_MSB, 0x00);
+	pdp_wreg32(pfim_reg, CR_PFIM_PDP_Y_BASE_ADDR, 0x00);
+	pdp_wreg32(pfim_reg, CR_PFIM_PDP_UV_BASE_ADDR, 0x00);
+	pdp_wreg32(pfim_reg, CR_PFIM_FBDC_CR_Y_VAL0, 0x00);
+	pdp_wreg32(pfim_reg, CR_PFIM_FBDC_CR_UV_VAL0, 0x00);
+	pdp_wreg32(pfim_reg, CR_PFIM_FBDC_CR_Y_VAL1, 0x00);
+	pdp_wreg32(pfim_reg, CR_PFIM_FBDC_CR_UV_VAL1, 0x00);
+
+	/*
+	 * PFIM tags are used for distinguishing between Y and UV plane
+	 * request when that is the kind of format we use. Thus, any
+	 * random value will do, as explained in the TRM
+	 */
+	pdp_wreg32(pfim_reg, CR_PFIM_FBDC_REQ_CONTEXT, 0x00);
+	pdp_wreg32(pfim_reg, CR_PFIM_FBDC_REQ_TAG, PFIM_RND_TAG);
+	pdp_wreg32(pfim_reg, CR_PFIM_FBDC_REQ_SB_TAG, 0x00);
+
+	/* Default tile value if tile is found to be corrupted */
+	value = REG_VALUE_SET(0, 0x01,
+			      CR_PFIM_FBDC_FILTER_ENABLE_SHIFT,
+			      CR_PFIM_FBDC_FILTER_ENABLE_MASK);
+	pdp_wreg32(pfim_reg, CR_PFIM_FBDC_FILTER_ENABLE, value);
+
+	/* Recommended values for corrupt tile substitution */
+	pdp_wreg32(pfim_reg, CR_PFIM_FBDC_CR_CH0123_VAL0, 0x00);
+	value = REG_VALUE_SET(0, 0x01000000,
+			      CR_PFIM_FBDC_CR_CH0123_VAL1_SHIFT,
+			      CR_PFIM_FBDC_CR_CH0123_VAL1_MASK);
+	pdp_wreg32(pfim_reg, CR_PFIM_FBDC_CR_CH0123_VAL1, value);
+
+	/* Only used when requesting a clear tile */
+	pdp_wreg32(pfim_reg, CR_PFIM_FBDC_CLEAR_COLOUR_LSB, 0x00);
+	pdp_wreg32(pfim_reg, CR_PFIM_FBDC_CLEAR_COLOUR_MSB, 0x00);
+
+	/* Current PDP revision does not support lossy formats */
+	pdp_wreg32(pfim_reg, CR_PFIM_FBDC_REQ_LOSSY, 0x00);
+
+	/* Force invalidation of FBC headers at beginning of render */
+	value = REG_VALUE_SET(0, 0x01,
+			      CR_PFIM_FBDC_HDR_INVAL_REQ_SHIFT,
+			      CR_PFIM_FBDC_HDR_INVAL_REQ_MASK);
+	pdp_wreg32(pfim_reg, CR_PFIM_FBDC_HDR_INVAL_REQ, value);
+}
+
+static unsigned int pfim_num_tiles(struct device *dev, u32 width, u32 height,
+				   u32 pfim_format, u32 fbc_mode)
+{
+	u32 phys_width, phys_height;
+	u32 walign, halign;
+	u32 tile_mult;
+	u32 num_tiles;
+	u32 bpp;
+
+	switch (pfim_format) {
+	case ODN_PFIM_PIXFMT_ARGB8888:
+		bpp = 32;
+		tile_mult = 4;
+		break;
+	case ODN_PFIM_PIXFMT_RGB565:
+		bpp = 16;
+		tile_mult = 2;
+		break;
+	default:
+		dev_warn(dev, "WARNING: Wrong PFIM pixel format: %d\n",
+			 pfim_format);
+		return 0;
+	}
+
+	switch (fbc_mode) {
+	case ODIN_PFIM_FBCDC_8X8_V12:
+		switch (bpp) {
+		case 16:	/* 16x8 */
+			walign = 16;
+			break;
+		case 32:	/* 8x8 */
+			walign = 8;
+			break;
+		default:
+			dev_warn(dev, "WARNING: Wrong bit depth: %d\n",
+				 bpp);
+			return 0;
+		}
+		halign = 8;
+		break;
+	case ODIN_PFIM_FBCDC_16X4_V12:
+		switch (bpp) {
+		case 16:	/* 32x4 */
+			walign = 32;
+			break;
+		case 32:	/* 16x4 */
+			walign = 16;
+			break;
+		default:
+			dev_warn(dev, "WARNING: Wrong bit depth: %d\n",
+				 bpp);
+			return 0;
+		}
+		halign = 4;
+		break;
+	default:
+		dev_warn(dev, "WARNING: Wrong FBC compression format: %d\n",
+			 fbc_mode);
+		return 0;
+	}
+
+	phys_width = ALIGN(width, walign);
+	phys_height = ALIGN(height, halign);
+	num_tiles = phys_width / pfim_properties[fbc_mode].tile_xsize;
+	num_tiles *= phys_height / pfim_properties[fbc_mode].tile_ysize;
+	num_tiles *= tile_mult;
+	num_tiles /= 4;
+
+	return num_tiles ? num_tiles : 1;
+}
+
+static void pfim_set_surface(struct device *dev,
+			     void __iomem *pfim_reg,
+			     u32 width,
+			     u32 height,
+			     u32 pdp_format,
+			     u32 fbc_mode)
+{
+	u32 pfim_pixformat = pfim_pixel_format(pdp_format);
+	u32 tiles_line = pfim_tiles_line(width, pfim_pixformat, fbc_mode);
+	u32 tile_type = pfim_properties[fbc_mode].tile_type;
+	u32 num_tiles = pfim_num_tiles(dev, width, height,
+				       pfim_pixformat, fbc_mode);
+
+	pdp_wreg32(pfim_reg, CR_PFIM_NUM_TILES, num_tiles);
+	pdp_wreg32(pfim_reg, CR_PFIM_TILES_PER_LINE, tiles_line);
+	pdp_wreg32(pfim_reg, CR_PFIM_FBDC_PIX_FORMAT, pfim_pixformat);
+	pdp_wreg32(pfim_reg, CR_PFIM_FBDC_TILE_TYPE, tile_type);
+}
+
 void pdp_odin_set_surface(struct device *dev, void __iomem *pdp_reg,
-			  u32 plane, u32 address,
+			  u32 plane, u32 address, u32 offset,
 			  u32 posx, u32 posy,
 			  u32 width, u32 height, u32 stride,
-			  u32 format, u32 alpha, bool blend)
+			  u32 format, u32 alpha, bool blend,
+			  void __iomem *pfim_reg, u32 fbcm)
 {
 	/*
 	 * Use a blender based on the plane number (this defines the Z
@@ -705,8 +993,7 @@ void pdp_odin_set_surface(struct device *dev, void __iomem *pdp_reg,
 
 #ifdef PDP_VERBOSE
 	dev_info(dev,
-		 "Set surface: plane=%d pos=%d:%d size=%dx%d stride=%d "
-		 "format=%d alpha=%d address=0x%x\n",
+		 "Set surface: plane=%d pos=%d:%d size=%dx%d stride=%d format=%d alpha=%d address=0x%x\n",
 		 plane, posx, posy, width, height, stride,
 		 format, alpha, address);
 #endif
@@ -719,8 +1006,14 @@ void pdp_odin_set_surface(struct device *dev, void __iomem *pdp_reg,
 	if (address & 0xf)
 		dev_warn(dev, "The frame buffer address is not aligned\n");
 
-	/* Frame buffer base address */
-	pdp_wreg32(pdp_reg, GRPH_BASEADDR_OFFSET[plane], address);
+	if (fbcm && pfim_reg) {
+		pfim_set_surface(dev, pfim_reg,
+				 width, height,
+				 format, fbcm);
+		pdp_wreg32(pfim_reg, CR_PFIM_FBDC_YARGB_BASE_ADDR_LSB,
+			   (address + offset) >> 6);
+	} else
+		pdp_wreg32(pdp_reg, GRPH_BASEADDR_OFFSET[plane], address);
 
 	/* Pos */
 	value = REG_VALUE_SET(0x0, posx,
@@ -774,7 +1067,7 @@ void pdp_odin_set_surface(struct device *dev, void __iomem *pdp_reg,
 	} else {
 		blend_mode = 0x0; /* 0b00 = no blending */
 	}
-	value = REG_VALUE_SET(0x0, blend_mode,
+	value = REG_VALUE_SET(value, blend_mode,
 			      GRPH_CTRL_GRPH_BLEND_SHIFT[plane],
 			      GRPH_CTRL_GRPH_BLEND_MASK[plane]);
 
@@ -791,7 +1084,8 @@ void pdp_odin_mode_set(struct device *dev, void __iomem *pdp_reg,
 		       u32 hlbs, u32 hfps, u32 hrbs,
 		       u32 vbps, u32 vt, u32 vas,
 		       u32 vtbs, u32 vfps, u32 vbbs,
-		       bool nhsync, bool nvsync)
+		       bool nhsync, bool nvsync,
+		       void __iomem *pfim_reg)
 {
 	u32 value;
 
@@ -930,4 +1224,8 @@ void pdp_odin_mode_set(struct device *dev, void __iomem *pdp_reg,
 				      ODN_PDP_SYNCCTRL_VSPOL_SHIFT,
 				      ODN_PDP_SYNCCTRL_VSPOL_MASK);
 	pdp_wreg32(pdp_reg, ODN_PDP_SYNCCTRL_OFFSET, value);
+
+	/* PDP framebuffer compression setup */
+	if (pfim_reg)
+		pfim_modeset(pfim_reg);
 }

@@ -38,6 +38,14 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### ###########################################################################
 
+comma := ,
+empty :=
+space := $(empty) $(empty)
+define newline
+
+
+endef
+
 define must-be-defined
 $(if $(filter undefined,$(origin $(1))),$(error In makefile $(THIS_MAKEFILE): $$($(1)) must be defined),)
 endef
@@ -82,33 +90,36 @@ ALL_BAD_MODULES := $$(ALL_BAD_MODULES) $$(THIS_MODULE)
 endif
 endef
 
+# This list should be kept in alphabetical order.
+#
 target_neutral_types := \
+ aidl \
  apk \
  binary_header \
  bison_parser \
- bitcode_library \
  bridge \
  copy_files \
  custom \
  dex \
+ device_tree \
  flex_lexer \
  flexxx_lexer \
  gen_dispatch \
+ gunzip_files \
+ hidl \
  java_archive \
  module_group \
+ opencl_signature_header \
  pds_header \
- spv_header \
  preprocessed_file \
- rs_bitcode \
- rs_object \
- rscsha1_header \
- test_image \
- usc_header \
  rgxmetafw \
  rgxmipsfw \
- vk_layer \
- wayland_protocol_files \
- hidl
+ rgxriscvfw \
+ spv_header \
+ test_image \
+ usc_header \
+ usc_uniflex_header \
+ wayland_protocol_files
 
 doc_types := \
  doc \
@@ -161,12 +172,16 @@ endef
 define cc-check
 $(shell \
 	CC_CHECK=$(patsubst @%,%,$(CC_CHECK)) && \
-	$(patsubst @%,%,$(CHMOD)) +x $$CC_CHECK && \
+	if [ ! -x $$CC_CHECK ]; then $(patsubst @%,%,$(CHMOD)) +x $$CC_CHECK ; fi && \
 	$$CC_CHECK --cc "$(1)" --out "$(2)" $(3))
 endef
 
 define cc-is-clang
 $(call cc-check,$(patsubst @%,%,$(CC)),$(OUT),--clang)
+endef
+
+define cc-is-macos-clang
+$(if $(and $(call cc-is-clang),$(findstring $(TARGET_OS),darwin)),true,false)
 endef
 
 define cc-option
@@ -179,6 +194,10 @@ endef
 
 define host-cc-is-clang
 $(call cc-check,$(patsubst @%,%,$(HOST_CC)),$(OUT),--clang)
+endef
+
+define host-cc-is-macos-clang
+$(if $(and $(call host-cc-is-clang),$(findstring $(HOST_OS),darwin)),true,false)
 endef
 
 define host-cc-option
@@ -227,10 +246,8 @@ endef
 # (1): the list of strings to join
 # (2): the separator to use for joining
 #
-NOOP=
-SPACE=$(NOOP) $(NOOP)
 define list-join
-$(subst $(SPACE),$(2),$(strip $(1)))
+$(subst $(space),$(2),$(strip $(1)))
 endef
 
 #
@@ -290,4 +307,9 @@ endef
 define hidl_sources
 $(addprefix $(GENERATED_CODE_OUT)/$(1)/$($(1)_intf_path)/,\
 	$(foreach _i,$($(1)_intf_class),$(_i)All.cpp))
+endef
+
+define aidl_headers
+$(addprefix $(1)/$($(1)_type)/$($(1)_intf_path)/, \
+	$(foreach _i,$($(1)_intf_class),$(_i).h))
 endef

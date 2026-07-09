@@ -39,37 +39,15 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
-#ifndef __HTBUFFER_INIT_H__
-#define __HTBUFFER_INIT_H__
+#ifndef HTBUFFER_INIT_H
+#define HTBUFFER_INIT_H
 
-#if defined (__cplusplus)
+#if defined(__cplusplus)
 extern "C" {
 #endif
 
 #include "img_types.h"
 #include "img_defs.h"
-
-/*************************************************************************/ /*!
- @Function      HTBConfigure
- @Description   Configure the Host Trace Buffer.
-                Once these parameters are set they may not be changed
-
- @Input         hSrvHandle      Server Handle
-
- @Input         pszBufferName   Name to use for the TL buffer, this will be
-                                required to request trace data from the TL
-
- @Input         ui32BufferSize  Requested TL buffer size in bytes
-
- @Return        eError          Internal services call returned eError error
-                                number
-*/ /**************************************************************************/
-IMG_INTERNAL PVRSRV_ERROR
-HTBConfigure(
-	IMG_HANDLE hSrvHandle,
-	IMG_CHAR * pszBufferName,
-	IMG_UINT32 ui32BufferSize
-);
 
 /*************************************************************************/ /*!
  @Function      HTBControl
@@ -104,13 +82,11 @@ HTBControl(
 	HTB_OPMODE_CTRL eOpMode
 );
 
-#if defined (__cplusplus)
+#if defined(__cplusplus)
 }
 #endif
 
-#endif /* __HTBUFFER_INIT_H__ */
+#endif /* HTBUFFER_INIT_H */
 /*****************************************************************************
  End of file (htbuffer_init.h)
 *****************************************************************************/
-
-

@@ -33,8 +33,6 @@
 static struct tty_driver *soft_uart_driver;
 static struct tty_port port;
 
-extern int soft_uart_parity_flag;
-
 /**
  * Opens a given TTY device.
  * @param tty given TTY device
@@ -51,8 +49,6 @@ static int soft_uart_open(struct tty_struct *tty, struct file *file)
 		pr_err("Device busy.\n");
 		error = -ENODEV;
 	}
-
-	soft_uart_parity_flag = 0;
 
 	return error;
 }
@@ -95,7 +91,7 @@ static int soft_uart_write(struct tty_struct *tty, const unsigned char *buffer, 
  * @param tty given TTY
  * @return number of bytes
  */
-static int soft_uart_write_room(struct tty_struct *tty)
+static unsigned int soft_uart_write_room(struct tty_struct *tty)
 {
 	return sunxi_soft_uart_get_tx_queue_room();
 }
@@ -113,7 +109,7 @@ static void soft_uart_flush_buffer(struct tty_struct *tty)
  * @param tty given TTY
  * @return number of bytes
  */
-static int soft_uart_chars_in_buffer(struct tty_struct *tty)
+static unsigned int soft_uart_chars_in_buffer(struct tty_struct *tty)
 {
 	return sunxi_soft_uart_get_tx_queue_size();
 }
@@ -141,13 +137,8 @@ static void soft_uart_set_termios(struct tty_struct *tty, struct ktermios *termi
 		pr_info("Invalid number of stop bits.\n");
 
 	// Verifies the parity (it must be none).
-	if (cflag & PARENB) {
-		soft_uart_parity_flag |= PARENB;
-		if (cflag & PARODD)
-			soft_uart_parity_flag |= PARODD;
-	} else {
-		soft_uart_parity_flag = 0;
-	}
+	if (cflag & PARENB)
+		pr_info("Invalid parity.\n");
 
 	// Configure the baudrate.
 	if (!sunxi_soft_uart_set_baudrate(baudrate))
@@ -234,18 +225,13 @@ static const struct tty_operations soft_uart_operations = {
  */
 static int soft_uart_probe(struct platform_device *pdev)
 {
-	int ret, num;
+	int ret;
 	int irq;
 	int gpio_tx;
 	int gpio_rx;
 	struct device_node *node = pdev->dev.of_node;
-	const char *name_str = node->name;
-	char tty_name[20];
 
 	pr_info("Initializing module...\n");
-
-	sscanf(name_str, "sunxi-soft-uart%d", &num);
-	sprintf(tty_name, "ttySOFT%d", num);
 
 	gpio_tx = of_get_named_gpio(node, "gpio-tx", 0);
 	if (!gpio_is_valid(gpio_tx)) {
@@ -277,8 +263,8 @@ static int soft_uart_probe(struct platform_device *pdev)
 
 	// Initializes the driver.
 	soft_uart_driver->owner                 = THIS_MODULE;
-	soft_uart_driver->driver_name           = node->name;
-	soft_uart_driver->name                  = tty_name;
+	soft_uart_driver->driver_name           = "sunxi-soft-uart";
+	soft_uart_driver->name                  = "ttySOFT";
 	soft_uart_driver->major                 = SOFT_UART_MAJOR;
 	soft_uart_driver->minor_start           = 0;
 	soft_uart_driver->flags                 = TTY_DRIVER_REAL_RAW;
@@ -335,12 +321,12 @@ static int soft_uart_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id soft_uart_of_match[] = {
-	{.compatible = "sunxi-gpio-uart",},
+	{.compatible = "sunxi-soft-uart",},
 };
 
 static struct platform_driver soft_uart = {
 	.driver = {
-		.name = "sunxi-gpio-uart",
+		.name = "sunxi-soft-uart",
 		.owner = THIS_MODULE,
 		.of_match_table = soft_uart_of_match,
 	},
@@ -366,4 +352,4 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Adriano Marto Reis");
 MODULE_AUTHOR("emma <liujuan1@allwinnertech.com>");
 MODULE_DESCRIPTION("Soft-UART Driver");
-MODULE_VERSION("1.0.1");
+MODULE_VERSION("1.0.0");

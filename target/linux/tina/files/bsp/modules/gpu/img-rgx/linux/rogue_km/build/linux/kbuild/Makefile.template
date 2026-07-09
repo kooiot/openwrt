@@ -66,32 +66,34 @@ bridge_base := $(BRIDGE_SOURCE_ROOT)
 $(OUT)/$(TARGET_PRIMARY_ARCH)/kbuild/%.c: $(TOP)/%.c
 	$(symlink-source-file)
 
-$(OUT)/$(TARGET_PRIMARY_ARCH)/kbuild/generated/%.c: $(bridge_base)/%.c
+$(OUT)/$(TARGET_PRIMARY_ARCH)/kbuild/generated/$(PVR_ARCH)/%.c: $(bridge_base)/%.c
 	$(symlink-source-file)
 
 $(OUT)/$(TARGET_PRIMARY_ARCH)/kbuild/external/%.c: $(abspath $(srctree))/%.c
 	$(symlink-source-file)
 
-ccflags-y += -D__linux__ -include $(OUT)/config_kernel.h \
- -I$(OUT)/include \
- -I$(TOP)/include \
- -I$(TOP)/include/public \
- -I$(TOP)/hwdefs/km \
- -I$(TOP)/services/include \
- -I$(TOP)/services/include/shared \
- -I$(TOP)/services/shared/include \
- -I$(TOP)/services/shared/common \
- -I$(TOP)/services/system/include \
- -I$(TOP)/services/server/common \
- -I$(TOP)/services/server/devices/rgx \
- -I$(TOP)/services/server/env/linux \
- -I$(TOP)/services/server/include
+$(OUT)/$(TARGET_PRIMARY_ARCH)/kbuild/%.o: $(TOP)/%.o.hex
+	$(symlink-source-file)
 
-ifeq ($(KERNEL_DRIVER_DIR),)
- ccflags-y += -I$(TOP)/services/system/$(PVR_SYSTEM)
+ccflags-y += -D__linux__ -include $(OUT)/config_kernel.h \
+ -include kernel_config_compatibility.h \
+ -I$(OUT)/include -I$(TOP)/kernel/drivers/staging/imgtec
+
+ifeq ($(DEFINE_X86_FEATURE_LA57),1)
+ ccflags-$(CONFIG_X86) += -include $(srctree)/arch/x86/include/asm/cpufeatures.h
 endif
 
 include $(INTERNAL_KBUILD_MAKEFILES)
+
+define add-file-cflags
+CFLAGS_$(notdir $(1)) := $(CFLAGS_$(1))
+endef
+
+# Define old style CFLAG_ variables for kernels older than 5.4
+$(foreach _m,$(INTERNAL_KBUILD_OBJECTS:.o=-y), \
+ $(foreach _f,$($(_m)), \
+  $(if $(CFLAGS_$(_f)), \
+   $(eval $(call add-file-cflags,$(_f))))))
 
 ifneq ($(KERNEL_DRIVER_DIR),)
  ccflags-y += \

@@ -430,6 +430,17 @@ static const struct regulator_desc sy8827g_regulators[] = {
 			0x40, SY8827G_VSEL1, GENMASK(5, 0), SY8827G_VSEL1, BIT(7)),
 };
 
+static const struct linear_range sy8827k_dcdc_ranges[] = {
+	REGULATOR_LINEAR_RANGE(712500, 0x0, 0x3F, 12500),
+};
+
+static const struct regulator_desc sy8827k_regulators[] = {
+	PMU_EXT_REGULATOR_RANGE_VOL_DELAY(SY8827K, DCDC0, "dcdc0", "vin1", sy8827k_dcdc_ranges,
+			0x40, SY8827K_VSEL0, GENMASK(5, 0), SY8827K_VSEL0, BIT(7)),
+	PMU_EXT_REGULATOR_RANGE_VOL_DELAY(SY8827K, DCDC1, "dcdc1", "vin1", sy8827k_dcdc_ranges,
+			0x40, SY8827K_VSEL1, GENMASK(5, 0), SY8827K_VSEL1, BIT(7)),
+};
+
 static int pmu_ext_regulator_probe(struct platform_device *pdev)
 {
 	struct regulator_dev *rdev;
@@ -456,6 +467,10 @@ static int pmu_ext_regulator_probe(struct platform_device *pdev)
 	case SY8827G_ID:
 		regulators = sy8827g_regulators;
 		nregulators = SY8827G_REG_ID_MAX;
+		break;
+	case SY8827K_ID:
+		regulators = sy8827k_regulators;
+		nregulators = SY8827K_REG_ID_MAX;
 		break;
 	default:
 		PMIC_DEV_ERR(&pdev->dev, "Unsupported pmu_ext variant: %ld\n",
@@ -500,9 +515,17 @@ static int pmu_ext_regulator_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static struct of_device_id pmu_ext_match_table[] = {
+	{ .compatible = "ext,aw37501-regulator" },
+	{ .compatible = "ext,ocp2131-regulator" },
+	{ .compatible = "ext,sy8827k-regulator" },
+	{ /* sentinel */ },
+};
+
 static struct platform_driver pmu_ext_regulator_driver = {
 	.driver = {
 		.name = "pmu-ext-regulator",
+		.of_match_table = pmu_ext_match_table,
 	},
 	.probe = pmu_ext_regulator_probe,
 	.remove	= pmu_ext_regulator_remove,
@@ -524,4 +547,4 @@ module_exit(pmu_ext_regulator_exit);
 MODULE_AUTHOR("Andrew F. Davis <afd@ti.com>");
 MODULE_DESCRIPTION("pmu_ext voltage regulator driver");
 MODULE_LICENSE("GPL v2");
-MODULE_VERSION("1.0.0");
+MODULE_VERSION("1.0.1");

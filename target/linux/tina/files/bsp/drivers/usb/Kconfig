@@ -22,6 +22,8 @@ source "bsp/drivers/usb/typec/Kconfig"
 
 source "bsp/drivers/usb/gadget/Kconfig"
 
+source "bsp/drivers/usb/phy/Kconfig"
+
 endif # USB_SUPPORT
 
 endmenu

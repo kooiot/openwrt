@@ -34,6 +34,8 @@ struct sunxi_ddrclk_plat_data {
 	unsigned int dram_clk_reg_offset;
 	unsigned int div_shift;
 	unsigned int div_width;
+	/* the freq factor about ddrc and memory die, 1:2 or 1:4*/
+	unsigned int factor;
 };
 
 /*
@@ -83,14 +85,14 @@ static unsigned long sunxi_ddr_clk_recalc_rate(struct clk_hw *hw,
 	struct sunxi_ddrclk *ddrclk = to_sunxi_ddrclk_hw(hw);
 	const struct sunxi_ddrclk_plat_data *plat_data = ddrclk->plat_data;
 	unsigned int reg_val, div;
-	unsigned long rate = parent_rate;
+	unsigned long rate = parent_rate << plat_data->factor;
 
 	reg_val = readl_relaxed(ddrclk->ccmu_base + plat_data->dram_clk_reg_offset);
 
 	div = (reg_val >> plat_data->div_shift) & GENMASK(plat_data->div_width - 1, 0);
 	rate /= (div + 1);
 
-	return rate << 1;
+	return rate;
 }
 
 static long sunxi_ddr_clk_round_rate(struct clk_hw *hw,
@@ -98,34 +100,36 @@ static long sunxi_ddr_clk_round_rate(struct clk_hw *hw,
 				     unsigned long *prate)
 {
 	struct sunxi_ddrclk *ddrclk = to_sunxi_ddrclk_hw(hw);
+	const struct sunxi_ddrclk_plat_data *plat_data = ddrclk->plat_data;
 	unsigned int dram_div = ddrclk->dram_div;
+	unsigned long rate = *prate << plat_data->factor;
 
 	if ((dram_div & 0x1f) == 0x3) {
-		if (target_rate <= (*prate << 1) / (((dram_div >> 24) & 0x1f) + 1))
-			return (*prate << 1) / (((dram_div >> 24) & 0x1f) + 1);
-		else if (target_rate <= (*prate << 1) / (((dram_div >> 16) & 0x1f) + 1))
-			return (*prate << 1) / (((dram_div >> 16) & 0x1f) + 1);
-		else if (target_rate <= (*prate << 1) / (((dram_div >> 8) & 0x1f) + 1))
-			return (*prate << 1) / (((dram_div >> 8) & 0x1f) + 1);
+		if (target_rate <= rate / (((dram_div >> 24) & 0x1f) + 1))
+			return rate / (((dram_div >> 24) & 0x1f) + 1);
+		else if (target_rate <= rate / (((dram_div >> 16) & 0x1f) + 1))
+			return rate / (((dram_div >> 16) & 0x1f) + 1);
+		else if (target_rate <= rate / (((dram_div >> 8) & 0x1f) + 1))
+			return rate / (((dram_div >> 8) & 0x1f) + 1);
 		else
-			return (*prate << 1) / ((dram_div & 0x1f) + 1);
+			return rate / ((dram_div & 0x1f) + 1);
 	} else {
-		if (target_rate <= (*prate << 1) / (((dram_div >> 24) & 0x1f) + 1))
-			return (*prate << 1) / (((dram_div >> 24) & 0x1f) + 1);
-		else if (target_rate <= (*prate << 1) / (((dram_div >> 16) & 0x1f) + 1))
-			return (*prate << 1) / (((dram_div >> 16) & 0x1f) + 1);
-		else if (target_rate <= (*prate << 1) / (((dram_div >> 8) & 0x1f) + 1))
-			return (*prate << 1) / (((dram_div >> 8) & 0x1f) + 1);
-		else if (target_rate <= (*prate << 1) / ((dram_div & 0x1f) + 1))
-			return (*prate << 1) / ((dram_div & 0x1f) + 1);
-		else if (target_rate <= (*prate << 1) / 7)
-			return (*prate << 1) / 7;
-		else if (target_rate <= (*prate << 1) / 6)
-			return (*prate << 1) / 6;
-		else if (target_rate <= (*prate << 1) / 5)
-			return (*prate << 1) / 5;
+		if (target_rate <= rate / (((dram_div >> 24) & 0x1f) + 1))
+			return rate / (((dram_div >> 24) & 0x1f) + 1);
+		else if (target_rate <= rate / (((dram_div >> 16) & 0x1f) + 1))
+			return rate / (((dram_div >> 16) & 0x1f) + 1);
+		else if (target_rate <= rate / (((dram_div >> 8) & 0x1f) + 1))
+			return rate / (((dram_div >> 8) & 0x1f) + 1);
+		else if (target_rate <= rate / ((dram_div & 0x1f) + 1))
+			return rate / ((dram_div & 0x1f) + 1);
+		else if (target_rate <= rate / 7)
+			return rate / 7;
+		else if (target_rate <= rate / 6)
+			return rate / 6;
+		else if (target_rate <= rate / 5)
+			return rate / 5;
 		else
-			return (*prate << 1) / 4;
+			return rate / 4;
 	}
 }
 
@@ -133,32 +137,34 @@ static int sunxi_ddr_clk_set_rate(struct clk_hw *hw, unsigned long drate,
 				  unsigned long prate)
 {
 	struct sunxi_ddrclk *ddrclk = to_sunxi_ddrclk_hw(hw);
+	const struct sunxi_ddrclk_plat_data *plat_data = ddrclk->plat_data;
 	unsigned int dram_div = ddrclk->dram_div;
+	unsigned long rate = prate << plat_data->factor;
 	unsigned int freq_id;
 
 	if ((dram_div & 0x1f) == 0x3) {
-		if (drate <= (prate << 1) / (((dram_div >> 24) & 0x1f) + 1))
+		if (drate <= rate / (((dram_div >> 24) & 0x1f) + 1))
 			freq_id = 3;
-		else if (drate <= (prate << 1) / (((dram_div >> 16) & 0x1f) + 1))
+		else if (drate <= rate / (((dram_div >> 16) & 0x1f) + 1))
 			freq_id = 2;
-		else if (drate <= (prate << 1) / (((dram_div >> 8) & 0x1f) + 1))
+		else if (drate <= rate / (((dram_div >> 8) & 0x1f) + 1))
 			freq_id = 1;
 		else
 			freq_id = 0;
 	} else {
-		if (drate <= (prate << 1) / (((dram_div >> 24) & 0x1f) + 1))
+		if (drate <= rate / (((dram_div >> 24) & 0x1f) + 1))
 			freq_id = 7;
-		else if (drate <= (prate << 1) / (((dram_div >> 16) & 0x1f) + 1))
+		else if (drate <= rate / (((dram_div >> 16) & 0x1f) + 1))
 			freq_id = 6;
-		else if (drate <= (prate << 1) / (((dram_div >> 8) & 0x1f) + 1))
+		else if (drate <= rate / (((dram_div >> 8) & 0x1f) + 1))
 			freq_id = 5;
-		else if (drate <= (prate << 1) / ((dram_div & 0x1f) + 1))
+		else if (drate <= rate / ((dram_div & 0x1f) + 1))
 			freq_id = 4;
-		else if (drate <= (prate << 1) / 7)
+		else if (drate <= rate / 7)
 			freq_id = 3;
-		else if (drate <= (prate << 1) / 6)
+		else if (drate <= rate / 6)
 			freq_id = 2;
-		else if (drate <= (prate << 1) / 5)
+		else if (drate <= rate / 5)
 			freq_id = 1;
 		else
 			freq_id = 0;
@@ -182,18 +188,21 @@ static const struct sunxi_ddrclk_plat_data ddrclk_sun55iw3_data = {
 	.dram_clk_reg_offset = 0x800,
 	.div_shift = 0,
 	.div_width = 5,
+	.factor = 1,
 };
 
 static const struct sunxi_ddrclk_plat_data ddrclk_sun55iw6_data = {
 	.dram_clk_reg_offset = 0xc00,
 	.div_shift = 0,
 	.div_width = 5,
+	.factor = 1,
 };
 
 static const struct sunxi_ddrclk_plat_data ddrclk_sun60iw2_data = {
 	.dram_clk_reg_offset = 0xc00,
 	.div_shift = 0,
 	.div_width = 5,
+	.factor = 2,
 };
 
 static const struct of_device_id clk_ddr_of_match[] = {

@@ -72,12 +72,12 @@ void sunxi_platform_term(void);
 void sunxiSetFrequencyDVFS(IMG_UINT32 *ui32Frequency);
 void sunxiSetVoltageDVFS(IMG_UINT32 ui32Volt);
 PVRSRV_ERROR sunxiPrePowerState(IMG_HANDLE hSysData,
-					 PVRSRV_DEV_POWER_STATE eNewPowerState,
-					 PVRSRV_DEV_POWER_STATE eCurrentPowerState,
-					 IMG_BOOL bForced);
+					 PVRSRV_SYS_POWER_STATE eNewPowerState,
+					 PVRSRV_SYS_POWER_STATE eCurrentPowerState,
+					 PVRSRV_POWER_FLAGS bForced);
 PVRSRV_ERROR sunxiPostPowerState(IMG_HANDLE hSysData,
-					  PVRSRV_DEV_POWER_STATE eNewPowerState,
-					  PVRSRV_DEV_POWER_STATE eCurrentPowerState,
-					  IMG_BOOL bForced);
+					  PVRSRV_SYS_POWER_STATE eNewPowerState,
+					  PVRSRV_SYS_POWER_STATE eCurrentPowerState,
+					  PVRSRV_POWER_FLAGS bForced);
 
 #endif /* _PLATFORM_H_ */

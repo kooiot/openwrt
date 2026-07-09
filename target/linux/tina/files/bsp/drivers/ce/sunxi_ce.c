@@ -1269,10 +1269,11 @@ static int sunxi_ss_hw_init(sunxi_ce_cdev_t *sss)
 
 	/* enable ce sys clk */
 	if (!IS_ERR_OR_NULL(sss->ce_sys_clk)) {
-		if (clk_prepare_enable(sss->ce_sys_clk))
+		if (clk_prepare_enable(sss->ce_sys_clk)) {
 			SS_ERR("Couldn't enable ce sys clk\n");
 			err = -EBUSY;
 			goto err3;
+		}
 	}
 
 #ifdef CE_DBL_ENT_SRC_EN

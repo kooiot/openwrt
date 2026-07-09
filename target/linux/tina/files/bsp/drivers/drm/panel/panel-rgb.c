@@ -22,34 +22,7 @@
 
 #include <video/display_timing.h>
 #include <video/of_display_timing.h>
-#include <video/videomode.h>
-#include "panels.h"
-
-#define POWER_MAX 3
-#define GPIO_MAX 3
-struct panel_rgb {
-	struct drm_panel panel;
-	struct device *dev;
-
-	const char *label;
-	unsigned int width;
-	unsigned int height;
-	struct videomode video_mode;
-	unsigned int bus_format;
-	bool data_mirror;
-	struct {
-		unsigned int power;
-		unsigned int enable;
-		unsigned int reset;
-	} delay;
-
-	struct backlight_device *backlight;
-	struct regulator *supply[POWER_MAX];
-
-	struct gpio_desc *enable_gpio[GPIO_MAX];
-	struct gpio_desc *reset_gpio;
-	enum drm_panel_orientation orientation;
-};
+#include "panel-rgb.h"
 
 static void panel_rgb_sleep(unsigned int msec)
 {
@@ -57,10 +30,6 @@ static void panel_rgb_sleep(unsigned int msec)
 		msleep(msec);
 	else
 		usleep_range(msec * 1000, (msec + 1) * 1000);
-}
-static inline struct panel_rgb *to_panel_rgb(struct drm_panel *panel)
-{
-	return container_of(panel, struct panel_rgb, panel);
 }
 
 static int panel_rgb_disable(struct drm_panel *panel)
@@ -86,10 +55,12 @@ static int panel_rgb_unprepare(struct drm_panel *panel)
 		}
 	}
 
-	if (rgb->reset_gpio)
-		gpiod_set_value_cansleep(rgb->reset_gpio, 0);
-	if (rgb->delay.reset)
-		panel_rgb_sleep(rgb->delay.reset);
+	if (rgb->reset_num) {
+		if (rgb->reset_gpio)
+			gpiod_set_value_cansleep(rgb->reset_gpio, 0);
+		if (rgb->delay.reset)
+			panel_rgb_sleep(rgb->delay.reset);
+	}
 
 	for (i = POWER_MAX; i > 0; i--) {
 		if (rgb->supply[i - 1]) {
@@ -140,13 +111,45 @@ static int panel_rgb_prepare(struct drm_panel *panel)
 		}
 	}
 
-	if (rgb->reset_gpio)
-		gpiod_set_value_cansleep(rgb->reset_gpio, 1);
-	if (rgb->delay.reset)
-		panel_rgb_sleep(rgb->delay.reset);
+	for (i = 0; i < rgb->reset_num; i++) {
+		if (rgb->reset_gpio)
+				gpiod_set_value_cansleep(rgb->reset_gpio, 0);
+		if (rgb->delay.reset)
+				panel_rgb_sleep(rgb->delay.reset);
+		if (rgb->reset_gpio)
+				gpiod_set_value_cansleep(rgb->reset_gpio, 1);
+		if (rgb->delay.reset)
+				panel_rgb_sleep(rgb->delay.reset);
+	}
 
 	return 0;
 }
+
+bool panel_rgb_is_support_backlight(struct drm_panel *panel)
+{
+	return panel->backlight;
+}
+EXPORT_SYMBOL(panel_rgb_is_support_backlight);
+
+int panel_rgb_get_backlight_value(struct drm_panel *panel)
+{
+	if (panel->backlight)
+		return backlight_get_brightness(panel->backlight);
+
+	return 0;
+}
+EXPORT_SYMBOL(panel_rgb_get_backlight_value);
+
+void panel_rgb_set_backlight_value(struct drm_panel *panel, int brightness)
+{
+	if (!panel->backlight || backlight_is_blank(panel->backlight) || brightness <= 0)
+		return ;
+
+	// TODO: support backlight mapping
+	panel->backlight->props.brightness = brightness;
+	backlight_update_status(panel->backlight);
+}
+EXPORT_SYMBOL(panel_rgb_set_backlight_value);
 
 static int panel_rgb_enable(struct drm_panel *panel)
 {
@@ -267,6 +270,7 @@ static int panel_rgb_parse_dt(struct panel_rgb *rgb)
 	of_property_read_u32(np, "power-delay-ms", &rgb->delay.power);
 	of_property_read_u32(np, "enable-delay-ms", &rgb->delay.enable);
 	of_property_read_u32(np, "reset-delay-ms", &rgb->delay.reset);
+	of_property_read_u32(np, "reset-num", &rgb->reset_num);
 /*
 	ret = of_property_read_u32(np, "width-mm", &rgb->width);
 	if (ret < 0) {
@@ -332,8 +336,6 @@ static int panel_rgb_probe(struct platform_device *pdev)
 		return ret;
 
 	drm_panel_add(&rgb->panel);
-	if (ret < 0)
-		return ret;
 
 	dev_set_drvdata(rgb->dev, rgb);
 	DRM_WARN("[RGB-PANEL] panel_rgb_probe finish\n");
@@ -372,5 +374,5 @@ module_platform_driver(panel_rgb_driver);
 
 MODULE_AUTHOR("xiaozhineng <xiaozhineng@allwinnertech.com>");
 MODULE_DESCRIPTION("RGB Panel Driver");
-MODULE_VERSION("1.0.0");
+MODULE_VERSION("1.0.1");
 MODULE_LICENSE("GPL");

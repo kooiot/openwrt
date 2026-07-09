@@ -22,20 +22,30 @@ static unsigned char cmb_phy_lane[3][4] = {
 	/* phyA */      /* phyB */      /* phyC */
 	{0, 1, 2, 3}, {4, 5, 6, 7}, {8, 9, 10, 11} /* ch */
 };
-#elif defined (CONFIG_ARCH_SUN55IW3) || defined (CONFIG_ARCH_SUN55IW6)
+#elif IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN55IW6)
 static unsigned char cmb_phy_lane[4][4] = {
 	/* phyA */   /* phyB */   /* phyC */  /* phyD */
 	{0, 1, 4, 5}, {4, 5}, {8, 9, 12, 13}, {12, 13} /* ch */
 };
-#elif defined (CONFIG_ARCH_SUN60IW1) || defined (CONFIG_ARCH_SUN60IW2)
+#elif IS_ENABLED(CONFIG_ARCH_SUN60IW1) || IS_ENABLED(CONFIG_ARCH_SUN60IW2)
 static unsigned char cmb_phy_lane[3][4] = {
 	/* phyA */     /* phyB */    /* phyC */
 	{0, 1, 2, 3}, {4, 5, 6, 7}, {8, 9} /* ch */
 };
-#elif defined CONFIG_ARCH_SUN300IW1
+#elif IS_ENABLED(CONFIG_ARCH_SUN300IW1)
 static unsigned char cmb_phy_lane[2][2] = {
 	/* phyA */   /* phyB */   /* phyC */  /* phyD */
 	{0, 4}, {4} /* ch */
+};
+#elif defined (CONFIG_ARCH_SUN65IW1)
+static unsigned char cmb_phy_lane[3][4] = {
+	/* phyA */     /* phyB */    /* phyC */
+	{0, 1, 2, 3}, {4, 5, 8, 9}, {8, 9} /* ch */
+};
+#elif defined (CONFIG_ARCH_SUN8IW22)
+static unsigned char cmb_phy_lane[3][4] = {
+	/* phyA */   /* phyB */   /* phyC */
+	{0, 1, 5, 4}, {4, 5}, {8} /* ch */
 };
 #endif
 
@@ -234,6 +244,30 @@ void cmb_phy0_work_mode(unsigned int sel, unsigned int mode) /* mode 0 --mipi, m
 	}
 }
 
+void cmb_phy0_multiplex_en(unsigned int sel, unsigned int mode)
+{
+	vin_reg_clr_set(cmb_csi_phy_base_addr[sel] + CMB_PHY_CTL_REG_OFF,
+		CMB_PHY0_IBIAS_EN_MASK, 1 << CMB_PHY0_IBIAS_EN);
+	vin_reg_clr_set(cmb_csi_phy_base_addr[sel] + CMB_PHY_CTL_REG_OFF,
+		CMB_PHY0_LP_PEFI_MASK, 1 << CMB_PHY0_LP_PEFI);
+	if (mode == 0) {
+		vin_reg_clr_set(cmb_csi_phy_base_addr[sel] + CMB_PHY_CTL_REG_OFF,
+			CMB_PHY0_HS_PEFI_MASK, 0x4 << CMB_PHY0_HS_PEFI);
+	} else {
+		vin_reg_clr_set(cmb_csi_phy_base_addr[sel] + CMB_PHY_CTL_REG_OFF,
+			CMB_PHY0_HS_PEFI_MASK, 0x2 << CMB_PHY0_HS_PEFI);
+	}
+
+	vin_reg_clr_set(cmb_csi_phy_base_addr[sel] + CMB_PHY_OFSCAL0_OFF,
+			CMB_PHY0_OFSCAL_AUTO_MASK, 0 << CMB_PHY0_OFSCAL_AUTO);
+	vin_reg_clr_set(cmb_csi_phy_base_addr[sel] + CMB_PHY_OFSCAL0_OFF,
+			CMB_PHY0_OFSCAL_SOFT_MASK, 1 << CMB_PHY0_OFSCAL_SOFT);
+	vin_reg_clr_set(cmb_csi_phy_base_addr[sel] + CMB_PHY_OFSCAL1_OFF,
+			CMB_PHY0_OFSCAL_SET_MASK, 0x13 << CMB_PHY0_OFSCAL_SET);
+	vin_reg_clr_set(cmb_csi_phy_base_addr[sel] + CMB_PHY_S2P_CTL_REG_OFF,
+		CMB_PHY0_S2P_WIDTH_MASK, 0x3 << CMB_PHY0_S2P_WIDTH);
+}
+
 void cmb_phy0_ofscal_cfg(unsigned int sel)
 {
 	vin_reg_clr_set(cmb_csi_phy_base_addr[sel] + CMB_PHY_OFSCAL0_OFF,
@@ -269,7 +303,13 @@ void cmb_phy_set_deskew_laned0(unsigned int sel, unsigned int delay)
 void cmb_phy_set_deskew_laneck0(unsigned int sel, unsigned int delay)
 {
 	vin_reg_clr_set(cmb_csi_phy_base_addr[sel] + CMB_PHY_DESKEW1_OFF,
-		CMB_PHY_DESKEW_LANECK1_SET_MASK, delay << CMB_PHY_DESKEW_LANECK1_SET);
+		CMB_PHY_DESKEW_LANECK0_SET_MASK, delay << CMB_PHY_DESKEW_LANECK0_SET);
+}
+
+unsigned int cmb_phy_deskew_laneck0_get(unsigned int sel)
+{
+	unsigned int reg_val = vin_reg_readl(cmb_csi_phy_base_addr[sel] + CMB_PHY_DESKEW1_OFF);
+	return (reg_val & CMB_PHY_DESKEW_LANECK0_SET_MASK) >> CMB_PHY_DESKEW_LANECK0_SET;
 }
 
 unsigned int cmb_phy_deskew1_cfg_get(unsigned int sel)
@@ -278,13 +318,15 @@ unsigned int cmb_phy_deskew1_cfg_get(unsigned int sel)
 	return (reg_val & CMB_PHY_DESKEW_LANECK1_SET_MASK) >> CMB_PHY_DESKEW_LANECK1_SET;
 }
 
-void cmb_phy_deskew1_cfg(unsigned int sel, unsigned int deskew)
+void cmb_phy_deskew1_cfg(unsigned int sel, unsigned int deskew, bool deskew_lane_cfg)
 {
-#if !defined CONFIG_ARCH_SUN50IW10
+#if !IS_ENABLED(CONFIG_ARCH_SUN50IW10)
 	if (sel) {
 		cmb_phy_set_deskew_laneck0(sel, deskew ? deskew : 0x7);
-		//cmb_phy_set_deskew_laned0(sel, 0x5);
-		//cmb_phy_set_deskew_laned1(sel, 0x5);
+		if (deskew_lane_cfg) {
+			cmb_phy_set_deskew_laned0(sel, 0x5);
+			cmb_phy_set_deskew_laned1(sel, 0x5);
+		}
 	} else {
 		cmb_phy_set_deskew_laneck0(sel, deskew ? deskew : 0x2);
 		//cmb_phy_set_deskew_laned0(sel, 0x0);
@@ -744,6 +786,24 @@ void cmb_port_set_mipi_wdr(unsigned int sel, unsigned int mode, unsigned int ch)
 	cmb_port_set_fid_mode(sel, mode);
 	cmb_port_out_num(sel, ONE_DATA);
 	cmb_port_out_chnum(sel, ch-1);
+}
+
+void cmb_port_int_enable(unsigned int sel, unsigned int ch, enum mipi_int_sel interrupt)
+{
+	vin_reg_set(cmb_csi_port_base_addr[sel] + CMB_PORT_MIPI_CH0_INI_REG_OFF + ch * CMB_PORT_CHANNEL_OFFSET,
+				interrupt & MIPI_INT_ALL);
+}
+
+void cmb_port_int_disable(unsigned int sel, unsigned int ch, enum mipi_int_sel interrupt)
+{
+	vin_reg_clr(cmb_csi_port_base_addr[sel] + CMB_PORT_MIPI_CH0_INI_REG_OFF + ch * CMB_PORT_CHANNEL_OFFSET,
+				interrupt & MIPI_INT_ALL);
+}
+
+void cmb_port_int_clear_status(unsigned int sel, unsigned int ch, enum mipi_int_sel interrupt)
+{
+	vin_reg_writel(cmb_csi_port_base_addr[sel] + CMB_PORT_MIPI_CH0_INT_PD_REG_OFF
+				+ ch * CMB_PORT_CHANNEL_OFFSET, interrupt);
 }
 
 unsigned int cmb_port_wdr_mode_get(unsigned int sel)

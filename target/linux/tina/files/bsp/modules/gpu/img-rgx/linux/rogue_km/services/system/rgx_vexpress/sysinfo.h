@@ -46,9 +46,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /*!< System specific poll/timeout details */
 #if defined(VIRTUAL_PLATFORM)
-#define MAX_HW_TIME_US                           	(5000000)
+#define MAX_HW_TIME_US								(5000000)
 #else
-#define MAX_HW_TIME_US							 	(500000)
+#define MAX_HW_TIME_US								(500000)
 #endif
 
 #define FATAL_ERROR_DETECTION_POLL_MS				(10000)

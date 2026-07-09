@@ -134,6 +134,33 @@ struct sunxi_jack_typec_cfg {
 	struct sunxi_jack_modes_map *modes_map;
 };
 
+/* note:
+ * "jack-swpin-max = <n>" - the num of pins what need to be controlled
+ * "jack-swpin-0" - The pins that need to be controlled
+ * "jack-swpin-1"
+ * "jack-swpin-..."
+ * "jack-swpin-n"
+ *
+ * The following is the truth table:
+ * 1 - high level, 0 - low level, 0xf - no operation
+ * "jack-mode-off" - The status of the above pins when the mode if off
+ * "jack-mode-usb" - The status of the above pins when the mode if usb
+ * "jack-mode-hp" - The status of the above pins when the mode if hp
+ * "jack-mode-micn" - The status of the above pins when the mic insert
+ * "jack-mode-mici" - The status of the above pins when the mic reverse insertion
+ *
+ * EX:
+ * jack-swpin-max	= <3>;
+ * jack-swpin-0		= <&pio PH 9 GPIO_ACTIVE_HIGH>;
+ * jack-swpin-1		= <&pio PH 10 GPIO_ACTIVE_HIGH>;
+ * jack-swpin-2		= <&pio PH 11 GPIO_ACTIVE_HIGH>;
+ * jack-mode-off	= <0xf 1 0>;
+ * jack-mode-usb	= <0xf 0 1>;
+ * jack-mode-hp		= <0xf 0 0>;
+ * jack-mode-micn	= <1 0xf 0xf>;
+ * jack-mode-mici	= <0 0xf 0xf>;
+ */
+
 struct sunxi_jack_extcon {
 	struct platform_device *pdev;
 
@@ -173,6 +200,15 @@ struct sunxi_jack_gpio {
 typedef irqreturn_t (*jack_irq_work)(int, void *);
 
 struct sunxi_jack_adv {
+	struct device *dev;
+
+	enum JACK_PLUG_STA jack_plug_sta;
+	struct extcon_dev *extdev;
+	struct notifier_block hp_nb;
+	struct sunxi_jack_typec_cfg jack_typec_cfg;
+	struct power_supply *pmu_psy;
+	bool typec;
+
 	void *data;
 	int (*jack_init)(void *);
 	void (*jack_exit)(void *);
@@ -183,7 +219,7 @@ struct sunxi_jack_adv {
 	void (*jack_irq_free)(void *);
 	void (*jack_irq_enable)(void *);
 	void (*jack_irq_disable)(void *);
-	void (*jack_irq_clean)(void *);
+	void (*jack_irq_clean)(void *, int);
 
 	void (*jack_det_irq_work)(void *, enum snd_jack_types *);
 	void (*jack_det_scan_work)(void *, enum snd_jack_types *);
@@ -227,8 +263,6 @@ int snd_sunxi_jack_codec_register(struct snd_soc_card *card);
 void snd_sunxi_jack_codec_unregister(struct snd_soc_card *card);
 
 /* jack extcon */
-void sunxi_jack_typec_mode_set(struct sunxi_jack_typec_cfg *jack_typec_cfg,
-			       enum sunxi_jack_modes mode);
 int snd_sunxi_jack_extcon_init(void *jack_data);
 void snd_sunxi_jack_extcon_exit(void *jack_data);
 int snd_sunxi_jack_extcon_register(struct snd_soc_card *card);
@@ -253,5 +287,8 @@ extern void snd_sunxi_jack_unregister(struct snd_soc_card *card,
 				      enum JACK_DET_METHOD jack_support);
 extern int snd_sunxi_jack_init(struct sunxi_jack_port *sunxi_jack_port);
 extern int snd_sunxi_jack_exit(struct sunxi_jack_port *sunxi_jack_port);
+
+void sunxi_jack_typec_mode_set(struct sunxi_jack_typec_cfg *jack_typec_cfg,
+			       enum sunxi_jack_modes mode);
 
 #endif /* __SND_SUNXI_JACK_H */

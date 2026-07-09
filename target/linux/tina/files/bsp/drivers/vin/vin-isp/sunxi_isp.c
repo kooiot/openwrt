@@ -39,7 +39,19 @@
 
 struct isp_dev *glb_isp[VIN_MAX_ISP];
 
-#if !defined ISP_600
+#if defined ISP_610
+#if IS_ENABLED(CONFIG_D3D_COMPRESS_EN)
+#define D3D_LBC_MODE			180 /* <=100 = lossless, 120 = 1.2x, 400 = 4x(< 4x)*/
+#else
+#define D3D_LBC_MODE			100 /* <=100 = lossless, 120 = 1.2x, 400 = 4x(< 4x)*/
+#endif
+#elif defined ISP_600
+#if IS_ENABLED(CONFIG_D3D_COMPRESS_EN)
+#define D3D_LBC_MODE			150//167 /* <=100 = lossless, 120 = 1.2x, 400 = 4x(< 4x)*/
+#else
+#define D3D_LBC_MODE			100 /* <=100 = lossless, 120 = 1.2x, 400 = 4x(< 4x)*/
+#endif
+#else /*ISP_5xx*/
 #if IS_ENABLED(CONFIG_D3D_COMPRESS_EN)
 #define D3D_RAW_LBC_MODE		16 /* <=10 = lossless, 12 = 1.2x, 30 = 3x(< 3x)*/
 #define D3D_K_LBC_MODE			20 /* <=10 = lossless, 12 = 1.2x, 20 = 2x(< 2x)*/
@@ -53,12 +65,6 @@ struct isp_dev *glb_isp[VIN_MAX_ISP];
 #else
 #define WDR_RAW_LBC_MODE		10 /* <=10 = lossless, 12 = 1.2x, 30 = 3x(< 3x)*/
 #endif
-#else /* else ISP_600 */
-#if IS_ENABLED(CONFIG_D3D_COMPRESS_EN)
-#define D3D_LBC_MODE			150//167 /* <=100 = lossless, 120 = 1.2x, 400 = 4x(< 4x)*/
-#else
-#define D3D_LBC_MODE			100 /* <=100 = lossless, 120 = 1.2x, 400 = 4x(< 4x)*/
-#endif
 #endif
 
 #define LARGE_IMAGE_OFF			32
@@ -67,6 +73,13 @@ struct isp_dev *glb_isp[VIN_MAX_ISP];
 #define MIN_IN_HEIGHT			128
 #define MAX_IN_WIDTH			4224
 #define MAX_IN_HEIGHT			4224
+
+#if defined CONFIG_ARCH_SUN65IW1
+#define TDM_RDMA_FIFO_LOW_LIMIT		0x07
+#define TDM_RDMA_FIFO_HIGH_LIMIT	0x07
+#define TDM_WDMA_FIFO_LOW_LIMIT		0x07
+#define TDM_WDMA_FIFO_HIGH_LIMIT	0x07
+#endif
 
 static struct isp_pix_fmt sunxi_isp_formats[] = {
 	{
@@ -214,10 +227,56 @@ static void __isp_s_sensor_stby_handle(struct work_struct *work)
 	vin_print("%s done, %s is standby and then on!\n", __func__, vinc->vid_cap.pipe.sd[VIN_IND_SENSOR]->name);
 }
 
+static int isp_2d_pingpong_alloc(struct isp_dev *isp)
+{
+#if defined ISP_610
+	unsigned int width;
+	int ret;
+
+	if (isp->large_image == 3)
+		width = isp->mf.width / 2 + vin_set_large_overlayer(isp->mf.width);
+	else
+		width = isp->mf.width;
+
+	isp->d2d_raw_size = ALIGN(ALIGN((width / 16) * 34, 64) * (isp->mf.height / 8) / 32, 4);
+
+	isp->d2d_pingpong.size = isp->d2d_raw_size * 4; /* d2d_byr_addr */
+
+	ret = os_mem_alloc(&isp->pdev->dev, &isp->d2d_pingpong);
+	if (ret < 0) {
+		vin_err("isp 2d pingpong d2d_byr_addr requset failed!\n");
+		return -ENOMEM;
+	}
+
+	vin_log(VIN_LOG_ISP, "d2d buf:dma_addr is 0x%x ~ 0x%x\n", (u32)isp->d2d_pingpong.dma_addr, (u32)(isp->d2d_pingpong.dma_addr + isp->d2d_pingpong.size));
+#endif
+	return 0;
+}
+
+static void isp_2d_pingpong_free(struct isp_dev *isp)
+{
+#if defined ISP_610
+	os_mem_free(&isp->pdev->dev, &isp->d2d_pingpong);
+#endif
+}
+
+static int isp_2d_pingpong_update(struct isp_dev *isp)
+{
+#if defined ISP_610
+	vin_dma_addr_t addr;
+
+	addr = (vin_dma_addr_t)isp->d2d_pingpong.dma_addr;
+	bsp_isp_set_d2d_bayer_addr(isp->id, addr);
+
+	bsp_isp_d2d_set_raw_size(isp->id, isp->d2d_raw_size);
+#endif
+	return 0;
+}
+
 #if IS_ENABLED(CONFIG_D3D)
 static int isp_3d_pingpong_alloc(struct isp_dev *isp)
 {
-#if !defined ISP_600
+#if !defined ISP_600 && !defined ISP_610
 	int ret = 0;
 #if IS_ENABLED(CONFIG_ARCH_SUN8IW19P1)
 	int cmp_ratio, bitdepth, wth;
@@ -262,7 +321,7 @@ static int isp_3d_pingpong_alloc(struct isp_dev *isp)
 		return -ENOMEM;
 	}
 #endif
-#elif defined CONFIG_ARCH_SUN8IW16P1
+#elif IS_ENABLED(CONFIG_ARCH_SUN8IW16P1)
 #if IS_ENABLED(CONFIG_D3D_LTF_EN)
 	isp->d3d_pingpong[0].size = roundup(isp->mf.width, 64) * isp->mf.height * 29 / 8;
 	isp->d3d_pingpong[1].size = roundup(isp->mf.width, 64) * isp->mf.height * 29 / 8;
@@ -286,13 +345,14 @@ static int isp_3d_pingpong_alloc(struct isp_dev *isp)
 		return -ENOMEM;
 	}
 	return ret;
-#else /* else ISP_600 */
+#else /* else ISP_600/ ISP_610*/
+#if defined ISP_600
 	int ret = 0;
 	int kb_wnum, kb_hnum, hgt;
 	int bitdepth = 12;
 	unsigned int overlayer = vin_set_large_overlayer(isp->mf.width);
 
-#if !defined CONFIG_ARCH_SUN55IW3 && defined CONFIG_D3D_LBC_MODE
+#if !IS_ENABLED(CONFIG_ARCH_SUN55IW3) && IS_ENABLED(CONFIG_D3D_LBC_MODE)
 	int mb_len, mb_min_bits_ratio, mb_max_bits_ratio, align;
 	int wth, width_bitdepth;
 
@@ -301,11 +361,14 @@ static int isp_3d_pingpong_alloc(struct isp_dev *isp)
 	mb_len = 32;
 	align = 256;
 
-	if (D3D_LBC_MODE > 100) {
-		if (D3D_LBC_MODE > 400)
+	if (!isp->d3d_lbc_ratio)
+		isp->d3d_lbc_ratio = D3D_LBC_MODE;
+
+	if (isp->d3d_lbc_ratio > 100) {
+		if (isp->d3d_lbc_ratio > 400)
 			isp->d3d_lbc.cmp_ratio = 1024/4;
 		else
-			isp->d3d_lbc.cmp_ratio = ((1024*100*10/D3D_LBC_MODE) + 5) / 10;
+			isp->d3d_lbc.cmp_ratio = ((1024*100*10/isp->d3d_lbc_ratio) + 5) / 10;
 	} else
 		isp->d3d_lbc.cmp_ratio = 1024;
 
@@ -362,7 +425,7 @@ static int isp_3d_pingpong_alloc(struct isp_dev *isp)
 		wth = roundup(isp->mf.width / 2 + overlayer, 32);
 	else
 		wth = roundup(isp->mf.width, 32);
-	if (D3D_LBC_MODE <= 100) {
+	if (isp->d3d_lbc_ratio <= 100) {
 		isp->d3d_lbc.line_tar_bits = roundup((bitdepth * 16 + 2) * wth / 16, align);;
 		isp->d3d_lbc.line_max_bits = isp->d3d_lbc.line_tar_bits;
 		isp->d3d_lbc.is_lossy = 0;
@@ -374,8 +437,11 @@ static int isp_3d_pingpong_alloc(struct isp_dev *isp)
 	}
 
 	isp->d3d_lbc.line_stride = roundup(isp->d3d_lbc.line_max_bits + isp->d3d_lbc.mb_min_bit, 512) / 32;
-#else
-	isp->d3d_lbc.line_stride = roundup(isp->mf.width * bitdepth, 512) / 32;
+#else /* PKG mode */
+	if (isp->large_image == 3)
+		isp->d3d_lbc.line_stride = roundup((isp->mf.width / 2 + overlayer) * bitdepth, 512) / 32;
+	else
+		isp->d3d_lbc.line_stride = roundup(isp->mf.width * bitdepth, 512) / 32;
 #endif
 
 	if (isp->large_image == 3)
@@ -414,6 +480,180 @@ static int isp_3d_pingpong_alloc(struct isp_dev *isp)
 		return -ENOMEM;
 	}
 	return ret;
+#else /*ISP_610*/
+	int ret = 0;
+	int kb_wnum, kb_hnum, hgt;
+	int bitdepth = 12;
+	unsigned int width;
+	unsigned int align = 256;
+	struct isp_lbc_cfg *lbc = &isp->d3d_lbc;
+
+#if IS_ENABLED(CONFIG_D3D_LBC_MODE)
+	unsigned char default_minqp_12[] = {0, 0, 1, 1, 2, 2, 3, 3, 4, 5, 6, 9};
+	unsigned char default_maxqp_12[] = {2, 3, 4, 5, 5, 5, 6, 7, 8, 8, 9, 11};
+	unsigned int default_threshold_12[] = {652, 1248, 1792, 2272, 2700, 3072, 3384, 3640, 3840, 3980, 4064, 4096};
+	int default_tar_bits_cfg_12[] = {0, 0, 0, 0, 0, -8, -16, -24, -32, -40, -48, -56};
+	unsigned int mb_len = 32;
+	unsigned int mb_num_in_frame;
+	unsigned int mb_max_bits_ratio = 204;
+	unsigned int width_stride;
+	int i;
+
+	if (isp->large_image == 3)
+		width = isp->mf.width / 2 + vin_set_large_overlayer(isp->mf.width);
+	else
+		width = isp->mf.width;
+
+	if (!isp->d3d_lbc_ratio)
+		isp->d3d_lbc_ratio = D3D_LBC_MODE;
+
+	if (isp->d3d_lbc_ratio > 100) {
+		if (isp->d3d_lbc_ratio > 400)
+			lbc->cmp_ratio = 1024/4;
+		else
+			lbc->cmp_ratio = ((1024*100*10/isp->d3d_lbc_ratio) + 5) / 10;
+	} else
+		lbc->cmp_ratio = 1024;
+
+	if (lbc->cmp_ratio >= 393) /* 2.6x */
+		lbc->rc_ctrl_mode = 0;
+	else if (lbc->cmp_ratio >= 366) /* 2.8x */
+		lbc->rc_ctrl_mode = 1;
+	else
+		vin_err("isp d3d lbc not support ratio mora than 2.8x");
+
+	if (width < 128 || isp->mf.height < 64)
+		vin_err("isp d3d lbc not support (width < 128), (height < 64)\n");
+	else if ((width < 1280 || isp->mf.height < 64) && lbc->rc_ctrl_mode == 0) {
+		lbc->cmp_ratio = 1024;
+		vin_warn("isp d3d lbc default to 1x\n");
+	} else if ((width < 960 || isp->mf.height < 64) && lbc->rc_ctrl_mode == 1) {
+		lbc->cmp_ratio = 1024;
+		vin_warn("isp d3d lbc default to 1x\n");
+	}
+
+	for (i = 0; i < bitdepth; i++) {
+		lbc->lbc_min_qp[i] = default_minqp_12[i];
+		lbc->lbc_max_qp[i] = default_maxqp_12[i];
+		lbc->lbc_thresh[i] = default_threshold_12[i];
+		lbc->lbc_tar_bits_adj[i] = default_tar_bits_cfg_12[i];
+	}
+	lbc->glb_max_k = 5;
+	lbc->glb_max_quo = 10;
+
+	if (lbc->cmp_ratio >= 613)
+		lbc->start_qp = 0;
+	else if (lbc->cmp_ratio >= 512)
+		lbc->start_qp = 1;
+	else if (lbc->cmp_ratio >= 341)
+		lbc->start_qp = 2;
+	else
+		lbc->start_qp = 2;
+
+	lbc->std_qp = bitdepth - 1;
+
+	if (lbc->cmp_ratio == 1024)
+		lbc->is_lossy = 0;
+	else
+		lbc->is_lossy = 1;
+
+	lbc->mb_num_in_line = (width + mb_len - 1) / mb_len;
+	mb_num_in_frame = lbc->mb_num_in_line * isp->mf.height;
+	mb_max_bits_ratio = 204;
+
+	lbc->ptr_buffer_fullness_max = lbc->lbc_thresh[bitdepth - 1];
+	lbc->ptr_buffer_thr = lbc->lbc_thresh[bitdepth / 2];
+	if (lbc->cmp_ratio >= 613)
+		lbc->ptr_buffer_init = lbc->lbc_thresh[0];
+	else if (lbc->cmp_ratio >= 512)
+		lbc->ptr_buffer_init = lbc->lbc_thresh[1];
+	else
+		lbc->ptr_buffer_init = lbc->lbc_thresh[2];
+	lbc->ptr_buffer_init = clamp(lbc->ptr_buffer_init, (unsigned int)0, (unsigned int)2047);
+
+	isp->align_choose = ISP_ALIGN_256;
+	align = (isp->align_choose == ISP_ALIGN_512) ? 512 : 256;
+	width_stride = ALIGN(width, 32);
+	if (lbc->is_lossy) {
+		lbc->line_tar_bit = roundup(lbc->cmp_ratio * mb_len * bitdepth * lbc->mb_num_in_line / 1024, align);
+		lbc->line_tar_bit = min(lbc->line_tar_bit, roundup(bitdepth * width_stride, align));
+		lbc->line_max_bit = roundup((mb_max_bits_ratio + 1024) * lbc->line_tar_bit / 1024, align);
+		if (lbc->rc_ctrl_mode) {
+			lbc->frame_tar_bit = roundup(lbc->cmp_ratio * mb_len * bitdepth * mb_num_in_frame / 1024, align);
+		} else {
+			lbc->frame_tar_bit = lbc->line_tar_bit * isp->mf.height;
+		}
+	} else {
+		lbc->line_tar_bit = roundup((mb_len * bitdepth + 3 + 1) * lbc->mb_num_in_line, align);
+		lbc->line_max_bit = lbc->line_tar_bit;
+		lbc->frame_tar_bit = lbc->line_tar_bit * isp->mf.height;
+	}
+
+	if (lbc->rc_ctrl_mode == 0) {
+		lbc->tar_bits = lbc->line_tar_bit / lbc->mb_num_in_line - DIV_ROUND_UP(lbc->ptr_buffer_fullness_max - lbc->ptr_buffer_init, lbc->mb_num_in_line);
+	} else {
+		lbc->tar_bits = mb_len * bitdepth * lbc->cmp_ratio / 1024 - DIV_ROUND_UP(lbc->ptr_buffer_fullness_max - lbc->ptr_buffer_init, mb_num_in_frame);
+	}
+	lbc->tar_bits_line_rc = lbc->line_max_bit / lbc->mb_num_in_line - DIV_ROUND_UP(lbc->ptr_buffer_fullness_max - lbc->ptr_buffer_init, lbc->mb_num_in_line);
+
+	for (i = 0; i < bitdepth; i++) {
+		lbc->lbc_tar_bits_adj[i] = max(0, min((int)(mb_len * bitdepth), (int)lbc->tar_bits + lbc->lbc_tar_bits_adj[i]));
+	}
+
+	for (i = 0; i < 5; i++) {
+		lbc->lbc_pre_bits_adj[i] = mb_len * i / 2;
+	}
+
+	lbc->line_stride = roundup(lbc->line_max_bit, align) / 32;//unit word
+	hgt = roundup(isp->mf.height, 64);
+#else /* PKG mode */
+	if (isp->large_image == 3)
+		width = isp->mf.width / 2 + vin_set_large_overlayer(isp->mf.width);
+	else
+		width = isp->mf.width;
+
+	isp->align_choose = ISP_ALIGN_256;
+	align = (isp->align_choose == ISP_ALIGN_512) ? 512 : 256;
+	lbc->line_stride = roundup(width * bitdepth, align) / 32;//unit word
+	hgt = 0;
+#endif
+	kb_wnum = roundup(width / 9, 8);
+	kb_hnum = isp->mf.height / 9;
+
+	isp->d3d_pingpong[0].size = hgt + isp->mf.height * (isp->d3d_lbc.line_stride << 2); /* d3d_byr_addr */
+	isp->d3d_pingpong[1].size = kb_wnum * kb_hnum; /* d3d_k0_addr */
+	isp->d3d_pingpong[2].size = isp->d3d_pingpong[1].size; 	/* d3d_k1_addr */
+	isp->d3d_pingpong[3].size = isp->d3d_pingpong[1].size; 	/* d3d_status_addr */
+
+	ret = os_mem_alloc(&isp->pdev->dev, &isp->d3d_pingpong[0]);
+	if (ret < 0) {
+		vin_err("isp 3d pingpong buf0-d3d_byr_addr requset failed!\n");
+		return -ENOMEM;
+	}
+
+	ret = os_mem_alloc(&isp->pdev->dev, &isp->d3d_pingpong[1]);
+	if (ret < 0) {
+		vin_err("isp 3d pingpong buf1-d3d_k0_addr requset failed!\n");
+		return -ENOMEM;
+	}
+
+	ret = os_mem_alloc(&isp->pdev->dev, &isp->d3d_pingpong[2]);
+	if (ret < 0) {
+		vin_err("isp 3d pingpong buf2-d3d_k1_addr requset failed!\n");
+		return -ENOMEM;
+	}
+
+	ret = os_mem_alloc(&isp->pdev->dev, &isp->d3d_pingpong[3]);
+	if (ret < 0) {
+		vin_err("isp 3d pingpong buf3-d3d_status_addr requset failed!\n");
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < 4; i++)
+		vin_log(VIN_LOG_ISP, "d3d buf%d:dma_addr is 0x%x ~ 0x%x\n", i, (u32)isp->d3d_pingpong[i].dma_addr, (u32)(isp->d3d_pingpong[i].dma_addr + isp->d3d_pingpong[i].size));
+
+	return ret;
+#endif
 #endif
 }
 
@@ -421,13 +661,13 @@ static void isp_3d_pingpong_free(struct isp_dev *isp)
 {
 	os_mem_free(&isp->pdev->dev, &isp->d3d_pingpong[0]);
 	os_mem_free(&isp->pdev->dev, &isp->d3d_pingpong[1]);
-#if !defined ISP_600
+#if !defined ISP_600 && !defined ISP_610
 #if IS_ENABLED(CONFIG_ARCH_SUN8IW19P1)
 #if IS_ENABLED(CONFIG_D3D_LTF_EN)
 	os_mem_free(&isp->pdev->dev, &isp->d3d_pingpong[2]);
 #endif
 #endif
-#else /* else ISP_600 */
+#else /* else ISP_600 & ISP_610 */
 	os_mem_free(&isp->pdev->dev, &isp->d3d_pingpong[2]);
 	os_mem_free(&isp->pdev->dev, &isp->d3d_pingpong[3]);
 #endif
@@ -436,7 +676,7 @@ static void isp_3d_pingpong_free(struct isp_dev *isp)
 static int isp_3d_pingpong_update(struct isp_dev *isp)
 {
 	vin_dma_addr_t addr;
-#if !defined ISP_600
+#if !defined ISP_600 && !defined ISP_610
 #if IS_ENABLED(CONFIG_ARCH_SUN8IW19P1)
 	addr = (vin_dma_addr_t)isp->d3d_pingpong[0].dma_addr;
 	bsp_isp_set_d3d_ref_k_addr(isp->id, addr);
@@ -470,12 +710,12 @@ static int isp_3d_pingpong_update(struct isp_dev *isp)
 	bsp_isp_set_d3d_addr0(isp->id, addr);
 	addr = (vin_dma_addr_t)isp->d3d_pingpong[1].dma_addr;
 	bsp_isp_set_d3d_addr1(isp->id, addr);
-#if IS_ENABLED(CONFIG_ARCH_SUN8IW16P1) && !defined CONFIG_D3D_LTF_EN
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW16P1) && !IS_ENABLED(CONFIG_D3D_LTF_EN)
 	/* close d3d long time frame */
 	writel(readl(isp->isp_load.vir_addr + 0x2d4) & ~(1 << 24), isp->isp_load.vir_addr + 0x2d4);
 #endif
 #endif
-#else /* else ISP_600 */
+#else /* else ISP_600 & ISP_610*/
 	addr = (vin_dma_addr_t)isp->d3d_pingpong[0].dma_addr;
 	bsp_isp_set_d3d_bayer_addr(isp->id, addr);
 	addr = (vin_dma_addr_t)isp->d3d_pingpong[1].dma_addr;
@@ -486,6 +726,9 @@ static int isp_3d_pingpong_update(struct isp_dev *isp)
 	bsp_isp_set_d3d_status_addr(isp->id, addr);
 
 	bsp_isp_set_d3d_lbc_cfg(isp->id, isp->d3d_lbc);
+#if defined ISP_610
+	bsp_isp_d3d_set_lbc_align_choose(isp->id, isp->align_choose);
+#endif
 #endif
 	return 0;
 }
@@ -504,11 +747,11 @@ static int isp_3d_pingpong_update(struct isp_dev *isp)
 }
 #endif
 
-#if IS_ENABLED(CONFIG_WDR) && !defined ISP_600
+#if IS_ENABLED(CONFIG_WDR) && !defined ISP_600 && !defined ISP_610
 static void isp_wdr_table_init(struct isp_dev *isp)
 {
 	int i;
-#if !defined CONFIG_ARCH_SUN8IW16P1 && !defined CONFIG_ARCH_SUN8IW19P1
+#if !IS_ENABLED(CONFIG_ARCH_SUN8IW16P1) && !IS_ENABLED(CONFIG_ARCH_SUN8IW19P1)
 	short *wdr_tbl = isp->isp_lut_tbl.vir_addr + ISP_WDR_GAMMA_FE_MEM_OFS;
 #else
 	short *wdr_tbl = isp->isp_load.vir_addr + ISP_LOAD_REG_SIZE + ISP_FE_TBL_SIZE + ISP_S0_LC_TBL_SIZE;
@@ -596,7 +839,7 @@ static void isp_wdr_table_init(struct isp_dev *isp) {}
 
 static int isp_wdr_pingpong_alloc(struct isp_dev *isp)
 {
-#if !defined ISP_600
+#if !defined ISP_600 && !defined ISP_610
 	isp->wdr_mode = ISP_NORMAL_MODE;
 #endif
 	return 0;
@@ -610,7 +853,7 @@ static int isp_wdr_pingpong_set(struct isp_dev *isp)
 }
 #endif
 
-#if defined SUPPORT_ISP_TDM && !defined ISP_600
+#if defined SUPPORT_ISP_TDM && !defined ISP_600 && !defined ISP_610
 static int __sunxi_isp_tdm_off(struct isp_dev *isp)
 {
 	struct vin_md *vind = dev_get_drvdata(isp->subdev.v4l2_dev->dev);
@@ -623,7 +866,11 @@ static int __sunxi_isp_tdm_off(struct isp_dev *isp)
 		if (!vin_streaming(&vind->vinc[i]->vid_cap))
 			continue;
 		vinc = vind->vinc[i];
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW22)
+		for (j = 0; j < VIN_VIR_ISP; j++) {
+#else
 		for (j = 0; j < VIN_MAX_ISP; j++) {
+#endif
 			if (vinc->isp_sel == j)
 				return -1;
 		}
@@ -632,7 +879,136 @@ static int __sunxi_isp_tdm_off(struct isp_dev *isp)
 }
 #endif
 
-#if defined ISP_600
+#if defined ISP_600 || defined ISP_610
+static int isp_stat_cfg_calc(struct isp_dev *isp)
+{
+#if defined ISP_610
+	int x_start, y_start;
+	unsigned int width;
+
+	if (isp->large_image == 3)
+		width = isp->mf.width / 2 + vin_set_large_overlayer(isp->mf.width);
+	else
+		width = isp->mf.width;
+
+	if (width < 32*16 || isp->mf.height < 24*16)
+		vin_err("isp%d input width(%d) or height(%d) is small than 512(32*16) or 384(24*16)\n", isp->id, width, isp->mf.height);
+
+	isp->stat_cfg.stat_valid_block_w_num = 32;
+	isp->stat_cfg.stat_valid_block_h_num = 24;
+	isp->stat_cfg.stat_valid_block_num = clamp(isp->stat_cfg.stat_valid_block_w_num * isp->stat_cfg.stat_valid_block_h_num, 0, 768);
+
+	isp->stat_cfg.stat_valid_block_width = clamp(width / isp->stat_cfg.stat_valid_block_w_num, (unsigned int)16, (unsigned int)256);
+	isp->stat_cfg.stat_valid_block_height = clamp(isp->mf.height / isp->stat_cfg.stat_valid_block_h_num, (unsigned int)16, (unsigned int)256);
+	isp->stat_cfg.stat_div_para = clamp(isp->stat_cfg.stat_valid_block_width * isp->stat_cfg.stat_valid_block_height, 1, 65536);
+
+	isp->stat_cfg.stat_intp_w_step = DIV_ROUND_UP(4096, isp->stat_cfg.stat_valid_block_width);
+	isp->stat_cfg.stat_intp_h_step = DIV_ROUND_UP(4096, isp->stat_cfg.stat_valid_block_height);
+
+	x_start = isp->stat_cfg.stat_valid_block_w_num * isp->stat_cfg.stat_valid_block_width;
+	y_start = isp->stat_cfg.stat_valid_block_h_num * isp->stat_cfg.stat_valid_block_height;
+	if (x_start < width)
+		isp->stat_cfg.stat_last_block_w_start = x_start - isp->stat_cfg.stat_valid_block_width;
+	else
+		isp->stat_cfg.stat_last_block_w_start = width - isp->stat_cfg.stat_valid_block_width;
+	isp->stat_cfg.stat_last_block_h_comp_line = clamp(y_start - isp->mf.height, (unsigned int)0, (unsigned int)255);
+	if (y_start < isp->mf.height)
+		isp->stat_cfg.stat_last_block_h_comp = 0;
+	else
+		isp->stat_cfg.stat_last_block_h_comp = isp->stat_cfg.stat_last_block_h_comp_line * isp->stat_cfg.stat_valid_block_width;
+#endif
+	return 0;
+}
+
+static int isp_stat_cfg_set(struct isp_dev *isp)
+{
+#if defined ISP_610
+	bsp_isp_set_stat(isp->id, &isp->stat_cfg);
+#endif
+	return 0;
+}
+
+static int isp_set_ini_combine(unsigned char virtual_id, int on)
+{
+#if defined ISP_610
+	struct isp_dev *isp = glb_isp[virtual_id];
+	unsigned char logic_id = isp_virtual_find_logic[virtual_id];
+	struct isp_dev *logic_isp = glb_isp[logic_id];
+	enum isp_mcic_sel mcic_sel[2][4];
+	unsigned int ini_en = 0;
+	unsigned char i;
+
+	if (on) {
+		if (isp->ini_mode == ISP_INI_INTERVAL) {
+			bsp_isp_set_int_cmb_frm_interval(isp->id, isp->int_cmb_interval);
+		} else if (isp->ini_mode == ISP_INI_MULTICH) {
+			bsp_isp_set_int_cmb_frm_interval(isp->id, isp->int_cmb_interval);
+
+			if (logic_id)
+				memcpy(&logic_isp->mcic_cfg, &isp->mcic_cfg, sizeof(struct isp_mcic_cfg));
+
+			if (isp->mcic_cfg.ch_cfg[0].isp_mcic_en && isp->mcic_cfg.ch_cfg[1].isp_mcic_en) {
+				if (isp->mcic_cfg.ch_cfg[0].isp_mcic_sel & isp->mcic_cfg.ch_cfg[1].isp_mcic_sel) {
+					vin_err("isp two mcic cfg with isp_id is overlay\n");
+					isp->ini_mode = ISP_INI_NORMAL;
+					return -1;
+				}
+			}
+
+			if (isp->mcic_cfg.ch_cfg[0].isp_mcic_en) {
+				ini_en |= ISP_MCIC0_EN;
+				if (isp->mcic_cfg.ch_cfg[0].isp_mcic_load_en)
+					ini_en |= ISP_MCIC0_LOAD_EN;
+				if (isp->mcic_cfg.ch_cfg[0].isp_mcic_save_en)
+					ini_en |= ISP_MCIC0_SAVE_EN;
+
+				for (i = 0; i < 4; i++) {
+					if ((i == 0) && (isp->mcic_cfg.ch_cfg[0].isp_mcic_sel & ISP_MCIC_ISP0_SEL))
+						mcic_sel[0][i] = ISP_ID0_SELECT;
+					else if ((i == 1) && (isp->mcic_cfg.ch_cfg[0].isp_mcic_sel & ISP_MCIC_ISP1_SEL))
+						mcic_sel[0][i] = ISP_ID1_SELECT;
+					else if ((i == 2) && (isp->mcic_cfg.ch_cfg[0].isp_mcic_sel & ISP_MCIC_ISP2_SEL))
+						mcic_sel[0][i] = ISP_ID2_SELECT;
+					else if ((i == 3) && (isp->mcic_cfg.ch_cfg[0].isp_mcic_sel & ISP_MCIC_ISP3_SEL))
+						mcic_sel[0][i] = ISP_ID3_SELECT;
+					else /* ISP_MCIC_NONE_SEL */
+						mcic_sel[0][i] = ISP_NONE_SELECT;
+				}
+				bsp_isp_set_mcic0_cfg(isp->id, &mcic_sel[0][0]);
+			}
+			if (isp->mcic_cfg.ch_cfg[1].isp_mcic_en) {
+				ini_en |= ISP_MCIC1_EN;
+				if (isp->mcic_cfg.ch_cfg[1].isp_mcic_load_en)
+					ini_en |= ISP_MCIC1_LOAD_EN;
+				if (isp->mcic_cfg.ch_cfg[1].isp_mcic_save_en)
+					ini_en |= ISP_MCIC1_SAVE_EN;
+
+				for (i = 0; i < 4; i++) {
+					if ((i == 0) && (isp->mcic_cfg.ch_cfg[1].isp_mcic_sel & ISP_MCIC_ISP0_SEL))
+						mcic_sel[1][i] = ISP_ID0_SELECT;
+					else if ((i == 1) && (isp->mcic_cfg.ch_cfg[1].isp_mcic_sel & ISP_MCIC_ISP1_SEL))
+						mcic_sel[1][i] = ISP_ID1_SELECT;
+					else if ((i == 2) && (isp->mcic_cfg.ch_cfg[1].isp_mcic_sel & ISP_MCIC_ISP2_SEL))
+						mcic_sel[1][i] = ISP_ID2_SELECT;
+					else if ((i == 3) && (isp->mcic_cfg.ch_cfg[1].isp_mcic_sel & ISP_MCIC_ISP3_SEL))
+						mcic_sel[1][i] = ISP_ID3_SELECT;
+					else /* ISP_MCIC_NONE_SEL */
+						mcic_sel[1][i] = ISP_NONE_SELECT;
+				}
+				bsp_isp_set_mcic0_cfg(isp->id, &mcic_sel[1][0]);
+			}
+			bsp_isp_mcic_enable(isp->id, ini_en);
+		}
+	} else {
+		bsp_isp_set_int_cmb_frm_interval(isp->id, 0);
+		bsp_isp_mcic_disable(isp->id, ISP_MCIC0_EN | ISP_MCIC1_EN);
+		bsp_isp_clr_mcic_status(isp->id, ISP_MCIC_ALL_STATUS);
+		isp->ini_mode = ISP_INI_NORMAL;
+	}
+#endif
+	return 0;
+}
+
 static int sunxi_isp_logic_s_stream(unsigned char virtual_id, int on)
 {
 	unsigned char logic_id = isp_virtual_find_logic[virtual_id];
@@ -654,16 +1030,31 @@ static int sunxi_isp_logic_s_stream(unsigned char virtual_id, int on)
 		bsp_isp_enable(logic_isp->id, on);
 		bsp_isp_mode(logic_isp->id, logic_isp->work_mode);
 		//bsp_isp_set_clk_back_door(logic_isp->id, on);
+#if defined ISP_610
+		bsp_isp_d3d_rec_reset_en(logic_isp->id, on);
+		bsp_isp_rdma_clk_back_door_en(logic_isp->id, on);
+		//bsp_isp_set_save_load_ini_back(logic_isp->id, 1);
+#endif
+		isp_set_ini_combine(virtual_id, on);
+#if defined OUTPUT_EMBED_DATA
+		if (logic_isp->time_embed_en || logic_isp->ispbe_info_embed_en)
+			bsp_isp_embedde_top_en(logic_isp->id, 1);
+		else
+			bsp_isp_embedde_top_en(logic_isp->id, 0);
+		bsp_isp_ispinfo_embedded_en(logic_isp->id, logic_isp->ispbe_info_embed_en ? 1 : 0);
+#endif
 		bsp_isp_top_capture_start(logic_isp->id);
 	} else {
 		if (logic_isp->work_mode == ISP_ONLINE) {
 			bsp_isp_top_capture_stop(logic_isp->id);
 			bsp_isp_enable(logic_isp->id, on);
-			bsp_isp_sram_boot_mode_ctrl(logic_isp->id, SRAM_BOOT_MODE);
+			/* bsp_isp_sram_boot_mode_ctrl(logic_isp->id, SRAM_BOOT_MODE); */
 		}
 
+		isp_set_ini_combine(virtual_id, on);
+
 #if VIN_FALSE
-#if defined SUPPORT_ISP_TDM && defined TDM_V200
+#if defined SUPPORT_ISP_TDM && (defined TDM_V200 || defined TDM_V230)
 		/* in offline mode, top tdm must close after top isp, otherwise isp int will occur err*/
 		if (logic_isp->work_mode == ISP_OFFLINE) {
 			csic_tdm_set_speed_dn(logic_id, 0);
@@ -688,7 +1079,7 @@ static void sunxi_isp_set_load_ddr(struct isp_dev *isp)
 
 	bsp_isp_set_line_int_num(isp->id, mf->height - 1);
 */
-#if !defined CONFIG_ARCH_SUN55IW3 && IS_ENABLED(CONFIG_D3D_PKG_MODE)
+#if !IS_ENABLED(CONFIG_ARCH_SUN55IW3) && IS_ENABLED(CONFIG_D3D_PKG_MODE)
 	bsp_isp_d3d_ref_frm_mode(isp->id, 1);
 #endif
 	bsp_isp_set_input_fmt(isp->id, isp->isp_fmt->infmt);
@@ -716,12 +1107,20 @@ static void sunxi_isp_set_load_ddr(struct isp_dev *isp)
 		bsp_isp_set_ch_input_bit(isp->id, 0, isp->isp_fmt->input_bit);
 		bsp_isp_set_ch_input_bit(isp->id, 1, isp->isp_fmt->input_bit);
 	}
+#if defined CONFIG_ARCH_SUN65IW1
+	bsp_isp_set_rec_rdma_fifo_low_limit(isp->id, TDM_RDMA_FIFO_LOW_LIMIT);
+	bsp_isp_set_rec_rdma_fifo_high_limit(isp->id, TDM_RDMA_FIFO_HIGH_LIMIT);
+	bsp_isp_set_rec_wdma_fifo_low_limit(isp->id, TDM_WDMA_FIFO_LOW_LIMIT);
+	bsp_isp_set_rec_wdma_fifo_high_limit(isp->id, TDM_WDMA_FIFO_HIGH_LIMIT);
+#endif
+
+	isp_stat_cfg_set(isp);
 }
 #endif
 
-#if !defined ISP_600
 static void sunxi_isp_cal_bandwidth_memory(struct v4l2_subdev *sd, unsigned int on)
 {
+#if !defined ISP_600 && !defined ISP_610
 	struct isp_dev *isp = v4l2_get_subdevdata(sd);
 	struct vin_md *vind = dev_get_drvdata(isp->subdev.v4l2_dev->dev);
 	struct v4l2_mbus_framefmt *mf = &isp->mf;
@@ -744,8 +1143,8 @@ static void sunxi_isp_cal_bandwidth_memory(struct v4l2_subdev *sd, unsigned int 
 		vind->isp_bd_tatol -= bandw;
 
 	vin_log(VIN_LOG_ISP, "isp%d %s bandwidth = %d.\n", isp->id, on ? "use" : "release", bandw);
-}
 #endif
+}
 
 static int sunxi_isp_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 {
@@ -753,13 +1152,13 @@ static int sunxi_isp_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 	struct v4l2_mbus_framefmt *mf = &isp->mf;
 	struct mbus_framefmt_res *res = (void *)mf->reserved;
 	__maybe_unused struct v4l2_event event;
-#if IS_ENABLED(CONFIG_ARCH_SUN8IW16P1) || IS_ENABLED(CONFIG_ARCH_SUN8IW19P1) || IS_ENABLED(CONFIG_ARCH_SUN50IW10)
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW16P1) || IS_ENABLED(CONFIG_ARCH_SUN8IW19P1) || IS_ENABLED(CONFIG_ARCH_SUN50IW10) || IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 	struct isp_wdr_mode_cfg wdr_cfg;
 #endif
 	unsigned int load_val;
 	__maybe_unused int i;
 	__maybe_unused unsigned int data[1];
-	unsigned int isp_cur_id, isp_status;
+	__maybe_unused unsigned int isp_cur_id, isp_status;
 
 	if (!isp->use_isp)
 		return 0;
@@ -807,20 +1206,32 @@ static int sunxi_isp_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 #if IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
 		if (!isp->first_init_server) {
 			if (isp->isp_server_reset) {
-				isp_reset_config_sensor_info(isp, VIN_SET_ISP_START);
+				isp_reset_config_sensor_info(isp, VIN_SET_ISP_START, 0);
 				isp->isp_server_reset = 0;
 			} else
-				isp_reset_config_sensor_info(isp, VIN_SET_ISP_RESET);
+				if (!isp->pm_status) {
+					isp_reset_config_sensor_info(isp, VIN_SET_ISP_RESET, 0);
+				} else {
+					isp->pm_status = 0;
+					isp_reset_config_sensor_info(isp, VIN_SET_ISP_RESET, 1);
+				}
 		} else {
 			isp->load_select = false;
 			bsp_isp_set_saved_addr(isp->id, (vin_dma_addr_t)isp->isp_save.dma_addr);
 			bsp_isp_set_load_addr(isp->id, (vin_dma_addr_t)isp->load_para[0].dma_addr);
+#if defined ISP_610
+			bsp_isp_set_aiload_addr(isp->id, (vin_dma_addr_t)isp->load_para[0].dma_addr);
+#endif
 			bsp_isp_set_save_load_addr(isp->id, (vin_dma_addr_t)isp->isp_save_load.dma_addr);
 			isp->first_init_server = 0;
-#ifndef CONFIG_VIN_INIT_MELIS
-			isp_reset_config_sensor_info(isp, VIN_SET_ISP_START);
+#if !IS_ENABLED(CONFIG_VIN_INIT_MELIS)
+			isp_reset_config_sensor_info(isp, VIN_SET_ISP_START, 0);
 #endif
 		}
+#endif
+
+#if defined ISP_600
+		isp->init_done_flag = 0;
 #endif
 		isp->h3a_stat.frame_number = 0;
 		isp->ptn_isp_cnt = 0;
@@ -850,13 +1261,16 @@ static int sunxi_isp_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 		}
 #endif
 
-		if (isp->large_image == 0 || isp->large_image == 3) {
+		if (isp->large_image == 0 || isp->large_image >= 3) {
 			if (isp->runtime_flag == 0) {
 				if (isp_3d_pingpong_alloc(isp))
 					return -ENOMEM;
-				isp_3d_pingpong_update(isp);
+				if (isp_2d_pingpong_alloc(isp))
+					return -ENOMEM;
 			} else
 				isp->runtime_flag = 0;
+			isp_3d_pingpong_update(isp);
+			isp_2d_pingpong_update(isp);
 		}
 		if (isp->wdr_mode != ISP_NORMAL_MODE)
 			isp_wdr_table_init(isp);
@@ -867,15 +1281,19 @@ static int sunxi_isp_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 			}
 			isp_wdr_pingpong_set(isp);
 		}
-#if !defined ISP_600
+#if !defined ISP_600 && !defined ISP_610
 #ifndef SUPPORT_ISP_TDM
 		bsp_isp_enable(isp->id, 1);
 #else
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW22)
+		for (i = 0; i < VIN_VIR_ISP; i++)
+#else
 		for (i = 0; i < VIN_MAX_ISP; i++)
+#endif
 			bsp_isp_enable(i, 1);
 #endif
 		bsp_isp_clr_irq_status(isp->id, ISP_IRQ_EN_ALL);
-#if !defined CONFIG_ARCH_SUN8IW16P1 && !defined CONFIG_ARCH_SUN8IW19P1 && !defined CONFIG_ARCH_SUN50IW10
+#if !IS_ENABLED(CONFIG_ARCH_SUN8IW16P1) && !IS_ENABLED(CONFIG_ARCH_SUN8IW19P1) && !IS_ENABLED(CONFIG_ARCH_SUN50IW10) && !IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 		bsp_isp_irq_enable(isp->id, FINISH_INT_EN | PARA_LOAD_INT_EN | SRC0_FIFO_INT_EN
 				     | FRAME_ERROR_INT_EN | FRAME_LOST_INT_EN);
 
@@ -923,7 +1341,7 @@ static int sunxi_isp_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 		}
 #endif
 
-#if !defined CONFIG_D3D
+#if !IS_ENABLED(CONFIG_D3D)
 		bsp_isp_module_disable(isp->id, D3D_EN);
 		load_val = load_val & ~D3D_UPDATE;
 #endif
@@ -938,24 +1356,43 @@ static int sunxi_isp_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 		bsp_isp_set_para_ready(isp->id, PARA_READY);
 		bsp_isp_set_last_blank_cycle(isp->id, 5);
 		bsp_isp_set_speed_mode(isp->id, 3);
-#if !defined CONFIG_D3D_LTF_EN && !defined CONFIG_WDR
+#if !IS_ENABLED(CONFIG_D3D_LTF_EN) && !IS_ENABLED(CONFIG_WDR)
 		bsp_isp_set_fifo_mode(isp->id, 0);
 		bsp_isp_fifo_raw_write(isp->id, 0x200);
 #endif
+#if defined SUPPORT_ISP_TDM && IS_ENABLED(CONFIG_ARCH_SUN8IW22)
+		if (isp->id == 1) {
+			bsp_isp_ch_enable(0, ISP_CH0, 1);
+			bsp_isp_capture_start(0);
+		}
+#endif
 		bsp_isp_ch_enable(isp->id, ISP_CH0, 1);
 		bsp_isp_capture_start(isp->id);
-#else /* else ISP_600 */
+#else /* else ISP_600&ISP_610 */
 		if (sunxi_isp_logic_s_stream(isp->id, enable))
 			return -1;
 
 		bsp_isp_clr_irq_status(isp->id, ISP_IRQ_EN_ALL);
-		bsp_isp_irq_enable(isp->id, PARA_LOAD_INT_EN | PARA_SAVE_INT_EN);
-		bsp_isp_irq_enable(isp->id, DDR_RW_ERROR_INT_EN | HB_SHORT_INT_EN | CFG_ERROR_INT_EN | FRAME_LOST_INT_EN |
+		bsp_isp_irq_enable(isp->id,  HB_SHORT_INT_EN | CFG_ERROR_INT_EN | FRAME_LOST_INT_EN |
 						INTER_FIFO_FULL_INT_EN | WDMA_FIFO_FULL_INT_EN | WDMA_OVER_BND_INT_EN |
-						RDMA_FIFO_FULL_INT_EN | LBC_ERROR_INT_EN | AHB_MBUS_W_INT_EN);
-
+						LBC_ERROR_INT_EN | AHB_MBUS_W_INT_EN);
+#if defined ISP_600
+		bsp_isp_irq_enable(isp->id, PARA_LOAD_INT_EN | PARA_SAVE_INT_EN);
+		bsp_isp_irq_enable(isp->id, DDR_RW_ERROR_INT_EN | RDMA_FIFO_FULL_INT_EN);
+#else
+		if (isp->ini_mode == ISP_INI_MULTICH) {
+			if (!((isp->mcic_cfg.ch_cfg[0].isp_mcic_sel & (1 << isp->id)) || (isp->mcic_cfg.ch_cfg[1].isp_mcic_sel & (1 << isp->id))))
+				bsp_isp_irq_enable(isp->id, PARA_LOAD_INT_EN | PARA_SAVE_INT_EN);
+		} else
+			bsp_isp_irq_enable(isp->id, PARA_LOAD_INT_EN | PARA_SAVE_INT_EN);
+		bsp_isp_irq_enable(isp->id, RDMA_FIFO_EMPTY_INT_EN | LBD_ERROR_INT_EN | CMB0_ACK_TO_INI_EN | CMB1_ACK_TO_INI_EN |
+						CMB2_ACK_TO_INI_EN | CMB3_ACK_TO_INI_EN | CMB4_ACK_TO_INI_EN);
+#endif
+#if IS_ENABLED(CONFIG_TDM_OFFLINE_HANDLE_RAW)
+		bsp_isp_irq_enable(isp->id, FINISH_INT_EN);
+#endif
 		load_val = bsp_isp_load_update_flag(isp->id);
-#if !defined CONFIG_D3D
+#if !IS_ENABLED(CONFIG_D3D)
 		bsp_isp_module_disable(isp->id, D3D_EN);
 		load_val = load_val & ~D3D_UPDATE;
 #else
@@ -964,6 +1401,8 @@ static int sunxi_isp_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 		load_val = load_val | (GAMMA_UPDATE | CEM_UPDATE);
 		bsp_isp_update_table(isp->id, load_val);
 
+		isp_stat_cfg_calc(isp);
+
 		/* load addr*/
 		sunxi_isp_set_load_ddr(isp);
 
@@ -971,78 +1410,115 @@ static int sunxi_isp_subdev_s_stream(struct v4l2_subdev *sd, int enable)
 		/* when two video open and close in two pthread, open and close isp_init is not seted, load_para[1] is using lead to error */
 		memcpy(isp->load_para[1].vir_addr, isp->isp_load.vir_addr, ISP_LOAD_DRAM_SIZE);
 
+#if defined VIN_CACHE_CLEAN_INVALID
+		dma_sync_single_for_device(&isp->pdev->dev, (vin_dma_addr_t)isp->load_para[0].dma_addr, ISP_LOAD_DRAM_SIZE, DMA_TO_DEVICE);
+		dma_sync_single_for_device(&isp->pdev->dev, (vin_dma_addr_t)isp->load_para[1].dma_addr, ISP_LOAD_DRAM_SIZE, DMA_TO_DEVICE);
+		vin_print("isp cache clean\n");
+#endif
+
 		bsp_isp_set_para_ready(isp->id, PARA_READY);
 		bsp_isp_capture_start(isp->id);
 #endif
 	} else {
+#if !IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
 		if (!isp->nosend_ispoff && !isp->runtime_flag) {
-#if !defined CONFIG_ISP_SERVER_MELIS
 			memset(&event, 0, sizeof(event));
 			event.type = V4L2_EVENT_VIN_ISP_OFF;
 			event.id = 0;
 			v4l2_event_queue(isp->subdev.devnode, &event);
-#else /* CONFIG_ISP_SERVER_MELIS */
-			data[0] = VIN_SET_CLOSE_ISP;
-			isp_rpmsg_send(isp, data, 1*4);
-#endif
 		}
-#if !defined ISP_600
+#endif
+#if !defined ISP_600 && !defined ISP_610
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW22)
+#ifndef SUPPORT_ISP_TDM
+		bsp_isp_capture_stop(isp->id);
+		bsp_isp_ch_enable(isp->id, ISP_CH0, 0);
+#else
+		if (__sunxi_isp_tdm_off(isp) == 0) {
+			for (i = 0; i < VIN_VIR_ISP; i++) {
+				bsp_isp_capture_stop(i);
+				bsp_isp_ch_enable(i, ISP_CH0, 0);
+			}
+		}
+#endif	// #ifndef SUPPORT_ISP_TDM
+		bsp_isp_module_disable(isp->id, SRC0_EN);
+#else	// sun50iw10
 		bsp_isp_capture_stop(isp->id);
 		bsp_isp_module_disable(isp->id, SRC0_EN);
 		bsp_isp_ch_enable(isp->id, ISP_CH0, 0);
+#endif
 		bsp_isp_irq_disable(isp->id, ISP_IRQ_EN_ALL);
 		bsp_isp_clr_irq_status(isp->id, ISP_IRQ_EN_ALL);
 #ifndef SUPPORT_ISP_TDM
 		bsp_isp_enable(isp->id, 0);
 #else
 		if (__sunxi_isp_tdm_off(isp) == 0) {
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW22)
+			for (i = 0; i < VIN_VIR_ISP; i++)
+#else
 			for (i = 0; i < VIN_MAX_ISP; i++)
+#endif
 				bsp_isp_enable(i, 0);
 		} else
 			vin_warn("ISP is used in TDM mode, ISP%d cannot be closing when other isp is used!\n", isp->id);
 #endif
-#else /* else ISP_600 */
+#else /* else ISP_600&ISP_610 */
 		bsp_isp_capture_stop(isp->id);
 		bsp_isp_irq_disable(isp->id, ISP_IRQ_EN_ALL);
 		bsp_isp_clr_irq_status(isp->id, ISP_IRQ_EN_ALL);
-
+#if IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
+		cancel_work_sync(&isp->isp_rpmsg_send_task);
+		if (!isp->nosend_ispoff && !isp->runtime_flag) {
+			data[0] = VIN_SET_CLOSE_ISP;
+			isp_rpmsg_send(isp, data, 1*4);
+		}
+#endif
 		if (glb_isp[isp->id/ISP_VIRT_NUM]->work_mode == ISP_OFFLINE) {
 			for (i = 0; i < 200; i++) {
 				isp_cur_id = bsp_isp_get_isp_cur_id(isp->id);
 				if (isp_cur_id != isp->id)
 					break;
+#if defined ISP_600
 				isp_status = bsp_isp_get_internal_status1(isp->id, ISP_STATUS_MASK);
 				if (isp_status != ISP_STATUS_ISP_PRO0 && isp_status != ISP_STATUS_ISP_PRO1 \
 					&& isp_status != ISP_STATUS_WRITE_SDRAM && isp_status != ISP_STATUS_FINISH_END_WAIT)
 					break;
+#else /*ISP_610*/
+				isp_status = bsp_isp_get_isp_status(isp->id);
+				if (isp_status != ISP_STATUS_ISP_PRO0 && isp_status != ISP_STATUS_ISP_PRO1 \
+					&& isp_status != ISP_STATUS_EMBEM_WAIT && isp_status != ISP_STATUS_EMBEM_TX \
+					&& isp_status != ISP_STATUS_WRITE_SDRAM && isp_status != ISP_STATUS_FINISH_END_WAIT)
+					break;
+#endif
 				usleep_range(500, 510);
 				if (i >= 199)
 					vin_warn("%s waiting for isp%d for %d ms to free resources", __func__, isp->id, i / 2);
 			}
 		}
 		sunxi_isp_logic_s_stream(isp->id, enable);
+
+		isp->d3d_lbc_ratio = 0;
 #endif
-		if (isp->large_image == 0 || isp->large_image == 3) {
+		if (isp->large_image == 0 || isp->large_image >= 3) {
 			if (isp->runtime_flag == 0) {
 				usleep_range(2000, 2100);
+				isp_2d_pingpong_free(isp);
 				isp_3d_pingpong_free(isp);
 			}
 		}
 		if (isp->wdr_mode == ISP_DOL_WDR_MODE) {
-#if !defined ISP_600
+#if !defined ISP_600 && !defined ISP_610
 			bsp_isp_ch_enable(isp->id, ISP_CH1, 0);
 #endif
 			isp_wdr_pingpong_free(isp);
 		}
 		isp->f1_after_librun = 0;
 		isp->load_flag = 0;
-#if IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
-		cancel_work_sync(&isp->isp_rpmsg_send_task);
+#if defined ISP_610
+		isp->ini_mode = ISP_INI_NORMAL;
 #endif
 	}
-#if !defined ISP_600
 	sunxi_isp_cal_bandwidth_memory(sd, enable);
-#endif
 
 	vin_log(VIN_LOG_FMT, "isp%d %s, %d*%d hoff: %d voff: %d code: %x field: %d\n",
 		isp->id, enable ? "stream on" : "stream off",
@@ -1075,10 +1551,10 @@ static struct isp_pix_fmt *__isp_try_format(struct isp_dev *isp,
 
 	if (isp->large_image == 3) {
 		overlayer = vin_set_large_overlayer(mf->width);
-		if (isp->id == 0) {
+		if (isp->id % 2 == 0) {
 			ob->ob_black.width = mf->width / 2 + overlayer;
 			ob->ob_valid.width = mf->width / 2 + overlayer;
-		} else if (isp->id == 1) {
+		} else if (isp->id % 2 == 1) {
 			ob->ob_black.width = mf->width / 2 + overlayer;
 			ob->ob_valid.width = mf->width / 2 + overlayer;
 		}
@@ -1111,14 +1587,26 @@ static struct isp_pix_fmt *__isp_try_format(struct isp_dev *isp,
 	}
 
 	switch (mf->colorspace) {
+	case V4L2_COLORSPACE_BT601:
+		mf->colorspace = V4L2_COLORSPACE_BT601;
+		break;
 	case V4L2_COLORSPACE_REC709:
 		mf->colorspace = V4L2_COLORSPACE_REC709;
 		break;
 	case V4L2_COLORSPACE_BT2020:
 		mf->colorspace = V4L2_COLORSPACE_BT2020;
 		break;
+	case V4L2_COLORSPACE_BT601_PART_RANGE:
+		mf->colorspace = V4L2_COLORSPACE_BT601_PART_RANGE;
+		break;
+	case V4L2_COLORSPACE_REC709_PART_RANGE:
+		mf->colorspace = V4L2_COLORSPACE_REC709_PART_RANGE;
+		break;
+	case V4L2_COLORSPACE_BT2020_PART_RANGE:
+		mf->colorspace = V4L2_COLORSPACE_BT2020_PART_RANGE;
+		break;
 	default:
-		mf->colorspace = V4L2_COLORSPACE_JPEG;
+		mf->colorspace = V4L2_COLORSPACE_BT601;
 		break;
 	}
 	return isp_fmt;
@@ -1275,7 +1763,7 @@ int sunxi_isp_subdev_init(struct v4l2_subdev *sd, u32 val)
 			isp->have_init = 1;
 		} else {
 #if IS_ENABLED(CONFIG_D3D)
-#if !defined ISP_600
+#if !defined ISP_600 && !defined ISP_610
 			if ((isp->load_shadow[0x2d4 + 0x3]) & (1<<1)) {
 				/* clear D3D rec_en */
 				isp->load_shadow[0x2d4 + 0x3] = (isp->load_shadow[0x2d4 + 0x3]) & (~(1<<1));
@@ -1291,23 +1779,59 @@ int sunxi_isp_subdev_init(struct v4l2_subdev *sd, u32 val)
 		isp->h3a_stat.buf[0].state = ISPSTAT_LOAD_SET;
 		isp->h3a_stat.buf[0].dma_addr = isp->isp_stat.dma_addr;
 		isp->h3a_stat.buf[0].virt_addr = isp->isp_stat.vir_addr;
-		bsp_isp_set_statistics_addr(isp->id, (vin_dma_addr_t)isp->isp_stat.dma_addr);
-		bsp_isp_set_saved_addr(isp->id, (vin_dma_addr_t)isp->isp_save.dma_addr);
-#if !defined ISP_600
+		if (!isp->first_init_server) {
+			bsp_isp_set_statistics_addr(isp->id, (vin_dma_addr_t)isp->isp_stat.dma_addr);
+			bsp_isp_set_saved_addr(isp->id, (vin_dma_addr_t)isp->isp_save.dma_addr);
+#if !defined ISP_600 && !defined ISP_610
 #if IS_ENABLED(CONFIG_ARCH_SUN8IW12P1) || IS_ENABLED(CONFIG_ARCH_SUN8IW17P1) || IS_ENABLED(CONFIG_ARCH_SUN8IW15P1)
-		bsp_isp_set_load_addr(isp->id, (vin_dma_addr_t)isp->isp_load.dma_addr);
-		bsp_isp_set_table_addr(isp->id, LENS_GAMMA_TABLE, (vin_dma_addr_t)(isp->isp_lut_tbl.dma_addr));
-		bsp_isp_set_table_addr(isp->id, DRC_TABLE, (vin_dma_addr_t)(isp->isp_drc_tbl.dma_addr));
-#elif defined CONFIG_ARCH_SUN8IW16P1 || defined CONFIG_ARCH_SUN8IW19P1 || defined CONFIG_ARCH_SUN50IW10
-		bsp_isp_set_load_addr0(isp->id, (vin_dma_addr_t)isp->isp_load.dma_addr);
-		bsp_isp_set_load_addr1(isp->id, (vin_dma_addr_t)isp->isp_load.dma_addr);
+			bsp_isp_set_load_addr(isp->id, (vin_dma_addr_t)isp->isp_load.dma_addr);
+			bsp_isp_set_table_addr(isp->id, LENS_GAMMA_TABLE, (vin_dma_addr_t)(isp->isp_lut_tbl.dma_addr));
+			bsp_isp_set_table_addr(isp->id, DRC_TABLE, (vin_dma_addr_t)(isp->isp_drc_tbl.dma_addr));
+#elif IS_ENABLED(CONFIG_ARCH_SUN8IW16P1) || IS_ENABLED(CONFIG_ARCH_SUN8IW19P1) || IS_ENABLED(CONFIG_ARCH_SUN50IW10) || IS_ENABLED(CONFIG_ARCH_SUN8IW22)
+			bsp_isp_set_load_addr0(isp->id, (vin_dma_addr_t)isp->isp_load.dma_addr);
+			bsp_isp_set_load_addr1(isp->id, (vin_dma_addr_t)isp->isp_load.dma_addr);
 #endif
-#else /* isp600 */
-		isp->load_select = false;
-		bsp_isp_set_load_addr(isp->id, (vin_dma_addr_t)isp->load_para[0].dma_addr);
-		bsp_isp_set_save_load_addr(isp->id, (vin_dma_addr_t)isp->isp_save_load.dma_addr);
+#else /* isp600&isp610 */
+			isp->load_select = false;
+			bsp_isp_set_load_addr(isp->id, (vin_dma_addr_t)isp->load_para[0].dma_addr);
+			bsp_isp_set_save_load_addr(isp->id, (vin_dma_addr_t)isp->isp_save_load.dma_addr);
+#if defined ISP_610
+			bsp_isp_set_aiload_addr(isp->id, (vin_dma_addr_t)isp->load_para[0].dma_addr);
 #endif
-		bsp_isp_set_para_ready(isp->id, PARA_NOT_READY);
+#endif
+			bsp_isp_set_para_ready(isp->id, PARA_NOT_READY);
+		}
+	}
+
+	return 0;
+}
+
+static int __isp_sync_debug_info(struct v4l2_subdev *sd, struct isp_debug_info *debug_param_info)
+{
+	struct isp_dev *isp = v4l2_get_subdevdata(sd);
+	struct vin_md *vind = dev_get_drvdata(isp->subdev.v4l2_dev->dev);
+	struct vin_core *vinc = NULL;
+	int i;
+	int ret;
+
+	if (!isp->use_isp)
+		return 0;
+
+	for (i = 0; i < VIN_MAX_DEV; i++) {
+		if (vind->vinc[i] == NULL)
+			continue;
+		if (!vin_streaming(&vind->vinc[i]->vid_cap))
+			continue;
+		vinc = vind->vinc[i];
+		if (vinc->isp_sel == isp->id)
+			break;
+	}
+	if (vinc != NULL) {
+		/* vinc is working and get isp_debug_info */
+		ret = copy_from_user(&(vinc->vin_status.isp_debug_param_info), debug_param_info, sizeof(struct isp_debug_info));
+		if (ret < 0) {
+			return ret;
+		}
 	}
 
 	return 0;
@@ -1316,25 +1840,84 @@ int sunxi_isp_subdev_init(struct v4l2_subdev *sd, u32 val)
 static int __isp_set_load_reg(struct v4l2_subdev *sd, struct isp_table_reg_map *reg)
 {
 	struct isp_dev *isp = v4l2_get_subdevdata(sd);
-	int ret;
+	int ret = 0;
 
 	if (!isp->use_isp)
 		return 0;
 
+#if defined ISP_610
+	if (reg->size > ISP_LOAD_DRAM_SIZE + ISP_AHB_REG_SIZE) {
+		vin_err("user ask for 0x%x data, it more than isp load_data 0x%x\n", reg->size, ISP_LOAD_DRAM_SIZE + ISP_AHB_REG_SIZE);
+		return -EINVAL;
+	}
+	ret = copy_from_user(&isp->update_table_flag, reg->addr, sizeof(unsigned int));
+
+	ret = copy_from_user(&isp->load_shadow[0], reg->addr + ISP_AHB_REG_SIZE, reg->size - ISP_AHB_REG_SIZE);
+#else
 	if (reg->size > ISP_LOAD_DRAM_SIZE) {
 		vin_err("user ask for 0x%x data, it more than isp load_data 0x%x\n", reg->size, ISP_LOAD_DRAM_SIZE);
 		return -EINVAL;
 	}
 
+#if defined ISP_600
+	if (isp->large_image == 3 && glb_isp[0]) {
+		if (isp->id == 0) {
+			//ae stat region
+			ret = copy_from_user(&isp->ae_stat_save[0], reg->addr + ISP_AE_REG_OFS, ISP_AE_REG_SIZE);
+			//af stat region
+			ret = copy_from_user(&isp->af_stat_save[0], reg->addr + ISP_AF_REG_OFS, ISP_AF_REG_SIZE);
+			//awb stat region
+			ret = copy_from_user(&isp->awb_stat_save[0], reg->addr + ISP_AWB_REG_OFS, ISP_AWB_REG_SIZE);
+			//hist stat region
+			ret = copy_from_user(&isp->hist_stat_save[0], reg->addr + ISP_HIST_REG_OFS, ISP_HIST_REG_SIZE);
+			//nr msc table
+			ret = copy_from_user(&isp->nr_msc_load_save[0], reg->addr + ISP_LOAD_REG_SIZE + ISP_FE_TBL_SIZE + ISP_RSC_TBL_SIZE + ISP_RSC_TBL_SIZE, ISP_MSC_NR_TBL_SIZE);
+			//return ret;
+			if (!isp->init_done_flag) {
+				isp->load_save = 1;
+				return ret;
+			}
+		} else {
+			ret = copy_from_user(&isp->load_shadow[0], reg->addr, reg->size);
+			if (glb_isp[0]->use_isp) {
+				memcpy(&glb_isp[0]->load_shadow[0], &isp->load_shadow[0], ISP_LOAD_DRAM_SIZE);
+				//AHB Registers
+				memcpy(&glb_isp[0]->load_shadow[ISP_AHB0_MEM_OFS], &isp->load_shadow[ISP_AHB1_MEM_OFS], ISP_AHB_MEM_SIZE);
+				//lsc table copy to msc table
+				memcpy(&glb_isp[0]->load_shadow[ISP_LOAD_REG_SIZE + ISP_FE_TBL_SIZE + ISP_RSC_TBL_SIZE],
+						&isp->load_shadow[ISP_LOAD_REG_SIZE + ISP_FE_TBL_SIZE], ISP_RSC_TBL_SIZE);
+				//nr msc copy
+				memcpy(&glb_isp[0]->load_shadow[ISP_LOAD_REG_SIZE + ISP_FE_TBL_SIZE + ISP_RSC_TBL_SIZE + ISP_RSC_TBL_SIZE],
+						&glb_isp[0]->nr_msc_load_save[0], ISP_MSC_NR_TBL_SIZE);
+				//ae stat region
+				memcpy(&glb_isp[0]->load_shadow[ISP_AE_REG_OFS], &glb_isp[0]->ae_stat_save[0], ISP_AE_REG_SIZE);
+				//af stat region
+				memcpy(&glb_isp[0]->load_shadow[ISP_AF_REG_OFS], &glb_isp[0]->af_stat_save[0], ISP_AF_REG_SIZE);
+				//awb stat region
+				memcpy(&glb_isp[0]->load_shadow[ISP_AWB_REG_OFS], &glb_isp[0]->awb_stat_save[0], ISP_AWB_REG_SIZE);
+				//hist stat region
+				memcpy(&glb_isp[0]->load_shadow[ISP_HIST_REG_OFS], &glb_isp[0]->hist_stat_save[0], ISP_HIST_REG_SIZE);
+				//glb_isp[0]->load_flag = 1;
+				glb_isp[0]->init_done_flag = 1;
+			} else {
+				vin_err("isp merge mode, but isp0 is not used\n");
+			}
+		}
+	} else {
+		ret = copy_from_user(&isp->load_shadow[0], reg->addr, reg->size);
+	}
+#else
 	ret = copy_from_user(&isp->load_shadow[0], reg->addr, reg->size);
+#endif
+#endif
 	isp->load_flag = 1;
 	isp->load_save = 1;
 
 	return ret;
 }
 
-#if !defined CONFIG_ARCH_SUN8IW16P1 && !defined CONFIG_ARCH_SUN8IW19P1 && !defined CONFIG_ARCH_SUN50IW10 && \
-	!defined ISP_600
+#if !IS_ENABLED(CONFIG_ARCH_SUN8IW16P1) && !IS_ENABLED(CONFIG_ARCH_SUN8IW19P1) && !IS_ENABLED(CONFIG_ARCH_SUN50IW10) && \
+	!IS_ENABLED(CONFIG_ARCH_SUN8IW22) && !defined ISP_600 && !defined ISP_610
 static int __isp_set_table1_map(struct v4l2_subdev *sd, struct isp_table_reg_map *tbl)
 {
 	struct isp_dev *isp = v4l2_get_subdevdata(sd);
@@ -1389,8 +1972,11 @@ static long sunxi_isp_subdev_ioctl(struct v4l2_subdev *sd, unsigned int cmd,
 	case VIDIOC_VIN_ISP_LOAD_REG:
 		ret = __isp_set_load_reg(sd, (struct isp_table_reg_map *)arg);
 		break;
-#if !defined CONFIG_ARCH_SUN8IW16P1 && !defined CONFIG_ARCH_SUN8IW19P1 && !defined CONFIG_ARCH_SUN50IW10 && \
-	!defined ISP_600
+	case VIDIOC_VIN_ISP_SYNC_DEBUG_INFO:
+		ret = __isp_sync_debug_info(sd, (struct isp_debug_info *)arg);
+		break;
+#if !IS_ENABLED(CONFIG_ARCH_SUN8IW16P1) && !IS_ENABLED(CONFIG_ARCH_SUN8IW19P1) && !IS_ENABLED(CONFIG_ARCH_SUN50IW10) && \
+	!IS_ENABLED(CONFIG_ARCH_SUN8IW22) && !defined ISP_600 && !defined ISP_610
 	case VIDIOC_VIN_ISP_TABLE1_MAP:
 		ret = __isp_set_table1_map(sd, (struct isp_table_reg_map *)arg);
 		break;
@@ -1529,7 +2115,7 @@ void sunxi_isp_reset(struct isp_dev *isp)
 		return;
 	}
 
-#if defined ISP_600
+#if defined ISP_600 || defined ISP_610
 	if (glb_isp[isp->id/ISP_VIRT_NUM]->work_mode == ISP_OFFLINE)
 		return;
 #endif
@@ -1538,13 +2124,13 @@ void sunxi_isp_reset(struct isp_dev *isp)
 
 	bsp_isp_set_para_ready(isp->id, PARA_NOT_READY);
 #if IS_ENABLED(CONFIG_D3D)
-#if !defined ISP_600
+#if !defined ISP_600 && !defined ISP_610
 	if ((isp->load_shadow[0x2d4 + 0x3]) & (1<<1)) {
 		/* clear D3D rec_en 0x2d4 bit25 */
 		isp->load_shadow[0x2d4 + 0x3] = (isp->load_shadow[0x2d4 + 0x3]) & (~(1<<1));
 		memcpy(isp->isp_load.vir_addr, &isp->load_shadow[0], ISP_LOAD_DRAM_SIZE);
 	}
-#else /* isp600 */
+#else /* isp600&isp610 */
 	bsp_isp_clr_d3d_rec_en(isp->id);
 	isp->d3d_rec_reset = 1;
 #endif
@@ -1572,8 +2158,12 @@ void sunxi_isp_reset(struct isp_dev *isp)
 					cmb_rx_disable(vinc->mipi_sel);
 #endif
 				csic_prs_disable(vinc->csi_sel);
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW22)
+				csic_top_f2s0_bridge_en(vind->id, 0, vinc->isp_sel);
+#else
 				csic_isp_bridge_disable(0);
-#if defined SUPPORT_ISP_TDM && defined TDM_V200
+#endif
+#if defined SUPPORT_ISP_TDM && (defined TDM_V200 || defined TDM_V230)
 				if (isp->wdr_mode == ISP_DOL_WDR_MODE || isp->wdr_mode == ISP_3FDOL_WDR_MODE) {
 					csic_tdm_disable(0);
 					csic_tdm_top_disable(0);
@@ -1581,13 +2171,13 @@ void sunxi_isp_reset(struct isp_dev *isp)
 #endif
 				bsp_isp_clr_irq_status(isp->id, ISP_IRQ_EN_ALL);
 				bsp_isp_capture_stop(isp->id);
-#if defined ISP_600
+#if defined ISP_600 || defined ISP_610
 				bsp_isp_top_capture_stop(isp->id);
 #endif
 				bsp_isp_enable(isp->id, 0);
 				flags = 0;
 			}
-#if !defined VIPP_200
+#if !defined VIPP_200 && !defined VIPP_213
 			vipp_disable(vinc->vipp_sel);
 			vipp_top_clk_en(vinc->vipp_sel, 0);
 #else
@@ -1596,8 +2186,8 @@ void sunxi_isp_reset(struct isp_dev *isp)
 			vipp_clear_status(vinc->vipp_sel, VIPP_STATUS_ALL);
 			vipp_top_clk_en(vinc->vipp_sel, 0);
 #endif
-			csic_dma_int_clear_status(vinc->vipp_sel, DMA_INT_ALL);
-			csic_dma_top_disable(vinc->vipp_sel);
+			csic_dma_int_clear_status(vinc->id, DMA_INT_ALL);
+			csic_dma_top_disable(vinc->id);
 		}
 	}
 
@@ -1612,8 +2202,8 @@ void sunxi_isp_reset(struct isp_dev *isp)
 		if (vind->vinc[i]->isp_sel == isp->id) {
 			vinc = vind->vinc[i];
 
-			csic_dma_top_enable(vinc->vipp_sel);
-#if !defined VIPP_200
+			csic_dma_top_enable(vinc->id);
+#if !defined VIPP_200 && !defined VIPP_213
 			vipp_top_clk_en(vinc->vipp_sel, 1);
 			vipp_enable(vinc->vipp_sel);
 #else
@@ -1627,15 +2217,18 @@ void sunxi_isp_reset(struct isp_dev *isp)
 
 			if (flags) {
 				bsp_isp_enable(isp->id, 1);
-#if defined ISP_600
+#if defined ISP_600 || defined ISP_610
 				bsp_isp_top_capture_start(isp->id);
+				bsp_isp_set_input_fmt(isp->id, isp->isp_fmt->infmt); //update load&save_load input_fmt when flip
+				memcpy(isp->load_para[0].vir_addr, isp->isp_load.vir_addr, ISP_LOAD_DRAM_SIZE);
+				memcpy(isp->load_para[1].vir_addr, isp->isp_load.vir_addr, ISP_LOAD_DRAM_SIZE);
 #endif
 				bsp_isp_set_para_ready(isp->id, PARA_READY);
 				bsp_isp_capture_start(isp->id);
 				isp->isp_frame_number = 0;
 
 				csic_isp_bridge_enable(0);
-#if defined SUPPORT_ISP_TDM && defined TDM_V200
+#if defined SUPPORT_ISP_TDM && (defined TDM_V200 || defined TDM_V230)
 				if (isp->wdr_mode == ISP_DOL_WDR_MODE || isp->wdr_mode == ISP_3FDOL_WDR_MODE) {
 					csic_tdm_top_enable(0);
 					csic_tdm_enable(0);
@@ -1675,6 +2268,7 @@ void sunxi_isp_reset(struct isp_dev *isp)
 			vinc->vid_cap.online_csi_reset_callback(vinc->id);
 	}
 }
+
 #if IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
 static void __isp_rpmsg_send_handle(struct work_struct *work)
 {
@@ -1693,6 +2287,19 @@ static void __isp_rpmsg_send_handle(struct work_struct *work)
 
 	data[1] = 1;/*load type (0: load separate; 1: load together)*/
 	switch (isp->mf.colorspace) {
+#if IS_ENABLED(CONFIG_ARCH_SUN300IW1P1)
+	case V4L2_COLORSPACE_BT601:
+	case V4L2_COLORSPACE_BT601_PART_RANGE:
+		data[2] = 0;
+		break;
+#else
+	case V4L2_COLORSPACE_BT601:
+		data[2] = 0;
+		break;
+	case V4L2_COLORSPACE_BT601_PART_RANGE:
+		data[2] = 3;
+		break;
+#endif
 	case V4L2_COLORSPACE_REC709:
 		data[2] = 1;
 		break;
@@ -1701,6 +2308,9 @@ static void __isp_rpmsg_send_handle(struct work_struct *work)
 		break;
 	case V4L2_COLORSPACE_REC709_PART_RANGE:
 		data[2] = 4;
+		break;
+	case V4L2_COLORSPACE_BT2020_PART_RANGE:
+		data[2] = 5;
 		break;
 	default:
 		data[2] = 0;
@@ -1722,7 +2332,8 @@ static void __isp_rpmsg_send_handle(struct work_struct *work)
 	isp_stat_request_statistics(&isp->h3a_stat);
 }
 #endif
-#if defined ISP_600
+
+#if defined ISP_600 || defined ISP_610
 static void __sunxi_isp_reset_v2(struct isp_dev *isp)
 {
 	if (!isp->use_isp)
@@ -1819,8 +2430,8 @@ static void __sunxi_isp_reset_v3(struct isp_dev *isp)
 
 			vipp_chn_cap_disable(vinc->vipp_sel);
 
-			//csic_dma_int_clear_status(vinc->vipp_sel, DMA_INT_ALL);
-			//csic_dma_top_disable(vinc->vipp_sel);
+			//csic_dma_int_clear_status(vinc->id, DMA_INT_ALL);
+			//csic_dma_top_disable(vinc->id);
 		}
 	}
 
@@ -1835,7 +2446,7 @@ static void __sunxi_isp_reset_v3(struct isp_dev *isp)
 		if (vind->vinc[i]->isp_sel == isp->id) {
 			vinc = vind->vinc[i];
 
-			//csic_dma_top_enable(vinc->vipp_sel);
+			//csic_dma_top_enable(vinc->id);
 
 			vipp_chn_cap_enable(vinc->vipp_sel);
 			vinc->vin_status.frame_cnt = 0;
@@ -1848,8 +2459,11 @@ static void __sunxi_isp_reset_v3(struct isp_dev *isp)
 				bsp_isp_set_para_ready(isp->id, PARA_READY);
 				bsp_isp_capture_start(isp->id);
 				isp->isp_frame_number = 0;
-
+#if IS_ENABLED(CONFIG_ARCH_SUN8IW22)
+				csic_top_f2s0_bridge_en(vind->id, 1, vinc->isp_sel);
+#else
 				csic_isp_bridge_enable(0);
+#endif
 
 #if defined SUPPORT_ISP_TDM
 				if (isp->wdr_mode == ISP_DOL_WDR_MODE || isp->wdr_mode == ISP_3FDOL_WDR_MODE) {
@@ -1876,10 +2490,43 @@ static void __sunxi_isp_reset_v3(struct isp_dev *isp)
 		}
 	}
 }
+
+void __sunxi_isp_frame_loss(struct isp_dev *isp)
+{
+	struct vin_md *vind = dev_get_drvdata(isp->subdev.v4l2_dev->dev);
+	struct vin_core *vinc = NULL;
+	int i = 0;
+
+	if (!isp->use_isp)
+		return;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	if (!isp->stream_count) {
+#else
+	if (!isp->subdev.entity.stream_count) {
 #endif
+		vin_err("isp%d is not used, cannot be resetted!!!\n", isp->id);
+		return;
+	}
+
+	vin_print("%s:isp%d frame_loss!!!,ISP frame number is %d\n", __func__, isp->id, isp->isp_frame_number);
+
+	for (i = 0; i < VIN_MAX_DEV; i++) {
+		if (vind->vinc[i] == NULL)
+			continue;
+		if (!vin_streaming(&vind->vinc[i]->vid_cap))
+			continue;
+
+		if (vind->vinc[i]->isp_sel == isp->id) {
+			vinc = vind->vinc[i];
+			vinc->vid_cap.frame_delay_cnt = 2;
+		}
+	}
+}
+#endif
+
 void sunxi_isp_frame_sync_isr(struct v4l2_subdev *sd)
 {
-#if !defined CONFIG_ISP_SERVER_MELIS
+#if !IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
 	struct isp_dev *isp = v4l2_get_subdevdata(sd);
 	struct v4l2_event event;
 	static short isp_log_param;
@@ -1890,11 +2537,30 @@ void sunxi_isp_frame_sync_isr(struct v4l2_subdev *sd)
 	event.id = 0;
 	event.u.data[0] = 1;/* load type (0: load seperate; 1: load together) */
 	switch (isp->mf.colorspace) {
+#if IS_ENABLED(CONFIG_ARCH_SUN300IW1P1)
+	case V4L2_COLORSPACE_BT601:
+	case V4L2_COLORSPACE_BT601_PART_RANGE:
+		event.u.data[1] = 0;
+		break;
+#else
+	case V4L2_COLORSPACE_BT601:
+		event.u.data[1] = 0;
+		break;
+	case V4L2_COLORSPACE_BT601_PART_RANGE:
+		event.u.data[1] = 3;
+		break;
+#endif
 	case V4L2_COLORSPACE_REC709:
 		event.u.data[1] = 1;
 		break;
 	case V4L2_COLORSPACE_BT2020:
 		event.u.data[1] = 2;
+		break;
+	case V4L2_COLORSPACE_REC709_PART_RANGE:
+		event.u.data[1] = 4;
+		break;
+	case V4L2_COLORSPACE_BT2020_PART_RANGE:
+		event.u.data[1] = 5;
 		break;
 	default:
 		event.u.data[1] = 0;
@@ -1908,6 +2574,9 @@ void sunxi_isp_frame_sync_isr(struct v4l2_subdev *sd)
 	}
 	event.u.data[2] = isp_log_param;
 	event.u.data[3] = isp_log_param >> 8;
+#if defined ISP_600
+	event.u.data[4] = isp->ldci_select; /* tell user ldci buffer update from kernel */
+#endif
 	if ((isp->h3a_stat.frame_number < 2) || send_event)
 		v4l2_event_queue(isp->subdev.devnode, &event);
 
@@ -1920,7 +2589,7 @@ void sunxi_isp_frame_sync_isr(struct v4l2_subdev *sd)
 #endif
 }
 
-#if !defined CONFIG_ISP_SERVER_MELIS
+#if !IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
 int sunxi_isp_subscribe_event(struct v4l2_subdev *sd,
 				  struct v4l2_fh *fh,
 				  struct v4l2_event_subscription *sub)
@@ -1938,7 +2607,7 @@ static const struct v4l2_subdev_core_ops sunxi_isp_subdev_core_ops = {
 #if IS_ENABLED(CONFIG_COMPAT)
 	.compat_ioctl32 = isp_compat_ioctl32,
 #endif
-#if !defined CONFIG_ISP_SERVER_MELIS
+#if !IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
 	.subscribe_event = sunxi_isp_subscribe_event,
 	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
 #endif
@@ -2352,8 +3021,8 @@ int __isp_init_subdev(struct isp_dev *isp)
 static int isp_resource_alloc(struct isp_dev *isp)
 {
 	int ret = 0;
-#if !defined ISP_600
-#if !defined CONFIG_ARCH_SUN8IW16P1 && !defined CONFIG_ARCH_SUN8IW19P1 && !defined CONFIG_ARCH_SUN50IW10
+#if !defined ISP_600 && !defined ISP_610
+#if !IS_ENABLED(CONFIG_ARCH_SUN8IW16P1) && !IS_ENABLED(CONFIG_ARCH_SUN8IW19P1) && !IS_ENABLED(CONFIG_ARCH_SUN50IW10) && !IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 	isp->isp_stat.size = ISP_SAVE_DRAM_SIZE + ISP_LOAD_DRAM_SIZE;
 	ret = os_mem_alloc(&isp->pdev->dev, &isp->isp_stat);
 	if (ret < 0) {
@@ -2380,7 +3049,7 @@ static int isp_resource_alloc(struct isp_dev *isp)
 	isp->isp_save.dma_addr = isp->isp_stat.dma_addr;
 	isp->isp_save.vir_addr = isp->isp_stat.vir_addr;
 #endif
-#else /* else ISP_600 */
+#else /* else ISP_600/ISP_610 */
 	isp->isp_stat.size = ISP_SAVE_DRAM_SIZE + ISP_SAVE_LOAD_DRAM_SIZE + 3 * ISP_LOAD_DRAM_SIZE;
 	ret = os_mem_alloc(&isp->pdev->dev, &isp->isp_stat);
 	if (ret < 0) {
@@ -2406,6 +3075,114 @@ static void isp_resource_free(struct isp_dev *isp)
 	os_mem_free(&isp->pdev->dev, &isp->isp_stat);
 }
 
+#ifdef CONFIG_TDM_OFFLINE_HANDLE_RAW
+static void __isp_tx_buf_handle(struct isp_dev *isp)
+{
+	struct vin_md *vind = dev_get_drvdata(isp->subdev.v4l2_dev->dev);
+	struct vin_core *vinc = NULL;
+	struct tdm_rx_dev *tdm_rx;
+	struct tdm_dev *tdm;
+	struct tdm_buffer *buf = NULL;
+	unsigned char rx_other = 0xff;
+	unsigned char tdm_rx_num = 2;
+	int i;
+
+	for (i = 0; i < VIN_MAX_DEV; i++) {
+		if (vind->vinc[i] == NULL)
+			continue;
+		if (!vin_streaming(&vind->vinc[i]->vid_cap))
+			continue;
+
+		if (vind->vinc[i]->isp_sel == isp->id) {
+			vinc = vind->vinc[i];
+			break;
+		}
+	}
+
+	if (vinc == NULL)
+		return;
+
+	tdm_rx = container_of(vinc->vid_cap.pipe.sd[VIN_IND_TDM_RX], struct tdm_rx_dev, subdev);
+	tdm = container_of(tdm_rx, struct tdm_dev, tdm_rx[tdm_rx->id]);
+
+	tdm->tdm_tx_work = false;
+
+	if (((&tdm->rx_active[tdm_rx->id]) == tdm->rx_active[tdm_rx->id].next->next) || list_empty(&tdm->rx_active[tdm_rx->id]))
+			csic_tdm_rx_cap_enable(tdm->id, tdm_rx->id);
+	if (list_empty(&tdm->rx_done[tdm_rx->id])) {
+		vin_err("tdm_rx%d done is empty, but isp%d frame done come\b", tdm_rx->id, isp->id);
+		return;
+	}
+	buf = list_entry(tdm->rx_done[tdm_rx->id].next, struct tdm_buffer, list);
+	if (buf->state != TDMSTAT_USER_SET) {
+		vin_warn("tdm_rx%d buf%d isp frame done, but buf state is %s\n", tdm_rx->id, buf->id,
+					buf->state == TDMSTAT_TX_SET ? "TDMSTAT_TX_SET" : (buf->state == TDMSTAT_RX_SET ? "TDMSTAT_RX_SET" : "TDMSTAT_IDLE"));
+	}
+	tdm->tx_busy = false;
+	buf->state = TDMSTAT_TX_SET;
+	list_move_tail(&buf->list, &tdm->rx_active[tdm_rx->id]);
+	vin_log(VIN_LOG_TDM, "tdm_rx%d buf%d set to isp%d handle\n", tdm_rx->id, buf->id, isp->id);
+
+	if (tdm->tx_now_id != tdm_rx->id) {
+		vin_err("software judge tx is managed tdm_rx%d buf, but tx hareware is managed tdm_rx%d buf\n", tdm->tx_now_id, tdm_rx->id);
+		tdm->tx_next_id = tdm->tx_next_id_other;
+	}
+
+	if (tdm->tx_next_id != 0xff) {
+		if (tdm->rx_done[tdm->tx_next_id].next != NULL && !list_empty(&tdm->rx_done[tdm->tx_next_id])) {
+			buf = list_entry(tdm->rx_done[tdm->tx_next_id].next, struct tdm_buffer, list);
+			if (buf->state == TDMSTAT_USER_SET) {
+				tdm->tdm_tx_work = true;
+				csic_tdm_tx_cap_enable(tdm->id);
+				for (i = 0; i < 10; i++)
+					;
+				csic_tdm_tx_cap_disable(tdm->id);
+
+				tdm->tx_busy = true;
+				tdm->tx_now_id = tdm->tx_next_id;
+				for (i = tdm->tx_now_id + 1; i < tdm_rx_num + tdm->tx_now_id; i++) {
+					if (tdm->rx_done[i%tdm_rx_num].next != NULL && !list_empty(&tdm->rx_done[i%tdm_rx_num])) {
+						tdm->tx_next_id = i%tdm_rx_num;
+						break;
+					}
+				}
+				if (i == tdm_rx_num + tdm->tx_now_id) {
+					if (list_empty(&tdm->rx_done[tdm->tx_now_id]) || tdm->rx_done[tdm->tx_now_id].next->next == &tdm->rx_done[tdm->tx_now_id]) {
+						tdm->tx_next_id = 0xff;
+					} else {
+						tdm->tx_next_id = tdm->tx_now_id;
+					}
+				}
+
+				if (tdm_rx->id == 0) {
+					rx_other = 1;
+				} else if (tdm_rx->id == 1) {
+					rx_other = 0;
+				}
+				if (rx_other != 0xff) {
+					for (i = rx_other + 1; i < tdm_rx_num + rx_other; i++) {
+						if (tdm->rx_done[i%tdm_rx_num].next != NULL && !list_empty(&tdm->rx_done[i%tdm_rx_num])) {
+							tdm->tx_next_id_other = i%tdm_rx_num;
+							break;
+						}
+					}
+					if (i == tdm_rx_num + rx_other) {
+						if (tdm->rx_done[rx_other].next != NULL && (list_empty(&tdm->rx_done[rx_other]) || tdm->rx_done[rx_other].next->next == &tdm->rx_done[rx_other])) {
+							tdm->tx_next_id_other = 0xff;
+						} else {
+							tdm->tx_next_id_other = rx_other;
+						}
+					}
+				}
+				vin_log(VIN_LOG_TDM, "tdm_rx%d buf%d state is TDMSTAT_NPU_SET, set to isp%d, tx next id is %d\n", tdm->tx_now_id, buf->id, tdm->tx_now_id, tdm->tx_next_id);
+			}
+		}
+	}
+
+	vin_log(VIN_LOG_TDM, "\n");
+}
+#endif
+
 static irqreturn_t isp_isr(int irq, void *priv)
 {
 	struct isp_dev *isp = (struct isp_dev *)priv;
@@ -2427,8 +3204,8 @@ static irqreturn_t isp_isr(int irq, void *priv)
 		bsp_isp_get_irq_status(isp->id, ISP_IRQ_STATUS_ALL));
 
 	spin_lock_irqsave(&isp->slock, flags);
-#if !defined ISP_600
-#if !defined CONFIG_ARCH_SUN8IW16P1 && !defined CONFIG_ARCH_SUN8IW19P1 && !defined CONFIG_ARCH_SUN50IW10
+#if !defined ISP_600 && !defined ISP_610
+#if !IS_ENABLED(CONFIG_ARCH_SUN8IW16P1) && !IS_ENABLED(CONFIG_ARCH_SUN8IW19P1) && !IS_ENABLED(CONFIG_ARCH_SUN50IW10) && !IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 	if (bsp_isp_get_irq_status(isp->id, SRC0_FIFO_OF_PD)) {
 		vin_err("isp%d source0 fifo overflow\n", isp->id);
 		bsp_isp_clr_irq_status(isp->id, SRC0_FIFO_OF_PD);
@@ -2500,7 +3277,7 @@ static irqreturn_t isp_isr(int irq, void *priv)
 			vin_err("isp%d BIS fifo overflow\n", isp->id);
 			bsp_isp_clr_internal_status0(isp->id, BIS_FIFO_OF_PD);
 		}
-#if !defined CONFIG_ARCH_SUN50IW10
+#if !IS_ENABLED(CONFIG_ARCH_SUN50IW10) && !IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 		if (bsp_isp_get_internal_status0(isp->id, DPC_FIFO_OF_PD)) {
 			vin_err("isp%d DPC fifo overflow\n", isp->id);
 			bsp_isp_clr_internal_status0(isp->id, DPC_FIFO_OF_PD);
@@ -2703,10 +3480,10 @@ static irqreturn_t isp_isr(int irq, void *priv)
 
 	if (bsp_isp_get_irq_status(isp->id, PARA_LOAD_PD)) {
 		bsp_isp_clr_irq_status(isp->id, PARA_LOAD_PD);
-		if (isp->ptn_type) {
-			spin_unlock_irqrestore(&isp->slock, flags);
-			return IRQ_HANDLED;
-		}
+		// if (isp->ptn_type) {
+		// 	spin_unlock_irqrestore(&isp->slock, flags);
+		// 	return IRQ_HANDLED;
+		// }
 		bsp_isp_set_para_ready(isp->id, PARA_NOT_READY);
 		if (isp->load_flag)
 			memcpy(isp->isp_load.vir_addr, &isp->load_shadow[0], ISP_LOAD_DRAM_SIZE);
@@ -2719,7 +3496,7 @@ static irqreturn_t isp_isr(int irq, void *priv)
 			vin_log(VIN_LOG_ISP, "please close wdr in normal mode!!\n");
 			load_val = load_val & ~WDR_UPDATE;
 			bsp_isp_module_disable(isp->id, WDR_EN);
-#if !defined CONFIG_ARCH_SUN8IW16P1 && !defined CONFIG_ARCH_SUN8IW19P1 && !defined CONFIG_ARCH_SUN50IW10
+#if !IS_ENABLED(CONFIG_ARCH_SUN8IW16P1) && !IS_ENABLED(CONFIG_ARCH_SUN8IW19P1) && !IS_ENABLED(CONFIG_ARCH_SUN50IW10) && !IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 			bsp_isp_set_wdr_mode(isp->id, ISP_NORMAL_MODE);
 #endif
 		}
@@ -2733,7 +3510,7 @@ static irqreturn_t isp_isr(int irq, void *priv)
 				isp->isp_ob.ob_start.hor += isp->isp_ob.ob_valid.width - LARGE_IMAGE_OFF * 2;
 			}
 		}
-#if !defined CONFIG_D3D
+#if !IS_ENABLED(CONFIG_D3D)
 		bsp_isp_module_disable(isp->id, D3D_EN);
 		load_val = load_val & ~D3D_UPDATE;
 #endif
@@ -2746,15 +3523,10 @@ static irqreturn_t isp_isr(int irq, void *priv)
 		if (isp->ptn_cfg && isp->ptn_cfg->ptn_en) {
 			if (isp->ptn_cfg->ptn_type)
 				csic_ptn_addr(0, (unsigned long)(isp->ptn_cfg->ptn_buf.dma_addr + (isp->ptn_isp_cnt % isp->ptn_cfg->ptn_cnt) * isp->ptn_cfg->ptn_size));
-#ifndef SUPPORT_ISP_TDM
 			if (isp->ptn_isp_cnt > 0)
 				csic_ptn_generation_en(0, 1);
-#else
-			csic_ptn_generation_en(0, 1);
-#endif
 			isp->ptn_isp_cnt++;
 		}
-
 	}
 	spin_unlock_irqrestore(&isp->slock, flags);
 
@@ -2787,7 +3559,8 @@ static irqreturn_t isp_isr(int irq, void *priv)
 		}
 		isp->load_flag = 0;
 	}
-#else /* else ISP_600 */
+#else /* else ISP_600/ISP_610 */
+#if defined ISP_600
 	if (bsp_isp_get_irq_status(isp->id, DDR_RW_ERROR_PD)) {
 		vin_err("isp%d ddr read and write error!\n", isp->id);
 		bsp_isp_clr_irq_status(isp->id, DDR_RW_ERROR_PD);
@@ -3008,6 +3781,376 @@ static irqreturn_t isp_isr(int irq, void *priv)
 		sunxi_isp_reset(isp);
 		__sunxi_isp_reset_v2(isp);
 	}
+#else /* ISP_610 */
+	if (bsp_isp_get_irq_status(isp->id, LBC_ERROR_PD)) {
+		vin_err("isp%d lbc compress error\n", isp->id);
+		bsp_isp_clr_irq_status(isp->id, LBC_ERROR_PD);
+		__sunxi_isp_reset_v2(isp);
+	}
+	if (bsp_isp_get_irq_status(isp->id, LBD_ERROR_PD)) {
+		vin_err("isp%d lbd decompress error\n", isp->id);
+		if (bsp_isp_get_internal_status1(isp->id, LBD_DEC_LONG_ERROR))
+			vin_err("isp%d the data for LBD decode is too long\n", isp->id);
+		if (bsp_isp_get_internal_status1(isp->id, LBD_DEC_SHORT_ERROR))
+			vin_err("isp%d the data for LBD decode is too short\n", isp->id);
+		if (bsp_isp_get_internal_status1(isp->id, LBD_DEC_ERROR))
+			vin_err("isp%d the data for LBD decode is error\n", isp->id);
+		bsp_isp_clr_irq_status(isp->id, LBD_ERROR_PD);
+		__sunxi_isp_reset_v2(isp);
+	}
+	if (bsp_isp_get_irq_status(isp->id, AHB_MBUS_W_PD)) {
+		vin_err("isp%d AHB and MBUS write conflict, lock id is %d\n", isp->id, bsp_isp_get_lock_id(isp->id));
+		bsp_isp_clr_irq_status(isp->id, AHB_MBUS_W_PD);
+	}
+	if (bsp_isp_get_irq_status(isp->id, HB_SHORT_PD)) {
+		vin_err("isp%d hblank short, hblank need morn than 128 cycles!\n", isp->id);
+		bsp_isp_clr_irq_status(isp->id, HB_SHORT_PD);
+		sunxi_isp_reset(isp);
+	}
+	if (bsp_isp_get_irq_status(isp->id, FRAME_LOST_PD)) {
+		vin_err("isp%d frame lost!\n", isp->id);
+		bsp_isp_clr_irq_status(isp->id, FRAME_LOST_PD);
+		sunxi_isp_reset(isp);
+		__sunxi_isp_reset_v3(isp);
+	}
+	if (bsp_isp_get_irq_status(isp->id, CMB0_ACK_TO_PD)) {
+		vin_err("isp%d combo0 ack to error!\n", isp->id);
+		if (bsp_isp_get_internal_cmb0(isp->id, ISP_ITCMB0_D2D_MOT_TO)) {
+			vin_err("isp%d D2D motion arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb0(isp->id, ISP_ITCMB0_D2D_BLK_DNR_TO)) {
+			vin_err("isp%d D2D block dnr arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb0(isp->id, ISP_ITCMB0_D3D_MOT_TO)) {
+			vin_err("isp%d D3D motion arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb0(isp->id, ISP_ITCMB0_D3D_KBA_TO)) {
+			vin_err("isp%d D3D K/BLOCK/DNR/KBA info arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb0(isp->id, ISP_ITCMB0_SHARP_MIX_RATIO_TO)) {
+			vin_err("isp%d SHARP mixed ratio arrive\n", isp->id);
+		}
+		bsp_isp_clr_irq_status(isp->id, CMB0_ACK_TO_PD);
+	}
+	if (bsp_isp_get_irq_status(isp->id, CMB1_ACK_TO_PD)) {
+		vin_err("isp%d combo1 ack to error!\n", isp->id);
+		if (bsp_isp_get_internal_cmb1(isp->id, ISP_ITCMB1_D3D_KP_WR_TO)) {
+			vin_err("isp%d D3D KP write arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb1(isp->id, ISP_ITCMB1_D3D_KP_RD_TO)) {
+			vin_err("isp%d D3D KP read arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb1(isp->id, ISP_ITCMB1_D3D_KM_MID0_WR_TO)) {
+			vin_err("isp%d D3D KM MID0 write arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb1(isp->id, ISP_ITCMB1_D3D_KM_MID1_WR_TO)) {
+			vin_err("isp%d D3D KM MID1 write arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb1(isp->id, ISP_ITCMB1_D3D_KM_MID2_WR_TO)) {
+			vin_err("isp%d D3D KM MID2 write arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb1(isp->id, ISP_ITCMB1_D3D_KM_MID0_RD_TO)) {
+			vin_err("isp%d D3D KM MID0 read arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb1(isp->id, ISP_ITCMB1_D3D_KM_MID1_RD_TO)) {
+			vin_err("isp%d D3D KM MID1 read arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb1(isp->id, ISP_ITCMB1_D3D_MOT_RST_WR_TO)) {
+			vin_err("isp%d D3D KM Motion RST write arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb1(isp->id, ISP_ITCMB1_D3D_KST_RST_WR_TO)) {
+			vin_err("isp%d D3D KST RST write arrive\n", isp->id);
+		}
+		//if (bsp_isp_get_internal_cmb1(isp->id, ISP_ITCMB1_D3D_MOT_INTP_TO)) {
+		//	vin_err("isp%d D3D MOT INTP write arrive\n", isp->id);
+		//}
+		//if (bsp_isp_get_internal_cmb1(isp->id, ISP_ITCMB1_D3D_KBA_INTP_TO)) {
+		//	vin_err("isp%d D3D KBA INTP write arrive\n", isp->id);
+		//}
+		if (bsp_isp_get_internal_cmb1(isp->id, ISP_ITCMB1_SHARP_TXT_RST_WR_TO)) {
+			vin_err("isp%d SHARP texture RST write arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb1(isp->id, ISP_ITCMB1_SHARP_TXT_MID0_RD_TO)) {
+			vin_err("isp%d SHARP texture MID0 read arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb1(isp->id, ISP_ITCMB1_SHARP_TXT_MID1_RD_TO)) {
+			vin_err("isp%d SHARP texture MID1 read arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb1(isp->id, ISP_ITCMB1_SHARP_TXT_MID0_WR_TO)) {
+			vin_err("isp%d SHARP texture MID0 write arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb1(isp->id, ISP_ITCMB1_SHARP_TXT_MID1_WR_TO)) {
+			vin_err("isp%d SHARP texture MID1 write arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb1(isp->id, ISP_ITCMB1_SHARP_TXT_MID2_WR_TO)) {
+			vin_err("isp%d SHARP texture MID2 write arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb1(isp->id, ISP_ITCMB1_AFK_WR_TO)) {
+			vin_err("isp%d AFK write arrive\n", isp->id);
+		}
+		bsp_isp_clr_irq_status(isp->id, CMB1_ACK_TO_PD);
+	}
+	if (bsp_isp_get_irq_status(isp->id, CMB2_ACK_TO_PD)) {
+		vin_err("isp%d combo2 ack to error!\n", isp->id);
+		if (bsp_isp_get_internal_cmb2(isp->id, ISP_ITCMB2_D3D_PCNT_RW_TO)) {
+			vin_err("isp%d D3D PCNT read-write arrive\n", isp->id);
+		}
+		bsp_isp_clr_irq_status(isp->id, CMB2_ACK_TO_PD);
+	}
+	if (bsp_isp_get_irq_status(isp->id, CMB3_ACK_TO_PD)) {
+		vin_err("isp%d combo3 ack to error!\n", isp->id);
+		if (bsp_isp_get_internal_cmb3(isp->id, ISP_ITCMB3_AWB_RD_TO)) {
+			vin_err("isp%d awb read arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb3(isp->id, ISP_ITCMB3_AWB_WR_TO)) {
+			vin_err("isp%d awb write arrive\n", isp->id);
+		}
+		bsp_isp_clr_irq_status(isp->id, CMB3_ACK_TO_PD);
+	}
+	if (bsp_isp_get_irq_status(isp->id, CMB4_ACK_TO_PD)) {
+		vin_err("isp%d combo4 ack to error!\n", isp->id);
+		if (bsp_isp_get_internal_cmb4(isp->id, ISP_ITCMB4_AE0_ACC_RD_TO)) {
+			vin_err("isp%d AE0 read arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb4(isp->id, ISP_ITCMB4_AE1_ACC_RD_TO)) {
+			vin_err("isp%d AE1 read arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb4(isp->id, ISP_ITCMB4_AE2_ACC_RD_TO)) {
+			vin_err("isp%d AE2 read arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb4(isp->id, ISP_ITCMB4_AE0_ACC_WR_TO)) {
+			vin_err("isp%d AE0 write arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb4(isp->id, ISP_ITCMB4_AE1_ACC_WR_TO)) {
+			vin_err("isp%d AE1 write arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb4(isp->id, ISP_ITCMB4_AE2_ACC_WR_TO)) {
+			vin_err("isp%d AE2 write arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb4(isp->id, ISP_ITCMB4_AE_OUT0_RD_TO)) {
+			vin_err("isp%d AE out sram0 read arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb4(isp->id, ISP_ITCMB4_AE_OUT1_RD_TO)) {
+			vin_err("isp%d AE out sram1 read arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb4(isp->id, ISP_ITCMB4_AE0_OUT_WR_TO)) {
+			vin_err("isp%d AE0 out write arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb4(isp->id, ISP_ITCMB4_AE1_OUT_WR_TO)) {
+			vin_err("isp%d AE1 out write arrive\n", isp->id);
+		}
+		if (bsp_isp_get_internal_cmb4(isp->id, ISP_ITCMB4_AE2_OUT_WR_TO)) {
+			vin_err("isp%d AE2 out write arrive\n", isp->id);
+		}
+		bsp_isp_clr_irq_status(isp->id, CMB4_ACK_TO_PD);
+	}
+	if (bsp_isp_get_irq_status(isp->id, CFG_ERROR_PD)) {
+		vin_err("isp%d configuration error\n", isp->id);
+		bsp_isp_clr_irq_status(isp->id, CFG_ERROR_PD);
+		if (bsp_isp_get_internal_status0(isp->id, VSYNC_ERROR)) {
+			vin_err("isp%d the input vsync signal is not matched with the input channel cfg\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, VSYNC_ERROR);
+		}
+		if (bsp_isp_get_internal_status0(isp->id, HSYNC_ERROR)) {
+			vin_err("isp%d the input hsync signal is not matched with the input channel cfg\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, HSYNC_ERROR);
+		}
+		if (bsp_isp_get_internal_status0(isp->id, DVLD_ERROR)) {
+			vin_err("isp%d the dvld signal is not aligned among different input channels\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, DVLD_ERROR);
+		}
+		if (bsp_isp_get_internal_status0(isp->id, CH2_BTYPE_ERROR)) {
+			vin_err("isp%d the bytpe signal of channel 2 is changed\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, CH2_BTYPE_ERROR);
+		}
+		if (bsp_isp_get_internal_status0(isp->id, CH1_BTYPE_ERROR)) {
+			vin_err("isp%d the bytpe signal of channel 1 is changed\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, CH1_BTYPE_ERROR);
+		}
+		if (bsp_isp_get_internal_status0(isp->id, CH0_BTYPE_ERROR)) {
+			vin_err("isp%d the bytpe signal of channel 0 is changed\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, CH0_BTYPE_ERROR);
+		}
+		if (bsp_isp_get_internal_status0(isp->id, TWO_BYTE_ERROR)) {
+			vin_err("isp%d two byte input mode encountered\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, TWO_BYTE_ERROR);
+		}
+		if (bsp_isp_get_internal_status0(isp->id, WIDTH_ERROR)) {
+			vin_err("isp%d width error\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, WIDTH_ERROR);
+		}
+		if (bsp_isp_get_internal_status0(isp->id, HEIGHT_ERROR)) {
+			vin_err("isp%d height error\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, HEIGHT_ERROR);
+		}
+		if (bsp_isp_get_internal_status0(isp->id, FMT_CHG_ERROR)) {
+			vin_err("isp%d the bayer format is changed when d3d is open\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, FMT_CHG_ERROR);
+		}
+		if (bsp_isp_get_internal_status0(isp->id, AE_OUT_OF_PICTURE)) {
+			vin_err("isp%d ae out of picture\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, AE_OUT_OF_PICTURE);
+		}
+		if (bsp_isp_get_internal_status0(isp->id, AWB_OUT_OF_PICTURE)) {
+			vin_err("isp%d awb out of picture\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, AWB_OUT_OF_PICTURE);
+		}
+		if (bsp_isp_get_internal_status0(isp->id, AWB_WIN_PIXEL_NUM_OVER)) {
+			vin_err("isp%d awb windows pixel number is over\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, AWB_WIN_PIXEL_NUM_OVER);
+		}
+		if (bsp_isp_get_internal_status0(isp->id, STC_WIN_W_ERROR)) {
+			vin_err("isp%d statistic window is less than 16 error\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, STC_WIN_W_ERROR);
+		}
+		sunxi_isp_reset(isp);
+	}
+	if (bsp_isp_get_irq_status(isp->id, INTER_FIFO_FULL_PD)) {
+		vin_err("isp%d internal fifo full\n", isp->id);
+		if (bsp_isp_get_internal_fifo(isp->id, ISP_ITFIFO_GCA_OV)) {
+			vin_err("isp%d GCA fifo overflow\n", isp->id);
+		}
+		if (bsp_isp_get_internal_fifo(isp->id, ISP_ITFIFO_CTC_OV)) {
+			vin_err("isp%d CTC fifo overflow\n", isp->id);
+		}
+		if (bsp_isp_get_internal_fifo(isp->id, ISP_ITFIFO_D3D_DIFF_OV)) {
+			vin_err("isp%d D3D DIFF overflow\n", isp->id);
+		}
+		if (bsp_isp_get_internal_fifo(isp->id, ISP_ITFIFO_D3D_LP0_OV)) {
+			vin_err("isp%d D3D LP0 overflow\n", isp->id);
+		}
+		if (bsp_isp_get_internal_fifo(isp->id, ISP_ITFIFO_D3D_LP1_OV)) {
+			vin_err("isp%d D3D LP1 overflow\n", isp->id);
+		}
+		if (bsp_isp_get_internal_fifo(isp->id, ISP_ITFIFO_D3D_KPACK_OV)) {
+			vin_err("isp%d D3D KPACK overflow\n", isp->id);
+		}
+		if (bsp_isp_get_internal_fifo(isp->id, ISP_ITFIFO_D3D_CURK_OV)) {
+			vin_err("isp%d D3D CURK overflow\n", isp->id);
+		}
+		if (bsp_isp_get_internal_fifo(isp->id, ISP_ITFIFO_D3D_KSTP_OV)) {
+			vin_err("isp%d D3D KSTP overflow\n", isp->id);
+		}
+		if (bsp_isp_get_internal_fifo(isp->id, ISP_ITFIFO_D3D_BLK_DNR_OV)) {
+			vin_err("isp%d D3D BLK DNR overflow\n", isp->id);
+		}
+		if (bsp_isp_get_internal_fifo(isp->id, ISP_ITFIFO_DMSC_RGB_OV)) {
+			vin_err("isp%d DMSC RGB overflow\n", isp->id);
+		}
+		if (bsp_isp_get_internal_fifo(isp->id, ISP_ITFIFO_DMSC_RGB_UV)) {
+			vin_err("isp%d DMSC RGB underflow\n", isp->id);
+		}
+		if (bsp_isp_get_internal_fifo(isp->id, ISP_ITFIFO_DMSC_RATIO_OV)) {
+			vin_err("isp%d DMSC RATIO overflow\n", isp->id);
+		}
+		if (bsp_isp_get_internal_fifo(isp->id, ISP_ITFIFO_DMSC_RATIO_UV)) {
+			vin_err("isp%d DMSC RATIO underflow\n", isp->id);
+		}
+		if (bsp_isp_get_internal_fifo(isp->id, ISP_ITFIFO_LCA_BAYER_OV)) {
+			vin_err("isp%d LCA BAYER overflow\n", isp->id);
+		}
+		if (bsp_isp_get_internal_fifo(isp->id, ISP_ITFIFO_LCA_BAYER_UV)) {
+			vin_err("isp%d LCA BAYER underflow\n", isp->id);
+		}
+		if (bsp_isp_get_internal_fifo(isp->id, ISP_ITFIFO_LCA_RGB_OV)) {
+			vin_err("isp%d LCA RGB overflow\n", isp->id);
+		}
+		if (bsp_isp_get_internal_fifo(isp->id, ISP_ITFIFO_LCA_RGB_UV)) {
+			vin_err("isp%d LCA RGB underflow\n", isp->id);
+		}
+		if (bsp_isp_get_internal_fifo(isp->id, ISP_ITFIFO_SHARP_BAYER_OV)) {
+			vin_err("isp%d SHARP BAYER overflow\n", isp->id);
+		}
+		if (bsp_isp_get_internal_fifo(isp->id, ISP_ITFIFO_SHARP_HSV_OV)) {
+			vin_err("isp%d SHARP HSV overflow\n", isp->id);
+		}
+		bsp_isp_clr_irq_status(isp->id, INTER_FIFO_FULL_PD);
+		sunxi_isp_reset(isp);
+	}
+	if (bsp_isp_get_irq_status(isp->id, WDMA_FIFO_FULL_PD)) {
+		vin_err("isp%d wdma fifo full\n", isp->id);
+		bsp_isp_clr_irq_status(isp->id, WDMA_FIFO_FULL_PD);
+		if (bsp_isp_get_internal_status1(isp->id, WDMA_D3D_REC_FIFO_OV)) {
+			vin_err("isp%d wdma fifo of d3d rec fifo overflow\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, WDMA_D3D_REC_FIFO_OV);
+		}
+		if (bsp_isp_get_internal_status1(isp->id, WDMA_LBC_H4DDR_FIFO_OV)) {
+			vin_err("isp%d wdma fifo of lbc head for ddr output fifo overflow\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, WDMA_LBC_H4DDR_FIFO_OV);
+		}
+		if (bsp_isp_get_internal_status1(isp->id, WDMA_LBC_H4DT_FIFO_OV)) {
+			vin_err("isp%d wdma fifo of lbc head for data fifo overflow\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, WDMA_LBC_H4DT_FIFO_OV);
+		}
+		if (bsp_isp_get_internal_status1(isp->id, WDMA_D2D_REC_FIFO_OV)) {
+			vin_err("isp%d wdma fifo of d2d rec fifo overflow\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, WDMA_D2D_REC_FIFO_OV);
+		}
+		if (bsp_isp_get_internal_status1(isp->id, WDMA_D3D_CURK_FIFO_OV)) {
+			vin_err("isp%d wdma fifo of d3d curk fifo overflow\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, WDMA_D3D_CURK_FIFO_OV);
+		}
+		if (bsp_isp_get_internal_status1(isp->id, WDMA_D3D_CNTR_FIFO_OV)) {
+			vin_err("isp%d wdma fifo of d3d cntr fifo overflow\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, WDMA_D3D_CNTR_FIFO_OV);
+		}
+		if (bsp_isp_get_internal_status1(isp->id, WDMA_PLTM_PKX_FIFO_OV)) {
+			vin_err("isp%d wdma fifo of pltm ptk fifo overflow\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, WDMA_PLTM_PKX_FIFO_OV);
+		}
+		if (bsp_isp_get_internal_status1(isp->id, WDMA_PLTM_LUM_FIFO_OV)) {
+			vin_err("isp%d wdma fifo of pltm lum fifo overflow\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, WDMA_PLTM_LUM_FIFO_OV);
+		}
+		if (bsp_isp_get_internal_status1(isp->id, WDMA_AE_FIFO_OV)) {
+			vin_err("isp%d wdma fifo of AE fifo overflow\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, WDMA_AE_FIFO_OV);
+		}
+		if (bsp_isp_get_internal_status1(isp->id, WDMA_AWB_FIFO_OV)) {
+			vin_err("isp%d wdma fifo of AWB fifo overflow\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, WDMA_AWB_FIFO_OV);
+		}
+		__sunxi_isp_frame_loss(isp);
+	}
+	if (bsp_isp_get_irq_status(isp->id, WDMA_OVER_BND_PD)) {
+		vin_err("isp%d wdma over border\n", isp->id);
+		bsp_isp_clr_irq_status(isp->id, WDMA_OVER_BND_PD);
+		sunxi_isp_reset(isp);
+	}
+	if (bsp_isp_get_irq_status(isp->id, RDMA_FIFO_EMPTY_PD)) {
+		vin_err("isp%d rdma fifo underflow\n", isp->id);
+		bsp_isp_clr_irq_status(isp->id, RDMA_FIFO_EMPTY_PD);
+		if (bsp_isp_get_internal_status1(isp->id, RDMA_D3D_REC_FIFO_UV)) {
+			vin_err("isp%d rdma fifo of d3d rec fifo overflow\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, RDMA_D3D_REC_FIFO_UV);
+		}
+		if (bsp_isp_get_internal_status1(isp->id, RDMA_D2D_REC_FIFO_UV)) {
+			vin_err("isp%d rdma fifo of d2d rec fifo overflow\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, RDMA_D2D_REC_FIFO_UV);
+		}
+		if (bsp_isp_get_internal_status1(isp->id, RDMA_D3D_CHNK_ITP_TO)) {
+			vin_err("isp%d rdma fifo of d3d curk interpolation fifo overflow\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, RDMA_D3D_CHNK_ITP_TO);
+		}
+		if (bsp_isp_get_internal_status1(isp->id, RDMA_D3D_CURK_FIFO_UV)) {
+			vin_err("isp%d rdma fifo of d3d curk fifo overflow\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, RDMA_D3D_CURK_FIFO_UV);
+		}
+		if (bsp_isp_get_internal_status1(isp->id, RDMA_D3D_CNTR_FIFO_UV)) {
+			vin_err("isp%d rdma fifo of d3d cntr fifo overflow\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, RDMA_D3D_CNTR_FIFO_UV);
+		}
+		if (bsp_isp_get_internal_status1(isp->id, RDMA_D3D_PREK_FIFO_UV)) {
+			vin_err("isp%d rdma fifo of d3d prek fifo overflow\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, RDMA_D3D_PREK_FIFO_UV);
+		}
+		if (bsp_isp_get_internal_status1(isp->id, RDMA_PLTM_PKX_FIFO_UV)) {
+			vin_err("isp%d rdma fifo of pltm pkx fifo overflow\n", isp->id);
+			bsp_isp_clr_internal_status0(isp->id, RDMA_PLTM_PKX_FIFO_UV);
+		}
+		__sunxi_isp_frame_loss(isp);
+	}
+#endif
 	spin_unlock_irqrestore(&isp->slock, flags);
 
 	if (bsp_isp_get_irq_status(isp->id, PARA_SAVE_PD)) {
@@ -3035,18 +4178,37 @@ static irqreturn_t isp_isr(int irq, void *priv)
 
 		isp_stat_load_set(&isp->h3a_stat);
 
+#if defined ISP_600
+		if (isp->large_image == 3 && glb_isp[1]) {
+			if (isp->id == 0 && isp->load_flag) {
+				memcpy(glb_isp[1]->isp_load.vir_addr, &glb_isp[1]->load_shadow[0], ISP_LOAD_DRAM_SIZE);
+				memcpy(isp->isp_load.vir_addr, &isp->load_shadow[0], ISP_LOAD_DRAM_SIZE);
+				isp->load_flag = 0;
+			}
+		} else {
+			if (isp->load_flag) {
+				memcpy(isp->isp_load.vir_addr, &isp->load_shadow[0], ISP_LOAD_DRAM_SIZE);
+				isp->load_flag = 0;
+			}
+		}
+#else /* ISP_610 */
 		if (isp->load_flag) {
 			memcpy(isp->isp_load.vir_addr, &isp->load_shadow[0], ISP_LOAD_DRAM_SIZE);
 			isp->load_flag = 0;
 		}
+#endif
 
 		if (isp->d3d_rec_reset) {
 			bsp_isp_clr_d3d_rec_en(isp->id);
 			isp->d3d_rec_reset = 0;
 		}
 
+#if defined ISP_610
+		load_val |= isp->update_table_flag;
+#else
 		load_val = bsp_isp_load_update_flag(isp->id);
-#if !defined CONFIG_D3D
+#endif
+#if !IS_ENABLED(CONFIG_D3D)
 		bsp_isp_module_disable(isp->id, D3D_EN);
 		load_val = load_val & ~D3D_UPDATE;
 #endif
@@ -3056,15 +4218,28 @@ static irqreturn_t isp_isr(int irq, void *priv)
 		/*change load ddr data*/
 		sunxi_isp_set_load_ddr(isp);
 
+		isp_2d_pingpong_update(isp);
 		isp_3d_pingpong_update(isp);
 
 		if (isp->load_select) {
 			memcpy(isp->load_para[1].vir_addr, isp->isp_load.vir_addr, ISP_LOAD_DRAM_SIZE);
+#if defined VIN_CACHE_CLEAN_INVALID
+			dma_sync_single_for_device(&isp->pdev->dev, (vin_dma_addr_t)isp->load_para[1].dma_addr, ISP_LOAD_DRAM_SIZE, DMA_TO_DEVICE);
+#endif
 			bsp_isp_set_load_addr(isp->id, (vin_dma_addr_t)isp->load_para[1].dma_addr);
+#if defined ISP_610
+			bsp_isp_set_aiload_addr(isp->id, (vin_dma_addr_t)isp->load_para[1].dma_addr);
+#endif
 			isp->load_select = false;
 		} else {
 			memcpy(isp->load_para[0].vir_addr, isp->isp_load.vir_addr, ISP_LOAD_DRAM_SIZE);
+#if defined VIN_CACHE_CLEAN_INVALID
+			dma_sync_single_for_device(&isp->pdev->dev, (vin_dma_addr_t)isp->load_para[0].dma_addr, ISP_LOAD_DRAM_SIZE, DMA_TO_DEVICE);
+#endif
 			bsp_isp_set_load_addr(isp->id, (vin_dma_addr_t)isp->load_para[0].dma_addr);
+#if defined ISP_610
+			bsp_isp_set_aiload_addr(isp->id, (vin_dma_addr_t)isp->load_para[0].dma_addr);
+#endif
 			isp->load_select = true;
 		}
 
@@ -3079,11 +4254,16 @@ static irqreturn_t isp_isr(int irq, void *priv)
 	}
 	spin_unlock_irqrestore(&isp->slock, flags);
 
-/*
+#ifdef CONFIG_TDM_OFFLINE_HANDLE_RAW
+	spin_lock_irqsave(&isp->slock, flags);
 	if (bsp_isp_get_irq_status(isp->id, FINISH_PD)) {
 		bsp_isp_clr_irq_status(isp->id, FINISH_PD);
+
+		__isp_tx_buf_handle(isp);
 	}
-	if (bsp_isp_get_irq_status(isp->id, N_LINE_START_PD)) {
+	spin_unlock_irqrestore(&isp->slock, flags);
+#endif
+/*	if (bsp_isp_get_irq_status(isp->id, N_LINE_START_PD)) {
 		bsp_isp_clr_irq_status(isp->id, N_LINE_START_PD);
 	}
 	if (bsp_isp_get_irq_status(isp->id, START_PD)) {
@@ -3094,8 +4274,180 @@ static irqreturn_t isp_isr(int irq, void *priv)
 	return IRQ_HANDLED;
 }
 
+#if !IS_ENABLED(CONFIG_VIN_INIT_MELIS)
+#if defined ISP_610
+static int isp_mcic_save_manage(struct isp_dev *isp)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	if (isp->stream_count == 0)
+		return -1;
+#else
+	if (isp->subdev.entity.stream_count == 0)
+		return -1;
+#endif
+	isp->isp_frame_number++;
+
+	if (!isp->f1_after_librun) {
+		sunxi_isp_frame_sync_isr(&isp->subdev);
+		if (isp->h3a_stat.stat_en_flag)
+			isp->f1_after_librun = 1;
+	} else {
+		if (isp->save_get_flag || isp->load_save || (isp->event_lost_cnt == 10)) {
+			sunxi_isp_frame_sync_isr(&isp->subdev);
+			isp->event_lost_cnt = 0;
+		} else {
+			isp->event_lost_cnt++;
+		}
+	}
+	isp->load_save = 0;
+
+	return 0;
+}
+
+static int isp_mcic_load_manage(struct isp_dev *isp)
+{
+	unsigned int load_val;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	if (isp->stream_count == 0)
+		return -1;
+#else
+	if (isp->subdev.entity.stream_count == 0)
+		return -1;
+#endif
+
+	isp_stat_load_set(&isp->h3a_stat);
+
+	if (isp->load_flag) {
+		memcpy(isp->isp_load.vir_addr, &isp->load_shadow[0], ISP_LOAD_DRAM_SIZE);
+		isp->load_flag = 0;
+	}
+
+	if (isp->d3d_rec_reset) {
+		bsp_isp_clr_d3d_rec_en(isp->id);
+		isp->d3d_rec_reset = 0;
+	}
+
+	load_val |= isp->update_table_flag;
+#if !IS_ENABLED(CONFIG_D3D)
+	bsp_isp_module_disable(isp->id, D3D_EN);
+	load_val = load_val & ~D3D_UPDATE;
+#endif
+	load_val = load_val | (GAMMA_UPDATE | CEM_UPDATE);
+	bsp_isp_update_table(isp->id, load_val);
+
+	/*change load ddr data*/
+	sunxi_isp_set_load_ddr(isp);
+
+	isp_2d_pingpong_update(isp);
+	isp_3d_pingpong_update(isp);
+
+	if (isp->load_select) {
+		memcpy(isp->load_para[1].vir_addr, isp->isp_load.vir_addr, ISP_LOAD_DRAM_SIZE);
+#if defined VIN_CACHE_CLEAN_INVALID
+		dma_sync_single_for_device(&isp->pdev->dev, (vin_dma_addr_t)isp->load_para[1].dma_addr, ISP_LOAD_DRAM_SIZE, DMA_TO_DEVICE);
+#endif
+		bsp_isp_set_load_addr(isp->id, (vin_dma_addr_t)isp->load_para[1].dma_addr);
+#if defined ISP_610
+		bsp_isp_set_aiload_addr(isp->id, (vin_dma_addr_t)isp->load_para[1].dma_addr);
+#endif
+		isp->load_select = false;
+	} else {
+		memcpy(isp->load_para[0].vir_addr, isp->isp_load.vir_addr, ISP_LOAD_DRAM_SIZE);
+#if defined VIN_CACHE_CLEAN_INVALID
+		dma_sync_single_for_device(&isp->pdev->dev, (vin_dma_addr_t)isp->load_para[0].dma_addr, ISP_LOAD_DRAM_SIZE, DMA_TO_DEVICE);
+#endif
+		bsp_isp_set_load_addr(isp->id, (vin_dma_addr_t)isp->load_para[0].dma_addr);
+#if defined ISP_610
+		bsp_isp_set_aiload_addr(isp->id, (vin_dma_addr_t)isp->load_para[0].dma_addr);
+#endif
+		isp->load_select = true;
+	}
+
+	bsp_isp_set_para_ready(isp->id, PARA_READY);
+	if (isp->ptn_cfg && isp->ptn_cfg->ptn_en) {
+		if (isp->ptn_cfg->ptn_type)
+			csic_ptn_addr(0, (unsigned long)(isp->ptn_cfg->ptn_buf.dma_addr + (isp->ptn_isp_cnt % isp->ptn_cfg->ptn_cnt) * isp->ptn_cfg->ptn_size));
+		if (glb_isp[isp->id/ISP_VIRT_NUM]->work_mode == ISP_OFFLINE || isp->ptn_isp_cnt > 0)
+			csic_ptn_generation_en(0, 1);
+		isp->ptn_isp_cnt++;
+	}
+
+	return 0;
+}
+
+static irqreturn_t isp_top_isr(int irq, void *priv)
+{
+	struct isp_dev *isp = (struct isp_dev *)priv;
+	struct isp_dev *combine_isp = NULL;
+	unsigned long flags;
+	unsigned int i;
+
+	if (bsp_isp_get_mcic_status(isp->id, ISP_MCIC0_SAVE_STATUS)) {
+		bsp_isp_clr_mcic_status(isp->id, ISP_MCIC0_SAVE_STATUS);
+		//vin_print("mcic0 save pd\n");
+		for (i = 0; i < 4; i++) {
+			if (isp->mcic_cfg.ch_cfg[0].isp_mcic_sel & (1 << i)) {
+				combine_isp = glb_isp[i];
+				//vin_print("mcic0 isp%d save pd\n", i);
+				if (isp_mcic_save_manage(combine_isp))
+					return IRQ_HANDLED;
+			}
+		}
+	}
+	spin_lock_irqsave(&isp->slock, flags);
+	if (bsp_isp_get_mcic_status(isp->id, ISP_MCIC0_LOAD_STATUS)) {
+		bsp_isp_clr_mcic_status(isp->id, ISP_MCIC0_LOAD_STATUS);
+		//vin_print("mcic0 load pd\n");
+		for (i = 0; i < 4; i++) {
+			if (isp->mcic_cfg.ch_cfg[0].isp_mcic_sel & (1 << i)) {
+				combine_isp = glb_isp[i];
+				//vin_print("mcic0 isp%d load pd\n", i);
+				if (isp_mcic_load_manage(combine_isp)) {
+					spin_unlock_irqrestore(&isp->slock, flags);
+					return IRQ_HANDLED;
+				}
+			}
+		}
+	}
+	spin_unlock_irqrestore(&isp->slock, flags);
+
+	if (bsp_isp_get_mcic_status(isp->id, ISP_MCIC1_SAVE_STATUS)) {
+		bsp_isp_clr_mcic_status(isp->id, ISP_MCIC1_SAVE_STATUS);
+		//vin_print("mcic1 save pd\n");
+		for (i = 0; i < 4; i++) {
+			if (isp->mcic_cfg.ch_cfg[1].isp_mcic_sel & (1 << i)) {
+				combine_isp = glb_isp[i];
+				//vin_print("mcic1 isp%d save pd\n", i);
+				if (isp_mcic_save_manage(combine_isp))
+					return IRQ_HANDLED;
+			}
+		}
+	}
+	spin_lock_irqsave(&isp->slock, flags);
+	if (bsp_isp_get_mcic_status(isp->id, ISP_MCIC1_LOAD_STATUS)) {
+		bsp_isp_clr_mcic_status(isp->id, ISP_MCIC1_LOAD_STATUS);
+		//vin_print("mcic1 load pd\n");
+		for (i = 0; i < 4; i++) {
+			if (isp->mcic_cfg.ch_cfg[1].isp_mcic_sel & (1 << i)) {
+				combine_isp = glb_isp[i];
+				//vin_print("mcic1 isp%d load pd\n", i);
+				if (isp_mcic_load_manage(combine_isp)) {
+					spin_unlock_irqrestore(&isp->slock, flags);
+					return IRQ_HANDLED;
+				}
+			}
+		}
+	}
+	spin_unlock_irqrestore(&isp->slock, flags);
+
+	return IRQ_HANDLED;
+}
+#endif
+#endif
+
 #if IS_ENABLED(CONFIG_VIN_INIT_MELIS)
-#ifndef CONFIG_RV_RUN_CAR_REVERSE
+#if !IS_ENABLED(CONFIG_RV_RUN_CAR_REVERSE)
 static void isp_reserve_for_yuv(unsigned int *phy_addr, unsigned int *buf_size, unsigned int *not_frame_loss_flag)
 {
 	unsigned int i;
@@ -3159,7 +4511,7 @@ static int isp_enable_irq(void *dev, void *data, int len)
 	struct isp_dev *isp = dev;
 	int ret = 0;
 
-#ifndef CONFIG_RV_RUN_CAR_REVERSE
+#if !IS_ENABLED(CONFIG_RV_RUN_CAR_REVERSE)
 	unsigned int phy_addr[2] = {0, 0};
 	unsigned int buf_size[2] = {0, 0};
 	unsigned int not_frame_loss_flag[2] = {0, 0};
@@ -3245,7 +4597,7 @@ static int isp_probe(struct platform_device *pdev)
 	isp->nosend_ispoff = 0;
 	isp->load_flag = 0;
 
-#if defined ISP_600
+#if defined ISP_600 || defined ISP_610
 	of_property_read_u32(np, "work_mode", &isp->work_mode);
 	if (isp->work_mode < 0) {
 		vin_err("isp%d failed to get work_mode\n", isp->id);
@@ -3263,6 +4615,13 @@ static int isp_probe(struct platform_device *pdev)
 			}
 		}
 	}
+
+#if defined ISP_600
+	of_property_read_u32(np, "ldci_select", &isp->ldci_select);
+	if (isp->ldci_select < 0) {
+		vin_err("isp%d failed to get ldic_select\n", isp->id);
+	}
+#endif
 #endif
 
 #if IS_ENABLED(CONFIG_VIN_INIT_MELIS)
@@ -3277,9 +4636,10 @@ static int isp_probe(struct platform_device *pdev)
 	}
 #endif
 
-#if !defined CONFIG_VIN_INIT_MELIS
-#if IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN60IW2)
-		vin_iommu_en(ISP_IOMMU_MASTER, true);
+#if !IS_ENABLED(CONFIG_VIN_INIT_MELIS)
+#if IS_ENABLED(CONFIG_ARCH_SUN55IW3) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) ||\
+	 IS_ENABLED(CONFIG_ARCH_SUN60IW2) || IS_ENABLED(CONFIG_ARCH_SUN65IW1)
+	vin_iommu_en(ISP_IOMMU_MASTER, true);
 #endif
 #endif
 #if IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
@@ -3302,12 +4662,26 @@ static int isp_probe(struct platform_device *pdev)
 			vin_err("failed to get ISP IRQ resource\n");
 			goto unmap;
 		}
-#if !defined CONFIG_VIN_INIT_MELIS
+#if !IS_ENABLED(CONFIG_VIN_INIT_MELIS)
 		ret = request_irq(isp->irq, isp_isr, IRQF_SHARED, isp->pdev->name, isp);
 		if (ret) {
 			vin_err("isp%d request irq failed\n", isp->id);
 			goto unmap;
 		}
+#if defined ISP_610
+		if (isp->id == 0) {
+			isp->top_irq = irq_of_parse_and_map(np, 1);
+			if (isp->top_irq <= 0) {
+				vin_err("failed to get ISP TOP_IRQ resource\n");
+				goto freeirq;
+			}
+			ret = request_irq(isp->top_irq, isp_top_isr, IRQF_SHARED, isp->pdev->name, isp);
+			if (ret) {
+				vin_err("isp%d request top_irq failed\n", isp->id);
+				goto freeirq;
+			}
+		}
+#endif
 #else
 		of_property_read_u32(np, "delay_init", &isp->delay_init);
 		if (isp->delay_init == 0) {
@@ -3318,7 +4692,16 @@ static int isp_probe(struct platform_device *pdev)
 			}
 		} else {
 			sprintf(name, "isp%d", isp->id);
+#if IS_ENABLED(CONFIG_ARCH_SUN55IW3)
 			rpmsg_notify_add("7130000.e906_rproc", name, isp_enable_irq, isp);
+#else
+			of_property_read_string(np, "rpmsg-ser-name", &isp->rpmsg_ser_name);
+			if (!isp->rpmsg_ser_name) {
+				vin_err("isp%d get rpmsg_ser_name falid\n", isp->id);
+				goto unmap;
+			} else
+				rpmsg_notify_add(isp->rpmsg_ser_name, name, isp_enable_irq, isp);
+#endif
 		}
 #endif
 		if (isp_resource_alloc(isp) < 0) {
@@ -3327,7 +4710,7 @@ static int isp_probe(struct platform_device *pdev)
 		}
 		bsp_isp_map_reg_addr(isp->id, (vin_dma_addr_t)isp->base);
 		bsp_isp_map_load_dram_addr(isp->id, (vin_dma_addr_t)isp->isp_load.vir_addr);
-#if defined ISP_600
+#if defined ISP_600 || defined ISP_610
 		bsp_isp_map_save_load_dram_addr(isp->id, (vin_dma_addr_t)isp->isp_save_load.vir_addr);
 #if IS_ENABLED(CONFIG_ARCH_SUN300IW1)
 		if (isp->id == 0) {
@@ -3340,7 +4723,7 @@ static int isp_probe(struct platform_device *pdev)
 #endif
 #endif
 	}
-#if defined ISP_600
+#if defined ISP_600 || defined ISP_610
 init:
 #endif
 	__isp_init_subdev(isp);
@@ -3388,7 +4771,11 @@ static int isp_remove(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_VIN_INIT_MELIS)
 	if (isp->delay_init) {
 		sprintf(name, "isp%d", isp->id);
-		rpmsg_notify_del("7130000.e906_rproc", "isp0");
+#if IS_ENABLED(CONFIG_ARCH_SUN55IW3)
+		rpmsg_notify_del("7130000.e906_rproc", name);
+#else
+		rpmsg_notify_del(isp->rpmsg_ser_name, name);
+#endif
 	}
 #endif
 	platform_set_drvdata(pdev, NULL);
@@ -3396,6 +4783,10 @@ static int isp_remove(struct platform_device *pdev)
 	v4l2_set_subdevdata(sd, NULL);
 
 	if (!isp->is_empty) {
+#if defined ISP_600
+		if (isp->syscfg_base)
+			iounmap(isp->syscfg_base);
+#endif
 		isp_resource_free(isp);
 		free_irq(isp->irq, isp);
 		if (isp->base)
@@ -3461,7 +4852,7 @@ struct v4l2_subdev *sunxi_isp_get_subdev(int id)
 
 struct v4l2_subdev *sunxi_stat_get_subdev(int id)
 {
-#if !defined CONFIG_ISP_SERVER_MELIS
+#if !IS_ENABLED(CONFIG_ISP_SERVER_MELIS)
 	if (id < VIN_MAX_ISP && glb_isp[id])
 		return &glb_isp[id]->h3a_stat.sd;
 	else

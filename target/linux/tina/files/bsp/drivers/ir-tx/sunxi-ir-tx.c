@@ -666,13 +666,16 @@ static int sunxi_irtx_xmit(struct rc_dev *rcdev, unsigned int *txbuf,
 	data_p = (++head_p);
 	sunxi_debug(dev, "valid raw data is:\n");
 	/* count = head(2) + payload(num) + end(2) */
-	num = count - 4;
+	/* num = count - 4; */
+	/* addr ~addr cmd ~cmd = 32bit, Each bit consists of two levels */
+	num = 64;
 	for (i = 0; i < num; i++) {
 		sunxi_debug(dev, "%#x ", *data_p);
 
 		/* cycle the level bit up and down  */
 		mark = !mark;
 		*data_p |= (mark << 24);
+		index = run_length_encode(data_p, chip->ir_rawbuf.tx_buf, index, chip);
 
 		data_p++;
 		if ((i + 1) % 8 == 0)
@@ -682,16 +685,14 @@ static int sunxi_irtx_xmit(struct rc_dev *rcdev, unsigned int *txbuf,
 
 	/* encode the end code */
 	stop_p = data_p;
-	sunxi_debug(dev, "stop pulse: '%#x', stop space: '%#x'\n",
-				*stop_p, *(stop_p + 1));
-	index = run_length_encode(stop_p, chip->ir_rawbuf.tx_buf, index, chip);
-	stop_p++;
+	sunxi_debug(dev, "stop pulse: '%#x'\n", *stop_p);
+
 	/* pull the stop bit level high  */
-	*stop_p |= (1 << 24);
+	*data_p |= (1 << 24);
 	index = run_length_encode(stop_p, chip->ir_rawbuf.tx_buf, index, chip);
 
 	/* avoid the level being continuously pulled up */
-	stop_p++;
+	*data_p &= ~(1 << 24);
 	index = run_length_encode(stop_p, chip->ir_rawbuf.tx_buf, index, chip);
 
 	/* update ir_rawbuf.tx_dcnt */
@@ -998,4 +999,4 @@ module_platform_driver(sunxi_irtx_driver);
 MODULE_AUTHOR("luruixiang <luruixiang@allwinnertech.com>");
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Remote IR TX driver");
-MODULE_VERSION("2.1.4");
+MODULE_VERSION("2.1.5");

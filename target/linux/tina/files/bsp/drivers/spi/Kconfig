@@ -19,14 +19,5 @@ config AW_SPI_ATOMIC_XFER
 	  Enable SPI controller atomic xfer function, support transfer under
 	  no-irq/no-dma/no-schedule/no-suspend-resume env. (Such as kernel panic)
 
-config SPI_ESAM
-	tristate "SPI ESAM driver support for most esam chips"
-	depends on AW_SPI
-	default n
-	help
-	 if you want to use esam chips, please say yes
-	 and this chips's model name is sc1161y 
-	
-
 endmenu
 

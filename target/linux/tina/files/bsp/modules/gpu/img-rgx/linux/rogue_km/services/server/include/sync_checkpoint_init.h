@@ -43,8 +43,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#ifndef _SYNC_CHECKPOINT_INIT_
-#define _SYNC_CHECKPOINT_INIT_
+#ifndef SYNC_CHECKPOINT_INIT_H
+#define SYNC_CHECKPOINT_INIT_H
 
 #include "device.h"
 
@@ -79,4 +79,4 @@ SyncCheckpointInit(PVRSRV_DEVICE_NODE *psDevNode);
 /*****************************************************************************/
 void SyncCheckpointDeinit(PVRSRV_DEVICE_NODE *psDevNode);
 
-#endif /* _SYNC_CHECKPOINT_INIT_ */
+#endif /* SYNC_CHECKPOINT_INIT_H */

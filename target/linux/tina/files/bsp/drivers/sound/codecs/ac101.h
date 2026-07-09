@@ -222,7 +222,7 @@
 
 /* HMIC_STS 0x46 */
 #define HMIC_DATA		8
-#define PULLOUT_PEND		4
+#define PLUGOUT_PEND		4
 #define PLUGIN_PEND		3
 #define KEYUP_PEND		2
 #define KEYDOWN_PEND		1
@@ -325,6 +325,7 @@
 #define HPPA_ST			0
 
 /* SPKOUT_CTRL 0x58 */
+#define CLK_ADJUST		13
 #define RSPKSRC			12
 #define RSPKINVEN		11
 #define RSPK_EN			9
@@ -372,16 +373,9 @@ struct sunxi_jack_adv_priv {
 	struct device *dev;
 
 	bool typec;
-	enum JACK_PLUG_STA jack_plug_sta;
-	struct extcon_dev *extdev;
-	struct notifier_block hp_nb;
-	struct sunxi_jack_typec_cfg jack_typec_cfg;
-	bool notifier;
-
-	struct power_supply *pmu_psy;
 
 	unsigned int det_threshold;
-	unsigned int key_threshold[2];
+	unsigned int key_threshold;
 	unsigned int det_debounce;
 	unsigned int key_debounce;
 
@@ -397,9 +391,15 @@ struct sunxi_jack_adv_priv {
 
 	// gpio get irq
 	int det_gpio;
-	struct gpio_desc *desc;
+	struct gpio_desc *det_desc;
+
+	int plug_gpio;
+	struct gpio_desc *plug_desc;
+	unsigned int gpio_level;
 
 	enum snd_jack_types jack_type;
+
+	int irq;
 
 	/* pa config */
 	unsigned int pa_pin_max;

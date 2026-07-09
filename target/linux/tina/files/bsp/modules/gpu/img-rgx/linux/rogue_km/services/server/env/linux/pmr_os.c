@@ -44,9 +44,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <linux/io.h>
 #include <linux/mm.h>
 #include <linux/dma-mapping.h>
-#if defined(CONFIG_L4)
-#include <asm/api-l4env/api.h>
-#endif
 #include <linux/version.h>
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0))
 #include <linux/pfn_t.h>
@@ -126,7 +123,7 @@ static void MMapPMRClose(struct vm_area_struct *ps_vma)
 	PMR *psPMR = ps_vma->vm_private_data;
 
 #if defined(PVRSRV_ENABLE_PROCESS_STATS)
-#if	defined(PVRSRV_ENABLE_MEMORY_STATS)
+#if defined(PVRSRV_ENABLE_MEMORY_STATS)
 	{
 		uintptr_t vAddr = ps_vma->vm_start;
 
@@ -218,48 +215,11 @@ static INLINE int _OSMMapPMR(PVRSRV_DEVICE_NODE *psDevNode,
 	unsigned long uiPFN;
 #endif
 
-#if defined(CONFIG_L4)
-	size_t size;
-	IMG_CPU_VIRTADDR pvVAddr;
-#if defined(ARM)
-	struct device *dev = psDevNode->psDevConfig->pvOSDevice;
-#endif
-
-	/* In L4 remaps from KM into UM is done via VA */
-	pvVAddr = l4x_phys_to_virt(psCpuPAddr->uiAddr);
-	if (pvVAddr == NULL)
-	{
-		return -1;
-	}
-
-	for (size = 0; size < 1ULL << uiLog2PageSize; size += PAGE_SIZE)
-	{
-		/* Fault-in pages now, ensure compiler does not optimise this out */
-		*((volatile int*)pvVAddr + size) = *((volatile int*)pvVAddr + size);
-	}
-
-#if defined(ARM)
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0))
-	sPFN = pfn_to_pfn_t(dma_to_pfn(dev, psCpuPAddr->uiAddr));
-#else
-	uiPFN = dma_to_pfn(dev, psCpuPAddr->uiAddr);
-#endif
-#else /* defined(ARM) */
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0))
-	sPFN =  pfn_to_pfn_t(((uintptr_t) pvVAddr) >> PAGE_SHIFT);
-#else
-	uiPFN = ((uintptr_t) pvVAddr) >> PAGE_SHIFT;
-	PVR_ASSERT(((IMG_UINT64)uiPFN << PAGE_SHIFT) == (IMG_UINT64)(uintptr_t)pvVAddr);
-#endif
-#endif
-	PVR_ASSERT(bUseVMInsertPage == IMG_FALSE);
-#else /* defined(CONFIG_L4) */
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0))
 	sPFN = phys_to_pfn_t(psCpuPAddr->uiAddr, 0);
 #else
 	uiPFN = psCpuPAddr->uiAddr >> PAGE_SHIFT;
 	PVR_ASSERT(((IMG_UINT64)uiPFN << PAGE_SHIFT) == psCpuPAddr->uiAddr);
-#endif
 #endif
 
 	/*
@@ -278,8 +238,8 @@ static INLINE int _OSMMapPMR(PVRSRV_DEVICE_NODE *psDevNode,
 			vm_fault_t vmf;
 
 			vmf = vmf_insert_mixed(ps_vma,
-								  	ps_vma->vm_start + uiOffset,
-								  	sPFN);
+									ps_vma->vm_start + uiOffset,
+									sPFN);
 			if (vmf & VM_FAULT_ERROR)
 			{
 				iStatus = vm_fault_to_errno(vmf, 0);
@@ -385,17 +345,14 @@ OSMMapPMRGeneric(PMR *psPMR, PMR_MMAP_DATA pOSMMapData)
 	IMG_BOOL bUseMixedMap = IMG_FALSE;
 	IMG_BOOL bUseVMInsertPage = IMG_FALSE;
 
+	/* if writeable but not shared mapping is requested then fail */
+	PVR_RETURN_IF_INVALID_PARAM(((ps_vma->vm_flags & VM_WRITE) == 0) ||
+	                            ((ps_vma->vm_flags & VM_SHARED) != 0));
+
 	eError = PMRLockSysPhysAddresses(psPMR);
 	if (eError != PVRSRV_OK)
 	{
 		goto e0;
-	}
-
-	if (((ps_vma->vm_flags & VM_WRITE) != 0) &&
-		((ps_vma->vm_flags & VM_SHARED) == 0))
-	{
-		eError = PVRSRV_ERROR_INVALID_PARAMS;
-		goto e1;
 	}
 
 	sPageProt = vm_get_page_prot(ps_vma->vm_flags);
@@ -414,7 +371,7 @@ OSMMapPMRGeneric(PMR *psPMR, PMR_MMAP_DATA pOSMMapData)
 				sPageProt = pgprot_noncached(sPageProt);
 				break;
 
-		case PVRSRV_MEMALLOCFLAG_CPU_WRITE_COMBINE:
+		case PVRSRV_MEMALLOCFLAG_CPU_UNCACHED_WC:
 				sPageProt = pgprot_writecombine(sPageProt);
 				break;
 
@@ -455,12 +412,9 @@ OSMMapPMRGeneric(PMR *psPMR, PMR_MMAP_DATA pOSMMapData)
 	/* Is this mmap targeting non order-zero pages or does it use pfn mappings?
 	 * If yes, don't use vm_insert_page */
 	uiLog2PageSize = PMR_GetLog2Contiguity(psPMR);
+
 #if defined(PMR_OS_USE_VM_INSERT_PAGE)
 	bUseVMInsertPage = (uiLog2PageSize == PAGE_SHIFT) && (PMR_GetType(psPMR) != PMR_TYPE_EXTMEM);
-#if defined(CONFIG_L4)
-	/* L4 uses CMA allocations */
-	bUseVMInsertPage = IMG_FALSE;
-#endif
 #endif
 
 	/* Can we use stack allocations */
@@ -584,8 +538,8 @@ OSMMapPMRGeneric(PMR *psPMR, PMR_MMAP_DATA pOSMMapData)
 										(void*)(uintptr_t)(ps_vma->vm_start + uiOffset),
 										sPAddr,
 										1<<uiLog2PageSize,
-										NULL,
-										OSGetCurrentClientProcessIDKM());
+										OSGetCurrentClientProcessIDKM()
+										DEBUG_MEMSTATS_VALUES);
 		}
 #undef PMR_OS_BAD_CPUADDR
 #endif
@@ -621,18 +575,18 @@ OSMMapPMRGeneric(PMR *psPMR, PMR_MMAP_DATA pOSMMapData)
 	return PVRSRV_OK;
 
 	/* Error exit paths follow */
- e3:
+e3:
 	if (pbValid != abValid)
 	{
 		OSFreeMem(pbValid);
 	}
- e2:
+e2:
 	if (psCpuPAddr != asCpuPAddr)
 	{
 		OSFreeMem(psCpuPAddr);
 	}
- e1:
+e1:
 	PMRUnlockSysPhysAddresses(psPMR);
- e0:
+e0:
 	return eError;
 }

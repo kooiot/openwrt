@@ -135,8 +135,7 @@ static struct ccu_nm pll_peri1_parent_clk = {
 		.reg		= 0x00C0,
 		.hw.init	= CLK_HW_INIT("pll-peri1-parent", "dcxo24M",
 				&ccu_nm_ops,
-				CLK_SET_RATE_UNGATE |
-				CLK_IS_CRITICAL),
+				CLK_SET_RATE_UNGATE),
 	},
 };
 
@@ -349,11 +348,11 @@ static SUNXI_CCU_M_WITH_MUX_GATE(gic_clk, "gic",
 
 static SUNXI_CCU_GATE(its0_aclk, "its0-aclk",
 		"dcxo24M",
-		0x0574, BIT(1), CLK_IGNORE_UNUSED);
+		0x0574, BIT(1), CLK_SET_RATE_UNGATE);
 
 static SUNXI_CCU_GATE(its0_hclk, "its0-hclk",
 		"dcxo24M",
-		0x0574, BIT(0), CLK_IGNORE_UNUSED);
+		0x0574, BIT(0), CLK_SET_RATE_UNGATE);
 
 static const char * const nsi_parents[] = { "dcxo24M", "pll-ddr", "pll-video0-4x", "pll-peri0-600m", "pll-peri0-480m", "pll-peri0-400m" };
 
@@ -398,12 +397,12 @@ static SUNXI_CCU_GATE_WITH_KEY(vid_in_ahb_gate_clk, "vid-in-gate",
 static SUNXI_CCU_GATE_WITH_KEY(gmac1_mbus_gate_clk, "gmac1-mbus-gate",
 		"dcxo24M", 0x05E0,
 		MBUS_KEY_VALUE,
-		BIT(12), CLK_IGNORE_UNUSED);
+		BIT(12), CLK_SET_RATE_UNGATE);
 
 static SUNXI_CCU_GATE_WITH_KEY(gmac0_mbus_gate_clk, "gmac0-mbus-gate",
 		"dcxo24M", 0x05E0,
 		MBUS_KEY_VALUE,
-		BIT(11), CLK_IGNORE_UNUSED);
+		BIT(11), CLK_SET_RATE_UNGATE);
 
 static SUNXI_CCU_GATE_WITH_KEY(isp_mbus_gate_clk, "isp-mbus-gate",
 		"dcxo24M", 0x05E0,
@@ -438,7 +437,7 @@ static SUNXI_CCU_GATE_ASSOC_WITH_KEY(ce_mbus_gate_clk, "ce-mbus-gate",
 		"dcxo24M",
 		0x05E0, MBUS_KEY_VALUE, BIT(2),
 		0x05E4, MBUS_MASTER_KEY_VALUE, BIT(2),
-		CLK_IGNORE_UNUSED);
+		CLK_SET_RATE_UNGATE);
 
 static SUNXI_CCU_GATE_ASSOC_WITH_KEY(ve_mbus_gate_clk, "ve-mbus-gate",
 		"dcxo24M",
@@ -476,7 +475,8 @@ static SUNXI_CCU_GATE(spinlock_clk, "spinlock",
 
 static SUNXI_CCU_GATE(msgbox0_clk, "msgbox0",
 		"dcxo24M",
-		0x0744, BIT(0), CLK_IGNORE_UNUSED);
+		0x0744, BIT(0),
+		CLK_SET_RATE_UNGATE);
 
 static SUNXI_CCU_GATE(msgbox_core0_clk, "msgbox-core0",
 		"dcxo24M",
@@ -712,7 +712,7 @@ static SUNXI_CCU_GATE_ASSOC_WITH_KEY(ve_bus_clk, "ve-bus",
 		"dcxo24M",
 		0x0A8C, 0, BIT(0),
 		0x05C0, AHB_KEY_VALUE, BIT(1),
-		CLK_IS_CRITICAL);
+		CLK_SET_RATE_UNGATE);
 
 static const char * const ce_parents[] = { "dcxo24M", "pll-peri0-400m", "pll-peri0-300m" };
 
@@ -721,15 +721,17 @@ static SUNXI_CCU_M_WITH_MUX_GATE(ce_clk, "ce",
 		0, 5,	/* M */
 		24, 3,	/* mux */
 		BIT(31),	/* gate */
-		CLK_IGNORE_UNUSED);
+		CLK_SET_RATE_UNGATE);
 
 static SUNXI_CCU_GATE(ce_sys_clk, "ce-sys",
 		"dcxo24M",
-		0x0AC4, BIT(1), CLK_IGNORE_UNUSED);
+		0x0AC4, BIT(1),
+		CLK_SET_RATE_UNGATE);
 
 static SUNXI_CCU_GATE(ce_bus_clk, "ce-bus",
 		"dcxo24M",
-		0x0AC4, BIT(0), CLK_IGNORE_UNUSED);
+		0x0AC4, BIT(0),
+		CLK_SET_RATE_UNGATE);
 
 static const char * const npu_parents[] = { "pll-npu-4x", "pll-peri0-600m", "pll-peri0-480m", "pll-peri0-400m" };
 
@@ -1469,7 +1471,7 @@ static SUNXI_CCU_GATE_ASSOC_WITH_KEY(gmac0_clk, "gmac0",
 		"dcxo24M",
 		0x140C, 0, BIT(0),
 		0x05C0, AHB_KEY_VALUE, BIT(13),
-		CLK_IGNORE_UNUSED);
+		CLK_SET_RATE_UNGATE);
 
 static const char * const gmac1_phy_parents[] = { "pll-peri0-150m" };
 static SUNXI_CCU_M_WITH_MUX_GATE(gmac1_phy_clk, "gmac1-phy",
@@ -1492,7 +1494,7 @@ static SUNXI_CCU_GATE_ASSOC_WITH_KEY(gmac1_clk, "gmac1",
 		"dcxo24M",
 		0x141C, 0, BIT(0),
 		0x05C0, AHB_KEY_VALUE, BIT(14),
-		CLK_IGNORE_UNUSED);
+		CLK_SET_RATE_UNGATE);
 
 static const char * const gmac_nsi_parents[] = { "dcxo24M", "pll-peri0-480m", "pll-peri0-400m", "pll-peri0-300m" };
 static SUNXI_CCU_M_WITH_MUX_GATE(gmac_nsi_clk, "gmac-nsi-clk",

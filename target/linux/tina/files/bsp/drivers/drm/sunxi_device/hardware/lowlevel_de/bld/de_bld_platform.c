@@ -120,12 +120,22 @@ static struct de_version_bld de350 = {
 };
 
 
-/* 2 bld, 1 mode */
-static const struct de_bld_port_mux_mode de355_modes[2][1] = {
+/* 2 bld, 2 mode */
+static const struct de_bld_port_mux_mode de355_modes[2][2] = {
 	{
 		{
-			.name = "v0u0u1",
+			.name = "v0v2u0u1u2",
 			.mode_id = 0,
+			.channel_cnt = 5,
+			.channel_id[0] = VIDEO_CHANNEL_ID(0),
+			.channel_id[1] = VIDEO_CHANNEL_ID(2),
+			.channel_id[2] = UI_CHANNEL_ID(0),
+			.channel_id[3] = UI_CHANNEL_ID(1),
+			.channel_id[4] = UI_CHANNEL_ID(2),
+		},
+		{
+			.name = "v0u0u1",
+			.mode_id = 1,
 			.channel_cnt = 3,
 			.channel_id[0] = VIDEO_CHANNEL_ID(0),
 			.channel_id[1] = UI_CHANNEL_ID(0),
@@ -134,8 +144,14 @@ static const struct de_bld_port_mux_mode de355_modes[2][1] = {
 	},
 	{
 		{
-			.name = "v2u2",
+			// single display is null
+			.name = "null",
 			.mode_id = 0,
+			.channel_cnt = 0,
+		},
+		{
+			.name = "v2u2",
+			.mode_id = 1,
 			.channel_cnt = 2,
 			.channel_id[0] = VIDEO_CHANNEL_ID(2),
 			.channel_id[1] = UI_CHANNEL_ID(2),
@@ -325,9 +341,39 @@ static struct de_version_bld de352 = {
 	.bld = &de352_blds[0],
 };
 
+static const struct de_bld_port_mux_mode de212_modes[1][1] = {
+	{
+		{
+			.name = "v0u0",
+			.mode_id = CHN_MODE_FIX,
+			.channel_cnt = 2,
+			.channel_id[0] = VIDEO_CHANNEL_ID(0),
+			.channel_id[1] = UI_CHANNEL_ID(0),
+		},
+	},
+};
+
+static struct de_bld_desc de212_bld0 = {
+	.name = "blender0",
+	.id = 0,
+	.disp_base = DE_DISP_BASE_OFFSET(DISP_BASE_V2XX, 0, DE_DISP_SIZE_V2XX),
+	.bld_offset = BLD_OFFSET_V2XX,
+	.mode_cnt = ARRAY_SIZE(de212_modes[0]),
+	.mode = &de212_modes[0][0],
+};
+
+static struct de_bld_desc *de212_blds[] = {
+	&de212_bld0,
+};
+
+static struct de_version_bld de212 = {
+	.version = 0x212,
+	.bld_cnt = ARRAY_SIZE(de212_blds),
+	.bld = &de212_blds[0],
+};
 
 static struct de_version_bld *de_version[] = {
-	&de350, &de355, &de210, &de201, &de352,
+	&de350, &de355, &de210, &de201, &de352, &de212,
 };
 
 const struct de_bld_desc *get_bld_dsc(struct module_create_info *info)

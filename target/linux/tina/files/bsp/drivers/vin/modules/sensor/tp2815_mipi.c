@@ -28,7 +28,7 @@
 MODULE_AUTHOR("HY");
 MODULE_DESCRIPTION("A low-level driver for tp2815 mipi chip for TVI sensor");
 MODULE_LICENSE("GPL");
-MODULE_VERSION("1.0.0");
+MODULE_VERSION("1.0.1");
 
 /*define module timing*/
 #define MCLK              (27*1000*1000)
@@ -272,7 +272,7 @@ static int sensor_reset(struct v4l2_subdev *sd, u32 val)
 
 static int sensor_detect(struct v4l2_subdev *sd)
 {
-#if !defined CONFIG_VIN_INIT_MELIS
+#if !IS_ENABLED(CONFIG_VIN_INIT_MELIS)
 	int i = 0;
 	data_type rdval = 0;
 
@@ -1898,6 +1898,7 @@ int tp2815_sensor_set_fmt(struct v4l2_subdev *sd,
 {
 	struct sensor_info *info = to_state(sd);
 	int ret = 0;
+	unsigned int stream_count;
 
 	if (fmt->format.width == 1440 || fmt->format.width == 720)  // NTSC/PAL
 		info->sensor_field = V4L2_FIELD_INTERLACED;
@@ -1907,7 +1908,12 @@ int tp2815_sensor_set_fmt(struct v4l2_subdev *sd,
 	if (!info->tvin.flag)
 		return sensor_set_fmt(sd, state, fmt);
 
-	if (sd->entity.stream_count == 0) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	stream_count = info->stream_count;
+#else
+	stream_count = sd->entity.stream_count;
+#endif
+	if (stream_count == 0) {
 		tp2815_set_input_size(info, fmt, fmt->reserved[0]);
 		ret = sensor_set_fmt(sd, state, fmt);
 		sensor_print("%s befor ch%d %d*%d \n", __func__,
@@ -1928,6 +1934,7 @@ int tp2815_sensor_set_fmt(struct v4l2_subdev *sd,
 {
 	struct sensor_info *info = to_state(sd);
 	int ret = 0;
+	unsigned int stream_count;
 
 	if (fmt->format.width == 1440 || fmt->format.width == 720)  // NTSC/PAL
 		info->sensor_field = V4L2_FIELD_INTERLACED;
@@ -1937,7 +1944,12 @@ int tp2815_sensor_set_fmt(struct v4l2_subdev *sd,
 	if (!info->tvin.flag)
 		return sensor_set_fmt(sd, cfg, fmt);
 
-	if (sd->entity.stream_count == 0) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	stream_count = info->stream_count;
+#else
+	stream_count = sd->entity.stream_count;
+#endif
+	if (stream_count == 0) {
 		tp2815_set_input_size(info, fmt, fmt->reserved[0]);
 		ret = sensor_set_fmt(sd, cfg, fmt);
 		sensor_print("%s befor ch%d %d*%d \n", __func__,
@@ -1958,12 +1970,18 @@ static int sensor_tvin_init(struct v4l2_subdev *sd, struct tvin_init_info *tvin_
 	struct sensor_info *info = to_state(sd);
 	__u32 *sensor_fmt = info->tvin.tvin_info.input_fmt;
 	__u32 ch_id = tvin_info->ch_id;
+	unsigned int stream_count;
 
 	sensor_print("set ch%d fmt as %d\n", ch_id, tvin_info->input_fmt[ch_id]);
 	sensor_fmt[ch_id] = tvin_info->input_fmt[ch_id];
 	info->tvin.tvin_info.ch_id = ch_id;
 
-	if (sd->entity.stream_count != 0) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	stream_count = info->stream_count;
+#else
+	stream_count = sd->entity.stream_count;
+#endif
+	if (stream_count != 0) {
 		tp2815_init_ch_hardware(sd, &info->tvin.tvin_info);
 		sensor_print("sensor_tvin_init tp2815_init_ch_hardware\n");
 	}
@@ -2104,7 +2122,11 @@ static int sensor_g_mbus_config(struct v4l2_subdev *sd, unsigned int pad,
 				struct v4l2_mbus_config *cfg)
 {
 	cfg->type = V4L2_MBUS_CSI2_DPHY;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	cfg->bus.mipi_csi2.num_data_lanes = 0 | V4L2_MBUS_CSI2_4_LANE | V4L2_MBUS_CSI2_CHANNEL_0 | V4L2_MBUS_CSI2_CHANNEL_1 | V4L2_MBUS_CSI2_CHANNEL_2 | V4L2_MBUS_CSI2_CHANNEL_3;
+#else
 	cfg->flags = 0 | V4L2_MBUS_CSI2_4_LANE | V4L2_MBUS_CSI2_CHANNEL_0 | V4L2_MBUS_CSI2_CHANNEL_1 | V4L2_MBUS_CSI2_CHANNEL_2 | V4L2_MBUS_CSI2_CHANNEL_3;
+#endif
 	return 0;
 }
 
@@ -2298,8 +2320,12 @@ static int sensor_init_controls(struct v4l2_subdev *sd, const struct v4l2_ctrl_o
 
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
+static int sensor_probe(struct i2c_client *client)
+#else
 static int sensor_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
+#endif
 {
 	struct v4l2_subdev *sd;
 	struct sensor_info *info;
@@ -2318,7 +2344,7 @@ static int sensor_probe(struct i2c_client *client,
 	info->fmt_num = N_FMTS;
 	info->win_size_num = N_WIN_SIZES;
 	info->combo_mode = CMB_TERMINAL_RES | CMB_PHYA_OFFSET2 | MIPI_NORMAL_MODE;
-	info->time_hs = 0x20;
+	// info->time_hs = 0x21;
 	info->stream_seq = MIPI_BEFORE_SENSOR;
 	info->af_first_flag = 1;
 	info->exp = 0;
@@ -2327,12 +2353,18 @@ static int sensor_probe(struct i2c_client *client,
 	return 0;
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)
 static int sensor_remove(struct i2c_client *client)
+#else
+static void sensor_remove(struct i2c_client *client)
+#endif
 {
 	struct v4l2_subdev *sd;
 	sd = cci_dev_remove_helper(client, &cci_drv);
 	kfree(to_state(sd));
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)
 	return 0;
+#endif
 }
 
 static const struct i2c_device_id sensor_id[] = {

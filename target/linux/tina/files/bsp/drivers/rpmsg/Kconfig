@@ -51,6 +51,13 @@ config AW_RPMSG_PERF_TRACE
 	  help
 	  It will take up part of buffer to record timestamp when send and receive.
 
+config AW_RPMSG_LITE_TEST
+	tristate "Allwinner RPMSG lite test driver"
+	default n
+	select RPMSG_VIRTIO if !AW_RPMSG_VIRTIO
+	help
+	  Say y here to enable support for the rpmsg lite test driver.
+
 if AW_RPMSG_PERF_TRACE
 config RPMSG_AMP_TS_DEV_ID
 	int "AMP timestamp device ID for rpmsg performance trace"

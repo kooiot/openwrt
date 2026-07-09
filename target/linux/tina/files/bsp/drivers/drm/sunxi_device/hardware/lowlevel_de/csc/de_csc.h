@@ -40,6 +40,7 @@ struct csc_extra_create_info {
 struct de_csc_handle {
 	struct module_create_info cinfo;
 	struct csc_extra_create_info ex_cinfo;
+	int hue_default_value;
 	unsigned int block_num;
 	struct de_reg_block **block;
 	struct de_csc_private *private;

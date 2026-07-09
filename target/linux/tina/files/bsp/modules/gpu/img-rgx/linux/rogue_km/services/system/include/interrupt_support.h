@@ -39,8 +39,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#if !defined(__INTERRUPT_SUPPORT_H__)
-#define __INTERRUPT_SUPPORT_H__
+#if !defined(INTERRUPT_SUPPORT_H)
+#define INTERRUPT_SUPPORT_H
 
 #include "img_types.h"
 #include "pvrsrv_error.h"
@@ -100,4 +100,4 @@ PVRSRV_ERROR OSInstallSystemLISR(IMG_HANDLE *phLISR,
 @Return         PVRSRV_OK on success, a failure code otherwise
 */ /**************************************************************************/
 PVRSRV_ERROR OSUninstallSystemLISR(IMG_HANDLE hLISRData);
-#endif /* !defined(__INTERRUPT_SUPPORT_H__) */
+#endif /* !defined(INTERRUPT_SUPPORT_H) */

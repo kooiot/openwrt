@@ -229,6 +229,9 @@ enum isp_input_seq {
 	ISP_GRBG = 7,
 };
 
+extern int isp_virtual_find_sel[4];
+extern int isp_ch_find[4];
+
 void bsp_isp_map_reg_addr(unsigned long id, vin_dma_addr_t base);
 void bsp_isp_map_load_dram_addr(unsigned long id, vin_dma_addr_t base);
 

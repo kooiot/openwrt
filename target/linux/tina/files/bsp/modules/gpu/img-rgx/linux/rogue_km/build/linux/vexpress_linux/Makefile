@@ -41,11 +41,12 @@
 # Restrict to NullWS
 WINDOW_SYSTEM ?= nullws
 
+RGX_BVNC ?= 1.82.4.5
+
 include ../config/preconfig.mk
 include ../config/window_system.mk
 
 PVR_SYSTEM := rgx_vexpress
-RGX_BVNC ?= 1.82.4.5
 NO_HARDWARE ?= 0
 PDUMP ?= 0
 BUILD ?= debug

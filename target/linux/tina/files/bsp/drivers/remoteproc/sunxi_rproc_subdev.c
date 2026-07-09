@@ -19,6 +19,99 @@
 
 extern int sunxi_sid_get_ecc_status(void);
 
+#if IS_ENABLED(CONFIG_AW_RPROC_SUBDEV_BOOT_REASON)
+static inline
+int sunxi_rproc_boot_reason_get_resource(struct platform_device *pdev, struct sunxi_rproc_boot_reason_dev_res *res)
+{
+	int ret;
+	struct resource *r;
+	struct device_node *np;
+	struct device *dev = &pdev->dev;
+	const char *str;
+
+	str = "rtc_reg";
+	r = platform_get_resource_byname(pdev, IORESOURCE_MEM, str);
+	if (!r) {
+		dev_err(dev, "can not find %s\n", str);
+		return -ENODEV;
+	}
+	memcpy(&res->reg_res, r, sizeof(res->reg_res));
+
+	str = "boot_reason";
+	np = of_find_node_by_name(pdev->dev.of_node, str);
+	if (!np) {
+		dev_err(dev, "can not find node: %s\n", str);
+		return -ENODEV;
+	}
+
+	ret = of_property_read_string(np, "status", &str);
+	if (ret || !str) {
+		dev_err(dev, "can not read_string: status, ret: %d\n", ret);
+		return ret;
+	}
+
+	if (strcmp(str, "okay") && strcmp(str, "ok")) {
+		dev_info(dev, "node not okay\n");
+		return -ENODEV;
+	}
+
+	ret = of_property_read_u32(np, "data_idx", &res->data_idx);
+	if (ret) {
+		dev_err(dev, "can not get timeout_ms, ret: %d\n", ret);
+		return ret;
+	}
+
+	dev_info(dev, "reg:      %lx\n", (unsigned long)res->reg_res.start);
+	dev_info(dev, "data_idx: %u\n", res->data_idx);
+
+	return 0;
+}
+
+static inline struct sunxi_rproc_boot_reason_dev *sunxi_rproc_boot_reason_probe(struct rproc *rproc,
+										struct platform_device *pdev)
+{
+	struct device *dev = &rproc->dev;
+	struct sunxi_rproc_boot_reason_dev *boot_reason_dev = kzalloc(sizeof(*boot_reason_dev), GFP_KERNEL);
+	struct sunxi_rproc_boot_reason_dev_res boot_reason_dev_res;
+	int ret = -ENOMEM;
+
+	if (!boot_reason_dev)
+		goto err_out;
+
+	ret = sunxi_rproc_boot_reason_get_resource(pdev, &boot_reason_dev_res);
+	if (ret) {
+		dev_err(dev, "sunxi_rproc_boot_reason_get_resource failed, ret: %d\n", ret);
+		goto err_out;
+	}
+
+	ret = sunxi_rproc_boot_reason_dev_register(boot_reason_dev, rproc, &boot_reason_dev_res);
+	if (ret) {
+		dev_err(dev, "sunxi_rproc_boot_reason_dev_register failed, ret: %d\n", ret);
+		goto err_out;
+	}
+
+	return boot_reason_dev;
+err_out:
+	kfree(boot_reason_dev);
+	return NULL;
+}
+
+static void boot_reason_dev_release(void *priv)
+{
+	struct sunxi_rproc_boot_reason_dev *boot_reason_dev = priv;
+
+	kfree(boot_reason_dev);
+}
+
+static inline void sunxi_rproc_boot_reason_remove(struct sunxi_rproc_boot_reason_dev *boot_reason_dev)
+{
+	if (boot_reason_dev) {
+		sunxi_rproc_boot_reason_dev_set_release(boot_reason_dev, boot_reason_dev_release, boot_reason_dev);
+		sunxi_rproc_boot_reason_dev_unregister(boot_reason_dev);
+	}
+}
+#endif /* CONFIG_AW_RPROC_SUBDEV_BOOT_REASON */
+
 #if IS_ENABLED(CONFIG_AW_RPROC_SUBDEV_WDT)
 static inline
 int sunxi_rproc_wdt_get_resource(struct platform_device *pdev, struct sunxi_rproc_wdt_dev_res *res)
@@ -281,6 +374,12 @@ int sunxi_rproc_add_subdev(struct sunxi_rproc_subdev *subdev,
 {
 	subdev->rproc = rproc;
 
+#if IS_ENABLED(CONFIG_AW_RPROC_SUBDEV_BOOT_REASON)
+	subdev->boot_reason_dev = sunxi_rproc_boot_reason_probe(rproc, pdev);
+	if (subdev->boot_reason_dev)
+		rproc_add_subdev(subdev->rproc, &subdev->boot_reason_dev->subdev);
+#endif
+
 #if IS_ENABLED(CONFIG_AW_RPROC_SUBDEV_WDT)
 	subdev->wdt_dev = sunxi_rproc_wdt_probe(rproc, pdev);
 	if (subdev->wdt_dev)
@@ -313,6 +412,11 @@ EXPORT_SYMBOL(sunxi_rproc_add_subdev);
 
 int sunxi_rproc_subdev_set_parent(struct sunxi_rproc_subdev *subdev)
 {
+#if IS_ENABLED(CONFIG_AW_RPROC_SUBDEV_BOOT_REASON)
+	if (subdev->boot_reason_dev)
+		sunxi_rproc_boot_reason_dev_set_parent(subdev->boot_reason_dev, &subdev->rproc->dev);
+#endif
+
 #if IS_ENABLED(CONFIG_AW_RPROC_SUBDEV_WDT)
 	if (subdev->wdt_dev)
 		sunxi_rproc_wdt_dev_set_parent(subdev->wdt_dev, &subdev->rproc->dev);
@@ -343,6 +447,9 @@ int sunxi_rproc_remove_subdev(struct sunxi_rproc_subdev *subdev)
 #if IS_ENABLED(CONFIG_AW_RPROC_SUBDEV_RSC_HELPER)
 	struct sunxi_rproc_rsc_helper_dev *rsc_helper_dev = subdev->rsc_helper_dev;
 #endif
+#if IS_ENABLED(CONFIG_AW_RPROC_SUBDEV_BOOT_REASON)
+	struct sunxi_rproc_boot_reason_dev *boot_reason_dev = subdev->boot_reason_dev;
+#endif
 #if IS_ENABLED(CONFIG_AW_RPROC_SUBDEV_WDT)
 	struct sunxi_rproc_wdt_dev *wdt_dev = subdev->wdt_dev;
 #endif
@@ -355,6 +462,13 @@ int sunxi_rproc_remove_subdev(struct sunxi_rproc_subdev *subdev)
 	}
 #endif
 
+#if IS_ENABLED(CONFIG_AW_RPROC_SUBDEV_BOOT_REASON)
+	if (boot_reason_dev) {
+		subdev->boot_reason_dev = NULL;
+		rproc_remove_subdev(subdev->rproc, &boot_reason_dev->subdev);
+		sunxi_rproc_boot_reason_remove(boot_reason_dev);
+	}
+#endif
 #if IS_ENABLED(CONFIG_AW_RPROC_SUBDEV_WDT)
 	if (wdt_dev) {
 		subdev->wdt_dev = NULL;

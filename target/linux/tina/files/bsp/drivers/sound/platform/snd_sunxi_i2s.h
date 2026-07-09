@@ -315,8 +315,6 @@ struct sunxi_i2s {
 
 	struct sunxi_i2s_dai_fmt i2s_dai_fmt;
 
-	enum HDMI_FORMAT hdmi_fmt;
-
 	bool tx_trigger_bypass;
 
 	const struct sunxi_i2s_quirks *quirks;

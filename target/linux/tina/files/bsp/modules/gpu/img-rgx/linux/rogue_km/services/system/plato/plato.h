@@ -41,8 +41,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#if !defined(__PLATO_H__)
-#define __PLATO_H__
+#if !defined(PLATO_H)
+#define PLATO_H
 
 #define PLATO_SYSTEM_NAME			"Plato"
 
@@ -54,27 +54,34 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /* Interrupt defines */
 typedef enum _PLATO_IRQ_
 {
-	PLATO_IRQ_GPU = 0,
+    PLATO_IRQ_GPU = 0,
     PLATO_IRQ_PDP,
     PLATO_IRQ_HDMI,
     PLATO_IRQ_MAX,
 }PLATO_IRQ;
 
-#define PLATO_GPU_INT_SHIFT 			(0)
-#define PLATO_PDP_INT_SHIFT 			(8)
-#define PLATO_HDMI_INT_SHIFT 			(9)
-#define PLATO_HDMI_WAKEUP_INT_SHIFT 	(11)
-#define PLATO_TEMP_A_INT_SHIFT 			(12)
+#define PLATO_GPU_INT_SHIFT				(0)
+#define PLATO_PDP_INT_SHIFT				(8)
+#define PLATO_HDMI_INT_SHIFT			(9)
+#define PLATO_HDMI_WAKEUP_INT_SHIFT		(11)
+#define PLATO_TEMP_A_INT_SHIFT			(12)
 
-#if (PLATO_MEMORY_CONFIG == PLATO_MEMORY_HYBRID)
-#define PVRSRV_DEVICE_PHYS_HEAP_PDP_LOCAL 2
-#define PVRSRV_DEVICE_PHYS_HEAP_DMA_LOCAL 3
+
+#if (PLATO_MEMORY_CONFIG == PLATO_MEMORY_HOST)
+#define PHYS_HEAP_ID_CPU_LOCAL 0
+#elif (PLATO_MEMORY_CONFIG == PLATO_MEMORY_HYBRID)
+#define PHYS_HEAP_ID_GPU_LOCAL 0
+#define PHYS_HEAP_ID_CPU_LOCAL 1
+#define PHYS_HEAP_ID_PDP_LOCAL 2
+#define PHYS_HEAP_ID_NON_MAPPABLE 3
+#define PHYS_HEAP_ID_FW_LOCAL 4
 #elif (PLATO_MEMORY_CONFIG == PLATO_MEMORY_LOCAL)
-#define PVRSRV_DEVICE_PHYS_HEAP_PDP_LOCAL 1
-#define PVRSRV_DEVICE_PHYS_HEAP_DMA_LOCAL 2
+#define PHYS_HEAP_ID_GPU_LOCAL 0
+#define PHYS_HEAP_ID_PDP_LOCAL 1
+#define PHYS_HEAP_ID_NON_MAPPABLE 2
 #endif
 
-#define DCPDP_PHYS_HEAP_ID PVRSRV_DEVICE_PHYS_HEAP_PDP_LOCAL
+#define DCPDP_PHYS_HEAP_ID PHYS_HEAP_ID_PDP_LOCAL
 
 #if defined(SUPPORT_DISPLAY_CLASS)
 #define RGX_PLATO_RESERVE_DC_MEM_SIZE (PLATO_DC_MEM_SIZE_MB * 1024 * 1024)
@@ -122,7 +129,7 @@ typedef enum _PLATO_IRQ_
 #define SYS_PLATO_REG_DDR_B_PUBL_SIZE		(64 * 1024)
 
 #define SYS_PLATO_REG_NOC_OFFSET			(0x160000)
-#define SYS_PLATO_REG_NOC_SIZE		        (64 * 1024)
+#define SYS_PLATO_REG_NOC_SIZE				(64 * 1024)
 
 /* Debug NOC registers */
 #define SYS_PLATO_REG_NOC_DBG_DDR_A_CTRL_OFFSET (0x1500)
@@ -193,6 +200,8 @@ typedef enum _PLATO_IRQ_
 /* 396 MHz (~400 MHz) on HW, around 1MHz on the emulator */
 #if defined(EMULATOR) || defined(VIRTUAL_PLATFORM)
 #define	PLATO_RGX_CORE_CLOCK_SPEED		(1000000)
+#define	PLATO_RGX_MIN_CORE_CLOCK_SPEED		(1000000)
+#define	PLATO_RGX_MAX_CORE_CLOCK_SPEED		(1000000)
 #else
 
 #define	PLATO_RGX_CORE_CLOCK_SPEED		(396000000)
@@ -204,12 +213,12 @@ typedef enum _PLATO_IRQ_
 #define PLATO_TARGET_HDMI_SFR_CLOCK_SPEED		(27000000)
 #define PLATO_TARGET_HDMI_CEC_CLOCK_SPEED		(32768)
 
-#define REG_TO_CELSIUS(reg) 		(((reg) * 352/4096) - 109)
-#define CELSIUS_TO_REG(temp) 		((((temp) + 109) * 4096) / 352)
-#define PLATO_MAX_TEMP_CELSIUS 		(100)
+#define REG_TO_CELSIUS(reg)			(((reg) * 352/4096) - 109)
+#define CELSIUS_TO_REG(temp)		((((temp) + 109) * 4096) / 352)
+#define PLATO_MAX_TEMP_CELSIUS		(100)
 
-#define PLATO_LMA_HEAP_REGION_MAPPABLE 			0
-#define PLATO_LMA_HEAP_REGION_NONMAPPABLE 		1
+#define PLATO_LMA_HEAP_REGION_MAPPABLE			0
+#define PLATO_LMA_HEAP_REGION_NONMAPPABLE		1
 
 #if defined(ENABLE_PLATO_HDMI)
 
@@ -256,7 +265,7 @@ typedef struct
 	IMG_UINT16 mHBorder;
 	IMG_UINT16 mHImageSize;
 	IMG_UINT16 mHFrontPorchWidth;
-    IMG_UINT16 mHBackPorchWidth;
+	IMG_UINT16 mHBackPorchWidth;
 	IMG_UINT16 mHSyncPulseWidth;
 	/** 0 for Active low, 1 active high */
 	IMG_UINT8 mHSyncPolarity;
@@ -265,7 +274,7 @@ typedef struct
 	IMG_UINT16 mVBorder;
 	IMG_UINT16 mVImageSize;
 	IMG_UINT16 mVFrontPorchWidth;
-    IMG_UINT16 mVBackPorchWidth;
+	IMG_UINT16 mVBackPorchWidth;
 	IMG_UINT16 mVSyncPulseWidth;
 	/** 0 for Active low, 1 active high */
 	IMG_UINT8 mVSyncPolarity;
@@ -317,12 +326,12 @@ typedef struct
     IMG_UINT8               mHdmiVic;
     IMG_UINT8               mDataEnablePolarity;
     MONITOR_RANGE_LIMITS    mRangeLimits;
-    IMG_UINT8				mPreferredTimingIncluded;
+    IMG_UINT8               mPreferredTimingIncluded;
 } VIDEO_PARAMS;
 
 /* Callback for HDMI->PDP */
-PVRSRV_ERROR PDPInitialize(VIDEO_PARAMS * pVideoParams);
+PVRSRV_ERROR PDPInitialize(VIDEO_PARAMS * pVideoParams, IMG_UINT32 uiInstance);
 
 #endif /* ENABLE_PLATO_HDMI */
 
-#endif /* if !defined(__PLATO_H__) */
+#endif /* if !defined(PLATO_H) */

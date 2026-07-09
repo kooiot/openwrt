@@ -9,6 +9,7 @@
  * Free Software Foundation;  either version 2 of the  License, or (at your
  * option) any later version.
  */
+#include <linux/version.h>
 #include <linux/of_device.h>
 #include <linux/hrtimer.h>
 #include <linux/dma-mapping.h>
@@ -26,20 +27,34 @@
 #include <uapi/drm/drm_fourcc.h>
 #include <drm/drm_print.h>
 #include <drm/drm_drv.h>
+#include <drm/drm_vblank.h>
+#include <linux/proc_fs.h>
+#if defined(CONFIG_PM_DEVFREQ)
+#include <../drivers/devfreq/governor.h>
+#include <linux/devfreq.h>
+#endif
+#include <linux/pm_opp.h>
+#include <sunxi-drm-heap.h>
 
 #include "sunxi_drm_drv.h"
 #include "sunxi_drm_crtc.h"
 #include "sunxi_de.h"
 #include "de_channel.h"
 #include "de_bld.h"
+#include "de_bld_top.h"
 #include "de_top.h"
 #include "de_wb.h"
 #include "de_backend.h"
+#include "de_fmt.h"
 #include "sunxi_drm_debug.h"
 #include "sunxi_drm_trace.h"
 
 #define CHANNEL_MAX			(6)
-#define DE_BLOCK_SIZE			(256000)
+#define DE_BLOCK_SIZE			(512000)
+
+#if defined(CONFIG_PM_DEVFREQ)
+struct devfreq_dev_profile sunxi_defreq_userspace_profile;
+#endif
 
 struct de_match_data {
 	unsigned int version;
@@ -48,6 +63,10 @@ struct de_match_data {
 	bool blending_in_rgb;
 	bool rcq_wait_line;
 	bool rcq_skip_read;
+
+	bool boot_mode_ctrl;
+	unsigned long boot_mode_reg;
+	u32 boot_mode_mask;
 };
 
 struct de_reg_buffer {
@@ -76,6 +95,20 @@ enum de_update_status {
 	DE_UPDATE_PENDING,
 };
 
+struct sunxi_de_debug {
+	struct proc_dir_entry *procfs_de_top;
+	int force_offline_mode;
+};
+
+struct sunxi_de_offline_mode {
+	int enable;
+	int compress_mode; // reserve
+	int use_safebuf;
+	bool master_enable;
+	dma_addr_t dma_addr;
+	struct sunxi_drm_mem *safe_mem;
+};
+
 struct sunxi_de_out {
 	int id;
 	int port_id;
@@ -83,9 +116,12 @@ struct sunxi_de_out {
 	struct hrtimer rcq_timer;
 	bool enable;
 	atomic_t update_finish;
+	atomic_t schedule_next_frame;
 	struct sunxi_drm_crtc *scrtc;
 	struct device_node *port;
 	struct de_bld_handle *bld_hdl;
+	struct de_bld_top_handle *bld_top_hdl;
+	struct de_fmt_handle *fmt_hdl;
 	struct de_backend_handle *backend_hdl;
 	unsigned int ch_cnt;
 	struct de_channel_handle *ch_hdl[CHANNEL_MAX];
@@ -98,6 +134,7 @@ struct sunxi_de_out {
 	unsigned int kHZ_pixelclk;
 	unsigned int htotal;
 	unsigned int vtotal;
+	unsigned int pixel_mode;
 
 	unsigned int vsync_count;
 	unsigned int last_rcq_vsync;
@@ -125,9 +162,13 @@ struct sunxi_display_engine {
 	unsigned int chn_cfg_mode;
 	unsigned char display_out_cnt;
 	struct sunxi_de_out *display_out;
+	struct sunxi_de_offline_mode offline_mode;
 	struct de_reg_buffer reg;
+	bool de_devfreq_auto;
+	struct sunxi_de_debug *debug;
 };
 
+static void de_process_late_work_next_frame(struct sunxi_de_out *hwde);
 struct sunxi_drm_crtc *sunxi_drm_crtc_init_one(struct sunxi_de_info *info);
 void sunxi_drm_crtc_destory(struct sunxi_drm_crtc *scrtc);
 struct sunxi_drm_wb *sunxi_drm_wb_init_one(struct sunxi_de_wb_info *wb_info);
@@ -185,6 +226,7 @@ static int __maybe_unused test_rcq_fifo_create(struct sunxi_display_engine *de, 
 	rcq_info->reg_blk[0] = &block[0];
 	rcq_info->reg_blk[1] = &block[1];
 
+
 	rcq_info->vir_addr = sunxi_de_reg_buffer_alloc(de,
 		2 * sizeof(*(rcq_info->vir_addr)),
 		(dma_addr_t *)&(rcq_info->phy_addr), 1);
@@ -227,10 +269,13 @@ static int de_rtmx_init_rcq(struct sunxi_display_engine *de, unsigned int id)
 	struct de_rcq_mem_info *rcq_info = &disp->rcq_info;
 	unsigned int block_cnt = 0;
 	unsigned int cur_cnt = 0;
+	struct de_top_handle *detop_hdl = de->top_hdl;
 	struct de_channel_handle *ch_hdl;
 	struct de_wb_handle *wb_hdl = de->wb.wb_hdl;
 	struct de_bld_handle *bld_hdl = disp->bld_hdl;
+	struct de_bld_top_handle *bld_top_hdl = disp->bld_top_hdl;
 	struct de_backend_handle *backend_hdl = disp->backend_hdl;
+	struct de_fmt_handle *fmt_hdl = disp->fmt_hdl;
 	struct de_reg_block **p_reg_blks;
 	struct de_rcq_head *rcq_hd = NULL;
 	int i, reg_blk_num;
@@ -238,8 +283,18 @@ static int de_rtmx_init_rcq(struct sunxi_display_engine *de, unsigned int id)
 	/* cal block cnt and malloc */
 	block_cnt += bld_hdl->block_num;
 
+	if (detop_hdl) {
+		block_cnt += detop_hdl->block_num;
+	}
+
+	if (bld_top_hdl)
+		block_cnt += bld_top_hdl->block_num;
+
 	if (backend_hdl)
 		block_cnt += backend_hdl->block_num;
+
+	if (fmt_hdl)
+		block_cnt += fmt_hdl->block_num;
 
 	if (wb_hdl)
 		block_cnt += wb_hdl->block_num;
@@ -261,10 +316,27 @@ static int de_rtmx_init_rcq(struct sunxi_display_engine *de, unsigned int id)
 		    sizeof(bld_hdl->block[0]) * bld_hdl->block_num);
 	cur_cnt += bld_hdl->block_num;
 
+	if (detop_hdl) {
+		memcpy(&rcq_info->reg_blk[cur_cnt], detop_hdl->block, sizeof(detop_hdl->block[0]) * detop_hdl->block_num);
+		cur_cnt += detop_hdl->block_num;
+	}
+
+	if (bld_top_hdl) {
+		memcpy(&rcq_info->reg_blk[cur_cnt], bld_top_hdl->block,
+			sizeof(bld_top_hdl->block[0]) * bld_top_hdl->block_num);
+		cur_cnt += bld_top_hdl->block_num;
+	}
+
 	if (backend_hdl) {
 		memcpy(&rcq_info->reg_blk[cur_cnt], backend_hdl->block,
 			    sizeof(backend_hdl->block[0]) * backend_hdl->block_num);
 		cur_cnt += backend_hdl->block_num;
+	}
+
+	if (fmt_hdl) {
+		memcpy(&rcq_info->reg_blk[cur_cnt], fmt_hdl->block,
+		       sizeof(fmt_hdl->block[0]) * fmt_hdl->block_num);
+		cur_cnt += fmt_hdl->block_num;
 	}
 
 	if (wb_hdl) {
@@ -299,8 +371,12 @@ static int de_rtmx_init_rcq(struct sunxi_display_engine *de, unsigned int id)
 			struct de_reg_block *reg_blk = *p_reg_blks;
 
 			rcq_hd->low_addr = (u32)((uintptr_t)(reg_blk->phy_addr));
+#ifdef CONFIG_ARCH_DMA_ADDR_T_64BIT
 			rcq_hd->dw0.bits.high_addr =
-				(u8)((uintptr_t)(reg_blk->phy_addr) >> 32);
+				(u8)((dma_addr_t)(reg_blk->phy_addr) >> 32);
+#else
+			rcq_hd->dw0.bits.high_addr = 0x0;
+#endif
 			rcq_hd->dw0.bits.len = reg_blk->size;
 			rcq_hd->dirty.dwval = reg_blk->dirty;
 			rcq_hd->reg_offset = (u32)(uintptr_t)
@@ -333,16 +409,17 @@ static int wb_rcq_head_switch(struct sunxi_de_out *hwde)
 	struct sunxi_display_engine *engine = dev_get_drvdata(hwde->dev);
 	struct de_rcq_mem_info *rcq_info = &hwde->rcq_info;
 	struct de_rcq_head *hd = rcq_info->vir_addr;
-	struct de_rcq_head *hd_end = hd + rcq_info->block_num;
+	struct de_rcq_head *hd_end = NULL;
 	unsigned int wb_block_num = engine->wb.wb_hdl->block_num;
 	struct de_reg_block *reg_blk_wb = engine->wb.wb_hdl->block[0];
-	u64 reg_addr = (u64)reg_blk_wb->reg_addr - (u64)engine->reg_base;
+	u64 reg_addr = (uintptr_t)reg_blk_wb->reg_addr - (uintptr_t)engine->reg_base;
 
 	if (hd == NULL) {
 		DRM_ERROR("rcq head is null\n");
 		return -1;
 	}
 
+	hd_end = hd + rcq_info->block_num;
 	/* find wb block by reg_addr, switch rcq head */
 	for (; hd != hd_end && wb_block_num; hd++) {
 		if (hd->reg_offset == (u32)((uintptr_t)(reg_addr))) {
@@ -395,12 +472,14 @@ static int __maybe_unused de_rtmx_check_rcq_head_dirty(struct sunxi_de_out *hwde
 {
 	struct de_rcq_mem_info *rcq_info = &hwde->rcq_info;
 	struct de_rcq_head *hd = rcq_info->vir_addr;
-	struct de_rcq_head *hd_end = hd + rcq_info->block_num;
+	struct de_rcq_head *hd_end = NULL;
 
 	if (hd == NULL) {
 		DRM_ERROR("rcq head is null\n");
 		return -1;
 	}
+
+	hd_end = hd + rcq_info->block_num;
 
 	for (; hd != hd_end; hd++) {
 		printk("%s header addr 0x%x, len %d , reg offset 0x%x dirty %d hd %lx\n",
@@ -439,6 +518,54 @@ static int __maybe_unused de_update_ahb(struct sunxi_de_out *hwde)
 	return 0;
 }
 
+#define SUNXI_DE_DRM_MASTER_DE  (0x1 << 0)
+#define SUNXI_DE_DRM_MASTER_EINK (0x1 << 1)
+#define SUNXI_DE_DRM_MASTER_MASK (SUNXI_DE_DRM_MASTER_DE | SUNXI_DE_DRM_MASTER_EINK)
+
+#if !IS_ENABLED(CONFIG_AW_DRM_HEAP)
+static int sunxi_de_enable_drm_master(struct sunxi_display_engine *de, int mask, bool en) { return 0; }
+#else
+static int sunxi_de_enable_drm_master(struct sunxi_display_engine *de, int mask, bool en)
+{
+	if (mask & SUNXI_DE_DRM_MASTER_DE) {
+		if (en && !de->offline_mode.master_enable) {
+			if (sunxi_drm_master_enable_by_type(DRM_MASTER_TYPE_DE)) {
+				DRM_ERROR("[SUNXI-DE] enable de master err\n");
+				return -1;
+			}
+			de->offline_mode.master_enable = true;
+			DRM_DEBUG_DRIVER("[SUNXI-DE] enable de master end\n");
+		} else if (!en && de->offline_mode.master_enable) {
+			if (sunxi_drm_master_disable_by_type(DRM_MASTER_TYPE_DE)) {
+				DRM_ERROR("[SUNXI-DE] disable de master err\n");
+				return -1;
+			}
+			de->offline_mode.master_enable = false;
+			DRM_DEBUG_DRIVER("[SUNXI-DE] disable de master end\n");
+		}
+	}
+
+	if (mask & SUNXI_DE_DRM_MASTER_EINK) {
+		if (en) {
+			if (sunxi_drm_master_enable_by_type(DRM_MASTER_TYPE_EINK)) {
+				DRM_ERROR("[SUNXI-DE] enable eink master err\n");
+				return -1;
+			}
+			DRM_DEBUG_DRIVER("[SUNXI-DE] enable de master end\n");
+		} else {
+			if (sunxi_drm_master_disable_by_type(DRM_MASTER_TYPE_EINK)) {
+				DRM_ERROR("[SUNXI-DE] disable eink master err\n");
+				return -1;
+			}
+			DRM_DEBUG_DRIVER("[SUNXI-DE] disable eink master end\n");
+		}
+	}
+
+	return 0;
+}
+#endif
+
+
 void *sunxi_de_dma_alloc_coherent(struct sunxi_display_engine *de, u32 size, dma_addr_t *phy_addr)
 {
 	return dma_alloc_coherent(de->dev, size, phy_addr, GFP_KERNEL);
@@ -447,6 +574,53 @@ void *sunxi_de_dma_alloc_coherent(struct sunxi_display_engine *de, u32 size, dma
 void sunxi_de_dma_free_coherent(struct sunxi_display_engine *de, u32 size, dma_addr_t phy_addr, void *virt_addr)
 {
 	return dma_free_coherent(de->dev, size, virt_addr, phy_addr);
+}
+
+void *sunxi_de_offline_alloc_pingpang_buf(struct sunxi_display_engine *de, u32 size, dma_addr_t *phy_addr)
+{
+#if IS_ENABLED(CONFIG_AW_DRM_HEAP)
+		struct sunxi_drm_mem *safe_mem;
+#endif
+
+	if (de->offline_mode.use_safebuf) {
+#if IS_ENABLED(CONFIG_AW_DRM_HEAP)
+		safe_mem = sunxi_drm_mem_alloc(size);
+		if (!safe_mem) {
+			DRM_ERROR("sunxi_de alloc drm_mem err\n");
+			return NULL;
+		}
+
+		*phy_addr = dma_map_resource(de->dev, safe_mem->paddr, safe_mem->size, DMA_TO_DEVICE, DMA_ATTR_SKIP_CPU_SYNC);
+		if (dma_mapping_error(de->dev, *phy_addr)) {
+			sunxi_drm_mem_free(safe_mem);
+			DRM_ERROR("sunxi_de map drm_mem err\n");
+			return NULL;
+		}
+
+		de->offline_mode.safe_mem = safe_mem;
+		de->offline_mode.dma_addr = *phy_addr;
+		return (void *)safe_mem->paddr; // safe buf use paddr for cpu access
+#else
+		DRM_ERROR("CONFIG_AW_DRM_HEAP not enable, de offline can not use safe buf\n");
+		return NULL;
+#endif
+	} else {
+		return dma_alloc_coherent(de->dev, size, phy_addr, GFP_KERNEL);
+	}
+}
+
+void sunxi_de_offline_free_pingpang_buf(struct sunxi_display_engine *de, u32 size, dma_addr_t phy_addr, void *virt_addr)
+{
+	if (de->offline_mode.use_safebuf) {
+#if IS_ENABLED(CONFIG_AW_DRM_HEAP)
+		dma_unmap_resource(de->dev, de->offline_mode.safe_mem->paddr, de->offline_mode.safe_mem->size,
+				DMA_TO_DEVICE, DMA_ATTR_SKIP_CPU_SYNC);
+		sunxi_drm_mem_free(de->offline_mode.safe_mem);
+		de->offline_mode.safe_mem = NULL;
+#endif
+	} else {
+		return dma_free_coherent(de->dev, size, virt_addr, phy_addr);
+	}
 }
 
 void *sunxi_de_reg_buffer_alloc(struct sunxi_display_engine *de, u32 size, dma_addr_t *phy_addr, u32 rcq_used)
@@ -509,10 +683,17 @@ int sunxi_de_backend_get_pqd_config(struct sunxi_de_out *hwde, struct de_backend
 	return -ENODEV;
 }
 
-void sunxi_de_atomic_begin(struct sunxi_de_out *hwde)
+void sunxi_de_atomic_begin(struct sunxi_de_out *hwde, struct sunxi_de_atomic_begin_cfg *cfg)
 {
-//	struct sunxi_display_engine *engine = dev_get_drvdata(hwde->dev);
-//	de_top_set_rcq_update(engine->top_hdl, hwde->id, 0);
+	struct sunxi_display_engine *engine = dev_get_drvdata(hwde->dev);
+
+	if (!hwde->enable) {
+		DRM_INFO("%s de %d not enable, skip\n", __func__, hwde->id);
+		return;
+	}
+
+	if (!engine->offline_mode.enable && cfg->smc_master_en)
+		sunxi_de_enable_drm_master(engine, SUNXI_DE_DRM_MASTER_DE, true);
 }
 
 static void sunxi_de_update_regs(struct sunxi_de_out *hwde)
@@ -672,10 +853,17 @@ void sunxi_de_atomic_flush(struct sunxi_de_out *hwde, struct de_backend_data *da
 		SUNXIDRM_TRACE_BEGIN("check_update_finished");
 		check_update_finished(hwde);
 		SUNXIDRM_TRACE_END(" ");
+
+		if (engine->de_devfreq_auto)
+			sunxi_de_auto_calc_freq_and_apply(engine->display_out);
+		// de_top_update_force_by_ahb(engine->top_hdl);
+
 		if (engine->match_data->rcq_wait_line)
 			rcq_update_timer_start(hwde);
 		else
 			de_top_set_rcq_update(engine->top_hdl, hwde->id, 1);
+
+		sunxi_drm_crtc_prepare_vblank_event(hwde->scrtc);
 
 		// record the rcq request at which vsync count
 		hwde->last_rcq_vsync = hwde->vsync_count;
@@ -690,7 +878,7 @@ void sunxi_de_atomic_flush(struct sunxi_de_out *hwde, struct de_backend_data *da
 		if (use_rcq) {
 			SUNXIDRM_TRACE_BEGIN("wait_rcq_finish");
 			timeout = read_poll_timeout(check_update_finished, is_finished,
-					  is_finished, 100, 50000, false, hwde);
+					  is_finished, 2000, 50000, false, hwde);
 			SUNXIDRM_TRACE_END(" ");
 		} else {
 			atomic_set(&hwde->update_finish, DE_UPDATE_PENDING);
@@ -715,7 +903,15 @@ void sunxi_de_atomic_flush(struct sunxi_de_out *hwde, struct de_backend_data *da
 		DRM_INFO("%s timeout\n", __func__);
 	else {
 		de_rtmx_set_all_reg_dirty(hwde, 0);
+
+		if (!engine->offline_mode.enable && !cfg->smc_master_en)
+			sunxi_de_enable_drm_master(engine, SUNXI_DE_DRM_MASTER_DE, false);
+
 		if (hwde->work) {
+			if (atomic_read(&hwde->schedule_next_frame)) {
+				de_process_late_work_next_frame(hwde);
+				atomic_set(&hwde->schedule_next_frame, false);
+			}
 			if (use_rcq && engine->match_data->rcq_skip_read) {
 				cur_line = sunxi_drm_crtc_get_output_current_line(hwde->scrtc);
 				if (cur_line < 20 || cur_line > 128)
@@ -737,24 +933,45 @@ static int rtmx_start(struct sunxi_display_engine *engine, unsigned int id, unsi
 	struct de_rcq_mem_info *rcq_info = &hwde->rcq_info;
 	unsigned int w = hwde->output_info.width;
 	unsigned int h = hwde->output_info.height;
+	unsigned int pixel_mode = hwde->pixel_mode;
 	bool use_rcq = engine->match_data->update_mode == RCQ_MODE;
-/*	struct offline_cfg offline;
-	offline.enable = true;
-	offline.mode = CURRENT_FRAME;
-	offline.mode = ONE_FRAME_DELAY;
-	offline.w = w;
-	offline.h = h;*/
+	struct de_fmt_info info;
+	struct dfs_cfg dfs_cfg;
+	struct offline_cfg offline;
 
 	memset(&cfg, 0, sizeof(cfg));
 	cfg.display_id = id;
 	cfg.enable = 1;
+	cfg.pixel_mode = pixel_mode;
 	cfg.w = w;
 	cfg.h = h;
+	cfg.interlaced = hwde->output_info.interlaced;
 	cfg.device_index = hwdev_index;
 	cfg.rcq_header_addr = use_rcq ? (unsigned long)rcq_info->phy_addr : 0;
 	cfg.rcq_header_byte = use_rcq ? rcq_info->block_num_aligned * sizeof(*(rcq_info->vir_addr)) : 0;
 	de_top_display_config(engine->top_hdl, &cfg);
-//	de_top_offline_mode_config(engine->top_hdl, &offline);
+
+	if (engine->offline_mode.enable && engine->offline_mode.use_safebuf)
+		sunxi_de_enable_drm_master(engine, SUNXI_DE_DRM_MASTER_DE | SUNXI_DE_DRM_MASTER_EINK, true);
+
+	if (engine->offline_mode.enable || engine->debug->force_offline_mode)
+		offline.enable = true;
+	else
+		offline.enable = false;
+	offline.disp = id;
+	offline.mode = ONE_FRAME_DELAY;
+	offline.w = w;
+	offline.h = h;
+	if (id == 0) // only the display 0 support
+		de_top_offline_mode_config(engine->top_hdl, &offline);
+
+	memset(&dfs_cfg, 0, sizeof(dfs_cfg));
+	if (!engine->de_devfreq_auto) // software/hardware dfs choose one
+		dfs_cfg.enable = true;
+	dfs_cfg.display_id = id;
+	dfs_cfg.de_clk = hwde->output_info.de_clk_freq;
+	dfs_cfg.dclk = hwde->kHZ_pixelclk * 1000;
+	de_top_dfs_config_enable(engine->top_hdl, &dfs_cfg);
 
 	for (i = 0; i < hwde->ch_cnt; i++) {
 		ch = hwde->ch_hdl[i];
@@ -768,7 +985,22 @@ static int rtmx_start(struct sunxi_display_engine *engine, unsigned int id, unsi
 		port = de_top_set_chn_mux(engine->top_hdl, id, port, ch->type_hw_id, ch->is_video);
 	}
 
-	de_bld_output_set_attr(hwde->bld_hdl, w, h, hwde->output_info.px_fmt_space == DE_FORMAT_SPACE_RGB ? 0 : 1);
+	/* rtmx en & tcon en & bld disable (rcq copy needs to wait until the next plane update)
+	 * which will cause tcon to think that de is enabled, but bld has no output, resulting in missing data
+	 */
+	de_bld_output_set_attr(hwde->bld_hdl, w, h,
+			       hwde->output_info.px_fmt_space == DE_FORMAT_SPACE_RGB ? 0 : 1,
+			       hwde->output_info.interlaced,
+			       true);
+
+	if (hwde->fmt_hdl) {
+		info.px_fmt_space = hwde->output_info.px_fmt_space;
+		info.yuv_sampling = hwde->output_info.yuv_sampling;
+		info.bits         = hwde->output_info.data_bits;
+		info.width        = w;
+		info.height       = h;
+		de_fmt_apply(hwde->fmt_hdl, &info);
+	}
 	return 0;
 }
 
@@ -843,8 +1075,12 @@ int sunxi_de_enable(struct sunxi_de_out *hwde,
 
 	hwde->output_info.width = cfg->width;
 	hwde->output_info.height = cfg->height;
+	hwde->output_info.htotal = cfg->htotal;
+	hwde->output_info.pclk_khz = cfg->kHZ_pixelclk;
 	hwde->output_info.device_fps = cfg->device_fps;
+	hwde->output_info.max_device_fps = cfg->max_device_fps;
 	hwde->output_info.de_clk_freq = engine->clk_freq;
+	hwde->output_info.interlaced = cfg->interlaced;
 	hwde->output_info.px_fmt_space = cfg->px_fmt_space;
 	hwde->output_info.yuv_sampling = cfg->yuv_sampling;
 	hwde->output_info.eotf = cfg->eotf;
@@ -854,7 +1090,12 @@ int sunxi_de_enable(struct sunxi_de_out *hwde,
 	hwde->kHZ_pixelclk = cfg->kHZ_pixelclk;
 	hwde->htotal = cfg->htotal;
 	hwde->vtotal = cfg->vtotal;
-
+	hwde->pixel_mode = cfg->pixel_mode;
+	#if defined(CONFIG_PM_DEVFREQ)
+	if (sunxi_defreq_userspace_profile.freq_table) {
+		sunxi_defreq_userspace_profile.freq_table[0] = cfg->kHZ_pixelclk * 1000;
+	}
+	#endif
 	rtmx_start(engine, hwde->id, cfg->hwdev_index);
 	DRM_INFO("%s finish sw en=%d\n", __FUNCTION__, cfg->sw_enable);
 	return 0;
@@ -883,6 +1124,8 @@ void sunxi_de_disable(struct sunxi_de_out *hwde)
 	memset(&cfg, 0, sizeof(cfg));
 	cfg.display_id = id;
 	cfg.enable = 0;
+	/* pixel_mode: 0:1pixel 1:1pixel 2:2pixel 4:4pixel */
+	cfg.pixel_mode = 0;
 	de_top_display_config(engine->top_hdl, &cfg);
 
 //TODO add more clk
@@ -930,7 +1173,7 @@ static int sunxi_de_parse_dts(struct device *dev,
 	}
 
 	engine->mclk_bus = devm_clk_get(dev, "clk_bus_de");
-	if (IS_ERR(engine->mclk)) {
+	if (IS_ERR(engine->mclk_bus)) {
 		DRM_ERROR("fail to get bus clk for de\n");
 		return -EINVAL;
 	}
@@ -976,6 +1219,15 @@ static int sunxi_de_parse_dts(struct device *dev,
 
 	if (of_property_read_u32(node, "chn_cfg_mode", &engine->chn_cfg_mode)) {
 		DRM_INFO("[SUNXI-DE] chn_cfg_mode not found, used def val\n");
+	}
+
+	if (of_property_read_u32(node, "offline_mode", &engine->offline_mode.enable)) {
+		engine->offline_mode.enable = 0;
+		DRM_INFO("[SUNXI-DE] offline_mode not found, used def val\n");
+	}
+	if (of_property_read_u32(node, "offline_use_safebuf", &engine->offline_mode.use_safebuf)) {
+		engine->offline_mode.use_safebuf = 0;
+		DRM_INFO("[SUNXI-DE] offline_use_safebuf not found, used def val\n");
 	}
 
 	return 0;
@@ -1026,6 +1278,18 @@ static int sunxi_de_request_irq(struct sunxi_display_engine *engine)
 	return ret;
 }
 
+static void sunxi_de_boot_mode(struct sunxi_display_engine *engine)
+{
+	void __iomem *reg_addr;
+
+	if (!engine->match_data->boot_mode_ctrl)
+		return;
+
+	reg_addr = ioremap(engine->match_data->boot_mode_reg, 4);
+	writel(readl(reg_addr) & (~engine->match_data->boot_mode_mask), reg_addr);
+	iounmap(reg_addr);
+}
+
 static int sunxi_display_engine_init(struct device *dev)
 {
 	int ret;
@@ -1034,6 +1298,7 @@ static int sunxi_display_engine_init(struct device *dev)
 	engine = devm_kzalloc(dev, sizeof(*engine), GFP_KERNEL);
 	engine->dev = dev;
 	engine->match_data = of_device_get_match_data(dev);
+	engine->debug = devm_kzalloc(dev, sizeof(struct sunxi_de_debug), GFP_KERNEL);
 
 	if (!engine->match_data) {
 		DRM_ERROR("sunxi display engine fail to get match data\n");
@@ -1041,12 +1306,14 @@ static int sunxi_display_engine_init(struct device *dev)
 	}
 	dev_set_drvdata(dev, engine);
 
+	sunxi_de_boot_mode(engine);
+
 	ret = sunxi_de_parse_dts(dev, engine);
 	if (ret < 0) {
 		DRM_ERROR("Parse de dts failed!\n");
 		goto de_err;
 	}
-
+	engine->de_devfreq_auto = true;
 	engine->clk_freq = clk_get_rate(engine->mclk);
 	engine->display_out_cnt = get_de_output_display_cnt(dev);
 	if ((engine->display_out_cnt <= 0)) {
@@ -1066,6 +1333,86 @@ static int sunxi_display_engine_exit(struct device *dev)
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_PROC_FS)
+#define DE_TOP_PROCFS(name) \
+static const struct proc_ops de_top_##name##_proc_ops = { \
+	.proc_open      = de_top_##name##_proc_open, \
+	.proc_read      = seq_read, \
+	.proc_lseek     = seq_lseek, \
+	.proc_release   = single_release, \
+	.proc_write     = de_top_##name##_proc_write, \
+};
+
+static ssize_t de_top_offline_mode_proc_write(struct file *file,
+			const char __user *buffer, size_t count, loff_t *ppos)
+{
+	char enable[128];
+	struct inode *inode = file_inode(file);
+	struct sunxi_display_engine *engine = inode->i_private;
+	struct sunxi_de_out *hwde = &engine->display_out[0];
+	unsigned int w = hwde->output_info.width;
+	unsigned int h = hwde->output_info.height;
+	struct offline_cfg offline;
+
+	if (count >= sizeof(enable))
+		count = sizeof(enable) - 1;
+
+	if (copy_from_user(enable, buffer, count))
+		return -EFAULT;
+
+	if (strncmp(enable, "on", 2) == 0) {
+		offline.enable = true;
+		engine->debug->force_offline_mode = true;
+	} else if (strncmp(enable, "off", 3) == 0) {
+		offline.enable = false;
+		engine->debug->force_offline_mode = false;
+	} else {
+		DRM_ERROR("invalid param, select from: \"on\"/\"off\" !\n");
+		return count;
+	}
+
+	offline.disp = 0;
+	offline.mode = ONE_FRAME_DELAY;
+	offline.w = w;
+	offline.h = h;
+	de_top_offline_mode_config(engine->top_hdl, &offline);
+
+
+	return count;
+}
+
+
+static int de_top_offline_mode_show(struct seq_file *m, void *v)
+{
+	struct sunxi_display_engine *engine = (struct sunxi_display_engine *)m->private;
+	s32 offline_mode_status = -1;
+
+	if (engine->top_hdl) {
+		offline_mode_status = de_top_get_offline_mode_status(engine->top_hdl);
+		seq_printf(m, "%s|%s|%s\n",
+			   (offline_mode_status == 1) ? "[on]" : "on",
+			   (offline_mode_status == 0) ? "[off]" : "off",
+			   (offline_mode_status == -1) ? "[not_support]" : "not_support");
+	} else
+		seq_printf(m, "on|off|[not_support]\n");
+
+	return 0;
+}
+
+
+static int de_top_offline_mode_proc_open(struct inode *inode, struct file *file)
+{
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 17, 0)
+	return single_open(file, de_top_offline_mode_show, PDE_DATA(inode));
+#else
+	return single_open(file, de_top_offline_mode_show, pde_data(inode));
+#endif
+}
+
+
+DE_TOP_PROCFS(offline_mode)
+#endif
+
 static int sunxi_de_bind(struct device *dev, struct device *master, void *data)
 {
 	int i, j, ret;
@@ -1074,6 +1421,7 @@ static int sunxi_de_bind(struct device *dev, struct device *master, void *data)
 	struct sunxi_de_out *display_out;
 	struct sunxi_de_info info;
 	struct sunxi_de_wb_info wb_info;
+	struct proc_dir_entry *procfs_parent;
 
 	DRM_INFO("[SUNXI-DE] %s start\n", __FUNCTION__);
 
@@ -1106,8 +1454,14 @@ static int sunxi_de_bind(struct device *dev, struct device *master, void *data)
 		info.port = display_out->port;
 		info.hw_id = display_out->id;
 		info.clk_freq = engine->clk_freq;
-		info.mod = &display_out->backend_hdl->feat.mod;
+		memcpy(&info.feat.support, &display_out->backend_hdl->feat.mod,
+		       sizeof(display_out->backend_hdl->feat.mod));
+		info.feat.hw_id = display_out->id;
+		info.feat.feat.share_scaler = engine->top_hdl->share_scaler;
+		info.support_offline = engine->top_hdl->support_offline;
 		info.gamma_lut_len = display_out->backend_hdl->feat.gamma_lut_len;
+		info.hue_default_value = display_out->backend_hdl->feat.hue_default_value;
+
 		info.plane_cnt = display_out->ch_cnt;
 		info.planes = devm_kzalloc(dev, sizeof(*info.planes) * display_out->ch_cnt, GFP_KERNEL);
 		for (j = 0; j < display_out->ch_cnt; j++) {
@@ -1126,11 +1480,37 @@ static int sunxi_de_bind(struct device *dev, struct device *master, void *data)
 			 info.hw_id, !IS_ERR_OR_NULL(display_out->scrtc) ? "ok" : "fail");
 	}
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0)
+	drm->irq_enabled = true;
+#endif
+	ret = drm_vblank_init(drm, drm->mode_config.num_crtc);
+	if (ret) {
+		DRM_ERROR("failed to init vblank.\n");
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(5, 15, 0)
+	drm->irq_enabled = true;
+#endif
+		return ret;
+	}
+
 	//create drm wb
 	wb_info.drm = drm;
 	wb_info.support_disp_mask = (1 << engine->display_out_cnt) - 1;
 	wb_info.wb = &engine->wb;
 	engine->wb.drm_wb = sunxi_drm_wb_init_one(&wb_info);
+
+#if IS_ENABLED(CONFIG_PROC_FS)
+	procfs_parent = sunxi_drm_get_procfs_dir();
+	if (procfs_parent != NULL) {
+		if (engine->top_hdl) {
+			engine->debug->procfs_de_top = proc_mkdir("de_top", procfs_parent);
+			proc_create_data("offline_mode", 0664, engine->debug->procfs_de_top,
+					&de_top_offline_mode_proc_ops, engine);
+		}
+
+	}
+#endif
+
+
 	return 0;
 }
 
@@ -1139,11 +1519,24 @@ static void sunxi_de_unbind(struct device *dev, struct device *master,
 {
 	int i;
 	struct sunxi_display_engine *engine = dev_get_drvdata(dev);
+	struct proc_dir_entry *procfs_parent;
 	DRM_INFO("[SUNXI-DE] %s\n", __FUNCTION__);
+
+	procfs_parent = sunxi_drm_get_procfs_dir();
+	if (procfs_parent != NULL) {
+		if (engine->top_hdl && engine->debug->procfs_de_top)
+			proc_remove(engine->debug->procfs_de_top);
+	}
+
 	for (i = 0; i < engine->display_out_cnt; i++) {
 		sunxi_drm_crtc_destory(engine->display_out[i].scrtc);
 	}
 	pm_runtime_disable(dev);
+
+#if IS_ENABLED(CONFIG_PROC_FS)
+	/* remove de_top debug */
+	remove_proc_subtree("sunxi-drm/de_top", NULL);
+#endif
 }
 
 static const struct component_ops sunxi_de_component_ops = {
@@ -1166,21 +1559,127 @@ static int sunxi_de_get_disp_sys(struct sunxi_display_engine *engine)
 
 static void de_process_late_work(struct work_struct *work)
 {
-	struct sunxi_de_out *disp = container_of(work, struct sunxi_de_out, pq_work);
+	struct sunxi_de_out *hwde = container_of(work, struct sunxi_de_out, pq_work);
+	struct de_backend_tasklet_state btstate = {0};
 	struct de_channel_handle *ch;
 	u32 i = 0;
-	for (i = 0; i < disp->ch_cnt; i++) {
-		ch = disp->ch_hdl[i];
+
+	for (i = 0; i < hwde->ch_cnt; i++) {
+		ch = hwde->ch_hdl[i];
 		if (ch->routine_job)
 			channel_process_late(ch);
 	}
-	//bld_process_late(hwde->bld_hdl);
+
+	if (hwde->backend_hdl->routine_job) {
+		btstate.device_support_bk = sunxi_drm_crtc_is_support_backlight(hwde->scrtc);
+		btstate.backlight = sunxi_drm_crtc_get_backlight(hwde->scrtc);
+		de_backend_process_late(hwde->backend_hdl, &btstate);
+	}
+
+	/* wait for the config to take effect before executing */
+	if (hwde->backend_hdl->vblank_work && btstate.schedule)
+		atomic_set(&hwde->schedule_next_frame, true);
+}
+
+static void de_process_late_work_next_frame(struct sunxi_de_out *hwde)
+{
+	struct de_backend_tasklet_state btstate = {0};
+	int backlight;
+
+	if (hwde->backend_hdl->vblank_work) {
+		btstate.device_support_bk = sunxi_drm_crtc_is_support_backlight(hwde->scrtc);
+		btstate.backlight = sunxi_drm_crtc_get_backlight(hwde->scrtc);
+		de_backend_vblank_work(hwde->backend_hdl, &btstate);
+
+		if (btstate.dimming_changed) {
+			backlight = btstate.backlight_after_dimming;
+			sunxi_drm_crtc_set_backlight_value(hwde->scrtc, backlight);
+		}
+	}
+
 }
 
 void sunxi_de_dump_state(struct drm_printer *p, struct sunxi_de_out *hwde)
 {
-	drm_printf(p, "vsync: %d last rcq at vsync: %d\n", hwde->vsync_count, hwde->last_rcq_vsync);
+	struct sunxi_display_engine *engine = dev_get_drvdata(hwde->dev);
+	bool offline_en = engine->offline_mode.enable | engine->debug->force_offline_mode;
+
+	drm_printf(p, "\t    vsync: %d last rcq at vsync: %d offline: %sable\n", hwde->vsync_count, hwde->last_rcq_vsync,
+			offline_en ? "en" : "dis");
 }
+
+#if defined(CONFIG_PM_DEVFREQ)
+static int sunxi_de_devfreq_target(struct device *dev, unsigned long *freq, u32 flags)
+{
+	int m, n;
+	unsigned long rate_in_khz, de_clk_set_khz;
+	struct sunxi_display_engine *engine;
+	unsigned int kHZ_pixelclk;
+	de_clk_set_khz = *freq / (unsigned long)1000;
+	engine = dev_get_drvdata(dev);
+	rate_in_khz = (unsigned long)engine->clk_freq / 1000;
+	kHZ_pixelclk = engine->display_out->kHZ_pixelclk;
+	if (de_clk_set_khz <= rate_in_khz) {
+		if (de_clk_set_khz > kHZ_pixelclk) {
+			sunxi_de_div_calc_mn(rate_in_khz, de_clk_set_khz, &m, &n);
+			DRM_INFO("sunxi_de_devfreq_target %ld %d %d , hex %x %x\n", de_clk_set_khz, m, n, m, n);
+			de_top_freq_div_apply(engine->top_hdl, m, n);
+			return 0;
+		} else {
+			DRM_ERROR("error clk_set <= clock-frequency\n");
+			return -1;
+		}
+	} else {
+		DRM_ERROR("error clk_set > rate_in\n");
+		return -1;
+	}
+	return -1;
+}
+
+static int sunxi_defreq_get_cur_freq(struct device *dev, unsigned long *freq)
+{
+	int m, n;
+	struct clk *de_clk;
+	unsigned long rate_in;
+	struct sunxi_display_engine *engine;
+	engine = dev_get_drvdata(dev);
+	de_top_freq_div_get(engine->top_hdl, &m, &n);
+	de_clk = devm_clk_get(dev, "clk_de");
+	rate_in = clk_get_rate(de_clk);
+	*freq = rate_in * (n + 1) / (m + 1);
+	DRM_INFO("sunxi_defreq_get_cur_freq %ld %d %d %ld\n", rate_in, m, n, *freq);
+	return 0;
+}
+
+static void sunxi_de_devfreq_exit(struct device *dev)
+{
+	dev_pm_opp_of_remove_table(dev);
+	devm_kfree(dev, sunxi_defreq_userspace_profile.freq_table);
+}
+
+int sunxi_deauto_governor_event_handler(struct devfreq *devfreq, unsigned int event, void *data)
+{
+	struct sunxi_display_engine *engine = dev_get_drvdata(devfreq->dev.parent);
+	switch (event) {
+	case DEVFREQ_GOV_START:
+		engine->de_devfreq_auto = true;
+		DRM_INFO("de_devfreq_auto true\n");
+		break;
+	case DEVFREQ_GOV_STOP:
+		engine->de_devfreq_auto = false;
+		DRM_INFO("de_devfreq_auto false\n");
+		break;
+	default:
+		break;
+	}
+	return 0;
+}
+
+static struct devfreq_governor sunxi_devfreq_deauto_governor = {
+	.name = "sunxi_deauto",
+	.event_handler = sunxi_deauto_governor_event_handler,
+};
+#endif
 
 static int sunxi_de_probe(struct platform_device *pdev)
 {
@@ -1189,11 +1688,11 @@ static int sunxi_de_probe(struct platform_device *pdev)
 	struct sunxi_de_out *display_out;
 	struct de_channel_handle *ch_hdl;
 	struct module_create_info cinfo;
+	unsigned int err_create = 0;
 
 	ret = sunxi_display_engine_init(&pdev->dev);
 	if (ret)
 		goto OUT;
-
 	//create hw
 	memset(&cinfo, 0, sizeof(cinfo));
 	engine = dev_get_drvdata(&pdev->dev);
@@ -1206,7 +1705,6 @@ static int sunxi_de_probe(struct platform_device *pdev)
 	cinfo.update_mode = engine->match_data->update_mode;
 
 	sunxi_de_reg_mem_init(engine);
-
 	engine->top_hdl = de_top_create(&cinfo);
 	engine->wb.wb_hdl = de_wb_create(&cinfo);
 
@@ -1222,10 +1720,28 @@ static int sunxi_de_probe(struct platform_device *pdev)
 			DRM_INFO("[SUNXI-DE] port reg not found\n");
 
 		cinfo.id = display_out->id;
-		display_out->bld_hdl = de_blender_create(&cinfo);
+		display_out->bld_hdl = de_blender_create(&cinfo, engine->chn_cfg_mode);
+		if (!display_out->bld_hdl) {
+			if (engine->display_out_cnt - (++err_create) == 0) {
+				ret = -EINVAL;
+				DRM_ERROR("[SUNXI-DE] display_out_cnt %d, and can not create any bld\n", engine->display_out_cnt);
+				goto EXIT;
+			}
+			continue;
+		}
+		display_out->bld_top_hdl = de_blender_top_create(&cinfo);
 		cinfo.reg_offset = display_out->bld_hdl->disp_reg_base;
 		display_out->backend_hdl = de_backend_create(&cinfo);
+		display_out->fmt_hdl = de_fmt_create(&cinfo);
+		if (display_out->backend_hdl->routine_job)
+			display_out->work = true;
 	}
+	if (err_create) {
+		DRM_INFO("[SUNXI-DE] display_out_cnt %d, create display_cnt(bld_cnt) %d\n",
+			  engine->display_out_cnt, engine->display_out_cnt - err_create);
+		engine->display_out_cnt -= err_create;
+	}
+
 
 	//create channel
 	for (i = 0; ; i++) {
@@ -1263,6 +1779,26 @@ static int sunxi_de_probe(struct platform_device *pdev)
 		goto EXIT;
 	}
 
+	#if defined(CONFIG_PM_DEVFREQ)
+	memset(&sunxi_defreq_userspace_profile, 0, sizeof(sunxi_defreq_userspace_profile));
+	if (dev_pm_opp_of_add_table(&pdev->dev) == 0) {
+		devfreq_add_governor(&sunxi_devfreq_deauto_governor);
+
+		sunxi_defreq_userspace_profile.target = sunxi_de_devfreq_target;
+		sunxi_defreq_userspace_profile.exit = sunxi_de_devfreq_exit;
+		sunxi_defreq_userspace_profile.initial_freq = engine->clk_freq;
+		sunxi_defreq_userspace_profile.get_cur_freq = sunxi_defreq_get_cur_freq;
+		sunxi_defreq_userspace_profile.freq_table = devm_kcalloc(&pdev->dev, 2, sizeof(*sunxi_defreq_userspace_profile.freq_table), GFP_KERNEL);
+		sunxi_defreq_userspace_profile.freq_table[0] = engine->display_out->kHZ_pixelclk;
+		sunxi_defreq_userspace_profile.freq_table[1] = engine->clk_freq;
+		sunxi_defreq_userspace_profile.max_state = 2;
+
+		devm_devfreq_add_device(&pdev->dev, &sunxi_defreq_userspace_profile, "sunxi_deauto", NULL);
+	} else {
+		dev_pm_opp_of_remove_table(&pdev->dev);
+	}
+	#endif
+
 	return ret;
 EXIT:
 	sunxi_display_engine_exit(&pdev->dev);
@@ -1272,8 +1808,12 @@ OUT:
 
 static int sunxi_de_remove(struct platform_device *pdev)
 {
+	struct sunxi_display_engine *engine;
+	engine = dev_get_drvdata(&pdev->dev);
+
 	sunxidrm_debug_term();
 	component_del(&pdev->dev, &sunxi_de_component_ops);
+	sunxi_de_reg_mem_deinit(engine);
 	sunxi_display_engine_exit(&pdev->dev);
 	return 0;
 }
@@ -1306,6 +1846,16 @@ static const struct de_match_data de201_data = {
 	.blending_in_rgb = true,
 };
 
+static const struct de_match_data de212_data = {
+	.version = 0x212,
+	.update_mode = RCQ_MODE,
+	.blending_in_rgb = true,
+	.rcq_wait_line = true,
+	.boot_mode_ctrl = true,
+	.boot_mode_reg  = 0x03000004,
+	.boot_mode_mask = (u32)BIT(24),
+};
+
 static const struct of_device_id sunxi_de_match[] = {
 	{
 		.compatible = "allwinner,display-engine-v350",
@@ -1326,6 +1876,10 @@ static const struct of_device_id sunxi_de_match[] = {
 	{
 		.compatible = "allwinner,display-engine-v201",
 		.data = &de201_data,
+	},
+	{
+		.compatible = "allwinner,display-engine-v212",
+		.data = &de212_data,
 	},
 	{},
 };
@@ -1370,11 +1924,23 @@ int sunxi_de_channel_update(struct sunxi_de_channel_update *info)
 	/* disable channel */
 	if (new_state->base.fb == NULL) {
 		channel_apply(hdl, new_state, output_info,  &channel_out, engine->match_data->blending_in_rgb);
-		de_bld_pipe_reset(hwde->bld_hdl, old_zorder, port_id);
+		if (hwde->bld_top_hdl) {
+			de_bld_top_set_vsu_mux(hwde->bld_top_hdl, channel_out.vsu_mux);
+			de_bld_top_set_cross(hwde->bld_top_hdl, false);
+		}
+		if (info->force)
+			de_bld_pipe_reset(hwde->bld_hdl, port_id, -255);
+		else
+			de_bld_pipe_reset(hwde->bld_hdl, old_zorder, port_id);
+
 		return 0;
 	}
 
 	channel_apply(hdl, new_state, output_info, &channel_out, engine->match_data->blending_in_rgb);
+	if (hwde->bld_top_hdl) {
+		de_bld_top_set_vsu_mux(hwde->bld_top_hdl, channel_out.vsu_mux);
+		de_bld_top_set_cross(hwde->bld_top_hdl, false);
+	}
 
 	/* disable not used pipe */
 	if (old_zorder != new_zorder)
@@ -1390,8 +1956,13 @@ void sunxi_de_dump_channel_state(struct drm_printer *p, struct sunxi_de_out *hwd
 //	struct sunxi_display_engine *engine = dev_get_drvdata(hwde->dev);
 	dump_channel_state(p, hdl, state, state_only);
 	if (hdl == hwde->ch_hdl[hwde->ch_cnt - 1] && !state_only) {
+		if (hwde->bld_top_hdl)
+			dump_bld_top_state(p, hwde->bld_top_hdl);
 		dump_bld_state(p, hwde->bld_hdl);
 		de_backend_dump_state(p, hwde->backend_hdl);
+		if (hwde->fmt_hdl)
+			de_fmt_dump_state(p, hwde->fmt_hdl);
+		drm_printf(p, "\n");
 //		if (hwde->id == 0)
 //			test_rcq_fifo(engine);
 	}
@@ -1424,6 +1995,10 @@ int sunxi_de_write_back(struct sunxi_de_out *hwde, struct sunxi_de_wb *wb, struc
 		de_top_wb_config(engine->top_hdl, &cfg);
 		de_wb_apply(wb_hdl, NULL, NULL);
 		engine->wb.wb_enable = false;
+
+		if (engine->offline_mode.use_safebuf && engine->offline_mode.enable)
+			sunxi_de_enable_drm_master(engine, SUNXI_DE_DRM_MASTER_DE | SUNXI_DE_DRM_MASTER_EINK, true);
+
 		DRM_INFO("[SUNXI-DE] wb disable\n");
 		return 0;
 	}
@@ -1441,6 +2016,9 @@ int sunxi_de_write_back(struct sunxi_de_out *hwde, struct sunxi_de_wb *wb, struc
 	engine->wb.wb_enable = true;
 	engine->wb.wb_disp = hwde->id;
 
+	if (engine->offline_mode.use_safebuf && engine->offline_mode.enable)
+		sunxi_de_enable_drm_master(engine, SUNXI_DE_DRM_MASTER_DE | SUNXI_DE_DRM_MASTER_EINK, false);
+
 	/* update wb config */
 	in_info.width = hwde->output_info.width;
 	in_info.height = hwde->output_info.height;
@@ -1449,4 +2027,144 @@ int sunxi_de_write_back(struct sunxi_de_out *hwde, struct sunxi_de_wb *wb, struc
 	in_info.csc_info.color_range = hwde->output_info.color_range;
 	in_info.csc_info.eotf = hwde->output_info.eotf;
 	return de_wb_apply(wb_hdl, &in_info, fb);
+}
+
+bool sunxi_de_query_de_busy(struct sunxi_de_out *hwde, struct disp_video_timings *timings)
+{
+	struct sunxi_display_engine *engine = dev_get_drvdata(hwde->dev);
+	unsigned int cur_line;
+
+	if (engine->match_data->update_mode == RCQ_MODE) {
+		if (engine->match_data->rcq_wait_line) {
+			cur_line = sunxi_drm_crtc_get_output_current_line(hwde->scrtc);
+			return !(cur_line <= timings->ver_front_porch);
+		} else {
+			return de_top_query_de_busy_state(engine->top_hdl, hwde->id);
+		}
+	} else {
+		// TODO
+		return false;
+	}
+}
+
+int sunxi_de_div_calc_mn(unsigned long freq_in_kHZ, unsigned long freq_out_kHZ, unsigned int *m, unsigned int *n)
+{
+	unsigned int i, j;
+	unsigned long diff_min, diff_tmp;
+	diff_min = freq_in_kHZ;
+	if (freq_out_kHZ < freq_in_kHZ) {
+		*m = freq_in_kHZ / freq_out_kHZ;
+		if (*m <= 16) {
+			for (i = 0; i <= 15; i++) {
+				for (j = 0; j <= i; j++) {
+					if (freq_in_kHZ * (j + 1) / (i + 1) >= freq_out_kHZ) {
+						diff_tmp = freq_in_kHZ * (j + 1) / (i + 1) - freq_out_kHZ;
+						if (diff_tmp < diff_min) {
+							diff_min = diff_tmp;
+							*m = i;
+							*n = j;
+						}
+						break;
+					}
+				}
+			}
+		} else {
+			*m = 15;
+			*n = 0;
+		}
+	} else {
+		*m = 0;
+		*n = 0;
+	}
+	return 0;
+}
+
+int sunxi_de_auto_calc_freq_and_apply(struct sunxi_de_out *hwde)
+{
+	struct sunxi_display_engine *engine;
+	struct sunxi_de_out *display_out;
+	unsigned long de_clk_tmp_khz, de_clk_ret_khz, c0, c1, c2, c3;
+	unsigned int i, j, m, n, width, height, width_scn, height_scn;
+
+	engine = dev_get_drvdata(hwde->dev);
+	de_clk_ret_khz = 0;
+	for (i = 0; i < engine->display_out_cnt; i++) {
+		display_out = &engine->display_out[i];
+		for (j = 0; j < display_out->ch_cnt; j++) {
+			get_size_by_chn(display_out->ch_hdl[j], &width, &height);
+			get_chn_size_on_scn(display_out->ch_hdl[j], &width_scn, &height_scn);
+			c0 = c1 = 100;
+			if (width > width_scn) {
+				c0 = (unsigned long)width * (unsigned long)100 / (unsigned long)width_scn;
+			}
+			if (height > height_scn) {
+				c1 = (unsigned long)height * (unsigned long)100 / (unsigned long)height_scn;
+			}
+			c2 = (unsigned long)display_out->kHZ_pixelclk * c0 * c1;
+			c2 = c2 / (unsigned long)10000;
+			if (c2 <= display_out->kHZ_pixelclk)
+				c2 = display_out->kHZ_pixelclk;
+			c3 = c2 * (unsigned long)14;
+			de_clk_tmp_khz = c3 / 10;
+			DRM_DEBUG_DRIVER("de_clk_tmp_khz %lu , inwh(%dx%d), outwh(%dx%d), c0/c1 %lu , c0 %lu , c1 %lu , c2 %lu , c3 %lu\n",
+					de_clk_tmp_khz, width, height, width_scn, height_scn, c0 / c1, c0, c1, c2, c3);
+			if (de_clk_tmp_khz > (engine->clk_freq / 1000))
+				de_clk_tmp_khz = (engine->clk_freq / 1000);
+
+			/*
+			 * bug:413435
+			 * when rotating and swapping width/height in afbc, it may not fully adhere to the formula-based
+			 * calculation. according to the formula, the client device would encounter [the issue],
+			 * but neither the public version nor manual register configuration can reproduce it.
+			 * this serves as a workaround to mitigate risks.
+			*/
+			/* if (get_chn_afbc_rotate_is_swap_wh(display_out->ch_hdl[j]))
+				 de_clk_tmp_khz = (engine->clk_freq / 1000); */
+			de_clk_ret_khz = (de_clk_ret_khz > de_clk_tmp_khz) ? de_clk_ret_khz : de_clk_tmp_khz;
+			if (de_clk_ret_khz == (engine->clk_freq / 1000))
+				break;
+		}
+	}
+
+	c0 = (unsigned long)engine->clk_freq / 1000;
+	sunxi_de_div_calc_mn(c0, de_clk_ret_khz, &m, &n);
+
+	DRM_DEBUG_DRIVER("c0 %lu , c1 %lu , c2 %lu \n", c0, c1, c2);
+	DRM_DEBUG_DRIVER("de_clk_ret_khz %lu , m %d , n %d\n", de_clk_ret_khz, m, n);
+	DRM_DEBUG_DRIVER("de_clk_ret_khz %lu , ret clk %lu , ret_clk %d\n", de_clk_ret_khz, c0 * (n + 1) / (m + 1), (c0 * (n + 1) / (m + 1)) >= de_clk_ret_khz);
+	de_top_freq_div_apply(engine->top_hdl, m, n);
+	return 0;
+}
+
+int sunxi_de_get_offline_mode_info(struct sunxi_de_out *hwde, struct sunxi_de_offline_buf_info *offline_buf)
+{
+	struct sunxi_display_engine *engine;
+	struct de_offline_get_info offline_info;
+	int ret;
+
+	engine = dev_get_drvdata(hwde->dev);
+	ret = de_top_get_offline_info(engine->top_hdl, &offline_info);
+	if (ret) {
+		memset(offline_buf, 0, sizeof(*offline_buf));
+		return ret;
+	}
+
+	offline_buf->is_safebuf = engine->offline_mode.use_safebuf;
+	offline_buf->vir_addr = offline_info.vir_addr;
+	offline_buf->phy_addr = engine->offline_mode.dma_addr;
+	offline_buf->buf_size = offline_info.buff_size;
+	return ret;
+}
+
+int sunxi_de_offline_mode_pre_init(struct sunxi_de_out *hwde, unsigned int width, unsigned int height)
+{
+	struct sunxi_display_engine *engine = dev_get_drvdata(hwde->dev);;
+	return de_top_offline_realloc_pingpang_buf(engine->top_hdl, width, height);
+}
+
+enum de_offline_mode_status sunxi_de_query_clear_offline_mode_status(struct sunxi_de_out *hwde,
+											enum de_offline_mode_status status)
+{
+	struct sunxi_display_engine *engine = dev_get_drvdata(hwde->dev);
+	return de_top_offline_mode_query_state_with_clear(engine->top_hdl, status);
 }

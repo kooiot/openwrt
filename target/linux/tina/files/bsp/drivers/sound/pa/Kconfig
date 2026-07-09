@@ -12,4 +12,15 @@ config SND_SOC_AW87XXX
 	help
 	  This option enables support for AW87XXX Smart K PA.
 
+config SND_SOC_AD8XXXX
+	tristate "SoC Audio for ESMT AD8XXXX series"
+	depends on I2C
+	help
+		This option enables support for ESMT AD8XXXX series PA.
+
+config SND_SMARTPA_AW882XX
+	tristate "SoC Audio for awinic aw882xx series"
+	depends on I2C
+	help
+		This option enables support for aw882xx series Smart PA.
 endmenu

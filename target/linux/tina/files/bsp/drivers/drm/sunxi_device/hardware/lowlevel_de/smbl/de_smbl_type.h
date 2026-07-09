@@ -258,7 +258,13 @@ struct __smbl_status_t {
 	u32 ahb_update_en;
 	u32 runtime;
 	u32 backlight;
+	u32 backlight_after_dimming; // update by backend module
 	u32 dimming;
+	u32 dimming_changed;
+	u32 backlight_changed;
+	u32 skip_dimming;
+	u32 dimming_start_frame;
+	u32 dimming_coeff_100;
 	u8 min_adj_index_hist[IEP_LH_PWRSV_NUM];
 	u32 size; /* size = width*height/100 */
 };

@@ -37,13 +37,16 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### ###########################################################################
+PVR_SYSTEM := rgx_sunxi
+NO_HARDWARE ?= 0
+PDUMP ?= 0
+
+RGX_BVNC := 22.102.54.38
 
 include ../config/preconfig.mk
 include ../config/window_system.mk
 
-PVR_SYSTEM := rgx_sunxi
-NO_HARDWARE ?= 0
-PDUMP ?= 0
+
 
 ifeq ($(SUPPORT_KMS),1)
  PVR_DRM_MODESET_DRIVER_NAME := nulldisp
@@ -63,7 +66,6 @@ KERNEL_CROSS_COMPILE := $(CROSS_COMPILE)
 KERNEL_COMPONENTS := srvkm $(DISPLAY_CONTROLLER)
 
 HWR_DEFAULT_ENABLED := 1
-RGX_BVNC := 22.102.54.38
 
 PVR_LDM_PLATFORM_PRE_REGISTERED := 1
 

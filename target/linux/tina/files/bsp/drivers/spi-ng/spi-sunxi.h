@@ -220,7 +220,6 @@ struct sunxi_spi {
 	/* spi dts data */
 	struct resource *mem_res;
 	void __iomem *base_addr;
-	u32 wait_clk;			/* liuruixuan add wait_clk for esam sc1161 20250829*/
 	struct clk *pclk;		/* pll clock */
 	struct clk *mclk;		/* spi module clock */
 	struct clk *bus_clk;	/* spi bus clock */

@@ -118,3 +118,22 @@ bool sunxi_rproc_priv_is_booted(struct sunxi_rproc_priv *rproc_priv)
 	return rproc_priv->ops->is_booted(rproc_priv);
 }
 EXPORT_SYMBOL(sunxi_rproc_priv_is_booted);
+
+int sunxi_rproc_priv_trigger_nmi(struct sunxi_rproc_priv *rproc_priv)
+{
+	if (!rproc_priv->ops->trigger_nmi)
+		return 1;
+
+	return rproc_priv->ops->trigger_nmi(rproc_priv);
+}
+EXPORT_SYMBOL(sunxi_rproc_priv_trigger_nmi);
+
+int sunxi_rproc_priv_is_nmi_complete(struct sunxi_rproc_priv *rproc_priv)
+{
+	if (!rproc_priv->ops->is_nmi_complete) {
+		return -1;
+	}
+
+	return rproc_priv->ops->is_nmi_complete(rproc_priv);
+}
+EXPORT_SYMBOL(sunxi_rproc_priv_is_nmi_complete);

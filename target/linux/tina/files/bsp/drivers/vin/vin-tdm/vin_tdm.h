@@ -23,14 +23,16 @@
 #include <linux/kernel.h>
 #include "../platform/platform_cfg.h"
 
-#ifdef TDM_V200
+#if defined TDM_V200
 #include "tdm200/tdm200_reg.h"
+#elif defined TDM_V230
+#include "tdm230/tdm230_reg.h"
 #else
 #include "tdm100/tdm_reg.h"
 #endif
 #include "../vin-video/vin_core.h"
 
-#ifdef TDM_V200
+#if defined TDM_V200 || defined TDM_V230
 /* #define TDM_USE_VGM */
 #define TDM_BUFS_NUM 6
 #define TDM_TX_HBLANK 256
@@ -42,11 +44,24 @@
 #define TDM_TX_VBLANK 36
 #endif
 
+enum tdmstat_buf_state_t {
+	TDMSTAT_IDLE = 0,
+	TDMSTAT_RX_SET,
+	TDMSTAT_USER_SET,
+	TDMSTAT_TX_SET,
+};
+
 struct tdm_buffer {
 	void *virt_addr;
 	void *dma_addr;
 	u32 buf_size;
 	u8 empty;
+
+	struct dma_buf *dmabuf;
+	void *user_viraddr;
+	struct list_head list;
+	enum tdmstat_buf_state_t state;
+	u8 id;
 };
 
 enum tdm_state_t {
@@ -73,7 +88,7 @@ struct tdm_format {
 	enum tdm_input_fmt raw_fmt;
 };
 
-#ifdef TDM_V200
+#if defined TDM_V200 || defined TDM_V230
 struct tdm_work_status {
 	bool wdr_work;
 	bool speed_dn_en;
@@ -85,6 +100,10 @@ struct tdm_work_status {
 
 struct rx_work_status {
 	u8 wdr_mode;
+#if defined TDM_V230
+	enum tdm_tx_start_mode tx_start_mode;
+	bool pre_w_para_en;
+#endif
 	bool tx_func_en;
 	bool lbc_en;
 	bool pkg_en;
@@ -112,15 +131,27 @@ struct tdm_rx_dev {
 	u32 isp_clk;
 	u32 event_type;
 	u32 vts;
-#ifdef TDM_V200
+#if defined TDM_V200 || defined TDM_V230
 	bool streaming;
 	struct rx_work_status ws;
 	struct tdm_rx_lbc lbc;
 	struct list_head *list;
+	u8 send_buf_id;
+
+	struct work_struct tdm_rpmsg_send_task;
+	void (*tdm_buffer_done_callback)(struct vin_isp_tdm_event_status *status);
+
+#if defined TDM_V230
+	enum tdm_rx_to_tx_mode tdm_rtt_mode;
+	enum aiisp_switch_mode aiisp_switch;
+	struct rx_aiisp_cfg_t rx_aiisp_cfg;
+
+#endif
 #endif
 	/* Buffer */
 	u32 buf_size;
 	u8 buf_cnt;
+	u8 set_buf_cnt;
 	struct vin_mm ion_man[TDM_BUFS_NUM]; /* for ion alloc/free manage */
 	struct tdm_buffer buf[TDM_BUFS_NUM];
 	unsigned int stream_count;
@@ -149,18 +180,37 @@ struct tdm_dev {
 	enum tdm_state_t state;	/* enabling/disabling state */
 	struct mutex ioctl_lock; /* serialize private ioctl */
 	u32 stream_cnt;
-#ifdef TDM_V200
+	u32 delay_init;
+#if defined TDM_V200 || defined TDM_V230
 	struct tdm_work_status ws;
 	struct tdm_tx_cfg tx_cfg;
 	struct list_head working_chn_fmt;
+	struct list_head rx_active[TDM_RX_NUM];
+	struct list_head rx_done[TDM_RX_NUM];
 	struct work_struct tdm_reset_task;
 	u32 work_mode;
 	u32 bitmap_chn_use;
 	u32 rx_stream_cnt[TDM_RX_NUM];
+	u32 tx_frame_cnt;
+	u8 tx_now_id;
+	u8 tx_next_id;
+	u8 tx_next_id_other;
+	bool tdm_task_resetting_flag;
+	bool rx_frm_cutoff[TDM_RX_NUM];
+	bool tx_busy;
+	bool tdm_tx_work;
+#if defined TDM_V230
+	enum lbc_align_choose align_choose;
 #endif
+#ifdef OUTPUT_EMBED_DATA
+	bool time_embed_en;
+#endif
+#endif
+	const char *rpmsg_ser_name;
 };
 
 int sunxi_tdm_subdev_s_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *param);
+void sunxi_tdm_sensor_blc(struct v4l2_subdev *sd, struct sensor_blc_offset *blc_ofs);
 void sunxi_tdm_fps_clk(struct v4l2_subdev *sd, int fps, unsigned int isp_clk, unsigned int vts);
 void sunxi_tdm_buffer_free(unsigned int id);
 int sunxi_tdm_platform_register(void);

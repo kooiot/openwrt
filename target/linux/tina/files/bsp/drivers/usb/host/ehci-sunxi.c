@@ -29,8 +29,6 @@
 #include <linux/usb.h>
 #include <linux/usb/hcd.h>
 #include <linux/regulator/consumer.h>
-#include <linux/gpio/consumer.h>
-#include <linux/delay.h>
 #include "ehci.h"
 #include "sunxi-hci.h"
 
@@ -361,7 +359,8 @@ static ssize_t show_phy_range(struct device *dev,
 	DMSG_INFO("PHY's rate and range:0x0~0x3ff\n");
 	return sprintf(buf, "rate:0x%x\n",
 		usb_new_phyx_read(sunxi_ehci));
-#elif IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN300IW1)
+#elif IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN300IW1) \
+	|| IS_ENABLED(CONFIG_ARCH_SUN251IW1)
 	DMSG_INFO("PHY's rate and range:0x0~0xfff\n");
 	return sprintf(buf, "rate:0x%x\n",
 		usb_new_phyx_read(sunxi_ehci));
@@ -384,12 +383,13 @@ static ssize_t ehci_phy_range(struct device *dev, struct device_attribute *attr,
 
 #if IS_ENABLED(CONFIG_ARCH_SUN8IW20) || IS_ENABLED(CONFIG_ARCH_SUN20IW1) \
 	|| IS_ENABLED(CONFIG_ARCH_SUN8IW21) || IS_ENABLED(CONFIG_ARCH_SUN55IW6) \
-	|| IS_ENABLED(CONFIG_ARCH_SUN300IW1)
+	|| IS_ENABLED(CONFIG_ARCH_SUN300IW1) || IS_ENABLED(CONFIG_ARCH_SUN251IW1)
 	int val = 0, range = 0;
 
 #if IS_ENABLED(CONFIG_ARCH_SUN8IW21)
 	range = 0x3ff;
-#elif IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN300IW1)
+#elif IS_ENABLED(CONFIG_ARCH_SUN55IW6) || IS_ENABLED(CONFIG_ARCH_SUN300IW1) \
+	|| IS_ENABLED(CONFIG_ARCH_SUN251IW1)
 	range = 0xfff;
 #else
 	range = 0x1fff;
@@ -550,41 +550,8 @@ static int close_ehci_clock(struct sunxi_hci_hcd *sunxi_ehci)
 	return sunxi_ehci->close_clock(sunxi_ehci, 0);
 }
 
-/*
- * 简单的GPIO reset控制函数
- * 根据设备树定义：reset-gpios = <&pio PA 7 GPIO_ACTIVE_HIGH>
- * GPIO_ACTIVE_HIGH表示高电平有效，所以：
- * - 高电平(1) = 释放reset
- * - 低电平(0) = 断言reset
- */
-static void sunxi_gpio_reset_device(struct sunxi_hci_hcd *sunxi_ehci, int active_val)
-{
-	if (!sunxi_ehci->reset_gpio)
-		return;
-
-	printk("+++ [%s]: Performing simple GPIO reset..., active_val: %d\n", sunxi_ehci->hci_name, active_val);
-
-	/* 使用try-catch风格，确保reset错误不影响驱动 */
-	do {
-		gpiod_set_value(sunxi_ehci->reset_gpio, !active_val);
-		usleep_range(10000, 20000);  // 10-20ms
-		
-		/* 上拉reset线（reset） */
-		gpiod_set_value(sunxi_ehci->reset_gpio, active_val);
-		usleep_range(10000, 20000);  // 10-20ms
-
-		gpiod_set_value(sunxi_ehci->reset_gpio, !active_val);
-		
-		/* 等待设备稳定 */
-		usleep_range(10000, 20000);  // 10-20ms
-
-		// printk("+++ [%s]: GPIO reset completed\n", sunxi_ehci->hci_name);
-	} while (0);
-}
-
 static void sunxi_start_ehci(struct sunxi_hci_hcd *sunxi_ehci)
 {
-	/* GPIO reset已在probe时执行，这里直接启动设备 */
 	open_ehci_clock(sunxi_ehci);
 	sunxi_hcd_board_set_passby(sunxi_ehci, 1);
 	sunxi_hcd_board_set_vbus(sunxi_ehci, 1);
@@ -698,12 +665,6 @@ static int sunxi_insmod_ehci(struct platform_device *pdev)
 	if (IS_ERR(sunxi_ehci->hci_regulator)) {
 		DMSG_WARN("%s()%d WARN: get hci regulator failed\n", __func__, __LINE__);
 		sunxi_ehci->hci_regulator = NULL;
-	}
-
-	sunxi_ehci->vbusin = regulator_get(dev, "vbusin");
-	if (IS_ERR(sunxi_ehci->vbusin)) {
-		DMSG_WARN("%s()%d WARN: get vbusin failed\n", __func__, __LINE__);
-		sunxi_ehci->vbusin = NULL;
 	}
 	/* echi start to work */
 	sunxi_start_ehci(sunxi_ehci);
@@ -828,9 +789,6 @@ static int sunxi_rmmod_ehci(struct platform_device *pdev)
 	if (sunxi_ehci->hci_regulator)
 		regulator_put(sunxi_ehci->hci_regulator);
 
-	if (sunxi_ehci->vbusin)
-		regulator_put(sunxi_ehci->vbusin);
-
 	atomic_sub(1, &ehci_enable_flag[sunxi_ehci->usbc_no]);
 
 	sunxi_ehci->hcd = NULL;
@@ -858,54 +816,6 @@ static int sunxi_ehci_hcd_probe(struct platform_device *pdev)
 	if (ret != 0) {
 		sunxi_err(&pdev->dev, "init_sunxi_hci is fail\n");
 		return -1;
-	}
-
-	/* 获取GPIO reset控制 */
-	sunxi_ehci = pdev->dev.platform_data;
-	if (sunxi_ehci) {
-		struct device_node *np = pdev->dev.of_node;
-		int active_val = 0;
-		
-		/* 检查设备树中的reset-gpios属性 */
-		if (of_property_read_bool(np, "reset-gpios")) {
-			// printk("+++ Found reset-gpios property in device tree\n");
-			
-			/* 检查是否为active low */
-			if (of_property_read_bool(np, "reset-gpios-active-low")) {
-				// printk("+++ reset-gpios is GPIO_ACTIVE_LOW\n");
-				active_val = 0;
-			} else {
-				// printk("+++ reset-gpios is GPIO_ACTIVE_HIGH\n");
-				active_val = 1;
-			}
-		} else {
-			// printk("+++ No reset-gpios property found in device tree\n");
-		}
-		
-		sunxi_ehci->reset_gpio = devm_gpiod_get_optional(&pdev->dev, "reset", GPIOD_OUT_HIGH);
-		if (IS_ERR(sunxi_ehci->reset_gpio)) {
-			DMSG_WARN("Failed to get reset GPIO: %d, continuing without reset\n", 
-					  PTR_ERR(sunxi_ehci->reset_gpio));
-			sunxi_ehci->reset_gpio = NULL;
-		}
-
-		if (sunxi_ehci->reset_gpio) {
-			DMSG_INFO("Successfully got reset GPIO: %s\n", 
-					  gpiod_get_label(sunxi_ehci->reset_gpio));
-			
-			/* 检查GPIO描述符的active状态 */
-			if (gpiod_is_active_low(sunxi_ehci->reset_gpio)) {
-				// printk("+++ GPIO descriptor shows active_low = true\n");
-			} else {
-				// printk("+++ GPIO descriptor shows active_low = false\n");
-			}
-			
-			/* 立即执行一次复位 */
-			// printk("+++ Executing initial GPIO reset...\n");
-			sunxi_gpio_reset_device(sunxi_ehci, active_val);
-		} else {
-			// printk("+++ No reset GPIO found, skipping reset process\n");
-		}
 	}
 
 	/* Initialize dma_mask and coherent_dma_mask to 32-bits */
@@ -1061,7 +971,6 @@ static int sunxi_ehci_hcd_suspend(struct device *dev)
 		DMSG_ERR("ERR: ehci is null\n");
 		return 0;
 	}
-	atomic_set(&hci_thread_suspend_flag, 1);
 
 	if (sunxi_ehci->wakeup_suspend == USB_STANDBY) {
 		DMSG_INFO("[%s] usb suspend\n", sunxi_ehci->hci_name);
@@ -1091,7 +1000,6 @@ static int sunxi_ehci_hcd_suspend(struct device *dev)
 		ehci_suspend(hcd, device_may_wakeup(dev));
 		cancel_work_sync(&sunxi_ehci->resume_work);
 		sunxi_stop_ehci(sunxi_ehci);
-		sunxi_hci_set_vbus(sunxi_ehci, 0);
 	}
 
 	return 0;
@@ -1104,7 +1012,6 @@ static void sunxi_ehci_resume_work(struct work_struct *work)
 	sunxi_ehci = container_of(work, struct sunxi_hci_hcd, resume_work);
 
 	sunxi_hcd_board_set_vbus(sunxi_ehci, 1);
-	sunxi_hci_set_vbus(sunxi_ehci, 1);
 }
 
 static int sunxi_ehci_hcd_resume(struct device *dev)
@@ -1176,7 +1083,6 @@ static int sunxi_ehci_hcd_resume(struct device *dev)
 
 		schedule_work(&sunxi_ehci->resume_work);
 	}
-	atomic_set(&hci_thread_suspend_flag, 0);
 
 	return 0;
 }

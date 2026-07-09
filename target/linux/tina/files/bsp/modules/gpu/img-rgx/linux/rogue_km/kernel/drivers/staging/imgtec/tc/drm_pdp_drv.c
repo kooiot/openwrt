@@ -1,56 +1,59 @@
-/* -*- mode: c; indent-tabs-mode: t; c-basic-offset: 8; tab-width: 8 -*- */
-/* vi: set ts=8 sw=8 sts=8: */
-/*************************************************************************/ /*!
-@File
-@Codingstyle    LinuxKernel
-@Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
-@License        Dual MIT/GPLv2
-
-The contents of this file are subject to the MIT license as set out below.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-Alternatively, the contents of this file may be used under the terms of
-the GNU General Public License Version 2 ("GPL") in which case the provisions
-of GPL are applicable instead of those above.
-
-If you wish to allow use of your version of this file only under the terms of
-GPL, and not to allow others to use your version of this file under the terms
-of the MIT license, indicate your decision by deleting the provisions above
-and replace them with the notice and other provisions required by GPL as set
-out in the file called "GPL-COPYING" included in this distribution. If you do
-not delete the provisions above, a recipient may use your version of this file
-under the terms of either the MIT license or GPL.
-
-This License is also included in this distribution in the file called
-"MIT-COPYING".
-
-EXCEPT AS OTHERWISE STATED IN A NEGOTIATED AGREEMENT: (A) THE SOFTWARE IS
-PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
-BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE AND NONINFRINGEMENT; AND (B) IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/ /**************************************************************************/
+/*
+ * @File
+ * @Codingstyle LinuxKernel
+ * @Copyright   Copyright (c) Imagination Technologies Ltd. All Rights Reserved
+ * @License     Dual MIT/GPLv2
+ *
+ * The contents of this file are subject to the MIT license as set out below.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * Alternatively, the contents of this file may be used under the terms of
+ * the GNU General Public License Version 2 ("GPL") in which case the provisions
+ * of GPL are applicable instead of those above.
+ *
+ * If you wish to allow use of your version of this file only under the terms of
+ * GPL, and not to allow others to use your version of this file under the terms
+ * of the MIT license, indicate your decision by deleting the provisions above
+ * and replace them with the notice and other provisions required by GPL as set
+ * out in the file called "GPL-COPYING" included in this distribution. If you do
+ * not delete the provisions above, a recipient may use your version of this file
+ * under the terms of either the MIT license or GPL.
+ *
+ * This License is also included in this distribution in the file called
+ * "MIT-COPYING".
+ *
+ * EXCEPT AS OTHERWISE STATED IN A NEGOTIATED AGREEMENT: (A) THE SOFTWARE IS
+ * PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+ * BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+ * PURPOSE AND NONINFRINGEMENT; AND (B) IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 
 #include <linux/module.h>
-#include <linux/reservation.h>
 #include <linux/version.h>
 #include <linux/component.h>
 #include <linux/of_platform.h>
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0))
+#include <drm/drm_drv.h>
+#include <drm/drm_file.h>
+#include <drm/drm_ioctl.h>
+#include <drm/drm_prime.h>
+#include <drm/drm_print.h>
+#include <drm/drm_vblank.h>
+#else
 #include <drm/drmP.h>
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 18, 0))
-#include <drm/drm_gem.h>
 #endif
 
 #include "tc_drv.h"
@@ -80,14 +83,30 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define PVR_DRIVER_ATOMIC 0
 #endif
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
+#define	PVR_DRIVER_PRIME 0
+#else
+#define	PVR_DRIVER_PRIME DRIVER_PRIME
+#endif
+
 /* This header must always be included last */
 #include "kernel_compatibility.h"
 
 static bool display_enable = true;
+static unsigned int output_device = 1;
 
 module_param(display_enable, bool, 0444);
 MODULE_PARM_DESC(display_enable, "Enable all displays (default: Y)");
 
+module_param(output_device, uint, 0444);
+MODULE_PARM_DESC(output_device, "PDP output device (default: PDP1)");
+
+struct pdp_gem_private *pdp_gem_get_private(struct drm_device *dev)
+{
+	struct pdp_drm_private *dev_priv = dev->dev_private;
+
+	return dev_priv->gem_priv;
+}
 
 static void pdp_irq_handler(void *data)
 {
@@ -117,6 +136,32 @@ static int pdp_early_load(struct drm_device *dev)
 		to_platform_device(dev->dev)->id_entry->driver_data;
 	dev_priv->display_enabled = display_enable;
 
+#if !defined(SUPPORT_PLATO_DISPLAY)
+	/* PDP output device selection  */
+	dev_priv->outdev = (enum pdp_output_device)output_device;
+	if (dev_priv->outdev == PDP_OUTPUT_PDP2 &&
+	    !tc_pdp2_compatible(dev->dev->parent)) {
+		DRM_ERROR("TC doesn't support PDP2\n");
+		err = -ENODEV;
+		goto err_dev_priv_free;
+	}
+
+	if (dev_priv->outdev == PDP_OUTPUT_PDP1) {
+		dev_priv->pdp_interrupt = TC_INTERRUPT_PDP;
+	} else if (dev_priv->outdev == PDP_OUTPUT_PDP2) {
+		dev_priv->pdp_interrupt = TC_INTERRUPT_PDP2;
+	} else {
+		DRM_ERROR("wrong PDP device number (outdev=%u)\n",
+			  dev_priv->outdev);
+		err = -ENODEV;
+		goto err_dev_priv_free;
+	}
+
+	/* PDP FBC module support detection */
+	dev_priv->pfim_capable = (dev_priv->outdev == PDP_OUTPUT_PDP2 &&
+				  tc_pfim_capable(dev->dev->parent));
+#endif
+
 	if (dev_priv->version == PDP_VERSION_APOLLO ||
 		dev_priv->version == PDP_VERSION_ODIN) {
 #if !defined(SUPPORT_PLATO_DISPLAY)
@@ -125,8 +170,17 @@ static int pdp_early_load(struct drm_device *dev)
 			DRM_ERROR("failed to enable parent device (err=%d)\n", err);
 			goto err_dev_priv_free;
 		}
+
+		/*
+		 * check whether it's Orion PDP for picking
+		 * the right display mode list later on
+		 */
+		if (dev_priv->version == PDP_VERSION_ODIN)
+			dev_priv->subversion = (enum pdp_odin_subversion)
+				tc_odin_subvers(dev->dev->parent);
 #endif
 	}
+
 #if defined(SUPPORT_PLATO_DISPLAY)
 	else if (dev_priv->version == PDP_VERSION_PLATO) {
 // XXX do we we need to do this? Plato driver has already enabled device.
@@ -138,7 +192,7 @@ static int pdp_early_load(struct drm_device *dev)
 	}
 #endif
 
-	dev_priv->gem_priv = pdp_gem_init(dev);
+	dev_priv->gem_priv = pdp_gem_init(dev, 0);
 	if (!dev_priv->gem_priv) {
 		DRM_ERROR("gem initialisation failed\n");
 		err = -ENOMEM;
@@ -162,7 +216,7 @@ static int pdp_early_load(struct drm_device *dev)
 		dev_priv->version == PDP_VERSION_ODIN) {
 #if !defined(SUPPORT_PLATO_DISPLAY)
 		err = tc_set_interrupt_handler(dev->dev->parent,
-					   TC_INTERRUPT_PDP,
+					   dev_priv->pdp_interrupt,
 					   pdp_irq_handler,
 					   dev);
 		if (err) {
@@ -171,7 +225,8 @@ static int pdp_early_load(struct drm_device *dev)
 			goto err_vblank_cleanup;
 		}
 
-		err = tc_enable_interrupt(dev->dev->parent, TC_INTERRUPT_PDP);
+		err = tc_enable_interrupt(dev->dev->parent,
+					  dev_priv->pdp_interrupt);
 		if (err) {
 			DRM_ERROR("failed to enable pdp interrupts (err=%d)\n",
 				  err);
@@ -200,7 +255,9 @@ static int pdp_early_load(struct drm_device *dev)
 	}
 #endif
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0))
 	dev->irq_enabled = true;
+#endif
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0))
 	dev->vblank_disable_allowed = 1;
@@ -213,7 +270,7 @@ err_uninstall_interrupt_handle:
 		dev_priv->version == PDP_VERSION_ODIN) {
 #if !defined(SUPPORT_PLATO_DISPLAY)
 		tc_set_interrupt_handler(dev->dev->parent,
-					     TC_INTERRUPT_PDP,
+					     dev_priv->pdp_interrupt,
 					     NULL,
 					     NULL);
 #endif
@@ -270,6 +327,9 @@ static void pdp_early_unload(struct drm_device *dev)
 {
 	struct pdp_drm_private *dev_priv = dev->dev_private;
 
+#if defined(CONFIG_DRM_FBDEV_EMULATION) && defined(PDP_USE_ATOMIC)
+	drm_atomic_helper_shutdown(dev);
+#endif
 	pdp_modeset_early_cleanup(dev_priv);
 }
 
@@ -281,9 +341,9 @@ static void pdp_late_unload(struct drm_device *dev)
 	if (dev_priv->version == PDP_VERSION_APOLLO ||
 		dev_priv->version == PDP_VERSION_ODIN) {
 #if !defined(SUPPORT_PLATO_DISPLAY)
-		tc_disable_interrupt(dev->dev->parent, TC_INTERRUPT_PDP);
+		tc_disable_interrupt(dev->dev->parent, dev_priv->pdp_interrupt);
 		tc_set_interrupt_handler(dev->dev->parent,
-					     TC_INTERRUPT_PDP,
+					     dev_priv->pdp_interrupt,
 					     NULL,
 					     NULL);
 #endif
@@ -362,7 +422,8 @@ static void pdp_preclose(struct drm_device *dev, struct drm_file *file)
 }
 #endif
 
-static void pdp_lastclose(struct drm_device *dev)
+#if !defined(CONFIG_DRM_FBDEV_EMULATION)
+static inline void pdp_teardown_drm_config(struct drm_device *dev)
 {
 #if defined(PDP_USE_ATOMIC)
 	drm_atomic_helper_shutdown(dev);
@@ -370,6 +431,11 @@ static void pdp_lastclose(struct drm_device *dev)
 	struct drm_crtc *crtc;
 
 	DRM_INFO("%s: %s device\n", __func__, to_platform_device(dev->dev)->name);
+
+	/*
+	 * When non atomic driver is in use, manually trigger ->set_config
+	 * with an empty mode set associated to this crtc.
+	 */
 	drm_modeset_lock_all(dev);
 	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head) {
 		if (crtc->primary->fb) {
@@ -385,55 +451,89 @@ static void pdp_lastclose(struct drm_device *dev)
 	drm_modeset_unlock_all(dev);
 #endif
 }
+#endif /* !defined(CONFIG_DRM_FBDEV_EMULATION) */
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
-static int pdp_enable_vblank(struct drm_device *dev, unsigned int crtc)
+static void pdp_lastclose(struct drm_device *dev)
+{
+#if defined(CONFIG_DRM_FBDEV_EMULATION)
+	struct pdp_drm_private *dev_priv = dev->dev_private;
+	struct pdp_fbdev *fbdev = dev_priv->fbdev;
+	int err;
+
+	if (fbdev) {
+		/*
+		 * This is a fbdev driver, therefore never attempt to shutdown
+		 * on a client disconnecting.
+		 */
+		err = drm_fb_helper_restore_fbdev_mode_unlocked(&fbdev->helper);
+		if (err)
+			DRM_ERROR("failed to restore mode (err=%d)\n", err);
+	}
 #else
-static int pdp_enable_vblank(struct drm_device *dev, int crtc)
+	pdp_teardown_drm_config(dev);
+#endif
+}
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0))
+int pdp_enable_vblank(struct drm_crtc *crtc)
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
+static int pdp_enable_vblank(struct drm_device *dev, unsigned int pipe)
+#else
+static int pdp_enable_vblank(struct drm_device *dev, int pipe)
 #endif
 {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0))
+	struct drm_device *dev = crtc->dev;
+	unsigned int pipe      = drm_crtc_index(crtc);
+#endif
 	struct pdp_drm_private *dev_priv = dev->dev_private;
 
-	switch (crtc) {
+	switch (pipe) {
 	case 0:
 		pdp_crtc_set_vblank_enabled(dev_priv->crtc, true);
 		break;
 	default:
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
-		DRM_ERROR("invalid crtc %u\n", crtc);
+		DRM_ERROR("invalid crtc %u\n", pipe);
 #else
-		DRM_ERROR("invalid crtc %d\n", crtc);
+		DRM_ERROR("invalid crtc %d\n", pipe);
 #endif
 		return -EINVAL;
 	}
 
-	DRM_DEBUG("vblank interrupts enabled for crtc %d\n", crtc);
+	DRM_DEBUG("vblank interrupts enabled for crtc %d\n", pipe);
 
 	return 0;
 }
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
-static void pdp_disable_vblank(struct drm_device *dev, unsigned int crtc)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0))
+void pdp_disable_vblank(struct drm_crtc *crtc)
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
+static void pdp_disable_vblank(struct drm_device *dev, unsigned int pipe)
 #else
-static void pdp_disable_vblank(struct drm_device *dev, int crtc)
+static void pdp_disable_vblank(struct drm_device *dev, int pipe)
 #endif
 {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0))
+	struct drm_device *dev = crtc->dev;
+	unsigned int pipe      = drm_crtc_index(crtc);
+#endif
 	struct pdp_drm_private *dev_priv = dev->dev_private;
 
-	switch (crtc) {
+	switch (pipe) {
 	case 0:
 		pdp_crtc_set_vblank_enabled(dev_priv->crtc, false);
 		break;
 	default:
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
-		DRM_ERROR("invalid crtc %u\n", crtc);
+		DRM_ERROR("invalid crtc %u\n", pipe);
 #else
-		DRM_ERROR("invalid crtc %d\n", crtc);
+		DRM_ERROR("invalid crtc %d\n", pipe);
 #endif
 		return;
 	}
 
-	DRM_DEBUG("vblank interrupts disabled for crtc %d\n", crtc);
+	DRM_DEBUG("vblank interrupts disabled for crtc %d\n", pipe);
 }
 
 static int pdp_gem_object_create_ioctl(struct drm_device *dev,
@@ -460,18 +560,12 @@ static int pdp_gem_dumb_create(struct drm_file *file,
 					args);
 }
 
-static void pdp_gem_object_free(struct drm_gem_object *obj)
+void pdp_gem_object_free(struct drm_gem_object *obj)
 {
 	struct pdp_drm_private *dev_priv = obj->dev->dev_private;
 
 	pdp_gem_object_free_priv(dev_priv->gem_priv, obj);
 }
-
-static const struct vm_operations_struct pdp_gem_vm_ops = {
-	.fault	= pdp_gem_object_vm_fault,
-	.open	= drm_gem_vm_open,
-	.close	= drm_gem_vm_close,
-};
 
 static const struct drm_ioctl_desc pdp_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(PDP_GEM_CREATE, pdp_gem_object_create_ioctl,
@@ -515,27 +609,31 @@ static struct drm_driver pdp_drm_driver = {
 	.set_busid			= drm_platform_set_busid,
 #endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0))
-	.get_vblank_counter		= NULL,
-#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
-	.get_vblank_counter		= drm_vblank_no_hw_counter,
-#else
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0))
 	.get_vblank_counter		= drm_vblank_count,
-#endif
+#elif (LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0))
+	.get_vblank_counter		= drm_vblank_no_hw_counter,
+#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) */
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0))
 	.enable_vblank			= pdp_enable_vblank,
 	.disable_vblank			= pdp_disable_vblank,
+#endif
 
 	.debugfs_init			= pdp_debugfs_init,
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0))
 	.debugfs_cleanup		= pdp_debugfs_cleanup,
 #endif
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 9, 0))
+	.gem_prime_export		= pdp_gem_prime_export,
 	.gem_free_object		= pdp_gem_object_free,
+	.gem_vm_ops			= &pdp_gem_vm_ops,
+#endif
 
+	.gem_prime_import		= pdp_gem_prime_import,
 	.prime_handle_to_fd		= drm_gem_prime_handle_to_fd,
 	.prime_fd_to_handle		= drm_gem_prime_fd_to_handle,
-	.gem_prime_export		= pdp_gem_prime_export,
-	.gem_prime_import		= pdp_gem_prime_import,
 	.gem_prime_import_sg_table	= pdp_gem_prime_import_sg_table,
 
     // Set dumb_create to NULL to avoid xorg owning the display (if xorg is running).
@@ -544,8 +642,6 @@ static struct drm_driver pdp_drm_driver = {
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0))
 	.dumb_destroy			= drm_gem_dumb_destroy,
 #endif
-
-	.gem_vm_ops			= &pdp_gem_vm_ops,
 
 	.name				= DRIVER_NAME,
 	.desc				= DRIVER_DESC,
@@ -556,7 +652,7 @@ static struct drm_driver pdp_drm_driver = {
 
 	.driver_features		= DRIVER_GEM |
 					  DRIVER_MODESET |
-					  DRIVER_PRIME |
+					  PVR_DRIVER_PRIME |
 					  PVR_DRIVER_ATOMIC,
 	.ioctls				= pdp_ioctls,
 	.num_ioctls			= ARRAY_SIZE(pdp_ioctls),

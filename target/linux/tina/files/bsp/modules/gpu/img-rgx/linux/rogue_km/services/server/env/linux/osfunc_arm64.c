@@ -1,8 +1,8 @@
 /*************************************************************************/ /*!
 @File
-@Title          arm specific OS functions
+@Title          arm64 specific OS functions
 @Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
-@Description    OS functions who's implementation are processor specific
+@Description    Processor specific OS functions
 @License        Dual MIT/GPLv2
 
 The contents of this file are subject to the MIT license as set out below.
@@ -56,130 +56,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "osfunc.h"
 #include "pvr_debug.h"
 
-#if defined(CONFIG_OUTER_CACHE)
-  /* If you encounter a 64-bit ARM system with an outer cache, you'll need
-   * to add the necessary code to manage that cache. See osfunc_arm.c
-   * for an example of how to do so.
-   */
-	#error "CONFIG_OUTER_CACHE not supported on arm64."
-#endif
-
-static void per_cpu_cache_flush(void *arg)
-{
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0))
-	unsigned long irqflags;
-	signed long Clidr, Csselr, LoC, Assoc, Nway, Nsets, Level, Lsize, Var;
-	static DEFINE_SPINLOCK(spinlock);
-
-	spin_lock_irqsave(&spinlock, irqflags);
-
-	/* Read cache level ID register */
-	asm volatile (
-		"dmb sy\n\t"
-		"mrs %[rc], clidr_el1\n\t"
-		: [rc] "=r" (Clidr));
-
-	/* Exit if there is no cache level of coherency */
-	LoC = (Clidr & (((1UL << 3)-1) << 24)) >> 23;
-	if (! LoC)
-	{
-		goto e0;
-	}
-
-	/*
-		This walks the cache hierarchy until the LLC/LOC cache, at each level skip
-		only instruction caches and determine the attributes at this dcache level.
-	*/
-	for (Level = 0; LoC > Level; Level += 2)
-	{
-		/* Mask off this CtypeN bit, skip if not unified cache or separate
-		   instruction and data caches */
-		Var = (Clidr >> (Level + (Level >> 1))) & ((1UL << 3) - 1);
-		if (Var < 2)
-		{
-			continue;
-		}
-
-		/* Select this dcache level for query */
-		asm volatile (
-			"msr csselr_el1, %[val]\n\t"
-			"isb\n\t"
-			"mrs %[rc], ccsidr_el1\n\t"
-			: [rc] "=r" (Csselr) : [val] "r" (Level));
-
-		/* Look-up this dcache organisation attributes */
-		Nsets = (Csselr >> 13) & ((1UL << 15) - 1);
-		Assoc = (Csselr >> 3) & ((1UL << 10) - 1);
-		Lsize = (Csselr & ((1UL << 3) - 1)) + 4;
-		Nway = 0;
-
-		/* For performance, do these in assembly; foreach dcache level/set,
-		   foreach dcache set/way, construct the "DC CISW" instruction
-		   argument and issue instruction */
-		asm volatile (
-			"mov x6, %[val0]\n\t"
-			"mov x9, %[rc1]\n\t"
-			"clz w9, w6\n\t"
-			"mov %[rc1], x9\n\t"
-			"lsetloop:\n\t"
-			"mov %[rc5], %[val0]\n\t"
-			"swayloop:\n\t"
-			"lsl x6, %[rc5], %[rc1]\n\t"
-			"orr x9, %[val2], x6\n\t"
-			"lsl x6, %[rc3], %[val4]\n\t"
-			"orr x9, x9, x6\n\t"
-			"dc	cisw, x9\n\t"
-			"subs %[rc5], %[rc5], #1\n\t"
-			"b.ge swayloop\n\t"
-			"subs %[rc3], %[rc3], #1\n\t"
-			"b.ge lsetloop\n\t"
-			: [rc1] "+r" (Nway), [rc3] "+r" (Nsets), [rc5] "+r" (Var)
-			: [val0] "r" (Assoc), [val2] "r" (Level), [val4] "r" (Lsize)
-			: "x6", "x9", "cc");
-	}
-
-e0:
-	/* Re-select L0 d-cache as active level, issue barrier before exit */
-	Var = 0;
-	asm volatile (
-		"msr csselr_el1, %[val]\n\t"
-		"dsb sy\n\t"
-		"isb\n\t"
-		: : [val] "r" (Var));
-
-	spin_unlock_irqrestore(&spinlock, irqflags);
-#else
-	flush_cache_all();
-#endif
-	PVR_UNREFERENCED_PARAMETER(arg);
-}
-
-PVRSRV_ERROR OSCPUOperation(PVRSRV_CACHE_OP uiCacheOp)
-{
-	PVRSRV_ERROR eError = PVRSRV_OK;
-
-	switch (uiCacheOp)
-	{
-		case PVRSRV_CACHE_OP_CLEAN:
-		case PVRSRV_CACHE_OP_FLUSH:
-		case PVRSRV_CACHE_OP_INVALIDATE:
-			on_each_cpu(per_cpu_cache_flush, NULL, 1);
-			break;
-
-		case PVRSRV_CACHE_OP_NONE:
-			break;
-
-		default:
-			PVR_DPF((PVR_DBG_ERROR,
-					"%s: Global cache operation type %d is invalid",
-					__func__, uiCacheOp));
-			eError = PVRSRV_ERROR_INVALID_PARAMS;
-			PVR_ASSERT(0);
-			break;
-	}
-
-	return eError;
-}
+#include "kernel_compatibility.h"
 
 #if defined(CONFIG_OUTER_CACHE)
   /* If you encounter a 64-bit ARM system with an outer cache, you'll need
@@ -207,7 +84,7 @@ static inline void FlushRange(void *pvRangeAddrStart,
 							  void *pvRangeAddrEnd,
 							  PVRSRV_CACHE_OP eCacheOp)
 {
-	IMG_UINT32 ui32CacheLineSize = cache_line_size();
+	IMG_UINT32 ui32CacheLineSize = OSCPUCacheAttributeSize(OS_CPU_CACHE_ATTRIBUTE_LINE_SIZE);
 	IMG_BYTE *pbStart = pvRangeAddrStart;
 	IMG_BYTE *pbEnd = pvRangeAddrEnd;
 	IMG_BYTE *pbBase;
@@ -221,45 +98,8 @@ static inline void FlushRange(void *pvRangeAddrStart,
 	  this is sufficient to maintain the CPU d-caches on arm64.
 	 */
 
-	struct vm_area_struct *vma = NULL;
-	unsigned long start, end, size;
-	void __user *pvAddr;
-	pvAddr = (void __user *)(uintptr_t)((uintptr_t)pbStart);
-	start = (unsigned long)pbStart;
-	end = (unsigned long)pbEnd;
-	size = end - start;
-	/* When flush user space region, you need check the address if it's valid.
-	 * Kernel thread
-	 */
-
-	if (!access_ok(pvAddr, size)) {
-		/*
-		 * If the address is in kernel space, flush cache directly
-		 */
-		goto flush_cache;
-	} else if (current->mm) {
-		/*
-		 * If the address is in user space,
-		 * you need check if it it valid.
-		 */
-		mmap_read_lock(current->mm);
-		vma = find_vma(current->mm, (unsigned long)pvAddr);
-		if (!vma || start < vma->vm_start || end > vma->vm_end || start >= end) {
-			/*
-			 * If the user space address is invalid, no need flush cache
-			 */
-			PVR_DPF((PVR_DBG_ERROR, "FlushRange, wrong vma address rang[%lx, %lx]\n", start, end));
-			mmap_read_unlock(current->mm);
-			return;
-		}
-		mmap_read_unlock(current->mm);
-	} else {
-		PVR_DPF((PVR_DBG_ERROR, "%s unexpected behavior\n", __func__));
-		return;
-	}
-
-flush_cache:
 	begin_user_mode_access();
+
 	pbEnd = (IMG_BYTE *) PVR_ALIGN((uintptr_t)pbEnd, (uintptr_t)ui32CacheLineSize);
 	for (pbBase = pbStart; pbBase < pbEnd; pbBase += ui32CacheLineSize)
 	{
@@ -330,6 +170,7 @@ void OSCPUCacheFlushRangeKM(PVRSRV_DEVICE_NODE *psDevNode,
 		PVR_DPF((PVR_DBG_WARNING, "Cache operation cannot be completed!"));
 #endif
 	}
+
 }
 
 void OSCPUCacheCleanRangeKM(PVRSRV_DEVICE_NODE *psDevNode,
@@ -372,6 +213,7 @@ void OSCPUCacheCleanRangeKM(PVRSRV_DEVICE_NODE *psDevNode,
 		PVR_DPF((PVR_DBG_WARNING, "Cache operation cannot be completed!"));
 #endif
 	}
+
 }
 
 void OSCPUCacheInvalidateRangeKM(PVRSRV_DEVICE_NODE *psDevNode,
@@ -415,14 +257,14 @@ void OSCPUCacheInvalidateRangeKM(PVRSRV_DEVICE_NODE *psDevNode,
 	}
 }
 
-PVRSRV_CACHE_OP_ADDR_TYPE OSCPUCacheOpAddressType(void)
+
+OS_CACHE_OP_ADDR_TYPE OSCPUCacheOpAddressType(void)
 {
-	return PVRSRV_CACHE_OP_ADDR_TYPE_PHYSICAL;
+	return OS_CACHE_OP_ADDR_TYPE_PHYSICAL;
 }
 
 void OSUserModeAccessToPerfCountersEn(void)
 {
-	/* FIXME: implement similarly to __arm__ */
 }
 
 IMG_BOOL OSIsWriteCombineUnalignedSafe(void)

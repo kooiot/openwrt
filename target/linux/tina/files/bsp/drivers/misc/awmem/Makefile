@@ -1,0 +1,1 @@
+obj-$(CONFIG_AWMEM) += awmem.o

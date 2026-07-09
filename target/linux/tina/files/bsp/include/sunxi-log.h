@@ -20,7 +20,7 @@
 #ifndef __SUNXI_LOG_H__
 #define __SUNXI_LOG_H__
 
-#define SUNXI_LOG_VERSION	"V0.8"
+#define SUNXI_LOG_VERSION	"V0.9"
 /* Allow user to define their own MODNAME with `SUNXI_MODNAME` */
 #ifndef SUNXI_MODNAME
 #define SUNXI_MODNAME		KBUILD_MODNAME
@@ -75,46 +75,45 @@ do {															\
 	}														\
 } while (0)
 
-#if IS_ENABLED(CONFIG_AW_LOG_VERBOSE)
-
+#if IS_ENABLED(CONFIG_AW_LOG_VERBOSE) || defined(DEBUG)
 /* void sunxi_err(struct device *dev, char *fmt, ...); */
 #define sunxi_err(dev, fmt, ...)											\
 	do { if (dev)													\
-		pr_err("-%s:[ERR]:%s +%d %s(): "fmt, sunxi_log_dev_name(dev), __FILE__, __LINE__, __func__, ## __VA_ARGS__);	\
+		pr_err("-%s:[ERR]:%s +%d %s() PID-%d: "fmt, sunxi_log_dev_name(dev), __FILE__, __LINE__, __func__, current->pid, ## __VA_ARGS__);	\
 	     else													\
-		pr_err(":[ERR]:%s +%d %s(): "fmt, __FILE__, __LINE__, __func__, ## __VA_ARGS__);				\
+		pr_err(":[ERR]:%s +%d %s() PID-%d: "fmt, __FILE__, __LINE__, __func__, current->pid, ## __VA_ARGS__);				\
 	} while (0)
 
 /* void sunxi_err_std(struct device *dev, int err_code, char *fmt, ...); */
 #define sunxi_err_std(dev, err_code, fmt, ...)											\
 	do { if (dev)														\
-		pr_err("-%s:[ERR%d]:%s +%d %s(): "fmt, sunxi_log_dev_name(dev), err_code, __FILE__, __LINE__, __func__, ## __VA_ARGS__);	\
+		pr_err("-%s:[ERR:%x]:%s +%d %s() PID-%d: "fmt, sunxi_log_dev_name(dev), err_code, __FILE__, __LINE__, __func__, current->pid, ## __VA_ARGS__);	\
 	     else														\
-		pr_err(":[ERR%d]:%s +%d %s(): "fmt, err_code, __FILE__, __LINE__, __func__, ## __VA_ARGS__);			\
+		pr_err(":[ERR:%x]:%s +%d %s() PID-%d: "fmt, err_code, __FILE__, __LINE__, __func__, current->pid, ## __VA_ARGS__);			\
 	} while (0)
 
 /* void sunxi_warn(struct device *dev, char *fmt, ...); */
 #define sunxi_warn(dev, fmt, ...)											\
 	do { if (dev)													\
-		pr_warn("-%s:[WARN]:%s +%d %s(): "fmt, sunxi_log_dev_name(dev), __FILE__, __LINE__, __func__, ## __VA_ARGS__);	\
+		pr_warn("-%s:[WARN]:%s +%d %s() PID-%d: "fmt, sunxi_log_dev_name(dev), __FILE__, __LINE__, __func__, current->pid, ## __VA_ARGS__);	\
 	     else													\
-		pr_warn(":[WARN]:%s +%d %s(): "fmt, __FILE__, __LINE__, __func__, ## __VA_ARGS__);			\
+		pr_warn(":[WARN]:%s +%d %s() PID-%d: "fmt, __FILE__, __LINE__, __func__, current->pid, ## __VA_ARGS__);			\
 	} while (0)
 
 /* void sunxi_info(struct device *dev, char *fmt, ...); */
 #define sunxi_info(dev, fmt, ...)											\
 	do { if (dev)													\
-		pr_info("-%s:[INFO]:%s +%d %s(): "fmt, sunxi_log_dev_name(dev), __FILE__, __LINE__, __func__, ## __VA_ARGS__);	\
+		pr_info("-%s:[INFO]:%s +%d %s() PID-%d: "fmt, sunxi_log_dev_name(dev), __FILE__, __LINE__, __func__, current->pid, ## __VA_ARGS__);	\
 	     else													\
-		pr_info(":[INFO]:%s +%d %s(): "fmt, __FILE__, __LINE__, __func__, ## __VA_ARGS__);			\
+		pr_info(":[INFO]:%s +%d %s() PID-%d: "fmt, __FILE__, __LINE__, __func__, current->pid, ## __VA_ARGS__);			\
 	} while (0)
 
 /* void sunxi_debug(struct device *dev, char *fmt, ...); */
 #define sunxi_debug(dev, fmt, ...)											\
 	do { if (dev)													\
-		pr_debug("-%s:[DEBUG]:%s +%d %s(): "fmt, sunxi_log_dev_name(dev), __FILE__, __LINE__, __func__, ## __VA_ARGS__);	\
+		pr_debug("-%s:[DEBUG]:%s +%d %s() PID-%d: "fmt, sunxi_log_dev_name(dev), __FILE__, __LINE__, __func__, current->pid, ## __VA_ARGS__);	\
 	     else													\
-		pr_debug(":[DEBUG]:%s +%d %s(): "fmt, __FILE__, __LINE__, __func__, ## __VA_ARGS__);			\
+		pr_debug(":[DEBUG]:%s +%d %s() PID-%d: "fmt, __FILE__, __LINE__, __func__, current->pid, ## __VA_ARGS__);			\
 	} while (0)
 
 #else  /* !CONFIG_AW_LOG_VERBOSE */
@@ -130,9 +129,9 @@ do {															\
 /* void sunxi_err_std(struct device *dev, int err_code, char *fmt, ...); */
 #define sunxi_err_std(dev, err_code, fmt, ...)						\
 	do { if (dev)									\
-		pr_err("-%s:[ERR%d]: "fmt, sunxi_log_dev_name(dev), err_code, ## __VA_ARGS__);	\
+		pr_err("-%s:[ERR:%x]: "fmt, sunxi_log_dev_name(dev), err_code, ## __VA_ARGS__);	\
 	     else									\
-		pr_err(":[ERR%d]: "fmt, err_code, ## __VA_ARGS__);			\
+		pr_err(":[ERR:%x]: "fmt, err_code, ## __VA_ARGS__);			\
 	} while (0)
 
 /* void sunxi_warn(struct device *dev, char *fmt, ...); */

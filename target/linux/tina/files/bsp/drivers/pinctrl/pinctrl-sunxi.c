@@ -46,10 +46,11 @@
 #include "core.h"
 #include "pinctrl-sunxi.h"
 
-#define SUNXI_PINCTRL_CORE_VERSION	"1.3.7"
+#define SUNXI_PINCTRL_CORE_VERSION	"1.4.15"
 #define SUNXI_PINCTRL_I2S0_ROUTE_PAD
 /* Indexed by `enum sunxi_pinctrl_hw_type` */
 struct sunxi_pinctrl_hw_info sunxi_pinctrl_hw_info[SUNXI_PCTL_HW_TYPE_CNT] = {
+	/* SUNXI_PCTL_HW_TYPE_0 */
 	{
 		.initial_bank_offset	= 0x0,
 		.mux_regs_offset	= 0x0,
@@ -74,6 +75,7 @@ struct sunxi_pinctrl_hw_info sunxi_pinctrl_hw_info[SUNXI_PCTL_HW_TYPE_CNT] = {
 		.pio_pow_ctrl_reg	= 0x350,
 		.power_mode_reverse	= false,
 	},
+	/* SUNXI_PCTL_HW_TYPE_1 */
 	{
 		.initial_bank_offset	= 0x0,
 		.mux_regs_offset	= 0x0,
@@ -98,8 +100,8 @@ struct sunxi_pinctrl_hw_info sunxi_pinctrl_hw_info[SUNXI_PCTL_HW_TYPE_CNT] = {
 		.pio_pow_ctrl_reg	= 0x350,
 		.power_mode_reverse	= false,
 	},
+	/* SUNXI_PCTL_HW_TYPE_2 */
 	{
-
 		.initial_bank_offset	= 0x80,
 		.mux_regs_offset	= 0x00,
 		.data_regs_offset	= 0x10,
@@ -123,6 +125,7 @@ struct sunxi_pinctrl_hw_info sunxi_pinctrl_hw_info[SUNXI_PCTL_HW_TYPE_CNT] = {
 		.pio_pow_ctrl_reg	= 0x350,
 		.power_mode_reverse	= false,
 	},
+	/* SUNXI_PCTL_HW_TYPE_3 */
 	{
 		.initial_bank_offset	= 0x0,
 		.mux_regs_offset	= 0x0,
@@ -151,6 +154,7 @@ struct sunxi_pinctrl_hw_info sunxi_pinctrl_hw_info[SUNXI_PCTL_HW_TYPE_CNT] = {
 		.power_mode_reverse	= true,
 		.power_mode_detect	= true,
 	},
+	/* SUNXI_PCTL_HW_TYPE_4 */
 	{
 		.initial_bank_offset	= 0x80,
 		.mux_regs_offset	= 0x0,
@@ -176,8 +180,8 @@ struct sunxi_pinctrl_hw_info sunxi_pinctrl_hw_info[SUNXI_PCTL_HW_TYPE_CNT] = {
 		.power_mode_val_reg	= 0x48,
 		.pio_pow_ctrl_reg	= 0x70,
 		.power_mode_reverse	= false,
-		.data_set_mode_select	= false,
 	},
+	/* SUNXI_PCTL_HW_TYPE_5 */
 	{
 		.initial_bank_offset	= 0x0,
 		.mux_regs_offset	= 0x0,
@@ -201,8 +205,9 @@ struct sunxi_pinctrl_hw_info sunxi_pinctrl_hw_info[SUNXI_PCTL_HW_TYPE_CNT] = {
 		.power_mode_val_reg	= 0x348,
 		.pio_pow_ctrl_reg	= 0x350,
 		.power_mode_reverse	= false,
-		.power_mode_detect	= true,
+		.power_mode_detect	= false,
 	},
+	/* SUNXI_PCTL_HW_TYPE_6 */
 	{
 		.initial_bank_offset	= 0x0,
 		.mux_regs_offset	= 0x0,
@@ -228,6 +233,7 @@ struct sunxi_pinctrl_hw_info sunxi_pinctrl_hw_info[SUNXI_PCTL_HW_TYPE_CNT] = {
 		.power_mode_reverse	= true,
 		.power_mode_detect	= true,
 	},
+	/* SUNXI_PCTL_HW_TYPE_7 */
 	{
 		.initial_bank_offset	= 0x0,
 		.mux_regs_offset	= 0x0,
@@ -256,8 +262,8 @@ struct sunxi_pinctrl_hw_info sunxi_pinctrl_hw_info[SUNXI_PCTL_HW_TYPE_CNT] = {
 		.pio_pow_ctrl_reg	= 0x350,
 		.power_mode_reverse	= true,
 		.power_mode_detect	= true,
-		.data_set_mode_select	= false,
 	},
+	/* SUNXI_PCTL_HW_TYPE_8 */
 	{
 		.initial_bank_offset	= 0x0,
 		.mux_regs_offset	= 0x0,
@@ -277,6 +283,32 @@ struct sunxi_pinctrl_hw_info sunxi_pinctrl_hw_info[SUNXI_PCTL_HW_TYPE_CNT] = {
 		.irq_mem_base		= 0x40,
 		.irq_mem_size		= 0x20,
 		.irq_mem_used		= 0x20,
+	},
+	/* SUNXI_PCTL_HW_TYPE_9 */
+	{
+		.initial_bank_offset	= 0x0,
+		.mux_regs_offset	= 0x0,
+		.data_regs_offset	= 0x10,
+		.dlevel_regs_offset	= 0x14,
+		.bank_mem_size          = 0x30,
+		.pull_regs_offset       = 0x24,
+		.dlevel_pins_per_reg    = 8,
+		.dlevel_pins_bits       = 4,
+		.dlevel_pins_mask       = 0xF,
+		.irq_mux_val         	= 0xE,
+		.irq_cfg_reg		= 0x200,
+		.irq_ctrl_reg		= 0x210,
+		.irq_status_reg		= 0x214,
+		.irq_debounce_reg	= 0x218,
+		.irq_mem_base		= 0x200,
+		.irq_mem_size		= 0x20,
+		.irq_mem_used		= 0x20,
+		.power_mode_sel_reg	= 0x340,
+		.power_mode_ctrl_reg	= 0x344,
+		.power_mode_val_reg	= 0x348,
+		.pio_pow_ctrl_reg	= 0x350,
+		.power_mode_reverse	= false,
+		.power_mode_detect	= false,
 	},
 };
 EXPORT_SYMBOL_GPL(sunxi_pinctrl_hw_info);
@@ -773,8 +805,8 @@ static int sunxi_pinctrl_set_io_bias_cfg(struct sunxi_pinctrl *pctl,
 					 unsigned pin,
 					 struct regulator *supply)
 {
-	unsigned long flags;
 	unsigned short bank;
+	unsigned long flags;
 	u32 val, reg, vccio_ctrl_bank, vccio_sel_bank;
 	int uV;
 	enum sunxi_pinctrl_hw_type hw_type = pctl->desc->hw_type;
@@ -881,6 +913,7 @@ static int sunxi_pinctrl_set_io_bias_cfg(struct sunxi_pinctrl *pctl,
 		reg &= ~BIT(vccio_ctrl_bank);
 		writel(reg | val << vccio_ctrl_bank, pctl->membase + power_mode_ctrl_reg);
 		raw_spin_unlock_irqrestore(&pctl->lock, flags);
+
 		sunxi_debug(NULL, "!pf-withstand: bank[%d-%d] set modectrl[0x%x=0x%x]\n",
 			    bank, vccio_ctrl_bank, power_mode_ctrl_reg, readl(pctl->membase + power_mode_ctrl_reg));
 		return 0;
@@ -1622,7 +1655,11 @@ static const struct pinmux_ops sunxi_pmx_ops = {
 static int sunxi_pinctrl_gpio_direction_input(struct gpio_chip *chip,
 					unsigned offset)
 {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 17))
+	return pinctrl_gpio_direction_input(chip, chip->base + offset);
+#else
 	return pinctrl_gpio_direction_input(chip->base + offset);
+#endif
 }
 
 static int sunxi_pinctrl_gpio_get(struct gpio_chip *chip, unsigned offset)
@@ -1650,31 +1687,28 @@ static void sunxi_pinctrl_gpio_set(struct gpio_chip *chip,
 				unsigned offset, int value)
 {
 	struct sunxi_pinctrl *pctl = gpiochip_get_data(chip);
-	enum sunxi_pinctrl_hw_type hw_type = pctl->desc->hw_type;
 	u32 reg = sunxi_data_reg(offset, pctl->desc->hw_type);
 	u8 index = sunxi_data_offset(offset);
 	unsigned long flags;
-	u32 regval, set_reg, clr_reg, set_regval, clr_regval;
+	u32 regval, set_reg, clr_reg;
 
 	raw_spin_lock_irqsave(&pctl->lock, flags);
 
-	sunxi_debug(pctl->dev, "data_set_mode_select is %d", sunxi_pinctrl_hw_info[hw_type].data_set_mode_select);
-	if (sunxi_pinctrl_hw_info[hw_type].data_set_mode_select) {
+	sunxi_debug(pctl->dev, "data_reg_atomic_access is %d", pctl->desc->is_data_reg_atomic_access);
+	if (pctl->desc->is_data_reg_atomic_access) {
 		set_reg = sunxi_set_data_reg(offset, pctl->desc->hw_type);
 		clr_reg = sunxi_clr_data_reg(offset, pctl->desc->hw_type);
-		set_regval = readl(pctl->membase + set_reg);
-		clr_regval = readl(pctl->membase + clr_reg);
 
-		if (value) {
-			set_regval |= BIT(index);
-			writel(set_regval, pctl->membase + set_reg);
-		} else {
-			clr_regval |= BIT(index);
-			writel(clr_regval, pctl->membase + clr_reg);
-		}
+		if (value)
+			writel(BIT(index), pctl->membase + set_reg);
+		else
+			writel(BIT(index), pctl->membase + clr_reg);
 
-		sunxi_debug(pctl->dev, "value is %d setreg[0x%x=0x%x] clearreg[0x%x=0x%x]\n",
-			 value, set_reg, readl(pctl->membase + set_reg), clr_reg, readl(pctl->membase + clr_reg));
+		sunxi_debug(pctl->dev, "index: %d, value: %d, reg[0x%x=0x%x], set_reg[0x%x=0x%x], clr_reg[0x%x=0x%x]\n",
+			index, value,
+			reg, readl(pctl->membase + reg),
+			set_reg, readl(pctl->membase + set_reg),
+			clr_reg, readl(pctl->membase + clr_reg));
 	} else {
 		regval = readl(pctl->membase + reg);
 
@@ -1710,7 +1744,11 @@ static int sunxi_pinctrl_gpio_direction_output(struct gpio_chip *chip,
 					unsigned offset, int value)
 {
 	sunxi_pinctrl_gpio_set(chip, offset, value);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 17))
+	return pinctrl_gpio_direction_output(chip, chip->base + offset);
+#else
 	return pinctrl_gpio_direction_output(chip->base + offset);
+#endif
 }
 
 static int sunxi_pinctrl_gpio_of_xlate(struct gpio_chip *gc,
@@ -1921,6 +1959,12 @@ static int sunxi_irq_set_affinity(struct irq_data *d,
 	return 0;
 }
 
+static int sunxi_irq_set_retrigger(struct irq_data *d)
+{
+	/* if return 0, irq will be retriggered by handle_edge_irq */
+	return 0;
+}
+
 static struct irq_chip sunxi_pinctrl_edge_irq_chip = {
 	.name		= "sunxi_pio_edge",
 	.irq_ack	= sunxi_pinctrl_irq_ack,
@@ -1936,6 +1980,7 @@ static struct irq_chip sunxi_pinctrl_edge_irq_chip = {
 #endif
 	.irq_set_wake   = sunxi_pinctrl_irq_set_wake,
 	.irq_set_affinity = sunxi_irq_set_affinity,
+	.irq_retrigger = sunxi_irq_set_retrigger,
 };
 
 static struct irq_chip sunxi_pinctrl_level_irq_chip = {
@@ -2113,7 +2158,7 @@ static int sunxi_pinctrl_build_state(struct platform_device *pdev)
 				continue;
 
 			/* Create interrupt mapping while we're at it */
-			if (!strcmp(func->name, "irq")) {
+			if (!strcmp(func->name, "irq") && pctl->desc->irq_banks) {
 				int irqnum = func->irqnum + func->irqbank * IRQ_PER_BANK;
 				pctl->irq_array[irqnum] = pin->pin.number;
 			}

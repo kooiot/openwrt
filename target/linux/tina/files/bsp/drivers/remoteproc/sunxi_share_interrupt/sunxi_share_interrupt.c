@@ -430,7 +430,7 @@ static ssize_t sunxi_arch_irq_info_read(struct file *filp, char __user *userbuf,
 {
 	struct arch_irq *arch = filp->private_data;
 	/* need room for the name, a newline and a terminating null */
-	char buf[1024];
+	char buf[1010];
 	int i, j;
 
 	i = scnprintf(buf, sizeof(buf), "Status: %s\n",

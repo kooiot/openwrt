@@ -1,45 +1,43 @@
-/* -*- mode: c; indent-tabs-mode: t; c-basic-offset: 8; tab-width: 8 -*- */
-/* vi: set ts=8 sw=8 sts=8: */
-/*************************************************************************/ /*!
-@Codingstyle    LinuxKernel
-@Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
-@License        Dual MIT/GPLv2
-
-The contents of this file are subject to the MIT license as set out below.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-Alternatively, the contents of this file may be used under the terms of
-the GNU General Public License Version 2 ("GPL") in which case the provisions
-of GPL are applicable instead of those above.
-
-If you wish to allow use of your version of this file only under the terms of
-GPL, and not to allow others to use your version of this file under the terms
-of the MIT license, indicate your decision by deleting the provisions above
-and replace them with the notice and other provisions required by GPL as set
-out in the file called "GPL-COPYING" included in this distribution. If you do
-not delete the provisions above, a recipient may use your version of this file
-under the terms of either the MIT license or GPL.
-
-This License is also included in this distribution in the file called
-"MIT-COPYING".
-
-EXCEPT AS OTHERWISE STATED IN A NEGOTIATED AGREEMENT: (A) THE SOFTWARE IS
-PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
-BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE AND NONINFRINGEMENT; AND (B) IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/ /**************************************************************************/
+/*
+ * @Codingstyle LinuxKernel
+ * @Copyright   Copyright (c) Imagination Technologies Ltd. All Rights Reserved
+ * @License     Dual MIT/GPLv2
+ *
+ * The contents of this file are subject to the MIT license as set out below.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * Alternatively, the contents of this file may be used under the terms of
+ * the GNU General Public License Version 2 ("GPL") in which case the provisions
+ * of GPL are applicable instead of those above.
+ *
+ * If you wish to allow use of your version of this file only under the terms of
+ * GPL, and not to allow others to use your version of this file under the terms
+ * of the MIT license, indicate your decision by deleting the provisions above
+ * and replace them with the notice and other provisions required by GPL as set
+ * out in the file called "GPL-COPYING" included in this distribution. If you do
+ * not delete the provisions above, a recipient may use your version of this file
+ * under the terms of either the MIT license or GPL.
+ *
+ * This License is also included in this distribution in the file called
+ * "MIT-COPYING".
+ *
+ * EXCEPT AS OTHERWISE STATED IN A NEGOTIATED AGREEMENT: (A) THE SOFTWARE IS
+ * PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+ * BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+ * PURPOSE AND NONINFRINGEMENT; AND (B) IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 
 /*
  * This is a device driver for the apollo testchip framework. It creates
@@ -56,15 +54,28 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "tc_drv_internal.h"
 #include "tc_apollo.h"
+
+#if defined(SUPPORT_DMA_HEAP)
+#include "tc_dmabuf_heap.h"
+#elif defined(SUPPORT_ION)
 #include "tc_ion.h"
+#endif
 
 #include "apollo_regs.h"
 #include "tcf_clk_ctrl.h"
 #include "tcf_pll.h"
+#include "tc_clocks.h"
 
 #if defined(SUPPORT_APOLLO_FPGA)
 #include "tc_apollo_debugfs.h"
 #endif /* defined(SUPPORT_APOLLO_FPGA) */
+
+/*
+ * kernel_compatibility.h: This header is a special case and should always be
+ * the last file included, as it can affect definitions/declarations in files
+ * included after it.
+ */
+#include "kernel_compatibility.h"
 
 #define TC_INTERRUPT_FLAG_PDP      (1 << PDP1_INT_SHIFT)
 #define TC_INTERRUPT_FLAG_EXT      (1 << EXT_INT_SHIFT)
@@ -78,7 +89,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static struct {
 	struct thermal_zone_device *thermal_zone;
 
-#if  defined(SUPPORT_APOLLO_FPGA)
+#if defined(SUPPORT_APOLLO_FPGA)
 	struct tc_io_region fpga;
 	struct apollo_debugfs_fpga_entries fpga_entries;
 #endif
@@ -89,6 +100,9 @@ static struct {
 #define APOLLO_DEVICE_NAME_FPGA "apollo_fpga"
 
 struct apollo_fpga_platform_data {
+	/* The testchip memory mode (LMA, HOST or HYBRID) */
+	int mem_mode;
+
 	resource_size_t tc_memory_base;
 
 	resource_size_t pdp_heap_memory_base;
@@ -306,7 +320,8 @@ static int apollo_align_interface_es2(struct tc_device *tc)
 		dev_err(&tc->pdev->dev, "Unable to initialise the testchip (interface alignment failure), please restart the system.\n");
 		/* We are not returning an error here, cause VP doesn't
 		 * implement the necessary registers although they claim to be
-		 * TC compatible. */
+		 * TC compatible.
+		 */
 	}
 
 	if (reset_cnt > 1) {
@@ -350,9 +365,6 @@ static void apollo_set_clocks(struct tc_device *tc,
 		pll_write_reg(tc, TCF_PLL_PLL_SYS_DRP_GO, val);
 	}
 
-	dev_info(&tc->pdev->dev, "Setting clocks to %uMHz/%uMHz\n",
-			 core_clock / 1000000,
-			 mem_clock / 1000000);
 	udelay(400);
 }
 
@@ -401,58 +413,82 @@ static void apollo_set_mem_latency(struct tc_device *tc,
 
 	if (mem_latency != regval) {
 		dev_err(&tc->pdev->dev,
-			"Memory latency register doesn't match requested value"
-			" (actual: %#08x, expected: %#08x)\n",
+			"Memory latency register doesn't match requested value (actual: %#08x, expected: %#08x)\n",
 			regval, mem_latency);
 	}
 }
 
 static void apollo_fpga_update_dut_clk_freq(struct tc_device *tc,
-					    int *core_clock, int *mem_clock)
+					    int *core_clock, int *mem_clock, int *clock_multiplex)
 {
 	struct device *dev = &tc->pdev->dev;
+	u32 reg = 0;
 
 #if defined(SUPPORT_FPGA_DUT_CLK_INFO)
-	u32 reg;
-
 	/* DUT_CLK_INFO available only if SW_IF_VERSION >= 1 */
 	reg = ioread32(tc->tcf.registers + TCF_CLK_CTRL_SW_IF_VERSION);
 	reg = (reg & VERSION_MASK) >> VERSION_SHIFT;
-
+#endif
 	if (reg >= 1) {
 		reg = ioread32(tc->tcf.registers + TCF_CLK_CTRL_DUT_CLK_INFO);
 
 		if ((reg != 0) && (reg != 0xbaadface) && (reg != 0xffffffff)) {
 			dev_info(dev, "TCF_CLK_CTRL_DUT_CLK_INFO = %08x\n", reg);
-			dev_info(dev, "Overriding provided DUT clock values: "
-				 "core %i, mem %i\n",
-				 *core_clock, *mem_clock);
 
-			*core_clock = ((reg & CORE_MASK) >> CORE_SHIFT) * 1000000;
-			*mem_clock = ((reg & MEM_MASK) >> MEM_SHIFT) * 1000000;
+			if (*core_clock == 0) {
+				*core_clock = ((reg & CORE_MASK) >> CORE_SHIFT) * 1000000;
+				dev_info(dev, "Using register DUT core clock value: %i\n",
+							*core_clock);
+			} else {
+				dev_info(dev, "Using module param DUT core clock value: %i\n",
+							*core_clock);
+			}
+
+			if (*mem_clock == 0) {
+				*mem_clock = ((reg & MEM_MASK) >> MEM_SHIFT) * 1000000;
+				dev_info(dev, "Using register DUT mem clock value: %i\n",
+				 *mem_clock);
+			} else {
+				dev_info(dev, "Using module param DUT mem clock value: %i\n",
+							*mem_clock);
+			}
+
+			return;
 		}
 	}
-#endif
 
-	dev_info(dev, "DUT clock values: core %i, mem %i\n",
-		 *core_clock, *mem_clock);
+	if (*core_clock == 0) {
+		*core_clock = RGX_TC_CORE_CLOCK_SPEED;
+		dev_info(dev, "Using default DUT core clock value: %i\n",
+				 *core_clock);
+	} else {
+		dev_info(dev, "Using module param DUT core clock value: %i\n",
+					*core_clock);
+	}
+
+	if (*mem_clock == 0) {
+		*mem_clock = RGX_TC_MEM_CLOCK_SPEED;
+		dev_info(dev, "Using default DUT mem clock value: %i\n",
+				 *mem_clock);
+	} else {
+		dev_info(dev, "Using module param DUT mem clock value: %i\n",
+					*mem_clock);
+	}
+
+	if (*clock_multiplex == 0) {
+		*clock_multiplex = RGX_TC_CLOCK_MULTIPLEX;
+		dev_info(dev, "Using default DUT clock multiplex: %i\n",
+				 *clock_multiplex);
+	} else {
+		dev_info(dev, "Using module param DUT clock multiplex: %i\n",
+					*clock_multiplex);
+	}
 }
 
 #endif /* defined(SUPPORT_RGX) */
 
-static void apollo_set_mem_mode(struct tc_device *tc)
-{
-	u32 val;
-
-	val = ioread32(tc->tcf.registers + TCF_CLK_CTRL_TEST_CTRL);
-	val &= ~(ADDRESS_FORCE_MASK | PCI_TEST_MODE_MASK | HOST_ONLY_MODE_MASK
-		| HOST_PHY_MODE_MASK);
-	val |= (0x1 << ADDRESS_FORCE_SHIFT);
-	iowrite32(val, tc->tcf.registers + TCF_CLK_CTRL_TEST_CTRL);
-}
-
 static int apollo_hard_reset(struct tc_device *tc,
-			     int core_clock, int mem_clock, int sys_clock)
+			     int *core_clock, int *mem_clock, int sys_clock, int *clock_multiplex)
 {
 	u32 reg;
 	u32 reg_reset_n = 0;
@@ -493,11 +529,41 @@ static int apollo_hard_reset(struct tc_device *tc,
 		  TCF_CLK_CTRL_CLK_AND_RST_CTRL);
 
 #if defined(SUPPORT_RGX)
-	if (tc->version == APOLLO_VERSION_TCF_5)
-		apollo_fpga_update_dut_clk_freq(tc, &core_clock, &mem_clock);
+	if (tc->version == APOLLO_VERSION_TCF_5) {
+		apollo_fpga_update_dut_clk_freq(tc, core_clock, mem_clock, clock_multiplex);
+	} else {
+		struct device *dev = &tc->pdev->dev;
+
+		if (*core_clock == 0) {
+			*core_clock = RGX_TC_CORE_CLOCK_SPEED;
+			dev_info(dev, "Using default DUT core clock value: %i\n",
+					 *core_clock);
+		} else {
+			dev_info(dev, "Using module param DUT core clock value: %i\n",
+						*core_clock);
+		}
+
+		if (*mem_clock == 0) {
+			*mem_clock = RGX_TC_MEM_CLOCK_SPEED;
+			dev_info(dev, "Using default DUT mem clock value: %i\n",
+					 *mem_clock);
+		} else {
+			dev_info(dev, "Using module param DUT mem clock value: %i\n",
+						*mem_clock);
+		}
+
+		if (*clock_multiplex == 0) {
+			*clock_multiplex = RGX_TC_CLOCK_MULTIPLEX;
+			dev_info(dev, "Using default DUT clock multiplex: %i\n",
+					 *clock_multiplex);
+		} else {
+			dev_info(dev, "Using module param DUT clock multiplex: %i\n",
+						*clock_multiplex);
+		}
+	}
 
 	/* Set clock speed here, before reset. */
-	apollo_set_clocks(tc, core_clock, mem_clock, sys_clock);
+	apollo_set_clocks(tc, *core_clock, *mem_clock, sys_clock);
 
 	/* Put take GLB_CLKG and SCB out of reset */
 	reg_reset_n |= (0x1 << GLB_CLKG_EN_SHIFT);
@@ -546,9 +612,15 @@ static int apollo_hard_reset(struct tc_device *tc,
 	msleep(100);
 
 	if (tc->version != APOLLO_VERSION_TCF_5) {
+		u32 hood_ctrl;
+
 		err = apollo_align_interface_es2(tc);
 		if (err)
 			goto err_out;
+
+		spi_read(tc, 0xF, &hood_ctrl);
+		hood_ctrl |= 0x1;
+		spi_write(tc, 0xF, hood_ctrl);
 	}
 
 #endif /* defined(SUPPORT_RGX) */
@@ -600,17 +672,105 @@ err_out:
 	return err;
 }
 
+static void apollo_set_mem_mode_lma(struct tc_device *tc)
+{
+	u32 val;
+
+	val = ioread32(tc->tcf.registers + TCF_CLK_CTRL_TEST_CTRL);
+	val &= ~(ADDRESS_FORCE_MASK | PCI_TEST_MODE_MASK | HOST_ONLY_MODE_MASK
+		| HOST_PHY_MODE_MASK);
+	val |= (0x1 << ADDRESS_FORCE_SHIFT);
+	iowrite32(val, tc->tcf.registers + TCF_CLK_CTRL_TEST_CTRL);
+}
+
+static void apollo_set_mem_mode_hybrid(struct tc_device *tc)
+{
+	u32 val;
+
+	val = ioread32(tc->tcf.registers + TCF_CLK_CTRL_TEST_CTRL);
+	val &= ~(ADDRESS_FORCE_MASK | PCI_TEST_MODE_MASK | HOST_ONLY_MODE_MASK
+		| HOST_PHY_MODE_MASK);
+	val |= ((0x1 << HOST_ONLY_MODE_SHIFT) | (0x1 << HOST_PHY_MODE_SHIFT));
+	iowrite32(val, tc->tcf.registers + TCF_CLK_CTRL_TEST_CTRL);
+
+	/* Setup apollo to pass 1GB window of address space to the local memory.
+	 * This is a sub-mode of the host only mode, meaning that the apollo TC
+	 * can address the system memory with a 1GB window of address space
+	 * routed to the device local memory. The simplest approach is to mirror
+	 * the CPU physical address space, by moving the device local memory
+	 * window where it is mapped in the CPU physical address space.
+	 */
+	iowrite32(tc->tc_mem.base,
+		  tc->tcf.registers + TCF_CLK_CTRL_HOST_PHY_OFFSET);
+}
+
+static int apollo_set_mem_mode(struct tc_device *tc, int mem_mode)
+{
+	switch (mem_mode) {
+	case TC_MEMORY_HYBRID:
+		apollo_set_mem_mode_hybrid(tc);
+		dev_info(&tc->pdev->dev, "Memory mode: TC_MEMORY_HYBRID\n");
+		break;
+	case TC_MEMORY_LOCAL:
+		apollo_set_mem_mode_lma(tc);
+		dev_info(&tc->pdev->dev, "Memory mode: TC_MEMORY_LOCAL\n");
+		break;
+	default:
+		dev_err(&tc->pdev->dev, "unsupported memory mode = %d\n",
+			mem_mode);
+		return -EINVAL;
+	};
+
+	tc->mem_mode = mem_mode;
+
+	return 0;
+}
+
+static bool apollo_pdp_export_host_addr(struct tc_device *tc)
+{
+	return tc->mem_mode == TC_MEMORY_HYBRID;
+}
+
+static u64 apollo_get_pdp_dma_mask(struct tc_device *tc)
+{
+	/* The PDP does not access system memory, so there is no
+	 * DMA limitation.
+	 */
+	if ((tc->mem_mode == TC_MEMORY_LOCAL) ||
+	    (tc->mem_mode == TC_MEMORY_HYBRID))
+		return DMA_BIT_MASK(64);
+
+	return DMA_BIT_MASK(32);
+}
+
+#if defined(SUPPORT_RGX) || defined(SUPPORT_APOLLO_FPGA)
+#if defined(SUPPORT_RGX)
+static u64 apollo_get_rogue_dma_mask(struct tc_device *tc)
+#else /* SUPPORT_APOLLO_FPGA */
+static u64 apollo_get_fpga_dma_mask(struct tc_device *tc)
+#endif /* defined(SUPPORT_RGX) */
+{
+	/* Does not access system memory, so there is no DMA limitation */
+	if (tc->mem_mode == TC_MEMORY_LOCAL)
+		return DMA_BIT_MASK(64);
+
+	return DMA_BIT_MASK(32);
+}
+#endif /* defined(SUPPORT_RGX) || defined(SUPPORT_APOLLO_FPGA) */
+
 static int apollo_hw_init(struct tc_device *tc,
-			  int core_clock, int mem_clock, int sys_clock,
-			  int mem_latency, int mem_wresp_latency)
+			  int *core_clock, int *mem_clock, int sys_clock, int *clock_multiplex,
+			  int mem_latency, int mem_wresp_latency, int mem_mode)
 {
 	int err = 0;
 
-	err = apollo_hard_reset(tc, core_clock, mem_clock, sys_clock);
+	err = apollo_hard_reset(tc, core_clock, mem_clock, sys_clock, clock_multiplex);
 	if (err)
 		goto err_out;
 
-	apollo_set_mem_mode(tc);
+	err = apollo_set_mem_mode(tc, mem_mode);
+	if (err)
+		goto err_out;
 
 #if defined(SUPPORT_RGX)
 	if (tc->version == APOLLO_VERSION_TCF_BONNIE) {
@@ -639,8 +799,12 @@ static int apollo_enable_irq(struct tc_device *tc)
 	int err = 0;
 
 #if defined(TC_FAKE_INTERRUPTS)
-	setup_timer(&tc->timer, tc_irq_fake_wrapper,
-		(unsigned long)tc);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0))
+	timer_setup(&tc->timer, tc_irq_fake_wrapper, 0);
+#else
+	setup_timer(&tc->timer, tc_irq_fake_wrapper, (unsigned long)tc);
+#endif
+
 	mod_timer(&tc->timer,
 		jiffies + msecs_to_jiffies(FAKE_INTERRUPT_TIME_MS));
 #else
@@ -690,7 +854,7 @@ apollo_detect_tc_version(struct tc_device *tc)
 		dev_err(&tc->pdev->dev,
 			"Unknown TCF core target build ID (0x%x) - assuming Hood ES2 - PLEASE REPORT TO ANDROID TEAM\n",
 			val);
-		/* Fall-through */
+		__fallthrough;
 	case 5:
 		dev_err(&tc->pdev->dev, "Looks like a Hood ES2 TC\n");
 		return APOLLO_VERSION_TCF_2;
@@ -817,13 +981,19 @@ static int apollo_dev_init(struct tc_device *tc, struct pci_dev *pdev,
 	tc->secure_heap_mem_size = secure_mem_size;
 #endif
 
-#if defined(SUPPORT_ION)
+#if defined(SUPPORT_DMA_HEAP)
+	err = tc_dmabuf_heap_init(tc, APOLLO_MEM_PCI_BASENUM);
+	if (err) {
+		dev_err(&pdev->dev, "Failed to initialise DMA heap\n");
+		goto err_unmap_fpga_registers;
+	}
+#elif defined(SUPPORT_ION)
 	err = tc_ion_init(tc, APOLLO_MEM_PCI_BASENUM);
 	if (err) {
 		dev_err(&pdev->dev, "Failed to initialise ION\n");
 		goto err_unmap_fpga_registers;
 	}
-#endif
+#endif /* defined(SUPPORT_ION) */
 
 #if defined(SUPPORT_APOLLO_FPGA)
 	apollo_debugfs_add_fpga_entries(tc, &apollo_pdata.fpga,
@@ -855,7 +1025,9 @@ static void apollo_dev_cleanup(struct tc_device *tc)
 	apollo_debugfs_remove_fpga_entries(&apollo_pdata.fpga_entries);
 #endif
 
-#if defined(SUPPORT_ION)
+#if defined(SUPPORT_DMA_HEAP)
+	tc_dmabuf_heap_deinit(tc, APOLLO_MEM_PCI_BASENUM);
+#elif defined(SUPPORT_ION)
 	tc_ion_deinit(tc, APOLLO_MEM_PCI_BASENUM);
 #endif
 
@@ -880,9 +1052,9 @@ static void apollo_dev_cleanup(struct tc_device *tc)
 }
 
 int apollo_init(struct tc_device *tc, struct pci_dev *pdev,
-		int core_clock, int mem_clock, int sys_clock,
+		int *core_clock, int *mem_clock, int sys_clock, int *clock_multiplex,
 		int pdp_mem_size, int secure_mem_size,
-		int mem_latency, int mem_wresp_latency)
+		int mem_latency, int mem_wresp_latency, int mem_mode)
 {
 	int err = 0;
 
@@ -892,8 +1064,8 @@ int apollo_init(struct tc_device *tc, struct pci_dev *pdev,
 		goto err_out;
 	}
 
-	err = apollo_hw_init(tc, core_clock, mem_clock, sys_clock,
-			     mem_latency, mem_wresp_latency);
+	err = apollo_hw_init(tc, core_clock, mem_clock, sys_clock, clock_multiplex,
+			     mem_latency, mem_wresp_latency, mem_mode);
 	if (err) {
 		dev_err(&pdev->dev, "apollo_hw_init failed\n");
 		goto err_dev_cleanup;
@@ -971,6 +1143,7 @@ int apollo_register_pdp_device(struct tc_device *tc)
 		.memory_base = tc->tc_mem.base,
 		.pdp_heap_memory_base = tc->pdp_heap_mem_base,
 		.pdp_heap_memory_size = tc->pdp_heap_mem_size,
+		.dma_map_export_host_addr = apollo_pdp_export_host_addr(tc),
 	};
 	struct platform_device_info pdp_device_info = {
 		.parent = &tc->pdev->dev,
@@ -978,16 +1151,7 @@ int apollo_register_pdp_device(struct tc_device *tc)
 		.id = -2,
 		.data = &pdata,
 		.size_data = sizeof(pdata),
-#if (TC_MEMORY_CONFIG == TC_MEMORY_LOCAL) || \
-	(TC_MEMORY_CONFIG == TC_MEMORY_HYBRID)
-		/*
-		 * The PDP does not access system memory, so there is no
-		 * DMA limitation.
-		 */
-		.dma_mask = DMA_BIT_MASK(64),
-#else
-		.dma_mask = DMA_BIT_MASK(32),
-#endif
+		.dma_mask = apollo_get_pdp_dma_mask(tc),
 	};
 
 	if (tc->version == APOLLO_VERSION_TCF_5) {
@@ -1029,6 +1193,8 @@ int apollo_register_ext_device(struct tc_device *tc)
 		.ion_device = tc->ion_device,
 		.ion_heap_id = ION_HEAP_TC_ROGUE,
 #endif
+		.mem_mode = tc->mem_mode,
+		.baseboard = TC_BASEBOARD_APOLLO,
 		.tc_memory_base = tc->tc_mem.base,
 		.pdp_heap_memory_base = tc->pdp_heap_mem_base,
 		.pdp_heap_memory_size = tc->pdp_heap_mem_size,
@@ -1047,15 +1213,7 @@ int apollo_register_ext_device(struct tc_device *tc)
 		.num_res = ARRAY_SIZE(rogue_resources),
 		.data = &pdata,
 		.size_data = sizeof(pdata),
-#if (TC_MEMORY_CONFIG == TC_MEMORY_LOCAL)
-		/*
-		 * Rogue does not access system memory, so there is no DMA
-		 * limitation.
-		 */
-		.dma_mask = DMA_BIT_MASK(64),
-#else
-		.dma_mask = DMA_BIT_MASK(32),
-#endif
+		.dma_mask = apollo_get_rogue_dma_mask(tc),
 	};
 
 	tc->ext_dev
@@ -1076,12 +1234,15 @@ int apollo_register_ext_device(struct tc_device *tc)
 {
 	int err = 0;
 	struct resource fpga_resources[] = {
-		/* FIXME: Don't overload SYS_RGX_REG_xxx for FPGA */
+		/* For the 'fpga' build, we don't use the Rogue, but reuse the
+		 * define that mentions RGX.
+		 */
 		DEFINE_RES_MEM_NAMED(pci_resource_start(tc->pdev,
 				SYS_RGX_REG_PCI_BASENUM),
 			 SYS_RGX_REG_REGION_SIZE, "fpga-regs"),
 	};
 	struct apollo_fpga_platform_data pdata = {
+		.mem_mode = tc->mem_mode,
 		.tc_memory_base = tc->tc_mem.base,
 		.pdp_heap_memory_base = tc->pdp_heap_mem_base,
 		.pdp_heap_memory_size = tc->pdp_heap_mem_size,
@@ -1094,15 +1255,7 @@ int apollo_register_ext_device(struct tc_device *tc)
 		.num_res = ARRAY_SIZE(fpga_resources),
 		.data = &pdata,
 		.size_data = sizeof(pdata),
-#if (TC_MEMORY_CONFIG == TC_MEMORY_LOCAL)
-		/*
-		 * The FPGA does not access system memory, so there is no DMA
-		 * limitation.
-		 */
-		.dma_mask = DMA_BIT_MASK(64),
-#else
-		.dma_mask = DMA_BIT_MASK(32),
-#endif
+		.dma_mask = apollo_get_fpga_dma_mask(tc),
 	};
 
 	tc->ext_dev = platform_device_register_full(&fpga_device_info);
@@ -1273,7 +1426,7 @@ int apollo_sys_strings(struct tc_device *tc,
 		pci_resource_start(tc->pdev, SYS_APOLLO_REG_PCI_BASENUM)
 				+ 0x40F0;
 
-	host_fpga_registers = ioremap_nocache(host_fpga_base, 0x04);
+	host_fpga_registers = ioremap(host_fpga_base, 0x04);
 	if (!host_fpga_registers) {
 		dev_err(&tc->pdev->dev,
 			"Failed to map host fpga registers\n");

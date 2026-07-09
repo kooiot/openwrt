@@ -30,6 +30,8 @@ obj-$(CONFIG_AW_PINCTRL_SUN300IW1_R)		+= pinctrl-sun300iw1-r.o
 obj-$(CONFIG_AW_PINCTRL_SUN65IW1)		+= pinctrl-sun65iw1.o
 obj-$(CONFIG_AW_PINCTRL_SUN251IW1)		+= pinctrl-sun251iw1.o
 obj-$(CONFIG_AW_PINCTRL_SUN252IW1)		+= pinctrl-sun252iw1.o
+obj-$(CONFIG_AW_PINCTRL_SUN8IW22)		+= pinctrl-sun8iw22.o
+obj-$(CONFIG_AW_PINCTRL_SUN8IW22)		+= pinctrl-sun8iw22-rtc.o
 obj-$(CONFIG_AW_PINCTRL_AXP22X)			+= pinctrl-axp22x.o
 
 ccflags-$(CONFIG_AW_PINCTRL_DYNAMIC_DEBUG) += -DDYNAMIC_DEBUG_MODULE

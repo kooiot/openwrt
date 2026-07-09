@@ -29,7 +29,7 @@
 #include <power/pmu-ext.h>
 
 static const char *const pmu_ext_model_names[] = {
-	"TCS4838", "SY8827G", "AXP1530",
+	"TCS4838", "SY8827G", "AXP1530", "SY8827K"
 };
 
 #define PMU_EXT_DCDC0 "dcdc0"
@@ -121,6 +121,29 @@ static struct mfd_cell sy8827g_cells[] = {
 	},
 };
 
+static struct mfd_cell sy8827k_cells[] = {
+	{
+		.of_compatible = "ext,sy8827k-regulator",
+		.name = "sy8827k-regulator",
+	},
+	{
+		.of_compatible = "xpower-vregulator,ext-dcdc0",
+		.name = "reg-virt-consumer",
+		.id = PLATFORM_DEVID_AUTO,
+		.platform_data = PMU_EXT_DCDC0,
+		.pdata_size = sizeof(PMU_EXT_DCDC0),
+
+	},
+	{
+		.of_compatible = "xpower-vregulator,ext-dcdc1",
+		.name = "reg-virt-consumer",
+		.id = PLATFORM_DEVID_AUTO,
+		.platform_data = PMU_EXT_DCDC1,
+		.pdata_size = sizeof(PMU_EXT_DCDC1),
+
+	},
+};
+
 /* For AXP323/AXP1530 */
 static const struct regmap_range axp1530_writeable_ranges[] = {
 	regmap_reg_range(AXP1530_ON_INDICATE, AXP1530_END),
@@ -159,6 +182,19 @@ static const struct regmap_access_table sy8827g_volatile_table = {
 	.n_yes_ranges = ARRAY_SIZE(sy8827g_volatile_ranges),
 };
 
+static const struct regmap_range sy8827k_volatile_ranges[] = {
+#ifdef CONFIG_AW_PMIC_VOLATILE_ENABLED
+	regmap_reg_range(SY8827K_VSEL0, SY8827K_PGOOD),
+#else
+	regmap_reg_range(SY8827K_CTRL, SY8827K_PGOOD),
+#endif
+};
+
+static const struct regmap_access_table sy8827k_volatile_table = {
+	.yes_ranges = sy8827k_volatile_ranges,
+	.n_yes_ranges = ARRAY_SIZE(sy8827k_volatile_ranges),
+};
+
 /* For AXP323/AXP1530 */
 static const struct regmap_config axp1530_regmap_config = {
 	.reg_bits	= 8,
@@ -186,6 +222,16 @@ static const struct regmap_config sy8827g_regmap_config = {
 	.val_bits = 8,
 	.volatile_table = &sy8827g_volatile_table,
 	.max_register   = SY8827G_PGOOD,
+	.use_single_read = true,
+	.use_single_write = true,
+	.cache_type     = REGCACHE_RBTREE,
+};
+
+static const struct regmap_config sy8827k_regmap_config = {
+	.reg_bits = 8,
+	.val_bits = 8,
+	.volatile_table = &sy8827k_volatile_table,
+	.max_register   = SY8827K_PGOOD,
 	.use_single_read = true,
 	.use_single_write = true,
 	.cache_type     = REGCACHE_RBTREE,
@@ -222,6 +268,21 @@ static void sy8827g_dts_parse(struct pmu_ext_dev *ext)
 	if (val) {
 		val = val << 4;
 		regmap_update_bits(map, SY8827G_CTRL, GENMASK(6, 4), val);
+	}
+}
+
+static void sy8827k_dts_parse(struct pmu_ext_dev *ext)
+{
+	struct device_node *node = ext->dev->of_node;
+	struct regmap *map = ext->regmap;
+	u32 val;
+
+	/* init powerok reset function */
+	if (of_property_read_u32(node, "sy8827k_delay", &val))
+		val = 0;
+	if (val) {
+		val = val << 4;
+		regmap_update_bits(map, SY8827K_CTRL, GENMASK(6, 4), val);
 	}
 }
 
@@ -269,6 +330,13 @@ int pmu_ext_match_device(struct pmu_ext_dev *ext)
 		ext->regmap_cfg = &axp1530_regmap_config;
 		ext->dts_parse = axp1530_dts_parse;
 		break;
+/**************************************/
+	case SY8827K_ID:
+		ext->nr_cells = ARRAY_SIZE(sy8827k_cells);
+		ext->cells = sy8827k_cells;
+		ext->regmap_cfg = &sy8827k_regmap_config;
+		ext->dts_parse = sy8827k_dts_parse;
+		break;
 	default:
 		PMIC_DEV_ERR(dev, "unsupported ext ID %lu\n", ext->variant);
 		return -EINVAL;
@@ -304,4 +372,4 @@ EXPORT_SYMBOL_GPL(pmu_ext_device_exit);
 MODULE_AUTHOR("Andrew F. Davis <afd@ti.com>");
 MODULE_DESCRIPTION("pmu_ext MFD Driver");
 MODULE_LICENSE("GPL v2");
-MODULE_VERSION("1.0.0");
+MODULE_VERSION("1.0.1");

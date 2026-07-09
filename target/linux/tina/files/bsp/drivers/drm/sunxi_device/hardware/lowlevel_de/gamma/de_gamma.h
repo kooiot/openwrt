@@ -16,13 +16,24 @@
 #include "de_base.h"
 #include "de_csc.h"
 
+enum de_gamma_type {
+	CHANNEL_DLC_GAMMA,
+	DEVICE_GAMMA,
+};
+
+struct gamma_extra_create_info {
+	enum de_gamma_type type;
+};
+
 struct de_gamma_handle {
 	struct module_create_info cinfo;
+    struct gamma_extra_create_info ex_cinfo;
 	unsigned int gamma_lut_len;
 	unsigned int cm_bit_width;
 	bool support_ctc;
 	bool support_cm;
 	bool support_demo_skin;
+	int hue_default_value;
 	unsigned int block_num;
 	struct de_reg_block **block;
 	struct de_gamma_private *private;

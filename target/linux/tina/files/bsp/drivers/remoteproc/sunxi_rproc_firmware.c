@@ -28,6 +28,7 @@
 #include <linux/elf.h>
 
 #include "sunxi_rproc_firmware.h"
+#include "sunxi_rproc_load_partition.h"
 
 struct fw_mem_info {
 	const char *name;
@@ -71,7 +72,29 @@ static int sunxi_firmware_dump_data(void *buf, int len)
 }
 #endif
 
-static int sunxi_check_elf_fw_len(const char *fw_name, const u8 *elf_data, uint32_t reserved_mem_len)
+static int sunxi_fw_unpack(u8 *dst, size_t max_size, const u8 *src, size_t len)
+{
+	const sunxi_image_header_t *ih = (const sunxi_image_header_t *) src;
+	size_t new_size, offset;
+
+	if (ih->ih_magic != SUNXI_IH_MAGIC)
+		return 0;
+
+	offset = ih->ih_hsize;
+	new_size = ih->ih_psize;
+
+	if (0 >= new_size)
+		return -1;
+	if (max_size < new_size)
+		return -1;
+	if (len < (offset + new_size))
+		return -1;
+
+	memmove(dst, src + offset, new_size);
+	return new_size;
+}
+
+static int sunxi_check_elf_fw_len(const char *fw_name, const u8 *elf_data, uint32_t fw_size)
 {
 	int ret;
 	struct elf32_hdr *ehdr;
@@ -80,6 +103,12 @@ static int sunxi_check_elf_fw_len(const char *fw_name, const u8 *elf_data, uint3
 
 	ehdr = (struct elf32_hdr *)elf_data;
 
+	if (fw_size < sizeof(*ehdr)) {
+		pr_err("Image is too small\n");
+		return -EINVAL;
+		goto error_exit;
+	}
+
 	if (memcmp(ehdr->e_ident, ELFMAG, SELFMAG)) {
 		pr_err("Image is corrupted (bad magic)\n");
 		ret = -EINVAL;
@@ -87,23 +116,28 @@ static int sunxi_check_elf_fw_len(const char *fw_name, const u8 *elf_data, uint3
 	}
 
 	shdr_table_end_offset = ehdr->e_shoff + ehdr->e_shentsize * ehdr->e_shnum;
-	if (reserved_mem_len < shdr_table_end_offset) {
-		pr_err("error! the length(%u) of reserved mem is little than the end offset(%u) of section header table!\n", reserved_mem_len, shdr_table_end_offset);
+	if (fw_size < shdr_table_end_offset) {
+		pr_err("error! the fw_size(%u) is little than the shdr_table_end_offset(%u)!\n",
+		       fw_size, shdr_table_end_offset);
 		ret = -EINVAL;
 		goto error_exit;
 	}
 
 	shdr = (struct elf32_shdr *)(elf_data + ehdr->e_shoff);
 	for (i = 0; i < ehdr->e_shnum; i++, shdr++) {
-		section_end_offset = shdr->sh_offset + shdr->sh_size;
+		if (shdr->sh_type == SHT_NOBITS)
+			section_end_offset = shdr->sh_offset;
+		else
+			section_end_offset = shdr->sh_offset + shdr->sh_size;
 
 		if (max_offset < section_end_offset) {
 			max_offset = section_end_offset;
 		}
 	}
 
-	if (reserved_mem_len < max_offset) {
-		pr_err("error, the length(%u) of reserved mem is little than the max end offset(%u) of section!\n", reserved_mem_len, max_offset);
+	if (fw_size < max_offset) {
+		pr_err("error, the fw_size(%u) is little than the max_offset(%u)!\n",
+		       fw_size, max_offset);
 		ret = -EINVAL;
 		goto error_exit;
 	}
@@ -292,52 +326,11 @@ int sunxi_request_firmware_from_memory(const struct firmware **fw, const char *n
 }
 EXPORT_SYMBOL(sunxi_request_firmware_from_memory);
 
-static int load_from_file(const char *path, void *dst, size_t size)
-{
-	struct file *filp;
-	int ret, bytes = 0;
-
-	if (!path || !dst || !size)
-		return -EINVAL;
-
-	filp = filp_open(path, O_RDONLY, 0);
-	if (IS_ERR(filp))
-		return PTR_ERR(filp);
-
-	while (bytes < size) {
-		ret = kernel_read(filp, dst + bytes, size - bytes, &filp->f_pos);
-		if (ret < 0)
-			goto err_out;
-		else if (ret > 0)
-			bytes += ret;
-		else
-			break; // success ?
-	}
-
-	filp_close(filp, NULL);
-	return bytes;
-err_out:
-	filp_close(filp, NULL);
-	memset(dst, 0, size);
-	return ret;
-}
-
-static int load_from_partition(const char *partition, void *dst, size_t size)
-{
-	char path[64];
-
-	memset(path, 0, sizeof(path));
-	scnprintf(path, sizeof(path) - 1, "/dev/by-name/%s", partition);
-
-	return load_from_file(path, dst, size);
-}
-
 int sunxi_request_firmware_from_partition(const struct firmware **fw, const char *name,
 					  size_t fw_size, struct device *dev)
 {
 	int ret;
 	u8 *fw_buffer;
-	sunxi_image_header_t *ih;
 	struct firmware *fw_p = NULL;
 
 	fw_buffer = vmalloc(fw_size);
@@ -353,15 +346,12 @@ int sunxi_request_firmware_from_partition(const struct firmware **fw, const char
 	}
 	fw_size = ret;
 
-	/*
-	 * When safe booting, a header is added to the rv partition,
-	 * which is no longer needed when the kernel is booted again
-	 */
-	ih = (sunxi_image_header_t *) fw_buffer;
-	if (ih->ih_magic == SUNXI_IH_MAGIC) {
-		dev_info(dev,
-				"rv is verified in uboot when safe booting, there is no need to check it again here\n");
-		memcpy(fw_buffer, fw_buffer + ih->ih_hsize, ih->ih_psize);
+	ret = sunxi_fw_unpack(fw_buffer, fw_size, fw_buffer, fw_size);
+	if (ret > 0) {
+		fw_size = ret;
+		dev_info(dev, "sunxi_fw_unpack, new size: %lu\n", (unsigned long)fw_size);
+	} else if (ret < 0) {
+		dev_err(dev, "sunxi_fw_unpack, failed!\n");
 	}
 
 	ret = sunxi_check_elf_fw_len(name, fw_buffer, fw_size);
@@ -393,3 +383,23 @@ exit_with_free_fw_buffer:
 	return ret;
 }
 EXPORT_SYMBOL(sunxi_request_firmware_from_partition);
+
+int sunxi_firmware_unpack(struct firmware *fw, struct device *dev)
+{
+	int ret;
+
+	if (!fw || !fw->data || !fw->size)
+		return -EINVAL;
+
+	ret = sunxi_fw_unpack((u8 *)fw->data, fw->size, fw->data, fw->size);
+	if (ret > 0) {
+		fw->size = ret;
+		dev_info(dev, "sunxi_fw_unpack, new size: %lu\n", (unsigned long)fw->size);
+	} else if (ret < 0) {
+		dev_err(dev, "sunxi_fw_unpack, failed!\n");
+	}
+
+	return ret;
+}
+
+EXPORT_SYMBOL(sunxi_firmware_unpack);

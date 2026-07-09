@@ -260,6 +260,8 @@ static int ce_task_data_init(crypto_aes_req_ctx_t *req, phys_addr_t src_phy,
 				ptask->ce_sg[i].dst_len = last_data_len;
 				ptask->data_len += last_data_len;
 				ptask->comm_ctl |= CE_COMM_CTL_TASK_INT_MASK;
+				if (req->aes_mode == SS_AES_MODE_CBC_MAC)
+					ss_cbc_mac_len_set(task, i);
 				/* ptask->next = NULL; */
 				break;
 			}

@@ -144,9 +144,29 @@ enum { FBD_U_REG_BLK_FBD = 0,
        FBD_U_REG_BLK_NUM,
 };
 
+struct de_afbd_debug_info {
+	bool enable;
+	u32 crop_r;
+	u32 crop_t;
+	u32 crop_w;
+	u32 crop_h;
+	u32 fix_crop_r;
+	u32 fix_crop_t;
+	u32 fix_crop_w;
+	u32 fix_crop_h;
+	u32 ovl_r;
+	u32 ovl_t;
+	u32 ovl_w;
+	u32 ovl_h;
+	uint32_t format;
+	struct disp_afbc_info afbc_info;
+	struct de_fbd_info fbd_info;
+};
+
 struct de_fbd_atw_private {
 	struct de_reg_mem_info reg_mem_info;
 	u32 reg_blk_num;
+	struct de_afbd_debug_info debug;
 	union {
 		struct de_reg_block fbd_atw_v_blks[FBD_ATW_V_REG_BLK_NUM];
 		struct de_reg_block fbd_u_blks[FBD_U_REG_BLK_NUM];
@@ -189,6 +209,7 @@ const static struct afbc_stream_info afbc_stream_infos[] = {
 	{ DRM_FORMAT_YUV420,   1, {8, 8, 8, 0}, {1, 5} },
 	{ DRM_FORMAT_YVU420,   1, {8, 8, 8, 0}, {1, 5} },
 	{ DRM_FORMAT_NV12,     1, {8, 8, 8, 0}, {1, 5} },
+	{ DRM_FORMAT_NV21,     1, {8, 8, 8, 0}, {1, 5} },
 
 	{ DRM_FORMAT_ABGR2101010, 0, {10, 10, 10, 2}, {0, 3} },
 };
@@ -203,6 +224,7 @@ struct de_version_afbd {
 	unsigned int version;
 	bool *rotate_support;
 	unsigned int phy_chn_cnt;
+	unsigned int *rotate_limit_height;
 	bool *afbd_exist;
 };
 
@@ -224,9 +246,14 @@ static bool de355_rotate_support[] = {
 	true, false, false, false, false,
 };
 
+static unsigned int de355_rotate_limit_height[] = {
+	1280, 0, 0, 0, 0,
+};
+
 static struct de_version_afbd de355 = {
 	.version = 0x355,
 	.rotate_support = de355_rotate_support,
+	.rotate_limit_height = de355_rotate_limit_height,
 	.phy_chn_cnt = ARRAY_SIZE(de355_afbd_exist),
 	.afbd_exist = de355_afbd_exist,
 };
@@ -255,7 +282,8 @@ static bool is_support_rotate(struct module_create_info *info)
 	int i;
 	for (i = 0; i < ARRAY_SIZE(de_version); i++) {
 		if (de_version[i]->version == info->de_version) {
-			return de_version[i]->rotate_support[info->id];
+			return de_version[i]->rotate_support ?
+				de_version[i]->rotate_support[info->id] : false;
 		}
 	}
 	return false;
@@ -266,10 +294,23 @@ static bool is_afbd_exist(struct module_create_info *info)
 	int i;
 	for (i = 0; i < ARRAY_SIZE(de_version); i++) {
 		if (de_version[i]->version == info->de_version) {
-			return de_version[i]->afbd_exist[info->id];
+			return de_version[i]->afbd_exist ?
+				de_version[i]->afbd_exist[info->id] : false;
 		}
 	}
 	return false;
+}
+
+static unsigned int get_afbd_rotate_limit_height(struct module_create_info *info)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(de_version); i++) {
+		if (de_version[i]->version == info->de_version) {
+			return de_version[i]->rotate_limit_height ?
+				de_version[i]->rotate_limit_height[info->id] : 0;
+		}
+	}
+	return 0;
 }
 
 static inline struct fbd_atw_v_reg *
@@ -308,7 +349,8 @@ static void de_fbd_get_rotate_info(struct de_fbd_info *info, const unsigned int 
 	int simp_rotation = rotation;
 
 	if ((rotation & ((DRM_MODE_ROTATE_MASK & ~DRM_MODE_ROTATE_0) | DRM_MODE_REFLECT_MASK)) &&
-	    (format != DRM_FORMAT_YVU420 && format != DRM_FORMAT_YUV420)) {
+	    (format != DRM_FORMAT_YVU420 && format != DRM_FORMAT_YUV420 &&
+	     format != DRM_FORMAT_NV12 && format != DRM_FORMAT_NV21)) {
 		info->rot = FBD_ROTATE_0;
 		info->h_flip = 0;
 		info->v_flip = 0;
@@ -361,7 +403,7 @@ static void fill_afbc_info(const struct drm_framebuffer *fb, struct disp_afbc_in
 			afbc->inputbits[3]  = afbc_stream_infos[i].inputbits[3];
 
 			afbc->block_layout = wide_block ? afbc_stream_infos[i].superblock_layout[1]
-											: afbc_stream_infos[i].superblock_layout[0];
+							: afbc_stream_infos[i].superblock_layout[0];
 			break;
 		}
 	}
@@ -539,13 +581,57 @@ static s32 de_fbd_atw_disable(struct de_afbd_handle *handle)
 		reg->fbd_ctl.dwval = 0;
 		fbd_atw_set_block_dirty(priv, FBD_U_REG_BLK_FBD, 1);
 	}
+	priv->debug.enable = false;
 	return 0;
+}
+
+static s32 de_fbd_fix_crop_size(struct drm_plane_state *plane_state, struct de_rect_s *crop)
+{
+	u32 format;
+
+	if (!plane_state || !crop)
+		return -1;
+
+	crop->left = plane_state->src_x >> 16;
+	crop->top  = plane_state->src_y >> 16;
+	crop->width = plane_state->src_w >> 16;
+	crop->height = plane_state->src_h >> 16;
+	format = plane_state->fb->format->format;
+
+	/* not yuv 420 sample, return */
+	if (format != DRM_FORMAT_YUV420 && format != DRM_FORMAT_YVU420 &&
+	    format != DRM_FORMAT_NV12 && format != DRM_FORMAT_NV21)
+		return 0;
+
+	if ((crop->width & 0x1) == 0x1) {
+		/* odd crop_w, crop down width, */
+		/* last line may disappear */
+		crop->width--;
+	}
+
+	if ((crop->height & 0x1) == 0x1) {
+		/* odd crop_w, crop down width, */
+		/* last line may disappear */
+		crop->height--;
+	}
+
+	DRM_DEBUG_DRIVER("[SUNXI-CRTC] after fix fbd crop(xywh)[%d %d %d %d] format %p4cc\n",
+			 crop->top, crop->left, crop->width, crop->height, &format);
+
+	return 0;
+}
+
+bool de_afbd_should_enable(struct de_afbd_handle *handle, struct display_channel_state *state)
+{
+	struct drm_framebuffer *fb = state->base.fb;
+	return fb && de_afbc_format_mod_supported(handle, fb ? fb->format->format : 0, fb->modifier);
 }
 
 int de_afbd_apply_lay(struct de_afbd_handle *handle, struct display_channel_state *state, struct de_afbd_cfg *cfg, bool *is_enable)
 {
 	u32 dwval;
 	u32 width, height, left, top;
+	struct de_rect_s crop;
 	struct de_fbd_info fbd_info;
 	struct disp_afbc_info afbc_info;
 	struct drm_framebuffer *fb = state->base.fb;
@@ -567,7 +653,24 @@ int de_afbd_apply_lay(struct de_afbd_handle *handle, struct display_channel_stat
 	if (handle->rotate_support)
 		de_fbd_get_rotate_info(&fbd_info, state->base.rotation, fb->format->format);
 
-	dwval = 1 | (1 << 4);
+	// fixup the compressed image crop from cstate
+	afbc_info.image_crop[0] = (state->compressed_image_crop & 0x0000ff); // left_crop
+	afbc_info.image_crop[1] = (state->compressed_image_crop & 0xff0000) >> 16; // top_crop
+
+	priv->debug.enable = true;
+	memcpy(&priv->debug.afbc_info, &afbc_info, sizeof(afbc_info));
+	memcpy(&priv->debug.fbd_info, &fbd_info, sizeof(fbd_info));
+	priv->debug.crop_r = (u32)((state->base.src_x) >> 16);
+	priv->debug.crop_t = (u32)((state->base.src_y) >> 16);
+	priv->debug.crop_w = (u32)((state->base.src_w) >> 16);
+	priv->debug.crop_h = (u32)((state->base.src_h) >> 16);
+	priv->debug.ovl_r = cfg->ovl_win.left;
+	priv->debug.ovl_t = cfg->ovl_win.top;
+	priv->debug.ovl_w = cfg->ovl_win.width;
+	priv->debug.ovl_h = cfg->ovl_win.height;
+	priv->debug.format = fb->format->format;
+
+	dwval = 1 | ((cfg->lay_premul & 0x3) << 4);
 	dwval |= ((state->base.pixel_blend_mode != DRM_MODE_BLEND_PIXEL_NONE ? 2 : 1) << 2);
 	dwval |= (state->base.alpha >> 8 << 24);
 	if (handle->rotate_support) {
@@ -619,6 +722,8 @@ int de_afbd_apply_lay(struct de_afbd_handle *handle, struct display_channel_stat
 	case DRM_FORMAT_YUV422:
 	case DRM_FORMAT_YUV420:
 	case DRM_FORMAT_YVU420:
+	case DRM_FORMAT_NV12:
+	case DRM_FORMAT_NV21:
 //	case DISP_FORMAT_YUV422_P_10BIT:
 //	case DISP_FORMAT_YUV420_P_10BIT: not exist in drm
 		dwval = 0x3210;
@@ -629,10 +734,13 @@ int de_afbd_apply_lay(struct de_afbd_handle *handle, struct display_channel_stat
 	}
 	reg->fbd_fmt_seq.dwval = dwval;
 
-	width = ((unsigned long long)state->base.src_w) >> 16;
-	height = ((unsigned long long)state->base.src_h) >> 16;
-	dwval = ((width ? (width - 1) : 0) & 0xFFF) |
-		(height ? (((height - 1) & 0xFFF) << 16) : 0);
+	de_fbd_fix_crop_size(&state->base, &crop);
+	priv->debug.fix_crop_r = crop.left;
+	priv->debug.fix_crop_t = crop.top;
+	priv->debug.fix_crop_w = crop.width;
+	priv->debug.fix_crop_h = crop.height;
+	dwval = ((crop.width ? (crop.width - 1) : 0) & 0xFFF) |
+		(crop.height ? (((crop.height - 1) & 0xFFF) << 16) : 0);
 	reg->fbd_img_size.dwval = dwval;
 
 	width  = afbc_info.block_size[0];
@@ -645,9 +753,7 @@ int de_afbd_apply_lay(struct de_afbd_handle *handle, struct display_channel_stat
 	dwval = (left & 0xF) | ((top & 0xF) << 16);
 	reg->fbd_src_crop.dwval = dwval;
 
-	left = (u32)((state->base.src_x) >> 16);
-	top  = (u32)((state->base.src_y) >> 16);
-	dwval = (left & 0xFFF) | ((top & 0xFFF) << 16);
+	dwval = (crop.left & 0xFFF) | ((crop.top & 0xFFF) << 16);
 	reg->fbd_lay_crop.dwval = dwval;
 
 	dwval = (fbd_info.fmt & 0x7F) | ((fbd_info.yuv_tran & 0x1) << 7) |
@@ -724,6 +830,7 @@ struct de_afbd_handle *de_afbd_create(struct module_create_info *info)
 	hdl->format_modifiers = format_modifiers_afbc;
 	hdl->format_modifiers_num = ARRAY_SIZE(format_modifiers_afbc) - 1;
 	hdl->rotate_support = is_support_rotate(info);
+	hdl->rotate_limit_height = get_afbd_rotate_limit_height(info);
 	hdl->private = kmalloc(sizeof(*hdl->private), GFP_KERNEL | __GFP_ZERO);
 	priv = hdl->private;
 	reg_mem_info = &(hdl->private->reg_mem_info);
@@ -778,4 +885,37 @@ struct de_afbd_handle *de_afbd_create(struct module_create_info *info)
 	for (i = 0; i < hdl->private->reg_blk_num; i++)
 		hdl->block[i] = &priv->reg_blks[i];
 	return hdl;
+}
+
+void de_dump_afbd_state(struct drm_printer *p, struct de_afbd_handle *handle, const struct display_channel_state *state)
+{
+	struct de_afbd_debug_info *debug = &handle->private->debug;
+	unsigned long base = (unsigned long)handle->private->reg_blks[0].reg_addr;
+	unsigned long de_base = (unsigned long)handle->cinfo.de_reg_base;
+	char *layout_name[] = {
+		"16x16",
+		"16x16 420 sampling",
+		"16x16 422 sampling",
+		"32x8  444 sampling",
+		"unknown",
+	};
+
+	drm_printf(p, "\n\tafbd@%8x: %sable\n", (unsigned int)(base - de_base), debug->enable ? "en" : "dis");
+	if (debug->enable) {
+		drm_printf(p, "\t\tformat: %p4cc layout: %s yuv_transform: %sable\n", &debug->format,
+			   debug->fbd_info.block_layout < 4 ? layout_name[debug->fbd_info.block_layout] : layout_name[4],
+			   debug->fbd_info.yuv_tran ? "en" : "dis");
+		if (handle->rotate_support)
+			drm_printf(p, "\t\trotate(clockwise): %d hfilp: %sable vfilp: %sable\n",
+				   debug->fbd_info.rot * 90,
+				   debug->fbd_info.h_flip ?  "en" : "dis",
+				   debug->fbd_info.v_flip ?  "en" : "dis");
+		drm_printf(p, "\t\tblock_num: (%3dx%3d) ==> "
+			   "s-lt(%2d+%2d) c(%4dx%4d+%4d+%4d) fixc(%4dx%4d+%4d+%4d) ==> out(%4dx%4d)\n",
+			   debug->afbc_info.block_size[0], debug->afbc_info.block_size[1],
+			   debug->afbc_info.image_crop[0], debug->afbc_info.image_crop[1],
+			   debug->crop_w, debug->crop_h, debug->crop_r, debug->crop_t,
+			   debug->fix_crop_w, debug->fix_crop_h, debug->fix_crop_r, debug->fix_crop_t,
+			   debug->ovl_w, debug->ovl_h);
+	}
 }

@@ -72,6 +72,7 @@ typedef struct {
 	struct semaphore *event_sem;
 	wait_queue_head_t queue;
 	__u32 finish_flag;
+	bool drm_master_enable;
 } __g2d_drv_t;
 
 struct g2d_alloc_struct {

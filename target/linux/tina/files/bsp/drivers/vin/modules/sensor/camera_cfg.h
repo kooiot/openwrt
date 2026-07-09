@@ -42,6 +42,11 @@ typedef enum tag_CAMERA_IO_CMD {
 	SET_PTN,
 	SENSOR_TVIN_INIT,
 	GET_SENSOR_CH_OUTPUT_FMT,
+	SET_SENSOR_EXP_GAIN_DELAY,
+	SET_SWITCH_CHANGE,
+	SET_SENSOR_ONE_FRAME,
+	SET_SENSOR_MULTI_FRAME,
+	GET_SENSOR_BLC,
 } __camera_cmd_t;
 
 struct sensor_exif_attribute {
@@ -52,6 +57,12 @@ struct sensor_exif_attribute {
 	__u32 iso_speed;
 	__u32 flash_fire;
 	__u32 brightness;
+};
+
+struct sensor_blc_offset {
+	unsigned short r_offset;
+	unsigned short g_offset;
+	unsigned short b_offset;
 };
 
 struct sensor_win_size {
@@ -71,7 +82,7 @@ struct sensor_win_size {
 	unsigned int bin_factor;/* binning factor                    */
 	unsigned int intg_min;	/* integration min, unit: line, Q4   */
 	unsigned int intg_max;	/* integration max, unit: line, Q4   */
-#if !defined CONFIG_ARCH_SUN50IW10
+#if !IS_ENABLED(CONFIG_ARCH_SUN50IW10) && !IS_ENABLED(CONFIG_ARCH_SUN8IW22)
 	unsigned int intg_mid_min;   /*middle integration min, unit: line, Q4   */
 	unsigned int intg_mid_max;   /*middle integration max, unit: line, Q4   */
 	unsigned int intg_short_min; /*short integration min, unit: line, Q4   */
@@ -90,6 +101,7 @@ struct sensor_win_size {
 	unsigned long top_clk;
 	unsigned long isp_clk;
 	unsigned char pclk_dly;
+	unsigned int deskew;	/* mipi clk dly */
 
 	void *regs;		/* Regs to tweak */
 	int regs_size;

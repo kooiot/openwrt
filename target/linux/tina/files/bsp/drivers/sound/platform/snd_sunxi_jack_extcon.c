@@ -293,32 +293,6 @@ static int sunxi_jack_resume(struct snd_soc_card *card)
 	return 0;
 }
 
-/* jack mode selection interface probe */
-void sunxi_jack_typec_mode_set(struct sunxi_jack_typec_cfg *jack_typec_cfg,
-			       enum sunxi_jack_modes mode)
-{
-	int i;
-	struct sunxi_jack_pins *jack_pins = jack_typec_cfg->jack_pins;
-	struct sunxi_jack_modes_map *modes_map = jack_typec_cfg->modes_map;
-
-	if (!modes_map || !jack_pins) {
-		SND_LOG_ERR("modes map or jack pins is NULL\n");
-		return;
-	}
-
-	if (mode >= SND_JACK_MODE_CNT || modes_map[mode].type == SND_JACK_MODE_NULL) {
-		SND_LOG_WARN("missing mode value,mode:%d\n", mode);
-		return;
-	}
-
-	for (i = 0; i < jack_typec_cfg->sw_pin_max; ++i) {
-		if (!jack_pins[i].used || modes_map[mode].map_value[i] == 0xf)
-			continue;
-		gpio_set_value(jack_pins[i].pin, modes_map[mode].map_value[i]);
-	}
-}
-EXPORT_SYMBOL(sunxi_jack_typec_mode_set);
-
 static int sunxi_jack_typec_init(struct sunxi_jack_extcon *jack_extcon)
 {
 	int ret, i;

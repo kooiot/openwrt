@@ -53,6 +53,7 @@ extern struct sensor_info *to_state(struct v4l2_subdev *sd);
 extern void sensor_cfg_req(struct v4l2_subdev *sd, struct sensor_config *cfg);
 extern void sensor_isp_input(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt *mf);
 extern unsigned int sensor_get_exp(struct v4l2_subdev *sd);
+extern void sensor_check_vblank(struct v4l2_subdev *sd);
 extern unsigned int sensor_get_clk(struct v4l2_subdev *sd, struct v4l2_mbus_config *cfg,
 			unsigned long *top_clk, unsigned long *isp_clk);
 

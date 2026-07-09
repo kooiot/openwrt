@@ -4,6 +4,7 @@ pvrsrvkm-y += \
  server_cmm_bridge.o \
  client_devicememhistory_direct_bridge.o \
  server_devicememhistory_bridge.o \
+ server_di_bridge.o \
  server_dmabuf_bridge.o \
  client_htbuffer_direct_bridge.o \
  server_htbuffer_bridge.o \
@@ -15,10 +16,9 @@ pvrsrvkm-y += \
  server_rgxcmp_bridge.o \
  server_rgxfwdbg_bridge.o \
  server_rgxhwperf_bridge.o \
- server_rgxkicksync_bridge.o \
  server_rgxregconfig_bridge.o \
- server_rgxsignals_bridge.o \
  server_rgxta3d_bridge.o \
+ server_rgxtimerquery_bridge.o \
  server_rgxtq2_bridge.o \
  server_rgxtq_bridge.o \
  server_srvcore_bridge.o \
@@ -26,19 +26,16 @@ pvrsrvkm-y += \
  server_sync_bridge.o \
  client_synctracking_direct_bridge.o \
  server_synctracking_bridge.o \
- pvr_buffer_sync.o \
- pvr_counting_timeline.o \
- pvr_drm.o \
- pvr_fence.o \
- pvr_platform_drv.o \
- pvr_sw_fence.o \
- pvr_sync_file.o \
  cache_km.o \
  connection_server.o \
+ debug_common.o \
  devicemem_heapcfg.o \
  devicemem_history_server.o \
  devicemem_server.o \
+ di_impl_brg.o \
+ di_server.o \
  handle.o \
+ htb_debug.o \
  htbserver.o \
  info_page_km.o \
  lists.o \
@@ -47,7 +44,6 @@ pvrsrvkm-y += \
  physmem.o \
  physmem_hostmem.o \
  physmem_lma.o \
- physmem_tdsecbuf.o \
  pmr.o \
  power.o \
  process_stats.o \
@@ -61,37 +57,44 @@ pvrsrvkm-y += \
  tlintern.o \
  tlserver.o \
  tlstream.o \
- rgxfwload.o \
+ vmm_pvz_client.o \
+ vmm_pvz_server.o \
+ vz_vmm_pvz.o \
+ vz_vmm_vm.o \
+ rgx_bridge_init.o \
  rgxbreakpoint.o \
  rgxbvnc.o \
  rgxccb.o \
  rgxcompute.o \
- rgxdebug.o \
  rgxfwdbg.o \
  rgxfwimageutils.o \
+ rgxfwtrace_strings.o \
+ rgxhwperf_common.o \
+ rgxmem.o \
+ rgxregconfig.o \
+ rgxshader.o \
+ rgxsyncutils.o \
+ rgxtdmtransfer.o \
+ rgxtimecorr.o \
+ rgxtimerquery.o \
+ rgxutils.o \
+ rgxdebug.o \
  rgxfwutils.o \
  rgxhwperf.o \
  rgxinit.o \
- rgxkicksync.o \
  rgxlayer_impl.o \
- rgxmem.o \
  rgxmipsmmuinit.o \
  rgxmmuinit.o \
+ rgxmulticore.o \
  rgxpower.o \
- rgxregconfig.o \
- rgxsignals.o \
  rgxsrvinit.o \
  rgxstartstop.o \
- rgxsyncutils.o \
  rgxta3d.o \
- rgxtdmtransfer.o \
- rgxtimecorr.o \
  rgxtransfer.o \
- rgxutils.o \
  allocmem.o \
  event.o \
+ fwload.o \
  handle_idr.o \
- htb_debug.o \
  km_apphint.o \
  module_common.o \
  osconnection_server.o \
@@ -102,9 +105,18 @@ pvrsrvkm-y += \
  physmem_test.o \
  pmr_os.o \
  pvr_bridge_k.o \
+ pvr_buffer_sync.o \
+ pvr_counting_timeline.o \
  pvr_debug.o \
  pvr_debugfs.o \
+ pvr_drm.o \
+ pvr_fence.o \
  pvr_gputrace.o \
+ pvr_platform_drv.o \
+ pvr_sw_fence.o \
+ pvr_sync_file.o \
+ pvr_sync_ioctl_common.o \
+ pvr_sync_ioctl_drm.o \
  devicemem.o \
  devicemem_utils.o \
  hash.o \
@@ -116,23 +128,20 @@ pvrsrvkm-y += \
  tlclient.o \
  uniq_key_splay_tree.o \
  rgx_hwperf_table.o \
- system/dma_support.o \
- system/pci_support.o \
- system/vmm_pvz_client.o \
- system/vmm_pvz_server.o \
- system/vmm_type_stub.o \
- system/vz_physheap_common.o \
- system/vz_physheap_generic.o \
- system/vz_support.o \
- system/vz_vmm_pvz.o \
- system/vz_vmm_vm.o \
+ interrupt_support.o \
+ pci_support.o \
+ sysconfig_cmn.o \
+ dma_support.o \
+ vmm_type_stub.o \
  apollo/sysconfig.o
 pvrsrvkm-$(CONFIG_DRM_POWERVR_ROGUE_DEBUG) += \
+ server_rgxkicksync_bridge.o \
  client_ri_direct_bridge.o \
  server_ri_bridge.o \
- ri_server.o
+ ri_server.o \
+ rgxkicksync.o
 pvrsrvkm-$(CONFIG_ARM)   += osfunc_arm.o
 pvrsrvkm-$(CONFIG_ARM64) += osfunc_arm64.o
 pvrsrvkm-$(CONFIG_EVENT_TRACING) += trace_events.o
-pvrsrvkm-$(CONFIG_MIPS)  += osfunc_mips.o
+pvrsrvkm-$(CONFIG_RISCV) += osfunc_riscv.c
 pvrsrvkm-$(CONFIG_X86)   += osfunc_x86.o

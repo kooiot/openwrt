@@ -349,6 +349,16 @@ void vin_iommu_en(unsigned int mester_id, bool en)
 }
 EXPORT_SYMBOL_GPL(vin_iommu_en);
 
+u64 vin_time_get(void)
+{
+#ifdef TIMESTAMP_USE_BOOTTIME
+	return ktime_get_boottime();
+#else
+	return ktime_get_ns();
+#endif
+}
+EXPORT_SYMBOL_GPL(vin_time_get);
+
 MODULE_AUTHOR("raymonxiu");
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_DESCRIPTION("Video front end OSAL for sunxi");

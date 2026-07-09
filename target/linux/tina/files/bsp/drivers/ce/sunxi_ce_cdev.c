@@ -243,10 +243,11 @@ static int sunxi_ce_hw_init(sunxi_ce_cdev_t *p_cdev)
 
 	/* enable ce sys clk */
 	if (!IS_ERR_OR_NULL(p_cdev->ce_sys_clk)) {
-		if (clk_prepare_enable(p_cdev->ce_sys_clk))
+		if (clk_prepare_enable(p_cdev->ce_sys_clk)) {
 			SS_ERR("Couldn't enable ce sys clock\n");
 			err = -EBUSY;
 			goto err3;
+		}
 	}
 
 	sunxi_ce_res_request(p_cdev);

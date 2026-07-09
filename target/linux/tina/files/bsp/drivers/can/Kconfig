@@ -4,11 +4,17 @@ menu "CAN Drivers"
 	depends on AW_BSP
 
 config AW_CAN_SUN55I
-	depends on CAN
+	depends on CAN && ARCH_SUN55IW6
 	tristate "Allwinner SUN55I T536 CAN controller"
 	default n
 	help
 	  if say Y here, you can use T536 CAN controller.
+config AW_CAN_SUN8I
+	depends on CAN && ARCH_SUN8IW22
+	tristate "Allwinner SUN8I T153 CAN controller"
+	default n
+	help
+	  if say Y here, you can use T153 CAN controller.
 
 endmenu
 

@@ -25,11 +25,9 @@ static struct rc_map_table sunxi_nec_scan[] = {
 	{ 0x0f, KEY_POWER },
 	{ 0x52, KEY_HOME },
 	{ 0x10, KEY_MENU },
-	{ 0x58, KEY_MUTE },
 	{ 0x5e, KEY_EPG },		//mouse
 	{ 0x4d, KEY_UP },
 	{ 0x11, KEY_PREVIOUS },
-	{ 0x5c, KEY_VOLUMEUP },
 	{ 0x57, KEY_LEFT },
 	{ 0x5b, KEY_OK },
 	{ 0x5f, KEY_RIGHT },
@@ -42,7 +40,6 @@ static struct rc_map_table sunxi_nec_scan[] = {
 	{ 0x1b, KEY_NUMERIC_2 },
 	{ 0x1f, KEY_NUMERIC_3 },
 	{ 0x16, KEY_NUMERIC_4 },
-	{ 0x1a, KEY_NUMERIC_5 },
 	{ 0x1e, KEY_NUMERIC_6 },
 	{ 0x15, KEY_NUMERIC_7 },
 	{ 0x19, KEY_NUMERIC_8 },
@@ -50,10 +47,32 @@ static struct rc_map_table sunxi_nec_scan[] = {
 	{ 0x18, KEY_NUMERIC_0 },
 	{ 0x14, KEY_DOT },
 	{ 0x1c, KEY_BACKSPACE },
-	{ 0x13, BTN_TRIGGER_HAPPY18 },
 	{ 0x50, BTN_TRIGGER_HAPPY16 },
 	{ 0x59, KEY_PAUSE },
 	{ 0x55, KEY_PLAY },
+
+	{ 0x48, KEY_HOME },
+	{ 0x07, KEY_OK },
+	{ 0x03, KEY_UP },
+	{ 0x02, KEY_DOWN },
+	{ 0x0e, KEY_LEFT },
+	{ 0x0b, KEY_VOLUMEUP },
+	{ 0x1, KEY_MUTE },
+	{ 0x93, KEY_CAMERA_DOWN },
+	{ 0x98, KEY_CAMERA_UP },
+	{ 0x82, KEY_EPG },		//mouse
+
+#if IS_ENABLED(CONFIG_ARCH_SUN251IW1)
+	{ 0x58, KEY_VOLUMEDOWN },
+	{ 0x1a, KEY_RIGHT },
+	{ 0x5c, KEY_BACK },
+	{ 0x13, KEY_MENU },
+#else
+	{ 0x58, KEY_MUTE },
+	{ 0x1a, KEY_NUMERIC_5 },
+	{ 0x5c, KEY_VOLUMEUP },
+	{ 0x13, BTN_TRIGGER_HAPPY18 },
+#endif
 
 	/* Key codes for the x96 remote */
 	{ 0x140, KEY_POWER },

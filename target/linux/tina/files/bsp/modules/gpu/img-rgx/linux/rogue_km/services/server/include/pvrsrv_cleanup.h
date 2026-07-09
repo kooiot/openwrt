@@ -40,8 +40,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /***************************************************************************/
 
-#ifndef _PVRSRV_CLEANUP_H
-#define _PVRSRV_CLEANUP_H
+#ifndef PVRSRV_CLEANUP_H
+#define PVRSRV_CLEANUP_H
 
 #include "dllist.h"
 
@@ -81,7 +81,7 @@ typedef PVRSRV_ERROR (*CLEANUP_THREAD_FN)(void *pvParam);
 /* Like for CLEANUP_THREAD_RETRY_COUNT_DEFAULT but call will wait for
  * a specified amount of time rather than number of retries.
  */
-#define CLEANUP_THREAD_RETRY_TIMEOUT_MS_DEFAULT 2000u /* 2s */
+#define CLEANUP_THREAD_RETRY_TIMEOUT_MS_DEFAULT 20000u /* 20s */
 
 /* Use to set retry count on a cleanup item.
  * _item - pointer to the PVRSRV_CLEANUP_THREAD_WORK
@@ -156,4 +156,22 @@ typedef struct _PVRSRV_CLEANUP_THREAD_WORK_
 */ /***************************************************************************/
 void PVRSRVCleanupThreadAddWork(PVRSRV_CLEANUP_THREAD_WORK *psData);
 
-#endif /* _PVRSRV_CLEANUP_H */
+/**************************************************************************/ /*!
+@Function       PVRSRVCleanupThreadGetPid
+
+@Description    Returns Cleanup Thread's PID.
+
+@Return         PID of the Cleanup Thread
+*/ /***************************************************************************/
+IMG_PID PVRSRVCleanupThreadGetPid(void);
+
+/**************************************************************************/ /*!
+@Function       PVRSRVCleanupThreadGetTid
+
+@Description    Returns Cleanup Thread's TID.
+
+@Return         TID of the Cleanup Thread
+*/ /***************************************************************************/
+uintptr_t PVRSRVCleanupThreadGetTid(void);
+
+#endif /* PVRSRV_CLEANUP_H */

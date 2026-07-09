@@ -1053,7 +1053,7 @@ static int nsi_clk_path_process(struct device *dev)
 }
 
 
-#if (!IS_ENABLED(CONFIG_ARCH_SUN50IW10) && !IS_ENABLED(CONFIG_ARCH_SUN55IW3))
+#if (!IS_ENABLED(CONFIG_ARCH_SUN50IW10))
 static int sunxi_set_nsi_qos_params(struct device *dev)
 {
 	struct device_node *np = dev->of_node;
@@ -1084,7 +1084,7 @@ static int sunxi_set_nsi_qos_params(struct device *dev)
 
 	return 0;
 }
-#endif /* #if (!IS_ENABLED(CONFIG_ARCH_SUN50IW10) && !IS_ENABLED(CONFIG_ARCH_SUN55IW3)) */
+#endif /* #if (!IS_ENABLED(CONFIG_ARCH_SUN50IW10)) */
 
 static int nsi_probe(struct platform_device *pdev)
 {
@@ -1200,7 +1200,7 @@ static int nsi_probe(struct platform_device *pdev)
 		sunxi_nsi.cpu_pmu_data_unit = sunxi_nsi.ra_pmu_data_unit;
 	}
 
-#if (!IS_ENABLED(CONFIG_ARCH_SUN50IW10) && !IS_ENABLED(CONFIG_ARCH_SUN55IW3))
+#if (!IS_ENABLED(CONFIG_ARCH_SUN50IW10))
 	sunxi_set_nsi_qos_params(&pdev->dev);
 #endif
 
@@ -1788,7 +1788,7 @@ static int sunxi_nsi_suspend(struct device *dev)
 
 static int sunxi_nsi_resume(struct device *dev)
 {
-#if (!IS_ENABLED(CONFIG_ARCH_SUN50IW10) && !IS_ENABLED(CONFIG_ARCH_SUN55IW3))
+#if (!IS_ENABLED(CONFIG_ARCH_SUN50IW10))
 	sunxi_set_nsi_qos_params(dev);
 #endif
 
