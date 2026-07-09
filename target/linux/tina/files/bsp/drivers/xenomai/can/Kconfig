@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+menu "AW Real-time CAN Drivers"
+	depends on AW_XENOMAI_DRIVERS
+
+config AW_XENO_CAN_SUN8I
+	#depends on CAN
+	tristate "Allwinner Xenomai SUN8I T153 CAN controller"
+	default n
+	help
+	  if say Y here, you can use Xenomai T153 CAN controller.
+
+endmenu
+

@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: GPL-2.0
+
+menu "XENO SDIO"
+
+config XENO_DRIVERS_SDIO
+       tristate "xenomai sdio"
+       depends on AW_XENOMAI_SDIO_DRIVERS
+       default n
+
+source "bsp//drivers/xenomai/sdio/host-bsp/Kconfig"
+endmenu
