@@ -225,7 +225,7 @@ static void dwc3_set_host(struct dwc3_sunxi_plat *dwc3, bool enable)
 				ret = phy_power_on(dwc3->dwc->usb3_generic_phy);
 				if (ret)
 					sunxi_err(dwc3->dev, "failed to set phy power on\n");
-				dwc3_set_prtcap(dwc3->dwc, DWC3_GCTL_PRTCAP_HOST);
+				dwc3_set_prtcap(dwc3->dwc, DWC3_GCTL_PRTCAP_HOST, false);
 				phy_set_mode(dwc3->dwc->usb2_generic_phy, PHY_MODE_USB_HOST);
 				phy_set_mode(dwc3->dwc->usb3_generic_phy, PHY_MODE_USB_HOST);
 				ret = dwc3_host_init(dwc3->dwc);
