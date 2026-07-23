@@ -103,12 +103,14 @@ define Device/NAND
   KERNEL_IN_UBI := 1
   UBOOTENV_IN_UBI := 1
   UBINIZE_OPTS := -E 5
+  UBINIZE_PARTS = backup==8
   KERNEL := kernel-bin | lzma | uImage lzma | sunxi-kernelubifs
-  IMAGES := factory.img sysupgrade.bin
+  IMAGES := factory.img factory.ubi sysupgrade.bin
   IMAGE/factory.img := \
 	  sunxi-spl-bin | \
       pad-to $$(CONFIG_SUN8I_V3S_OFFSET_UBI) | \
       append-ubi | check-size $$$$(IMAGE_SIZE)
+  IMAGE/factory.ubi :=  append-ubi | check-size $$$$(IMAGE_SIZE)
   IMAGE/sysupgrade.bin := \
 	  sysupgrade-tar | append-metadata | check-size $$$$(IMAGE_SIZE)
 endef
