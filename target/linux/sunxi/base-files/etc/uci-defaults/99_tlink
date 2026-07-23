@@ -17,14 +17,19 @@ tlink_mount_data() {
 			data_blk_p="/dev/mmcblk2p3"
 		fi
 	fi
+	# 检查data分区是否存在
+	if [ ! -b $data_blk_p ]; then
+		echo "ERROR: EMC data partition not found!!!" > /dev/kmsg
+		return 1
+	fi
 
 	if [ -b "/dev/mmcblk1p4"]; then
 		echo "EMC not initialized!!!" > /dev/kmsg
-		return
+		return 1
 	fi
 	if [ -b "/dev/mmcblk1p5"]; then
 		echo "EMC not initialized!!!" > /dev/kmsg
-		return
+		return 1
 	fi
 
 	rule_name=$(uci add fstab mount)
@@ -37,6 +42,43 @@ set fstab.$rule_name.enabled='1'
 set fstab.$rule_name.enabled_fsck='1'
 EOF
 	uci commit fstab
+	return 0
+}
+
+# 查找名为 backup 的 UBI 卷并返回其设备节点
+find_backup_dev() {
+    for vol in /sys/class/ubi/ubi0_*; do
+        if [ -f "$vol/name" ] && [ "$(cat "$vol/name")" = "backup" ]; then
+            echo "/dev/$(basename "$vol")"
+            return 0
+        fi
+    done
+    return 1
+}
+
+tlink_mount_ubi_backup() {
+	# 检查ubi0分区是否存在
+	if [ ! -e /dev/ubi0 ]; then
+		echo "UBI0 not found!!!" > /dev/kmsg
+		return 1
+	fi
+
+	ubi_part_device=$(find_backup_dev)
+
+	if [ -z "$ubi_part_device" ]; then
+		echo "ERROR: UBI has no backup partition!!!" > /dev/kmsg
+		return 1
+	fi
+
+	rule_name=$(uci add fstab mount)
+	uci batch <<EOF
+set fstab.$rule_name.target='/mnt/backup'
+set fstab.$rule_name.device='$ubi_part_device'
+set fstab.$rule_name.enabled='1'
+EOF
+	uci commit fstab
+
+	return 0
 }
 
 tlink_add_qmi_interface() {
@@ -256,7 +298,13 @@ tlink_default() {
 	if ( grep -qs '/mnt/data' /etc/config/fstab || \
 		tlink_mount_data )
 	then
-		echo "Data parition mount point added" > /dev/kmsg
+		echo "Data parition mount point added!!!" > /dev/kmsg
+	fi
+	# backup partition mount
+	if ( grep -qs '/mnt/backup' /etc/config/fstab || \
+		tlink_mount_ubi_backup )
+	then
+		echo "UBI Backup parition mount point added!!!" > /dev/kmsg
 	fi
 
 	case "$(board_name)" in
