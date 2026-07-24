@@ -27,11 +27,7 @@ ubivol() {
 		echo "image=$image"
 		[ -n "$size" ] && echo "vol_size=${size}"
 	else
-		if [ -n "$size" ]; then
-			echo "vol_size=${size}"
-		else
-			echo "vol_size=1MiB"
-		fi
+		echo "vol_size=1MiB"
 	fi
 	if [ "$autoresize" ]; then
 		echo "vol_flags=autoresize"
