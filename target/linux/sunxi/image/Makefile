@@ -60,6 +60,18 @@ define Build/sunxi-kernelubifs
 		$(DTS_DIR)/$(SUNXI_DTS).dtb \
 		$(CONFIG_SUNXI_SPINAND_PAGESIZE) \
 		$(CONFIG_SUNXI_SPINAND_BLOCKSIZE)
+
+	$(Build/sunxi-backup-ubifs) 
+endef
+
+define Build/sunxi-backup-ubifs
+	rm -rf $@.backup
+	mkdir -p $@.backup
+
+	$(STAGING_DIR_HOST)/bin/mkfs.ubifs \
+		-r $@.backup -F -m $(CONFIG_SUNXI_SPINAND_PAGESIZE) \
+		-e $(shell echo $$(($(CONFIG_SUNXI_SPINAND_BLOCKSIZE) - (($(CONFIG_SUNXI_SPINAND_PAGESIZE)/1024)*2))))KiB \
+		-c 64 -U -v -o $@.backup.ubifs
 endef
 
 # why \x00\x00\x00\x00 for zImage-initramfs
@@ -103,7 +115,7 @@ define Device/NAND
   KERNEL_IN_UBI := 1
   UBOOTENV_IN_UBI := 1
   UBINIZE_OPTS := -E 5
-  UBINIZE_PARTS = backup==8
+  UBINIZE_PARTS = backup=$$(KDIR_KERNEL_IMAGE).backup.ubifs=8
   KERNEL := kernel-bin | lzma | uImage lzma | sunxi-kernelubifs
   IMAGES := factory.img factory.ubi sysupgrade.bin
   IMAGE/factory.img := \
