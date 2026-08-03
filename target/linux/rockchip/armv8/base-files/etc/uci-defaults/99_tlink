@@ -65,8 +65,23 @@ EOF
 	uci commit fstab
 	if [ -f /etc/config/dockerd ]
 	then
-		uci set dockerd.globals.data_root='/mnt/storage/docker/'
-		uci commit dockerd
+		if [ ! -b /dev/sda2 ]; then
+			uci set dockerd.globals.data_root='/mnt/storage/docker/'
+			uci commit dockerd
+		else
+			rule_name=$(uci add fstab mount)
+			uci batch <<EOF
+set fstab.$rule_name.target='/mnt/docker'
+set fstab.$rule_name.device='/dev/sda2'
+set fstab.$rule_name.fstype='ext4'
+set fstab.$rule_name.options='rw,async'
+set fstab.$rule_name.enabled='1'
+set fstab.$rule_name.enabled_fsck='1'
+EOF
+			uci commit fstab
+			uci set dockerd.globals.data_root='/mnt/docker/'
+			uci commit dockerd
+		fi
 	fi
 }
 
