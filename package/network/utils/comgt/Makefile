@@ -70,6 +70,7 @@ define Package/comgt/install
 	$(LN) comgt $(1)/usr/bin/gcom
 	$(INSTALL_DIR) $(1)/etc/chatscripts
 	$(INSTALL_DATA) ./files/3g.chat $(1)/etc/chatscripts/3g.chat
+	$(INSTALL_DATA) ./files/3g_auth.chat $(1)/etc/chatscripts/3g_auth.chat
 	$(INSTALL_DATA) ./files/3g_ec20.chat $(1)/etc/chatscripts/3g_ec20.chat
 	$(INSTALL_DATA) ./files/3g_fibocom.chat $(1)/etc/chatscripts/3g_fibocom.chat
 	$(INSTALL_DATA) ./files/evdo.chat $(1)/etc/chatscripts/evdo.chat
@@ -77,6 +78,7 @@ define Package/comgt/install
 	$(INSTALL_DATA) ./files/setpin.gcom $(1)/etc/gcom/setpin.gcom
 	$(INSTALL_DATA) ./files/setmode.gcom $(1)/etc/gcom/setmode.gcom
 	$(INSTALL_DATA) ./files/getcardinfo.gcom $(1)/etc/gcom/getcardinfo.gcom
+	$(INSTALL_DATA) ./files/getproductid.gcom $(1)/etc/gcom/getproductid.gcom
 	$(INSTALL_DATA) ./files/getstrength.gcom $(1)/etc/gcom/getstrength.gcom
 	$(INSTALL_DATA) ./files/getcarrier.gcom $(1)/etc/gcom/getcarrier.gcom
 	$(INSTALL_DATA) ./files/getcnum.gcom $(1)/etc/gcom/getcnum.gcom

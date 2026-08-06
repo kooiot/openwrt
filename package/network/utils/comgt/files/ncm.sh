@@ -140,7 +140,7 @@ proto_ncm_setup() {
 	}
 
 	json_get_values configure configure
-	echo "Configuring modem"
+	echo "Configuring modem $device"
 	for i in $configure; do
 		eval COMMAND="$i" gcom -d "$device" -s /etc/gcom/runcommand.gcom || {
 			echo "Failed to configure modem"
