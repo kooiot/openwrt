@@ -1,4 +1,6 @@
 {
-	"desc": "Quectel EC25",
+	"desc": "Quectel EC25/EC20",
 	"type": "qmi",
+	"control": 2,
+	"data": 3
 }
