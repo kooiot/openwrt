@@ -1,4 +1,6 @@
 {
 	"desc": "MEIGLink SRM811",
-	"type": "ncm"
+	"type": "ncm",
+	"control": 2,
+	"data": 1
 }

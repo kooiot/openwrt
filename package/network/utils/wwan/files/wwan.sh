@@ -27,6 +27,9 @@ proto_wwan_init_config() {
 
 	proto_config_add_string apn
 	proto_config_add_string auth
+	proto_config_add_string pdptype
+	proto_config_add_string dialnumber
+	proto_config_add_string ppp_ipv6
 	proto_config_add_string username
 	proto_config_add_string password
 	proto_config_add_string pincode
@@ -79,15 +82,35 @@ proto_wwan_setup() {
 		json_init
 		json_load "$(cat "$usb")"
 		json_select
-		json_get_vars desc control data
+		json_get_vars desc control data type
 		json_set_namespace "$old_cb"
 
-		[ -n "$control" -a -n "$data" ] && {
+		[ -n "$control" -o -n "$data" ] && {
 			ttys=$(ls -d /sys/bus/usb/devices/$devicename/${devicename}*/tty?* /sys/bus/usb/devices/$devicename/${devicename}*/tty/tty?* | sed "s/.*\///g" | tr "\n" " ")
-			ctl_device=/dev/$(echo $ttys | cut -d" " -f $((control + 1)))
-			dat_device=/dev/$(echo $ttys | cut -d" " -f $((data + 1)))
-			driver=comgt
+			[ -n "$control" ] && {
+				ctl_device=/dev/$(echo $ttys | cut -d" " -f $((control + 1)))
+			}
+			[ -n "$data" ] && {
+				dat_device=/dev/$(echo $ttys | cut -d" " -f $((data + 1)))
+			}
 		}
+		case $type in
+			qmi)
+				driver=qmi_wwan
+				ctl_device="" # qmi does not need ctl_device point to tty
+				;;
+			mbim)   driver=cdc_mbim ;;
+			ncm)    driver=cdc_ncm ;;
+			ether)  driver=cdc_ether ;;
+			serial|3g|*)
+				if [ -n "$control" ] && [ -n "$data" ]; then
+					driver=comgt
+				else
+					echo "Error: Unknown type '$type' and no control/data ports specified"
+					exit 1
+				fi
+				;;
+		esac
 	}
 
 	[ -z "$ctl_device" ] && for net in $(ls /sys/class/net/ | grep -e wwan -e usb); do
@@ -118,6 +141,8 @@ proto_wwan_setup() {
 	uci_set_state network "$interface" driver "$driver"
 	uci_set_state network "$interface" ctl_device "$ctl_device"
 	uci_set_state network "$interface" dat_device "$dat_device"
+
+	echo "wwan[$$]" "Using proto:$proto driver:$driver device:$ctl_device data:$dat_device iface:$net desc:$desc"
 
 	case $driver in
 	qmi_wwan)		proto_qmi_setup $@ ;;

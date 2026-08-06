@@ -1,4 +1,6 @@
 {
-	"desc": "QUECTEL RM500U",
-	"type": "ncm"
+	"desc": "QUECTEL RM500U-CN",
+	"type": "ncm",
+	"control": 2
+	"data": 3
 }
