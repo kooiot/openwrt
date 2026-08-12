@@ -81,6 +81,13 @@ EOF
 	return 0
 }
 
+tlink_add_wwan_interface() {
+	uci set network.wwan='interface'
+	uci set network.wwan.proto='wwan'
+	uci set network.wwan.pdptype='IP'
+	uci commit network
+}
+
 tlink_add_qmi_interface() {
 	uci set network.4g_wan='interface'
 	uci set network.4g_wan.proto='qmi'
@@ -251,6 +258,13 @@ tlink_add_5g_wan() {
 		AT_PORT='/dev/ttyUSB0' # USB1-AT USB0-MODEM
 		AT_PORT_INFO='/dev/ttyUSB1'
 	fi
+	lsudb -d "2c7c:600b" > /dev/null
+	if [ $? -eq 0 ]
+	then
+		echo "Fibocom RG255AA found!" > /dev/kmsg
+		AT_PORT='/dev/ttyUSB2' # USB1-AT USB2-MODEM
+		AT_PORT_INFO='/dev/ttyUSB1'
+	fi
 
 	uci set network.5g_wan='interface'
 	uci set network.5g_wan.proto='ncm'
@@ -312,15 +326,18 @@ tlink_default() {
 		"kooiot,tlink-k4a"|\
 		"kooiot,tlink-k4g"|\
 		"kooiot,tlink-k2")
-			tlink_init_5g
+			#tlink_init_5g
 			;;
 		"kooiot,tlink-x3")
-			tlink_add_qmi_interface
+			#tlink_add_qmi_interface
 			;;
 		*)
-			tlink_init_4g
+			#tlink_init_4g
 			;;
 	esac
+
+	# add wwan interface
+	tlink_add_wwan_interface
 
 	# ETH MAC for usb-eth mac been set in board.d/02_network
 	#case "$(board_name)" in
