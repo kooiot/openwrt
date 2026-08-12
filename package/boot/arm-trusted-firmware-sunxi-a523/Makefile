@@ -11,8 +11,8 @@ PKG_NAME:=arm-trusted-firmware-a523
 PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
-# PKG_SOURCE_URL=https://github.com/jernejsk/arm-trusted-firmware.git
-PKG_SOURCE_URL:=/opt/cch/github/arm-trusted-firmware-a523
+PKG_SOURCE_URL=https://gitee.com/srdgame/arm-trusted-firmware-a523.git
+# PKG_SOURCE_URL:=/opt/cch/github/arm-trusted-firmware-a523
 PKG_SOURCE_DATE:=2026-01-28
 PKG_SOURCE_VERSION:=808ad4700db076e894c879119d39863ffb1cca30
 PKG_MIRROR_HASH:=skip
