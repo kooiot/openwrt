@@ -1,90 +1,41 @@
 --- a/drivers/phy/rockchip/phy-rockchip-snps-pcie3.c
 +++ b/drivers/phy/rockchip/phy-rockchip-snps-pcie3.c
-@@ -19,6 +19,7 @@
- #include <dt-bindings/phy/phy.h>
- 
- #define GRF_PCIE30PHY_CON1 0x4
-+#define GRF_PCIE30PHY_CON4 0x10
- #define GRF_PCIE30PHY_CON6 0x18
- #define GRF_PCIE30PHY_CON9 0x24
- #define GRF_PCIE30PHY_STATUS0 0x80
-@@ -26,7 +27,8 @@
- 
- struct rockchip_p3phy_priv {
- 	void __iomem *mmio;
--	int mode;
-+	int mode; /* mode: RC, EP */
-+	int pcie30_phymode; /* pcie30_phymode: Aggregation, Bifurcation */
- 	struct regmap *phy_grf;
- 	struct reset_control *p30phy;
- 	struct clk *ref_clk_m;
-@@ -36,12 +38,17 @@
- 	bool is_bifurcation;
+@@ -20,6 +20,7 @@
+
+ /* Register for RK3568 */
+ #define GRF_PCIE30PHY_CON1			0x4
++#define GRF_PCIE30PHY_CON4			0x10
+ #define GRF_PCIE30PHY_CON6			0x18
+ #define GRF_PCIE30PHY_CON9			0x24
+ #define GRF_PCIE30PHY_DA_OCM			(BIT(15) | BIT(31))
+@@ -59,6 +60,10 @@ struct rockchip_p3phy_priv {
+ 	u32 lanes[4];
  };
- 
+
 +static u16 phy_fw[] = {
 +	#include "p3phy.fw"
 +};
 +
- static int rockchip_p3phy_set_mode(struct phy *phy, enum phy_mode mode, int submode)
- {
- 	struct rockchip_p3phy_priv *priv = phy_get_drvdata(phy);
-+	pr_info("%s, set phy_mode:%d submode:%d\n", __func__, mode, submode);
- 
- 	/* Acutally We don't care EP/RC mode, but just record it */
--	switch (mode) {
-+	switch (submode) {
- 	case PHY_MODE_PCIE_RC:
- 		priv->mode = PHY_MODE_PCIE_RC;
- 		break;
-@@ -62,7 +69,7 @@
- static int rochchip_p3phy_init(struct phy *phy)
- {
- 	struct rockchip_p3phy_priv *priv = phy_get_drvdata(phy);
--	int ret;
-+	int ret, i, val;
- 	u32 reg;
- 
- 	ret = clk_prepare_enable(priv->ref_clk_m);
-@@ -85,12 +92,21 @@
- 		     (0x1 << 15) | (0x1 << 31));
- 	/* Set bifurcation if needed, and it doesn't care RC/EP */
- 	if (priv->is_bifurcation) {
-+		pr_err("%s: is_bifurcation\n", __func__);
- 		regmap_write(priv->phy_grf, GRF_PCIE30PHY_CON6,
- 			     0x1 | (0xf << 16));
- 		regmap_write(priv->phy_grf, GRF_PCIE30PHY_CON1,
- 			     (0x1 << 15) | (0x1 << 31));
-+	} else {
-+		regmap_write(priv->phy_grf, GRF_PCIE30PHY_CON6,
-+			     (0xf << 16) & ~0x1);
+ struct rockchip_p3phy_ops {
+ 	int (*phy_init)(struct rockchip_p3phy_priv *priv);
+ };
+@@ -112,6 +117,11 @@ static int rockchip_p3phy_rk3568_init(st
+ 			     GRF_PCIE30PHY_WR_EN & ~RK3568_BIFURCATION_LANE_0_1);
  	}
-+
+
 +	regmap_write(priv->phy_grf, GRF_PCIE30PHY_CON4,
 +		     (0x0 << 14) | (0x1 << (14 + 16))); //sdram_ld_done
 +	regmap_write(priv->phy_grf, GRF_PCIE30PHY_CON4,
 +		     (0x0 << 13) | (0x1 << (13 + 16))); //sdram_bypass
- 
++
  	reset_control_deassert(priv->p30phy);
- 
+
  	ret = regmap_read_poll_timeout(priv->phy_grf,
-@@ -100,9 +116,31 @@
- 	if (ret) {
- 		pr_err("%s: lock failed 0x%x, check input refclk and power supply\n",
+@@ -121,6 +131,19 @@ static int rockchip_p3phy_rk3568_init(st
+ 	if (ret)
+ 		dev_err(&priv->phy->dev, "%s: lock failed 0x%x, check input refclk and power supply\n",
  		       __func__, reg);
 +
-+		// FOR DEBUG
-+		/*
-+		val = readl(priv->mmio + (0x27 << 2));
-+		pr_err("%s: TXPLL_LOCK is 0x%x PWON_PLL is 0x%x\n",
-+				__func__, val & BIT(0), val & BIT(1));
-+		val = readl(priv->mmio + (0x28 << 2));
-+		pr_err("%s: PWON_IREF is 0x%x\n", __func__, val & BIT(7));
-+		*/
-+
- 		goto err_pclk;
- 	}
- 
 +	regmap_write(priv->phy_grf, GRF_PCIE30PHY_CON9,
 +		     (0x3 << 8) | (0x3 << (8 + 16))); //map to access sram
 +	for (i = 0; i < 8192; i++)
@@ -97,17 +48,9 @@
 +
 +	dev_info(&priv->phy->dev, "p3phy (fw-d54d0eb) initialized\n");
 +
- 	return 0;
- err_pclk:
- 	clk_disable_unprepare(priv->ref_clk_n);
-@@ -147,6 +185,7 @@
- 		ret = PTR_ERR(priv->mmio);
- 		return ret;
- 	}
-+	dev_err(dev, "priv->mmio :%llx", priv->mmio);
- 
- 	priv->phy_grf = syscon_regmap_lookup_by_phandle(np, "rockchip,phy-grf");
- 	if (IS_ERR(priv->phy_grf)) {
+ 	return ret;
+ }
+
 --- /dev/null
 +++ b/drivers/phy/rockchip/p3phy.fw
 @@ -0,0 +1,8192 @@

@@ -1,21 +1,21 @@
 --- a/drivers/usb/serial/option.c
 +++ b/drivers/usb/serial/option.c
-@@ -636,6 +636,11 @@ static void option_instat_callback(struc
+@@ -632,6 +632,11 @@ static void option_instat_callback(struc
  #define FIBOCOM_PRODUCT_MC61532		0x4d11
  #define FIBOCOM_PRODUCT_MC61533		0x4d12
- 
+
 +/* MeiG products */
 +#define MEIG_VENDOR_ID					0x2DEE
 +#define MEIG_PRODUCT_SRM811_RNDIS		0x4D51
 +#define MEIG_PRODUCT_SRM811_NCM			0x4D52
 +
  /* Device flags */
- 
+
  /* Highest interface number which can be used with NCTRL() and RSVD() */
-@@ -2396,6 +2401,32 @@ static const struct usb_device_id option
- 	{ USB_DEVICE_AND_INTERFACE_INFO(MEIGSMART_VENDOR_ID, MEIGSMART_PRODUCT_SRM825L, 0xff, 0xff, 0x30) },
- 	{ USB_DEVICE_AND_INTERFACE_INFO(MEIGSMART_VENDOR_ID, MEIGSMART_PRODUCT_SRM825L, 0xff, 0xff, 0x40) },
- 	{ USB_DEVICE_AND_INTERFACE_INFO(MEIGSMART_VENDOR_ID, MEIGSMART_PRODUCT_SRM825L, 0xff, 0xff, 0x60) },
+@@ -2467,6 +2472,32 @@ static const struct usb_device_id option
+ 	{ USB_DEVICE_INTERFACE_CLASS(0x1bbb, 0x0640, 0xff),			/* TCL IK512 ECM */
+ 	  .driver_info = NCTRL(3) },
+ 	{ USB_DEVICE_INTERFACE_CLASS(0x2949, 0x8700, 0xff) },			/* Neoway N723-EA */
 +
 +	// SRM811
 +	{ USB_DEVICE(MEIG_VENDOR_ID, MEIG_PRODUCT_SRM811_RNDIS),

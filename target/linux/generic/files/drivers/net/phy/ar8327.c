@@ -15,6 +15,7 @@
  * GNU General Public License for more details.
  */
 
+#include <linux/of.h>
 #include <linux/list.h>
 #include <linux/bitops.h>
 #include <linux/switch.h>
@@ -183,7 +184,7 @@ ar8327_phy_fixup(struct ar8xxx_priv *priv, int phy)
 
 	case 2:
 		ar8xxx_phy_mmd_write(priv, phy, 0x7, 0x3c, 0x0);
-		fallthrough;
+		/* fallthrough */
 	case 4:
 		ar8xxx_phy_mmd_write(priv, phy, 0x3, 0x800d, 0x803f);
 		ar8xxx_phy_dbg_write(priv, phy, 0x3d, 0x6860);
@@ -1171,7 +1172,7 @@ ar8327_sw_hw_apply(struct switch_dev *dev)
 	return 0;
 }
 
-int
+static int
 ar8327_sw_get_port_igmp_snooping(struct switch_dev *dev,
 				 const struct switch_attr *attr,
 				 struct switch_val *val)
@@ -1189,7 +1190,7 @@ ar8327_sw_get_port_igmp_snooping(struct switch_dev *dev,
 	return 0;
 }
 
-int
+static int
 ar8327_sw_set_port_igmp_snooping(struct switch_dev *dev,
 				 const struct switch_attr *attr,
 				 struct switch_val *val)
@@ -1207,7 +1208,7 @@ ar8327_sw_set_port_igmp_snooping(struct switch_dev *dev,
 	return 0;
 }
 
-int
+static int
 ar8327_sw_get_igmp_snooping(struct switch_dev *dev,
 			    const struct switch_attr *attr,
 			    struct switch_val *val)
@@ -1224,7 +1225,7 @@ ar8327_sw_get_igmp_snooping(struct switch_dev *dev,
 	return 0;
 }
 
-int
+static int
 ar8327_sw_set_igmp_snooping(struct switch_dev *dev,
 			    const struct switch_attr *attr,
 			    struct switch_val *val)
@@ -1240,7 +1241,7 @@ ar8327_sw_set_igmp_snooping(struct switch_dev *dev,
 	return 0;
 }
 
-int
+static int
 ar8327_sw_get_igmp_v3(struct switch_dev *dev,
 		      const struct switch_attr *attr,
 		      struct switch_val *val)
@@ -1256,7 +1257,7 @@ ar8327_sw_get_igmp_v3(struct switch_dev *dev,
 	return 0;
 }
 
-int
+static int
 ar8327_sw_set_igmp_v3(struct switch_dev *dev,
 		      const struct switch_attr *attr,
 		      struct switch_val *val)
