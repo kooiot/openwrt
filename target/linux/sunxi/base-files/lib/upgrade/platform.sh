@@ -23,6 +23,7 @@ platform_check_image() {
 
 	case "$(board_name)" in
 		"kooiot,tlink-e2-spinand"|\
+		"kooiot,tlink-ex-spinand"|\
 		"kooiot,tlink-dly-e102-spinand")
 			nand_do_platform_check "$(board_name)" "$1"
 			return $?
@@ -91,6 +92,7 @@ platform_check_image() {
 	"kooiot,tlink-e1-v0"|\
 	"kooiot,tlink-e1"|\
 	"kooiot,tlink-e2"|\
+	"kooiot,tlink-ex"|\
 	"kooiot,tlink-dly-e102"|\
 	"kooiot,tlink-dly-e204")
 		tlink_check_image "sun8i-t113s" "$1" && return 0
@@ -134,6 +136,8 @@ platform_pre_upgrade() {
 	"kooiot,tlink-e1"|\
 	"kooiot,tlink-e2"|\
 	"kooiot,tlink-e2-spinand"|\
+	"kooiot,tlink-ex"|\
+	"kooiot,tlink-ex-spinand"|\
 	"kooiot,tlink-ok-a40i"|\
 	"kooiot,tlink-dj-a40i-e"|\
 	"kooiot,tlink-dr4-a40i"|\
@@ -155,6 +159,7 @@ platform_copy_config() {
 
 	case "$(board_name)" in
 		"kooiot,tlink-e2-spinand"|\
+		"kooiot,tlink-ex-spinand"|\
 		"kooiot,tlink-dly-e102-spinand")
 			echo "Backup configuration is not supported!!!!"
 			return 0;
@@ -173,6 +178,7 @@ platform_do_upgrade() {
 
 	case "$(board_name)" in
 		"kooiot,tlink-e2-spinand"|\
+		"kooiot,tlink-ex-spinand"|\
 		"kooiot,tlink-dly-e102-spinand")
 			echo "Do SPI-NAND sysupgrade!!!"
 			CI_KERNPART="kernel"
