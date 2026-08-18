@@ -33,7 +33,9 @@ sunxi_setup_interfaces()
 		fi
 		;;
 	kooiot,tlink-e2|\
-	kooiot,tlink-e2-spinand)
+	kooiot,tlink-e2-spinand|\
+	kooiot,tlink-ex|\
+	kooiot,tlink-ex-spinand)
 		# detect WCH297 usb-eth
 		lsusb -d "1a86:5397" > /dev/null
 		if [ $? -eq 0 ]; then
