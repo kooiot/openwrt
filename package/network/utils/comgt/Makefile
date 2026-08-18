@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=comgt
 PKG_VERSION:=0.32
-PKG_RELEASE:=35
+PKG_RELEASE:=36
 
 PKG_SOURCE:=$(PKG_NAME).$(PKG_VERSION).tgz
 PKG_SOURCE_URL:=@SF/comgt
@@ -70,17 +70,21 @@ define Package/comgt/install
 	$(LN) comgt $(1)/usr/bin/gcom
 	$(INSTALL_DIR) $(1)/etc/chatscripts
 	$(INSTALL_DATA) ./files/3g.chat $(1)/etc/chatscripts/3g.chat
+	$(INSTALL_DATA) ./files/3g_auth.chat $(1)/etc/chatscripts/3g_auth.chat
 	$(INSTALL_DATA) ./files/3g_ec20.chat $(1)/etc/chatscripts/3g_ec20.chat
+	$(INSTALL_DATA) ./files/3g_fibocom.chat $(1)/etc/chatscripts/3g_fibocom.chat
 	$(INSTALL_DATA) ./files/evdo.chat $(1)/etc/chatscripts/evdo.chat
 	$(INSTALL_DIR) $(1)/etc/gcom
 	$(INSTALL_DATA) ./files/setpin.gcom $(1)/etc/gcom/setpin.gcom
 	$(INSTALL_DATA) ./files/setmode.gcom $(1)/etc/gcom/setmode.gcom
 	$(INSTALL_DATA) ./files/getcardinfo.gcom $(1)/etc/gcom/getcardinfo.gcom
+	$(INSTALL_DATA) ./files/getproductid.gcom $(1)/etc/gcom/getproductid.gcom
 	$(INSTALL_DATA) ./files/getstrength.gcom $(1)/etc/gcom/getstrength.gcom
 	$(INSTALL_DATA) ./files/getcarrier.gcom $(1)/etc/gcom/getcarrier.gcom
 	$(INSTALL_DATA) ./files/getcnum.gcom $(1)/etc/gcom/getcnum.gcom
 	$(INSTALL_DATA) ./files/getimsi.gcom $(1)/etc/gcom/getimsi.gcom
 	$(INSTALL_DATA) ./files/runcommand.gcom $(1)/etc/gcom/runcommand.gcom
+	$(INSTALL_DATA) ./files/runat.gcom $(1)/etc/gcom/runat.gcom
 	$(INSTALL_DIR) $(1)/etc/hotplug.d/tty
 	$(INSTALL_CONF) ./files/3g.usb $(1)/etc/hotplug.d/tty/30-3g
 	$(INSTALL_DIR) $(1)/lib/netifd/proto
@@ -99,6 +103,7 @@ define Package/comgt-ncm/install
 	$(INSTALL_DIR) $(1)/etc/gcom
 	$(INSTALL_DATA) ./files/ncm.json $(1)/etc/gcom/ncm.json
 	$(INSTALL_DATA) ./files/ncm.ippass.json $(1)/etc/gcom/ncm.ippass.json
+	$(INSTALL_DATA) ./files/ncm.only_4G.json $(1)/etc/gcom/ncm.only_4G.json
 	$(INSTALL_DIR) $(1)/lib/netifd/proto
 	$(INSTALL_BIN) ./files/ncm.sh $(1)/lib/netifd/proto/ncm.sh
 endef

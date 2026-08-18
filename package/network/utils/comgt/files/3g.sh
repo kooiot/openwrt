@@ -51,14 +51,10 @@ proto_3g_setup() {
 			chat="/etc/chatscripts/evdo.chat"
 		;;
 		*)
-			case "$service" in
-				ec20)
-					service="umts"
-					chat="/etc/chatscripts/3g_ec20.chat"
-				;;
-				*) chat="/etc/chatscripts/3g.chat"
-			esac
-
+			chat="/etc/chatscripts/3g.chat"
+			[ -n "$username" ] && {
+				chat="/etc/chatscripts/3g_auth.chat"
+			}
 			cardinfo=$(gcom -d "$device" -s /etc/gcom/getcardinfo.gcom)
 			if echo "$cardinfo" | grep -q Novatel; then
 				case "$service" in
@@ -85,6 +81,25 @@ proto_3g_setup() {
 				export MODE="AT^SYSCFG=${CODE},3FFFFFFF,2,4"
 			elif echo "$cardinfo" | grep -q "MikroTik"; then
 				COMMAND="AT+CFUN=1" gcom -d "$device" -s /etc/gcom/runcommand.gcom || return 1
+			elif echo "$cardinfo" | grep -q "Quectel"; then
+				[ -n "$username" ] && {
+					chat="/etc/chatscripts/3g_auth.chat"
+					# EC20's chat support username/password
+					# modelid=$(gcom -d "$device" -s /etc/gcom/getproductid.gcom)
+					# if echo "$modelid" | grep -q "EC20"; then
+					#	chat="/etc/chatscripts/3g_auth.chat"
+					# fi
+				}
+			elif echo "$cardinfo" | grep -q "Fibocom"; then
+				modelid=$(gcom -d "$device" -s /etc/gcom/getproductid.gcom)
+				# Fibcom FM661/MC661 has no AT&F
+				if echo "$modelid" | grep -q "661"; then
+					chat="/etc/chatscripts/3g_fibocom.chat"
+				fi
+				# Fibcom FM665/MC665 has no AT&F
+				if echo "$modelid" | grep -q "665"; then
+					chat="/etc/chatscripts/3g_fibocom.chat"
+				fi
 			fi
 
 			if [ -n "$pincode" ]; then

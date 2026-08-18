@@ -172,9 +172,23 @@ proto_ncm_setup() {
 		}
 	}
 
+	echo "Check network $interface connection"
+	json_get_vars queryip
+	[ -n "$queryip" ] && {
+		echo "Wait for modem connection"
+		echo "sending -> $(eval echo \"$queryip\")"
+		ipaddr=$(eval COMMAND="$queryip" gcom -d "$device" -s /etc/gcom/runat.gcom | awk '/\+CGPADDR:/ && match($0, /[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/) {print substr($0, RSTART, RLENGTH)}')
+		[ -n "$ipaddr" -a "$ipaddr" != "0.0.0.0" ] || {
+			echo "Failed to wait for connection"
+			proto_notify_error "$interface" CONNECT_FAILED
+			return 1
+		}
+		echo "Got ip:$ipaddr"
+	}
+
 	json_get_vars finalize
 
-	echo "Setting up $ifname"
+	echo "NCM: Setting up $ifname"
 	proto_init_update "$ifname" 1
 	proto_set_keep 1
 	proto_add_data
@@ -218,6 +232,7 @@ proto_ncm_setup() {
 			return 1
 		}
 	}
+	echo "NCM: Setting up $ifname done!"
 }
 
 proto_ncm_teardown() {

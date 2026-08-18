@@ -17,14 +17,19 @@ tlink_mount_data() {
 			data_blk_p="/dev/mmcblk2p3"
 		fi
 	fi
+	# 检查data分区是否存在
+	if [ ! -b $data_blk_p ]; then
+		echo "ERROR: EMC data partition not found!!!" > /dev/kmsg
+		return 1
+	fi
 
 	if [ -b "/dev/mmcblk1p4"]; then
 		echo "EMC not initialized!!!" > /dev/kmsg
-		return
+		return 1
 	fi
 	if [ -b "/dev/mmcblk1p5"]; then
 		echo "EMC not initialized!!!" > /dev/kmsg
-		return
+		return 1
 	fi
 
 	rule_name=$(uci add fstab mount)
@@ -37,6 +42,7 @@ set fstab.$rule_name.enabled='1'
 set fstab.$rule_name.enabled_fsck='1'
 EOF
 	uci commit fstab
+	return 0
 }
 
 tlink_mount_storage() {
@@ -50,6 +56,8 @@ tlink_mount_storage() {
 			data_blk_p=${data_blk_p}1
 		fi
 	fi
+
+	mkdir -p /mnt/storage
 
 	rule_name=$(uci add fstab mount)
 	uci batch <<EOF
@@ -66,6 +74,13 @@ EOF
 		uci set dockerd.globals.data_root='/mnt/storage/docker/'
 		uci commit dockerd
 	fi
+}
+
+tlink_add_wwan_interface() {
+	uci set network.wwan='interface'
+	uci set network.wwan.proto='wwan'
+	uci set network.wwan.pdptype='IP'
+	uci commit network
 }
 
 tlink_add_qmi_interface() {
@@ -286,15 +301,17 @@ tlink_default() {
 		echo "Storage disk mount point added!" > /dev/kmsg
 	fi
 
-	case "$(board_name)" in
-		"kooiot,tlink-r4x" |\
-		"kooiot,tlink-r7")
-			tlink_init_5g
-			;;
-		*)
-			tlink_init_4g
-			;;
-	esac
+	#case "$(board_name)" in
+	#	"kooiot,tlink-r4x" |\
+	#	"kooiot,tlink-r7")
+	#		tlink_init_5g
+	#		;;
+	#	*)
+	#		tlink_init_4g
+	#		;;
+	#esac
+
+	tlink_add_wwan_interface
 
 	# set ttylogin (for ttyS0, default will promote console with password)
 	# set system.@system[0].ttylogin='1'

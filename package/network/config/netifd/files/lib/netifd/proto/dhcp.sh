@@ -62,6 +62,10 @@ proto_dhcp_setup() {
 	# Request classless route option (see RFC 3442) by default
 	[ "$classlessroute" = "0" ] || append dhcpopts "-O 121"
 
+	#echo "Setting up $iface"
+	#proto_init_update "$iface" 1
+	#proto_send_update "$config"
+
 	proto_export "INTERFACE=$config"
 	proto_run_command "$config" udhcpc \
 		-p /var/run/udhcpc-$iface.pid \

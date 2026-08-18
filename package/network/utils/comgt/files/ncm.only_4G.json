@@ -75,7 +75,7 @@
 		"finalize": "AT+CGDATA=\\\"M-MBIM\\\",${profile},1",
 		"disconnect": "AT+CGACT=0,${profile}"
 	},
-	"quectel_rm500u_cn": {
+	"quectel": {
 		"initialize": [
 			"AT",
 			"AT+QCFG=\\\"usbnet\\\",5",
@@ -85,20 +85,6 @@
 		"configure": [
 			"AT+QICSGP=${profile},${context_type},\\\"${apn}\\\",\\\"${username}\\\",\\\"${password}\\\",\\\"${auth}\\\""
 		],
-		"connect": "AT+QNETDEVCTL=${profile},1,1",
-		"disconnect": "AT+QNETDEVCTL=${profile},0,0"
-	},
-	"quectel": {
-		"initialize": [
-			"AT",
-			"AT+CFUN=1",
-			"AT"
-		],
-		"configure": [
-			"AT+QICSGP=${profile},${context_type},\\\"${apn}\\\",\\\"${username}\\\",\\\"${password}\\\",\\\"${auth}\\\"",
-			"AT+CGACT=1,${profile}"
-		],
-		"queryip": "AT+CGPADDR=${profile}",
 		"connect": "AT+QNETDEVCTL=${profile},1,1",
 		"disconnect": "AT+QNETDEVCTL=${profile},0,0"
 	},
@@ -116,11 +102,11 @@
 		"initialize": [
 			"AT",
 			"ATE1",
+			"AT+GTACT=4",
 			"AT+GTIPPASS=0",
 			"AT+CAVIMS=0",
 			"AT+CGDCONT=${profile},\\\"${pdptype}\\\"${apn:+,\\\"$apn\\\"}"
 		],
-		"queryip": "AT+CGPADDR=${profile}",
 		"connect": "AT+GTRNDIS=1,${profile}",
 		"disconnect": "AT+GTRNDIS=0,${profile}"
 	},
@@ -183,5 +169,17 @@
 		"connect": "AT+ZGACT=1,${context_type}",
 		"finalize": "AT+ZDHCPLEASE=0",
 		"disconnect": "AT+ZGACT=0,1"
+	},
+	"spreadtrum": {
+		"initialize": [
+			"AT+CFUN=1",
+			"AT+CCED=2,8",
+			"AT+SPTTYROUTER=1"
+		],
+		"configure": [
+			"AT+CGDCONT=${profile},\\\"${pdptype}\\\"${apn:+,\\\"$apn\\\"}"
+		],
+		"connect": "AT+SPTZCMD=\\\"Y29ubm1hbmN0bCBuZGlzZGlhbCBBVF5ORElTRFVOPSJ1c2IwIiwxLDE=\\\"",
+		"disconnect": "AT+SPTZCMD=\\\"Y29ubm1hbmN0bCBuZGlzZGlhbCBBVF5ORElTRFVOPSJ1c2IwIiwwLDE=\\\""
 	}
 }
