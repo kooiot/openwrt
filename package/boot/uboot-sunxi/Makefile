@@ -500,13 +500,13 @@ endef
 define U-Boot/tlink_e2
   BUILD_SUBTARGET:=cortexa7
   NAME:=ThingsLink E2
-  BUILD_DEVICES:=kooiot_tlink-e2
+  BUILD_DEVICES:=kooiot_tlink-e2 kooiot_tlink-ex
 endef
 
 define U-Boot/tlink_e2_spinand
   BUILD_SUBTARGET:=cortexa7
   NAME:=ThingsLink E2 (SPI NAND)
-  BUILD_DEVICES:=kooiot_tlink-e2-spinand
+  BUILD_DEVICES:=kooiot_tlink-e2-spinand kooiot_tlink-ex-spinand
   UENV_NAND:=nand
 endef
 
@@ -606,6 +606,8 @@ UBOOT_TARGETS := \
 	tlink_e1 \
 	tlink_e2 \
 	tlink_e2_spinand \
+	tlink_ex \
+	tlink_ex_spinand \
 	tlink_s1 \
 	tlink_dly_e102 \
 	tlink_dly_e102_spinand \
@@ -641,13 +643,20 @@ UBOOT_MAKE_FLAGS += \
 
 define Build/InstallDev
 	$(INSTALL_DIR) $(STAGING_DIR_IMAGE)
-	$(CP) $(PKG_BUILD_DIR)/$(UBOOT_IMAGE) $(STAGING_DIR_IMAGE)/$(BUILD_DEVICES)-u-boot-with-spl.bin
-	mkimage -C none -A arm -T script -d uEnv-$(UENV).txt \
-		$(STAGING_DIR_IMAGE)/$(BUILD_DEVICES)-boot.scr
+
+	$(foreach device,$(BUILD_DEVICES), \
+		$(CP) $(PKG_BUILD_DIR)/$(UBOOT_IMAGE) $(STAGING_DIR_IMAGE)/$(device)-u-boot-with-spl.bin
+	)
+	$(foreach device,$(BUILD_DEVICES), \
+		mkimage -C none -A arm -T script -d uEnv-$(UENV).txt \
+			$(STAGING_DIR_IMAGE)/$(device)-boot.scr
+	)
 
 	$(if $(strip $(UENV_NAND)),
-		mkimage -C none -A arm -T script -d uEnv-$(UENV_NAND).txt \
-			$(STAGING_DIR_IMAGE)/$(BUILD_DEVICES)-nand-boot.scr)
+		$(foreach device,$(BUILD_DEVICES), \
+			mkimage -C none -A arm -T script -d uEnv-$(UENV_NAND).txt \
+				$(STAGING_DIR_IMAGE)/$(device)-nand-boot.scr)
+	)
 endef
 
 define Package/u-boot/install/default
