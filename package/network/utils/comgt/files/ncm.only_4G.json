@@ -75,16 +75,33 @@
 		"finalize": "AT+CGDATA=\\\"M-MBIM\\\",${profile},1",
 		"disconnect": "AT+CGACT=0,${profile}"
 	},
-	"quectel": {
+	"quectel_bak": {
 		"initialize": [
 			"AT",
+			"AT+CFUN=1",
 			"AT+QCFG=\\\"usbnet\\\",5",
 			"AT+QCFG=\\\"nat\\\",1",
 			"AT"
 		],
 		"configure": [
-			"AT+QICSGP=${profile},${pdptype_num},\\\"${apn}\\\"${username:+,\\\"$username\\\"}${password:+,\\\"$password\\\"}${auth:+,$auth}"
+			"AT+QICSGP=${profile},${pdptype_num},\\\"${apn}\\\"${username:+,\\\"$username\\\"}${password:+,\\\"$password\\\"}${auth:+,$auth}",
+			"AT+CGACT=1,${profile}"
 		],
+		"queryip": "AT+CGPADDR=${profile}",
+		"connect": "AT+QNETDEVCTL=${profile},1,1",
+		"disconnect": "AT+QNETDEVCTL=${profile},0,0"
+	},
+	"quectel": {
+		"initialize": [
+			"AT",
+			"AT+CFUN=1",
+			"AT"
+		],
+		"configure": [
+			"AT+QICSGP=${profile},${pdptype_num},\\\"${apn}\\\",\\\"${username}\\\",\\\"${password}\\\",\\\"${auth}\\\"",
+			"AT+CGACT=1,${profile}"
+		],
+		"queryip": "AT+CGPADDR=${profile}",
 		"connect": "AT+QNETDEVCTL=${profile},1,1",
 		"disconnect": "AT+QNETDEVCTL=${profile},0,0"
 	},
@@ -107,6 +124,7 @@
 			"AT+CAVIMS=0",
 			"AT+CGDCONT=${profile},\\\"${pdptype}\\\"${apn:+,\\\"$apn\\\"}"
 		],
+		"queryip": "AT+CGPADDR=${profile}",
 		"connect": "AT+GTRNDIS=1,${profile}",
 		"disconnect": "AT+GTRNDIS=0,${profile}"
 	},
@@ -114,9 +132,12 @@
 		"initialize": [
 			"AT",
 			"ATE1",
+			"AT+GTACT=4",
 			"AT+GTIPPASS=0",
+			"AT+CAVIMS=0",
 			"AT+CGDCONT=${profile},\\\"${pdptype}\\\"${apn:+,\\\"$apn\\\"}"
 		],
+		"queryip": "AT+CGPADDR=${profile}",
 		"connect": "AT+GTRNDIS=1,${profile}",
 		"disconnect": "AT+GTRNDIS=0,${profile}"
 	}
