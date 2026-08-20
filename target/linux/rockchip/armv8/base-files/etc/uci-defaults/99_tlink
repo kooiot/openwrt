@@ -236,7 +236,7 @@ tlink_add_5g_wan() {
 		AT_PORT_INFO='/dev/ttyUSB2'
 		AT_PORT='/dev/ttyUSB3' # USB2-AT USB3-MODEM
 	fi
-	lsusb -d "2c7c:0a05" > /dev/null
+	lsusb -d "2cb7:0a05" > /dev/null
 	if [ $? -eq 0 ]
 	then
 		echo "Fibocom FM650-CN found!" > /dev/kmsg
