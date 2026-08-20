@@ -1,0 +1,30 @@
+--- a/interface-event.c
++++ b/interface-event.c
+@@ -177,6 +177,7 @@ interface_queue_event(struct interface *
+ 		call_hotplug();
+ }
+ 
++/*
+ static void
+ interface_dequeue_event(struct interface *iface)
+ {
+@@ -186,6 +187,7 @@ interface_dequeue_event(struct interface
+ 	if (!list_empty(&iface->hotplug_list))
+ 		list_del_init(&iface->hotplug_list);
+ }
++*/
+ 
+ static void interface_event_cb(struct interface_user *dep, struct interface *iface,
+ 			       enum interface_event ev)
+@@ -196,10 +198,8 @@ static void interface_event_cb(struct in
+ 		case IFEV_UP_FAILED:
+ 		case IFEV_UPDATE:
+ 		case IFEV_DOWN:
+-			interface_queue_event(iface, ev);
+-			break;
+ 		case IFEV_FREE:
+-			interface_dequeue_event(iface);
++			interface_queue_event(iface, ev);
+ 			break;
+ 		default:
+ 			break;
