@@ -140,7 +140,7 @@ proto_ncm_setup() {
 	}
 
 	json_get_values configure configure
-	echo "Configuring modem $device"
+	echo "Configuring modem via $device"
 	for i in $configure; do
 		eval COMMAND="$i" gcom -d "$device" -s /etc/gcom/runcommand.gcom || {
 			echo "Failed to configure modem"
@@ -172,6 +172,20 @@ proto_ncm_setup() {
 			proto_notify_error "$interface" CONNECT_FAILED
 			return 1
 		}
+	}
+
+	echo "Check network $interface connection"
+	json_get_vars queryip
+	[ -n "$queryip" ] && {
+		echo "Wait for modem connection"
+		echo "sending -> $(eval echo \"$queryip\")"
+		ipaddr=$(eval COMMAND="$queryip" gcom -d "$device" -s /etc/gcom/runat.gcom | awk '/\+CGPADDR:/ && match($0, /[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/) {print substr($0, RSTART, RLENGTH)}')
+		[ -n "$ipaddr" -a "$ipaddr" != "0.0.0.0" ] || {
+			echo "Failed to wait for connection"
+			proto_notify_error "$interface" CONNECT_FAILED
+			return 1
+		}
+		echo "Got ip:$ipaddr"
 	}
 
 	json_get_vars finalize
