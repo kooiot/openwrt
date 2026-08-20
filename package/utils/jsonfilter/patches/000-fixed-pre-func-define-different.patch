@@ -1,0 +1,21 @@
+--- a/contrib/lemon.c	2026-01-04 16:42:53.171483176 +0800
++++ b/contrib/lemon.c	2026-01-04 16:43:49.408199556 +0800
+@@ -160,12 +160,12 @@ static struct action *Action_new(void);
+ static struct action *Action_sort(struct action *);
+ 
+ /********** From the file "build.h" ************************************/
+-void FindRulePrecedences();
+-void FindFirstSets();
+-void FindStates();
+-void FindLinks();
+-void FindFollowSets();
+-void FindActions();
++void FindRulePrecedences(struct lemon*);
++void FindFirstSets(struct lemon*);
++void FindStates(struct lemon*);
++void FindLinks(struct lemon*);
++void FindFollowSets(struct lemon*);
++void FindActions(struct lemon*);
+ 
+ /********* From the file "configlist.h" *********************************/
+ void Configlist_init(void);
