@@ -84,6 +84,7 @@ define Package/comgt/install
 	$(INSTALL_DATA) ./files/getcnum.gcom $(1)/etc/gcom/getcnum.gcom
 	$(INSTALL_DATA) ./files/getimsi.gcom $(1)/etc/gcom/getimsi.gcom
 	$(INSTALL_DATA) ./files/runcommand.gcom $(1)/etc/gcom/runcommand.gcom
+	$(INSTALL_DATA) ./files/runat.gcom $(1)/etc/gcom/runat.gcom
 	$(INSTALL_DIR) $(1)/etc/hotplug.d/tty
 	$(INSTALL_CONF) ./files/3g.usb $(1)/etc/hotplug.d/tty/30-3g
 	$(INSTALL_DIR) $(1)/lib/netifd/proto
@@ -102,6 +103,7 @@ define Package/comgt-ncm/install
 	$(INSTALL_DIR) $(1)/etc/gcom
 	$(INSTALL_DATA) ./files/ncm.json $(1)/etc/gcom/ncm.json
 	$(INSTALL_DATA) ./files/ncm.ippass.json $(1)/etc/gcom/ncm.ippass.json
+	$(INSTALL_DATA) ./files/ncm.only_4G.json $(1)/etc/gcom/ncm.only_4G.json
 	$(INSTALL_DIR) $(1)/lib/netifd/proto
 	$(INSTALL_BIN) ./files/ncm.sh $(1)/lib/netifd/proto/ncm.sh
 endef

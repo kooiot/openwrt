@@ -116,8 +116,8 @@
 		"initialize": [
 			"AT",
 			"ATE1",
-			"AT+GTIPPASS=1",
-			"AT+GTSETMASK=3",
+			"AT+GTACT=4",
+			"AT+GTIPPASS=0",
 			"AT+CAVIMS=0",
 			"AT+CGDCONT=${profile},\\\"${pdptype}\\\"${apn:+,\\\"$apn\\\"}"
 		],
@@ -129,8 +129,8 @@
 		"initialize": [
 			"AT",
 			"ATE1",
-			"AT+GTIPPASS=1",
-			"AT+GTSETMASK=3",
+			"AT+GTACT=4",
+			"AT+GTIPPASS=0",
 			"AT+CAVIMS=0",
 			"AT+CGDCONT=${profile},\\\"${pdptype}\\\"${apn:+,\\\"$apn\\\"}"
 		],

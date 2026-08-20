@@ -83,15 +83,15 @@ proto_3g_setup() {
 				COMMAND="AT+CFUN=1" gcom -d "$device" -s /etc/gcom/runcommand.gcom || return 1
 			elif echo "$cardinfo" | grep -q "Quectel"; then
 				[ -n "$username" ] && {
+					chat="/etc/chatscripts/3g_auth.chat"
 					# EC20's chat support username/password
-					modelid=$(COMMAND="AT+CGMM" | gcom -d "$device" -s /etc/gcom/runcommand.gcom)
-					if echo "$modelid" | grep -q "EC20"; then
-						#chat="/etc/chatscripts/3g_ec20.chat"
-						chat="/etc/chatscripts/3g_auth.chat"
-					fi
+					# modelid=$(gcom -d "$device" -s /etc/gcom/getproductid.gcom)
+					# if echo "$modelid" | grep -q "EC20"; then
+					#	chat="/etc/chatscripts/3g_ec20.chat"
+					# fi
 				}
 			elif echo "$cardinfo" | grep -q "Fibocom"; then
-				modelid=$(COMMAND="AT+CGMM" | gcom -d "$device" -s /etc/gcom/runcommand.gcom)
+				modelid=$(gcom -d "$device" -s /etc/gcom/getproductid.gcom)
 				# Fibcom FM661/MC661 has no AT&F
 				if echo "$modelid" | grep -q "661"; then
 					chat="/etc/chatscripts/3g_fibocom.chat"
