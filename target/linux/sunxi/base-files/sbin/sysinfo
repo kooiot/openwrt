@@ -151,14 +151,14 @@ EOF
 show_module_info(){
     local module_type="UNKNOWN"
     local module_model="UNKNOWN"
+    local module_sim="UNKNOWN"
     local module_imei="UNKNOWN"
 
-	if [ -f "/tmp/sysinfo/3ginfo" ]; then
-		# module_type="4G"
-		module_type=$(3ginfo_get 'mode')
-		module_model=$(3ginfo_get 'device')
-		module_sim=$(3ginfo_get 'ccid')
-		module_imei=$(3ginfo_get 'cgsn')
+	if [ -f "/tmp/sysinfo/wwan_info" ]; then
+		module_type=$(wwan_info 'mode')
+		module_model=$(wwan_info 'device')
+		module_sim=$(wwan_info 'iccid')
+		module_imei=$(wwan_info 'imei')
 	fi
 
     cat <<EOF

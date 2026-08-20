@@ -1,13 +1,6 @@
 #!/bin/sh
 #
-# Copyright (C) 2010 OpenWrt.org
-#
-# This is free software, licensed under the GNU General Public License v2.
-# See /LICENSE for more information.
-#
-
-#
-# This script sets system defaults for the hardware on firstboot
+# Copyright (C) 2026 KooIoT.com
 #
 
 . /lib/functions.sh
@@ -24,14 +17,19 @@ tlink_mount_data() {
 			data_blk_p="/dev/mmcblk2p3"
 		fi
 	fi
+	# 检查data分区是否存在
+	if [ ! -b $data_blk_p ]; then
+		echo "ERROR: EMC data partition not found!!!" > /dev/kmsg
+		return 1
+	fi
 
 	if [ -b "/dev/mmcblk1p4"]; then
 		echo "EMC not initialized!!!" > /dev/kmsg
-		return
+		return 1
 	fi
 	if [ -b "/dev/mmcblk1p5"]; then
 		echo "EMC not initialized!!!" > /dev/kmsg
-		return
+		return 1
 	fi
 
 	rule_name=$(uci add fstab mount)
@@ -44,6 +42,13 @@ set fstab.$rule_name.enabled='1'
 set fstab.$rule_name.enabled_fsck='1'
 EOF
 	uci commit fstab
+}
+
+tlink_add_wwan_interface() {
+	uci set network.wwan='interface'
+	uci set network.wwan.proto='wwan'
+	uci set network.wwan.pdptype='IP'
+	uci commit network
 }
 
 tlink_add_qmi_interface() {
@@ -62,6 +67,7 @@ tlink_add_qmi_interface() {
 tlink_add_4g_wan() {
 	local AT_PORT
 	local AT_PORT_INFO
+	local S_TYPE='umts'
 	case "$(board_name)" in
 		"kooiot,tlink-m408"|\
 		"kooiot,tlink-m416")
@@ -82,12 +88,31 @@ tlink_add_4g_wan() {
 	lsusb -d "1508:1001" > /dev/null
 	if [ $? -eq 0 ]
 	then
+		echo "Fibocom NL668-CN found!" > /dev/kmsg
 		AT_PORT='/dev/ttyUSB1'
 		AT_PORT_INFO='/dev/ttyUSB2'
 	fi
+	# detect Fibocom MC611-CN
+	lsusb -d "2cb7:0a0b" > /dev/null
+	if [ $? -eq 0 ]
+	then
+		echo "Fibocom FM661-CN found!" > /dev/kmsg
+		AT_PORT='/dev/ttyUSB0' # USB3-AT USB0-MODEM
+		AT_PORT_INFO='/dev/ttyUSB3'
+		S_TYPE='fibocom'
+	fi
+	# detect Fibocom MC611-CN (2)
+	lsusb -d "2cb7:0a0a" > /dev/null
+	if [ $? -eq 0 ]
+	then
+		echo "Fibocom FM661-CN(2) found!" > /dev/kmsg
+		AT_PORT='/dev/ttyUSB0' # USB3-AT USB0-MODEM
+		AT_PORT_INFO='/dev/ttyUSB3'
+		S_TYPE='fibocom'
+	fi
 
 	uci set network.4g_wan='interface'
-	uci set network.4g_wan.service='umts'
+	uci set network.4g_wan.service=${S_TYPE}
 	uci set network.4g_wan.proto='3g'
 	uci set network.4g_wan.device=${AT_PORT}
 	uci set network.4g_wan.ipv6='auto'
@@ -171,7 +196,7 @@ tlink_init_4g() {
 		echo "QMI module found!!!" > /dev/kmsg
 		tlink_add_qmi_interface
 	} || {
-		echo "Initial 4G configuration...." > /dev/kmsg
+		echo "Initial 4G ppp configuration!!!" > /dev/kmsg
 		tlink_add_4g_wan
 	}
 }
@@ -198,6 +223,13 @@ tlink_add_5g_wan() {
 	then
 		echo "Fibocom FM650-CN found!" > /dev/kmsg
 		AT_PORT='/dev/ttyUSB0' # USB1-AT USB0-MODEM
+		AT_PORT_INFO='/dev/ttyUSB1'
+	fi
+	lsudb -d "2c7c:600b" > /dev/null
+	if [ $? -eq 0 ]
+	then
+		echo "Fibocom RG255AA found!" > /dev/kmsg
+		AT_PORT='/dev/ttyUSB2' # USB1-AT USB2-MODEM
 		AT_PORT_INFO='/dev/ttyUSB1'
 	fi
 
@@ -247,7 +279,7 @@ tlink_default() {
 	if ( grep -qs '/mnt/data' /etc/config/fstab || \
 		tlink_mount_data )
 	then
-		echo "Data parition mount point added" > /dev/kmsg
+		echo "Data parition mount point added!!!" > /dev/kmsg
 	fi
 
 	case "$(board_name)" in
@@ -255,15 +287,18 @@ tlink_default() {
 		"kooiot,tlink-k4a"|\
 		"kooiot,tlink-k4g"|\
 		"kooiot,tlink-k2")
-			tlink_init_5g
+			#tlink_init_5g
 			;;
 		"kooiot,tlink-x3")
-			tlink_add_qmi_interface
+			#tlink_add_qmi_interface
 			;;
 		*)
-			tlink_init_4g
+			#tlink_init_4g
 			;;
 	esac
+
+	# add wwan interface
+	tlink_add_wwan_interface
 
 	# ETH MAC for usb-eth mac been set in board.d/02_network
 	#case "$(board_name)" in

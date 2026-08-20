@@ -238,10 +238,10 @@ define Device/kooiot_tlink-s1
     kmod-rtc-sd3078 kmod-usb-net-asix \
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
-    luci-app-freeioe luci-proto-qmi luci-proto-3g \
+    luci-app-freeioe luci-proto-qmi luci-proto-3g luci-proto-wwan \
 	kmod-xradio armbian-firmware-xr819 wpad-basic-wolfssl \
     tinc-freeioe-tunnel iperf3 \
-	uqmi fdisk usbutils freeioe wwanleds \
+	uqmi fdisk usbutils freeioe wwan-watch \
     blockd usb-otg-sunxi kmod-eeprom-at24 fdisk
   SOC := sun8i-s3
 endef
@@ -314,7 +314,7 @@ define Device/kooiot_tlink-k1
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-serial-wk2xxx-spi \
 	kmod-motorcomm-yt8521s kmod-motorcomm-yt8512c \
-    uqmi fdisk usbutils freeioe wwanleds \
+    uqmi fdisk usbutils freeioe wwan-watch \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
     tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage kmod-drm-sunxi \
@@ -337,7 +337,7 @@ define Device/kooiot_tlink-k2
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
     kmod-serial-wk2xxx-spi \
 	kmod-motorcomm-yt8521s kmod-motorcomm-yt8512c \
-    uqmi fdisk usbutils freeioe wwanleds \
+    uqmi fdisk usbutils freeioe wwan-watch \
     luci-app-freeioe tinc-freeioe-tunnel \
 	luci-proto-qmi luci-proto-3g luci-proto-ncm \
 	luci-app-ser2net shellinabox iperf3 ethtool \
@@ -364,7 +364,7 @@ define Device/kooiot_tlink-k2x
 	kmod-serial-ch432 \
 	kmod-can-bcm kmod-can-raw ip-full\
 	kmod-motorcomm-yt8521s kmod-motorcomm-yt8512c \
-    uqmi fdisk usbutils freeioe wwanleds \
+    uqmi fdisk usbutils freeioe wwan-watch \
 	luci-proto-qmi luci-proto-3g luci-proto-ncm \
     luci-app-freeioe tinc-freeioe-tunnel\
     luci-app-ser2net shellinabox iperf3 ethtool \
@@ -392,7 +392,7 @@ define Device/kooiot_tlink-k4a
     kmod-serial-ch9434 kmod-can kmod-can-mcp251x \
 	kmod-can-bcm kmod-can-raw ip-full\
 	kmod-motorcomm-yt8521s kmod-motorcomm-yt8512c \
-    uqmi fdisk usbutils freeioe wwanleds \
+    uqmi fdisk usbutils freeioe wwan-watch \
 	luci-proto-qmi luci-proto-3g luci-proto-ncm \
     luci-app-freeioe tinc-freeioe-tunnel\
     luci-app-ser2net shellinabox iperf3 ethtool \
@@ -420,7 +420,7 @@ define Device/kooiot_tlink-k4g
     kmod-serial-ch9434 kmod-can kmod-can-mcp251x \
 	kmod-can-bcm kmod-can-raw ip-full\
 	kmod-motorcomm-yt8521s kmod-motorcomm-yt8512c \
-    uqmi fdisk usbutils freeioe wwanleds \
+    uqmi fdisk usbutils freeioe wwan-watch \
 	luci-proto-qmi luci-proto-3g luci-proto-ncm \
     luci-app-freeioe tinc-freeioe-tunnel\
     luci-app-ser2net shellinabox iperf3 ethtool \
@@ -445,7 +445,7 @@ define Device/kooiot_tlink-m408
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-serial-xr14xx-usb kmod-can kmod-can-mcp251x \
 	kmod-can-bcm kmod-can-raw ip-full\
-    uqmi fdisk usbutils freeioe wwanleds \
+    uqmi fdisk usbutils freeioe wwan-watch \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
     tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage kmod-drm-sunxi \
@@ -468,7 +468,7 @@ define Device/kooiot_tlink-m416
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-serial-xr14xx-usb kmod-can kmod-can-mcp251x \
 	kmod-can-bcm kmod-can-raw ip-full\
-    uqmi fdisk usbutils freeioe wwanleds \
+    uqmi fdisk usbutils freeioe wwan-watch \
     luci-app-freeioe luci-proto-qmi luci-proto-3g \
     tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage kmod-drm-sunxi \
