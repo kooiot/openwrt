@@ -1,0 +1,6 @@
+{
+	"desc": "QUECTEL RG255AA(ASR1903S)",
+	"type": "ncm",
+	"control": 1,
+	"data":2
+}

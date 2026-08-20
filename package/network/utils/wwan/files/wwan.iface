@@ -1,0 +1,36 @@
+#!/bin/sh
+
+# The usb0 interface has link down after NCM dial-out,
+#	which cause the dynamic interface been deleted, this requires changes on netifd also
+#
+
+[ "$ACTION" = free ] || exit 0
+
+. /lib/functions.sh
+. /lib/functions/network.sh
+. /lib/netifd/netifd-proto.sh
+
+find_wwan_iface() {
+	local cfg="$1"
+
+	local proto device
+	config_get proto "$cfg" proto
+	config_get device "$cfg" device
+
+	[ "$proto" = wwan ] || [ "$proto" = ncm ] || [ "$proto" = qmi ] || return 0
+	[ "${cfg}_4" = "$INTERFACE" ] || [ "${cfg}_6" = "$INTERFACE" ] || return 0
+
+	local ifname=$(uci_get_state network $cfg ifname)
+#	echo "wwan[$$] cfg:$cfg up:$up action:$ACTION interface:$INTERFACE ifname:$ifname" > /dev/kmsg
+
+	if network_is_up "$cfg"; then
+		echo "wwan: ifup $cfg as it is up" > /dev/kmsg
+		ifup $cfg
+#	else
+#		echo "wwan[$$]: interface:$cfg is down!" > /dev/kmsg
+	fi
+	exit 0
+}
+
+config_load network
+config_foreach find_wwan_iface interface
