@@ -129,8 +129,10 @@
 			"AT",
 			"ATE1",
 			"AT+GTIPPASS=0",
+			"AT+CAVIMS=0",
 			"AT+CGDCONT=${profile},\\\"${pdptype}\\\"${apn:+,\\\"$apn\\\"}"
 		],
+		"queryip": "AT+CGPADDR=${profile}",
 		"connect": "AT+GTRNDIS=1,${profile}",
 		"disconnect": "AT+GTRNDIS=0,${profile}"
 	},
