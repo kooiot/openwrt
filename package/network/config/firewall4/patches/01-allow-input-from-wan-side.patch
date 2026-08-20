@@ -1,26 +1,22 @@
 --- a/root/etc/config/firewall
 +++ b/root/etc/config/firewall
-@@ -9,6 +9,9 @@
+@@ -9,6 +9,10 @@
  config zone
  	option name		lan
  	list   network		'lan'
 +	list   network		'lan1'
 +	list   network		'lan2'
 +	list   network		'lan3'
++	list   network		'lan4'
  	option input		ACCEPT
  	option output		ACCEPT
  	option forward		ACCEPT
-@@ -17,7 +20,15 @@
+@@ -17,7 +21,10 @@
  	option name		wan
  	list   network		'wan'
  	list   network		'wan6'
 -	option input		REJECT
-+	list   network		'4g_wan'
-+	list   network		'4g_wan_4'
-+	list   network		'4g_wan_6'
-+	list   network		'5g_wan'
-+	list   network		'5g_wan_4'
-+	list   network		'5g_wan_6'
++	list   network		'wwan'
 +	list   network		'iphone_usb'
 +	list   network		'android_usb'
 +	option input		REJECT
