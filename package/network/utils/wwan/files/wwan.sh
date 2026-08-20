@@ -151,6 +151,7 @@ proto_wwan_setup() {
 	comgt)			proto_3g_setup $@ ;;
 	cdc_ether|*cdc_ncm)	proto_ncm_setup $@ ;;
 	esac
+	echo "wwan[$$]" "Setup iface:$net done!"
 }
 
 proto_wwan_teardown() {
@@ -158,6 +159,18 @@ proto_wwan_teardown() {
 	local driver=$(uci_get_state network "$interface" driver)
 	ctl_device=$(uci_get_state network "$interface" ctl_device)
 	dat_device=$(uci_get_state network "$interface" dat_device)
+
+	echo "wwan[$$]" "Teardown driver:$driver device:$ctl_device data:$dat_device iface:$interface"
+
+	[ -n "$driver" ] && {
+		uci_revert_state network $interface driver
+	}
+	[ -n "$ctl_device" ] && {
+		uci_revert_state network $interface ctl_device
+	}
+	[ -n "$dat_device" ] && {
+		uci_revert_state network $interface dat_device
+	}
 
 	case $driver in
 	qmi_wwan)		proto_qmi_teardown $@ ;;
