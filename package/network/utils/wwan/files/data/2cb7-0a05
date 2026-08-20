@@ -1,1 +1,6 @@
-2c7c-0a05
+{
+	"desc": "Fibocom FM650-CN",
+	"type": "ncm",
+	"control": 1,
+	"data": 0
+}
