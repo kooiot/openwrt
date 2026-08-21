@@ -1,0 +1,46 @@
+#!/bin/sh
+#
+# Copyright (C) 2026 KooIoT.com
+#
+
+. /lib/functions.sh
+
+# check for exists
+uci -q get smp_affinity && exit 0
+touch /etc/config/smp_affinity
+
+add_network_smp_affinity() {
+	local cpu="$1"
+	local interface="$2"
+	local device="$3"
+	rule_name=$(uci add smp_affinity network)
+	uci batch <<EOF
+set smp_affinity.$rule_name.cpu='$cpu'
+set smp_affinity.$rule_name.interface='$interface'
+set smp_affinity.$rule_name.device='$device'
+set smp_affinity.$rule_name.enabled='1'
+EOF
+}
+
+tlink_r4x_smp_affinity() {
+	add_network_smp_affinity 0 "eth0"
+	add_network_smp_affinity 1 "eth1"
+	add_network_smp_affinity 2 "eth2" "eth2-0"
+	add_network_smp_affinity 3 "eth3" "eth3-0"
+}
+
+case "$(board_name)" in
+"kooiot,tlink-r4x"|\
+"kooiot,tlink-r7")
+	tlink_r4x_smp_affinity
+	;;
+esac
+
+uci -q batch << EOF
+  set smp_affinity.general=smp_affinity
+  set smp_affinity.general.enable='1'
+  set smp_affinity.general.enable_log='1'
+  commit smp_affinity
+EOF
+
+
