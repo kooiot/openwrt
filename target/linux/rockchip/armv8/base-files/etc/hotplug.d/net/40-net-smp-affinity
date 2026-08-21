@@ -27,6 +27,7 @@ set_interface_core() {
 
 	[ -z "${irq}" ] && return
 
+	echo "${device} bind irq to core_mask:${core_mask}" > /dev/kmsg
 	echo "${core_mask}" > /proc/irq/${irq}/smp_affinity
 }
 
@@ -66,13 +67,6 @@ friendlyarm,nanopi-r5s)
 	set_interface_core 2 "eth0"
 	set_interface_core 4 "eth1"
 	set_interface_core 8 "eth2"
-	;;
-kooiot,tlink-r7 |\
-kooiot,tlink-r4x)
-	set_interface_core 1 "eth0"
-	set_interface_core 2 "eth1"
-	set_interface_core 4 "eth2-0"
-	set_interface_core 8 "eth3-0"
 	;;
 friendlyarm,nanopi-r6s)
 	set_interface_core 10 "eth0"
