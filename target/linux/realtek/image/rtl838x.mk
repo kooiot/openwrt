@@ -459,6 +459,16 @@ define Device/zyxel_gs1900-8hp-b1
 endef
 TARGET_DEVICES += zyxel_gs1900-8hp-b1
 
+define Device/zyxel_gs1900-8hp-b2
+  $(Device/zyxel_gs1900)
+  SOC := rtl8380
+  DEVICE_MODEL := GS1900-8HP
+  DEVICE_VARIANT := B2
+  ZYXEL_VERS := AAHI
+  DEVICE_PACKAGES += kmod-pse-realtek-mcu-uart
+endef
+TARGET_DEVICES += zyxel_gs1900-8hp-b2
+
 define Device/zyxel_gs1900-24-a1
   $(Device/zyxel_gs1900)
   SOC := rtl8382
@@ -487,6 +497,15 @@ define Device/zyxel_gs1900-24e-a1
   SUPPORTED_DEVICES += zyxel,gs1900-24e
 endef
 TARGET_DEVICES += zyxel_gs1900-24e-a1
+
+define Device/zyxel_gs1900-24e-b1
+  $(Device/zyxel_gs1900)
+  SOC := rtl8382
+  DEVICE_MODEL := GS1900-24E
+  DEVICE_VARIANT := B1
+  ZYXEL_VERS := AAHK
+endef
+TARGET_DEVICES += zyxel_gs1900-24e-b1
 
 define Device/zyxel_gs1900-24ep-a1
   $(Device/zyxel_gs1900)
