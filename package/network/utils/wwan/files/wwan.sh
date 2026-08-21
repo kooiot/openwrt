@@ -73,7 +73,7 @@ proto_wwan_setup() {
 		done
 	fi
 
-	echo "wwan[$$]" "Using wwan usb device on bus $devicename"
+	echo "wwan[$$]" "Using usb device $devicename : $susb"
 
 	[ -n "$usb" ] && {
 		local old_cb control data
@@ -131,7 +131,7 @@ proto_wwan_setup() {
 		echo "wwan[$$]" "Using proto:$proto device:$ctl_device iface:$net desc:$desc"
 	done
 
-	[ -n "$ctl_device" ] || {
+	[ -n "$ctl_device" -o "$ctl_device" = "/dev/" ] || {
 		echo "wwan[$$]" "No valid device was found"
 		proto_notify_error "$interface" NO_DEVICE
 		proto_block_restart "$interface"
