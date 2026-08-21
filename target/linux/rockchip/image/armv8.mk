@@ -533,12 +533,12 @@ define Device/firefly_firefly-roc-pc
 	kmod-usb-net-cdc-mbim kmod-usb-net-rndis \
 	kmod-i2c-fusb30x \
 	kmod-can kmod-can-rockchip-canfd \
-	luci-app-freeioe luci-proto-qmi luci-proto-3g \
+	luci-app-freeioe luci-proto-qmi luci-proto-3g luci-proto-wwan \
 	kmod-mmc kmod-brcmfmac \
   	kmod-ikconfig kmod-ata-ahci-platform \
 	firefly-roc-pc-firmware wpad-basic-mbedtls \
 	tinc-freeioe-tunnel iperf3 \
-    uqmi fdisk usbutils freeioe wwanleds \
+    uqmi fdisk usbutils freeioe wwan-watch \
     blockd kmod-eeprom-at24 fdisk
 endef
 
@@ -565,10 +565,10 @@ define Device/kooiot_tlink-r4x
 	kmod-mmc kmod-brcmfmac \
 	kmod-can kmod-can-rockchip-canfd \
 	kmod-ata-ahci kmod-ata-ahci-dwc \
-	luci-app-freeioe luci-proto-qmi luci-proto-3g \
+	luci-app-freeioe luci-proto-qmi luci-proto-3g luci-proto-wwan \
     tlink-r4x-firmware wpad-basic-mbedtls \
     tinc-freeioe-tunnel iperf3 \
-    uqmi fdisk usbutils freeioe wwanleds \
+    uqmi fdisk usbutils freeioe wwan-watch \
     blockd kmod-eeprom-at24 fdisk
 endef
 TARGET_DEVICES += kooiot_tlink-r4x
@@ -594,10 +594,10 @@ define Device/kooiot_tlink-r7
 	kmod-mmc kmod-brcmfmac \
 	kmod-can kmod-can-rockchip-canfd \
 	kmod-ata-ahci kmod-ata-ahci-dwc \
-	luci-app-freeioe luci-proto-qmi luci-proto-3g \
+	luci-app-freeioe luci-proto-qmi luci-proto-3g luci-proto-wwan \
     tlink-r7-firmware wpad-basic-mbedtls \
     tinc-freeioe-tunnel iperf3 \
-    uqmi fdisk usbutils freeioe wwanleds \
+    uqmi fdisk usbutils freeioe wwan-watch \
     blockd kmod-eeprom-at24 fdisk
 endef
 TARGET_DEVICES += kooiot_tlink-r7
