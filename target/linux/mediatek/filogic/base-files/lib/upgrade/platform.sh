@@ -122,6 +122,7 @@ platform_do_upgrade() {
 	cudy,wr3000h-v1-ubootmod|\
 	cudy,wr3000p-v1-ubootmod|\
 	gatonetworks,gdsp|\
+	globitel,bt-r320|\
 	h3c,magic-nx30-pro|\
 	imou,hx21|\
 	jcg,q30-pro|\
@@ -147,6 +148,7 @@ platform_do_upgrade() {
 	tplink,tl-xdr6086|\
 	tplink,tl-xdr6088|\
 	tplink,tl-xtr8488|\
+	wavlink,wl-wnt100x3-ubootmod|\
 	xiaomi,mi-router-ax3000t-ubootmod|\
 	xiaomi,redmi-router-ax6000-ubootmod|\
 	xiaomi,mi-router-wr30u-ubootmod|\
@@ -292,6 +294,7 @@ platform_do_upgrade() {
 	xiaomi,redmi-router-ax6000-stock)
 		CI_KERN_UBIPART=ubi_kernel
 		CI_ROOT_UBIPART=ubi
+		CI_DATA_UBIPART=ubi
 		nand_do_upgrade "$1"
 		;;
 	*)
@@ -331,6 +334,7 @@ platform_check_image() {
 	cudy,wr3000h-v1-ubootmod|\
 	cudy,wr3000p-v1-ubootmod|\
 	gatonetworks,gdsp|\
+	globitel,bt-r320|\
 	h3c,magic-nx30-pro|\
 	jcg,q30-pro|\
 	jdcloud,re-cp-03|\
@@ -350,6 +354,7 @@ platform_check_image() {
 	tplink,tl-xdr6086|\
 	tplink,tl-xdr6088|\
 	tplink,tl-xtr8488|\
+	wavlink,wl-wnt100x3-ubootmod|\
 	xiaomi,mi-router-ax3000t-ubootmod|\
 	xiaomi,redmi-router-ax6000-ubootmod|\
 	xiaomi,mi-router-wr30u-ubootmod|\
@@ -405,6 +410,7 @@ platform_copy_config() {
 	glinet,gl-mt6000|\
 	glinet,gl-x3000|\
 	glinet,gl-xe3000|\
+	globitel,bt-r320|\
 	hiveton,h5000m|\
 	huasifei,wh3000|\
 	huasifei,wh3000-pro-emmc|\
