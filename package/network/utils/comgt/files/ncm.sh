@@ -236,6 +236,7 @@ proto_ncm_setup() {
 			return 1
 		}
 	}
+	echo "Setting up $ifname done!"
 }
 
 proto_ncm_teardown() {
