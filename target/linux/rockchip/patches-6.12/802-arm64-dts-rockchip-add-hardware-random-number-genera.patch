@@ -9,61 +9,37 @@ Adding Hardware Random Number Generator Resources to the RK3328 and RK3399.
 Signed-off-by: wevsty <ty@wevs.org>
 ---
 
---- a/arch/arm64/boot/dts/rockchip/rk3328.dtsi
-+++ b/arch/arm64/boot/dts/rockchip/rk3328.dtsi
-@@ -310,6 +310,17 @@
+--- a/arch/arm64/boot/dts/rockchip/rk356x.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk356x.dtsi
+@@ -1132,10 +1132,10 @@
+ 	};
+ 
+ 	rng: rng@fe388000 {
+-		compatible = "rockchip,rk3568-rng";
++		compatible = "rockchip,cryptov2-rng";
+ 		reg = <0x0 0xfe388000 0x0 0x4000>;
+ 		clocks = <&cru CLK_TRNG_NS>, <&cru HCLK_TRNG_NS>;
+-		clock-names = "core", "ahb";
++		clock-names = "clk_trng", "hclk_trng";
+ 		resets = <&cru SRST_TRNG_NS>;
+ 		status = "disabled";
+ 	};
+--- a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
+@@ -1857,6 +1857,16 @@
  		status = "disabled";
  	};
  
-+	rng: rng@ff060000 {
-+		compatible = "rockchip,cryptov1-rng";
-+		reg = <0x0 0xff060000 0x0 0x4000>;
-+
-+		clocks = <&cru SCLK_CRYPTO>, <&cru HCLK_CRYPTO_SLV>;
-+		clock-names = "clk_crypto", "hclk_crypto";
-+		assigned-clocks = <&cru SCLK_CRYPTO>, <&cru HCLK_CRYPTO_SLV>;
-+		assigned-clock-rates = <150000000>, <100000000>;
-+		status = "disabled";
-+	};
-+
- 	grf: syscon@ff100000 {
- 		compatible = "rockchip,rk3328-grf", "syscon", "simple-mfd";
- 		reg = <0x0 0xff100000 0x0 0x1000>;
---- a/arch/arm64/boot/dts/rockchip/rk3399-base.dtsi
-+++ b/arch/arm64/boot/dts/rockchip/rk3399-base.dtsi
-@@ -2183,6 +2183,16 @@
- 		};
- 	};
- 
-+	rng: rng@ff8b8000 {
-+		compatible = "rockchip,cryptov1-rng";
-+		reg = <0x0 0xff8b8000 0x0 0x1000>;
-+		clocks = <&cru SCLK_CRYPTO1>, <&cru HCLK_S_CRYPTO1>;
-+		clock-names = "clk_crypto", "hclk_crypto";
-+		assigned-clocks = <&cru SCLK_CRYPTO1>, <&cru HCLK_S_CRYPTO1>;
-+		assigned-clock-rates = <150000000>, <100000000>;
-+		status = "okay";
-+	};
-+
- 	gpu: gpu@ff9a0000 {
- 		compatible = "rockchip,rk3399-mali", "arm,mali-t860";
- 		reg = <0x0 0xff9a0000 0x0 0x10000>;
---- a/arch/arm64/boot/dts/rockchip/rk3568.dtsi
-+++ b/arch/arm64/boot/dts/rockchip/rk3568.dtsi
-@@ -215,6 +215,16 @@
- 		};
- 	};
- 
-+	rng: rng@fe388000 {
-+		compatible = "rockchip,cryptov2-rng";
-+		reg = <0x0 0xfe388000 0x0 0x2000>;
-+		clocks = <&cru CLK_TRNG_NS>, <&cru HCLK_TRNG_NS>;
-+		clock-names = "clk_trng", "hclk_trng";
-+		resets = <&cru SRST_TRNG_NS>;
++	rng: rng@fe378000 {
++		compatible = "rockchip,trngv1";
++		reg = <0x0 0xfe378000 0x0 0x200>;
++		interrupts = <GIC_SPI 400 IRQ_TYPE_LEVEL_HIGH 0>;
++		clocks = <&scmi_clk SCMI_HCLK_SECURE_NS>;
++		clock-names = "hclk_trng";
++		resets = <&scmi_reset SRST_H_TRNG_NS>;
 +		reset-names = "reset";
-+		status = "disabled";
 +	};
 +
- 	can0: can@fe570000 {
- 		compatible = "rockchip,rk3568v2-canfd";
- 		reg = <0x0 0xfe570000 0x0 0x1000>;
+ 	sdhci: mmc@fe2e0000 {
+ 		compatible = "rockchip,rk3588-dwcmshc";
+ 		reg = <0x0 0xfe2e0000 0x0 0x10000>;

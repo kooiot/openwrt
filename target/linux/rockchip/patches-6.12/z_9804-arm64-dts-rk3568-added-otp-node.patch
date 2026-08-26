@@ -1,11 +1,9 @@
 --- a/arch/arm64/boot/dts/rockchip/rk3568.dtsi
 +++ a/arch/arm64/boot/dts/rockchip/rk3568.dtsi
-@@ -220,7 +220,50 @@
- 		reset-names = "reset";
- 		status = "disabled";
+@@ -221,6 +221,49 @@
+ 		};
  	};
-- 
-+
+ 
 +	otp: otp@fe38c000 {
 +		compatible = "rockchip,rk3568-otp";
 +		reg = <0x0 0xfe38c000 0x0 0x4000>;

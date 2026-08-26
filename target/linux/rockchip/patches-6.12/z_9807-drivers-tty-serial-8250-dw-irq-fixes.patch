@@ -1,7 +1,7 @@
 --- a/drivers/tty/serial/8250/8250_dw.c
 +++ b/drivers/tty/serial/8250/8250_dw.c
-@@ -271,12 +271,14 @@ static unsigned int dw8250_serial_in32be
-
+@@ -258,12 +258,14 @@ static unsigned int dw8250_serial_in32be
+ 
  static int dw8250_handle_irq(struct uart_port *p)
  {
 +//#ifndef CONFIG_ARCH_ROCKCHIP
@@ -14,32 +14,32 @@
 -	unsigned int status;
 +	unsigned int status, usr, rfl;
  	unsigned long flags;
-
+ 
  	/*
-@@ -289,6 +291,7 @@ static int dw8250_handle_irq(struct uart
+@@ -276,6 +278,7 @@ static int dw8250_handle_irq(struct uart
  	 * This problem has only been observed so far when not in DMA mode
  	 * so we limit the workaround only to non-DMA mode.
  	 */
 +#ifndef CONFIG_ARCH_ROCKCHIP
  	if (!up->dma && rx_timeout) {
- 		spin_lock_irqsave(&p->lock, flags);
+ 		uart_port_lock_irqsave(p, &flags);
  		status = serial_lsr_in(up);
-@@ -298,6 +301,18 @@ static int dw8250_handle_irq(struct uart
-
- 		spin_unlock_irqrestore(&p->lock, flags);
+@@ -285,6 +288,18 @@ static int dw8250_handle_irq(struct uart
+ 
+ 		uart_port_unlock_irqrestore(p, flags);
  	}
 +#else
 +	if ((iir & 0x3f) == UART_IIR_RX_TIMEOUT) {
-+		spin_lock_irqsave(&p->lock, flags);
++		uart_port_lock_irqsave(p, &flags);
 +		usr = p->serial_in(p, d->pdata->usr_reg);
-+		status = p->serial_in(p, UART_LSR);
++		status = serial_lsr_in(up);
 +		rfl = p->serial_in(p, UART_RFL);
 +		if (!(status & (UART_LSR_DR | UART_LSR_BI)) && !(usr & 0x1) && (rfl == 0))
 +			(void) p->serial_in(p, UART_RX);
 +
-+		spin_unlock_irqrestore(&p->lock, flags);
++		uart_port_unlock_irqrestore(p, flags);
 +	}
 +#endif
-
+ 
  	/* Manually stop the Rx DMA transfer when acting as flow controller */
  	if (quirks & DW_UART_QUIRK_IS_DMA_FC && up->dma && up->dma->rx_running && rx_timeout) {

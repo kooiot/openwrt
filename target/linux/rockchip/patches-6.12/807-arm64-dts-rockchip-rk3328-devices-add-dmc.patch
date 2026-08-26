@@ -45,7 +45,7 @@
 @@ -14,6 +14,13 @@
  	compatible = "xunlong,orangepi-r1-plus-lts", "rockchip,rk3328";
  };
-
+ 
 +&dmc_opp_table {
 +	/delete-node/ opp-798000000;
 +	/delete-node/ opp-840000000;
