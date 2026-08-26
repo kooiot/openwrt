@@ -1,6 +1,6 @@
 --- a/drivers/mfd/rk8xx-core.c
 +++ b/drivers/mfd/rk8xx-core.c
-@@ -97,6 +97,7 @@ static const struct mfd_cell rk817s[] =
+@@ -117,6 +117,7 @@ static const struct mfd_cell rk817s[] =
  	},
  	{
  		.name = "rk808-rtc",

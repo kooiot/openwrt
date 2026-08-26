@@ -1654,7 +1654,7 @@
 
  struct rk_priv_data;
  struct rk_gmac_ops {
-@@ -1835,8 +1836,11 @@ static int rk_gmac_clk_init(struct plat_
+@@ -1762,8 +1763,11 @@ static int rk_gmac_clk_init(struct plat_
  		bsp_priv->clks[i].id = rk_clocks[i];
 
  	if (phy_iface == PHY_INTERFACE_MODE_RMII) {
@@ -1667,7 +1667,7 @@
  	}
 
  	ret = devm_clk_bulk_get_optional(dev, bsp_priv->num_clks,
-@@ -2171,6 +2175,40 @@ static void rk_fix_speed(void *priv, uns
+@@ -2099,6 +2103,40 @@ static void rk_fix_speed(void *priv, uns
  	}
  }
 
@@ -1708,7 +1708,7 @@
  static int rk_gmac_probe(struct platform_device *pdev)
  {
  	struct plat_stmmacenet_data *plat_dat;
-@@ -2197,6 +2235,7 @@ static int rk_gmac_probe(struct platform
+@@ -2125,6 +2163,7 @@ static int rk_gmac_probe(struct platform
  	 */
  	if (!plat_dat->has_gmac4)
  		plat_dat->has_gmac = true;
@@ -1716,18 +1716,18 @@
  	plat_dat->fix_mac_speed = rk_fix_speed;
 
  	plat_dat->bsp_priv = rk_gmac_setup(pdev, plat_dat, data);
-@@ -2214,6 +2253,10 @@ static int rk_gmac_probe(struct platform
- 	ret = stmmac_dvr_probe(&pdev->dev, plat_dat, &stmmac_res);
+@@ -2143,6 +2182,10 @@ static int rk_gmac_probe(struct platform
  	if (ret)
  		goto err_gmac_powerdown;
-+
+
 +	ret = dwmac_rk_create_loopback_sysfs(&pdev->dev);
 +	if (ret)
 +		goto err_gmac_powerdown;
-
++
  	return 0;
 
-@@ -2230,6 +2273,8 @@ static void rk_gmac_remove(struct platfo
+ err_gmac_powerdown:
+@@ -2158,6 +2201,8 @@ static void rk_gmac_remove(struct platfo
  	stmmac_dvr_remove(&pdev->dev);
 
  	rk_gmac_powerdown(bsp_priv);

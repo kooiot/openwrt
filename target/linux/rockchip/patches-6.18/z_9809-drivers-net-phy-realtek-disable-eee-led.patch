@@ -1,9 +1,9 @@
 --- a/drivers/net/phy/realtek/realtek_main.c
 +++ b/drivers/net/phy/realtek/realtek_main.c
-@@ -406,6 +406,19 @@ static int rtl8211f_config_init(struct p
+@@ -712,6 +712,19 @@ static int rtl8211f_config_init(struct p
  		return ret;
  	}
-
+ 
 +	/*
 +	ret = phy_read_paged(phydev, 0xd04, 0x10);
 +	dev_info(dev, "RTL8211F_LCR:%x\n", ret);
@@ -17,6 +17,6 @@
 +	dev_info(dev, "RTL8211F_EEELCR:%x\n", ret);
 +	*/
 +
- 	switch (phydev->interface) {
- 	case PHY_INTERFACE_MODE_RGMII:
- 		val_txdly = 0;
+ 	ret = rtl8211f_config_rgmii_delay(phydev);
+ 	if (ret)
+ 		return ret;
