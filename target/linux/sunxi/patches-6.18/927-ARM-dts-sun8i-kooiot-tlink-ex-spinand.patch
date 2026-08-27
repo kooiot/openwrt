@@ -22,7 +22,7 @@
 +
 +/ {
 +	model = "ThingsLink EX (SPI-NAND)";
-+	compatible = "kooiot,tlink-e2-spinand", "allwinner,sun8i-t113";
++	compatible = "kooiot,tlink-ex-spinand", "allwinner,sun8i-t113";
 +
 +	chosen {
 +		bootargs = "root=/dev/fit0 rootwait";
