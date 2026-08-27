@@ -7,9 +7,9 @@ Subject: [PATCH] rockchip: rk3328: add i2c0 controller for nanopi r2s
  arch/arm64/boot/dts/rockchip/rk3328-nanopi-r2s.dts | 4 ++++
  1 files changed, 4 insertions(+)
 
---- a/arch/arm64/boot/dts/rockchip/rk3328-nanopi-r2s.dts
-+++ b/arch/arm64/boot/dts/rockchip/rk3328-nanopi-r2s.dts
-@@ -176,6 +176,10 @@
+--- a/arch/arm64/boot/dts/rockchip/rk3328-nanopi-r2.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3328-nanopi-r2.dtsi
+@@ -159,6 +159,10 @@
  	};
  };
  
