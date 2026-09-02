@@ -4,6 +4,7 @@
  * Rockchip CANFD driver
  */
 
+#include <linux/version.h>
 #include <linux/delay.h>
 #include <linux/iopoll.h>
 #include <linux/pinctrl/consumer.h>
