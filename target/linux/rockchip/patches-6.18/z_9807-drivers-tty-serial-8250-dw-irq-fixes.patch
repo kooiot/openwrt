@@ -1,43 +1,32 @@
 --- a/drivers/tty/serial/8250/8250_dw.c
 +++ b/drivers/tty/serial/8250/8250_dw.c
-@@ -258,12 +258,14 @@ static unsigned int dw8250_serial_in32be
- 
- static int dw8250_handle_irq(struct uart_port *p)
- {
-+//#ifndef CONFIG_ARCH_ROCKCHIP
- 	struct uart_8250_port *up = up_to_u8250p(p);
-+//#endif
- 	struct dw8250_data *d = to_dw8250_data(p->private_data);
- 	unsigned int iir = p->serial_in(p, UART_IIR);
+@@ -425,7 +425,7 @@ static int dw8250_handle_irq(struct uart
+ 	unsigned int iir = serial_port_in(p, UART_IIR);
  	bool rx_timeout = (iir & 0x3f) == UART_IIR_RX_TIMEOUT;
  	unsigned int quirks = d->pdata->quirks;
 -	unsigned int status;
 +	unsigned int status, usr, rfl;
- 	unsigned long flags;
  
- 	/*
-@@ -276,6 +278,7 @@ static int dw8250_handle_irq(struct uart
+ 	guard(uart_port_lock_check_sysrq_irqsave)(p);
+ 
+@@ -462,12 +462,22 @@ static int dw8250_handle_irq(struct uart
  	 * This problem has only been observed so far when not in DMA mode
  	 * so we limit the workaround only to non-DMA mode.
  	 */
 +#ifndef CONFIG_ARCH_ROCKCHIP
  	if (!up->dma && rx_timeout) {
- 		uart_port_lock_irqsave(p, &flags);
  		status = serial_lsr_in(up);
-@@ -285,6 +288,18 @@ static int dw8250_handle_irq(struct uart
  
- 		uart_port_unlock_irqrestore(p, flags);
+ 		if (!(status & (UART_LSR_DR | UART_LSR_BI)))
+ 			serial_port_in(p, UART_RX);
  	}
 +#else
 +	if ((iir & 0x3f) == UART_IIR_RX_TIMEOUT) {
-+		uart_port_lock_irqsave(p, &flags);
-+		usr = p->serial_in(p, d->pdata->usr_reg);
++		usr = serial_port_in(p, d->pdata->usr_reg);
 +		status = serial_lsr_in(up);
-+		rfl = p->serial_in(p, UART_RFL);
++		rfl = serial_port_in(p, UART_RFL);
 +		if (!(status & (UART_LSR_DR | UART_LSR_BI)) && !(usr & 0x1) && (rfl == 0))
-+			(void) p->serial_in(p, UART_RX);
-+
-+		uart_port_unlock_irqrestore(p, flags);
++			serial_port_in(p, UART_RX);
 +	}
 +#endif
  
