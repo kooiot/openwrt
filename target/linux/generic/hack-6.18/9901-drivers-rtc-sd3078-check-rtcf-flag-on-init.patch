@@ -1,0 +1,121 @@
+--- a/drivers/rtc/rtc-sd3078.c
++++ b/drivers/rtc/rtc-sd3078.c
+@@ -36,6 +36,11 @@
+  */
+ #define WRITE_PROTECT_EN	0
+ 
++struct sd3078 {
++	struct regmap	*regmap;
++	int				rtcf;
++};
++
+ /*
+  * In order to prevent arbitrary modification of the time register,
+  * when modification of the register,
+@@ -74,10 +79,14 @@ static int sd3078_rtc_read_time(struct d
+ 	unsigned char hour;
+ 	unsigned char rtc_data[NUM_TIME_REGS] = {0};
+ 	struct i2c_client *client = to_i2c_client(dev);
+-	struct regmap *regmap = i2c_get_clientdata(client);
++	struct sd3078 *sd3078 = i2c_get_clientdata(client);
+ 	int ret;
++ 
++	if (sd3078->rtcf) {
++		return 0;
++	}
+ 
+-	ret = regmap_bulk_read(regmap, SD3078_REG_SC, rtc_data, NUM_TIME_REGS);
++	ret = regmap_bulk_read(sd3078->regmap, SD3078_REG_SC, rtc_data, NUM_TIME_REGS);
+ 	if (ret < 0) {
+ 		dev_err(dev, "reading from RTC failed with err:%d\n", ret);
+ 		return ret;
+@@ -111,7 +120,7 @@ static int sd3078_rtc_set_time(struct de
+ {
+ 	unsigned char rtc_data[NUM_TIME_REGS];
+ 	struct i2c_client *client = to_i2c_client(dev);
+-	struct regmap *regmap = i2c_get_clientdata(client);
++	struct sd3078 *sd3078 = i2c_get_clientdata(client);
+ 	int ret;
+ 
+ 	rtc_data[SD3078_REG_SC] = bin2bcd(tm->tm_sec);
+@@ -123,10 +132,10 @@ static int sd3078_rtc_set_time(struct de
+ 	rtc_data[SD3078_REG_YR] = bin2bcd(tm->tm_year - 100);
+ 
+ #if WRITE_PROTECT_EN
+-	sd3078_enable_reg_write(regmap);
++	sd3078_enable_reg_write(sd3078->regmap);
+ #endif
+ 
+-	ret = regmap_bulk_write(regmap, SD3078_REG_SC, rtc_data,
++	ret = regmap_bulk_write(sd3078->regmap, SD3078_REG_SC, rtc_data,
+ 				NUM_TIME_REGS);
+ 	if (ret < 0) {
+ 		dev_err(dev, "writing to RTC failed with err:%d\n", ret);
+@@ -134,7 +143,13 @@ static int sd3078_rtc_set_time(struct de
+ 	}
+ 
+ #if WRITE_PROTECT_EN
+-	sd3078_disable_reg_write(regmap);
++	sd3078_disable_reg_write(sd3078->regmap);
++#else
++	if (sd3078->rtcf) {
++		// Make sure write is enable when rtcf is 1
++		sd3078_enable_reg_write(sd3078->regmap);
++		sd3078->rtcf = 0;
++	}
+ #endif
+ 
+ 	return 0;
+@@ -153,20 +168,39 @@ static const struct regmap_config regmap
+ 
+ static int sd3078_probe(struct i2c_client *client)
+ {
++	unsigned int ctrl;
+ 	int ret;
+ 	struct regmap *regmap;
+ 	struct rtc_device *rtc;
++	struct sd3078 * sd3078;
+ 
+ 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C))
+ 		return -ENODEV;
+ 
++	sd3078 = devm_kzalloc(&client->dev, sizeof(*sd3078), GFP_KERNEL);
++	if (!sd3078)
++		return -ENOMEM;
++
+ 	regmap = devm_regmap_init_i2c(client, &regmap_config);
+ 	if (IS_ERR(regmap)) {
+ 		dev_err(&client->dev, "regmap allocation failed\n");
+ 		return PTR_ERR(regmap);
+ 	}
++	sd3078->regmap = regmap;
++ 
++	ret = regmap_read(sd3078->regmap, SD3078_REG_CTRL1, &ctrl);
++	if (ret < 0) {
++		dev_err(&client->dev, "reading CTRL1 from RTC failed with err:%d\n", ret);
++		return ret;
++	}
++	sd3078->rtcf = ctrl & 0x01;
++	if (sd3078->rtcf) {
++		dev_err(&client->dev, "%s: RTC power lost CTRL1:%X\n", __func__, ctrl);
++	} else {
++		dev_info(&client->dev, "%s: CTRL1 is %X\n", __func__, ctrl);
++	}
+ 
+-	i2c_set_clientdata(client, regmap);
++	i2c_set_clientdata(client, sd3078);
+ 
+ 	rtc = devm_rtc_allocate_device(&client->dev);
+ 	if (IS_ERR(rtc))
+@@ -180,7 +214,10 @@ static int sd3078_probe(struct i2c_clien
+ 	if (ret)
+ 		return ret;
+ 
+-	sd3078_enable_reg_write(regmap);
++	if (!sd3078->rtcf) {
++		// Make sure write is enable when probe
++		sd3078_enable_reg_write(regmap);
++	}
+ 
+ 	return 0;
+ }

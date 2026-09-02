@@ -309,7 +309,11 @@ static int rockchip_canfd_set_bittiming(struct net_device *ndev)
 {
 	struct rockchip_canfd *rcan = netdev_priv(ndev);
 	const struct can_bittiming *bt = &rcan->can.bittiming;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+	const struct can_bittiming *dbt = &rcan->can.fd.data_bittiming;
+#else
 	const struct can_bittiming *dbt = &rcan->can.data_bittiming;
+#endif
 	u16 brp, sjw, tseg1, tseg2;
 	u32 reg_btp;
 
@@ -1114,11 +1118,19 @@ static int rockchip_canfd_probe(struct platform_device *pdev)
 	switch (rcan->mode) {
 	case ROCKCHIP_CANFD_MODE:
 		rcan->can.bittiming_const = &rockchip_canfd_bittiming_const;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+		rcan->can.fd.data_bittiming_const = &rockchip_canfd_data_bittiming_const;
+#else
 		rcan->can.data_bittiming_const = &rockchip_canfd_data_bittiming_const;
+#endif
 		rcan->can.do_set_mode = rockchip_canfd_set_mode;
 		rcan->can.do_get_berr_counter = rockchip_canfd_get_berr_counter;
 		rcan->can.do_set_bittiming = rockchip_canfd_set_bittiming;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+		rcan->can.fd.do_set_data_bittiming = rockchip_canfd_set_bittiming;
+#else
 		rcan->can.do_set_data_bittiming = rockchip_canfd_set_bittiming;
+#endif
 		rcan->can.ctrlmode = CAN_CTRLMODE_FD;
 		/* IFI CANFD can do both Bosch FD and ISO FD */
 		rcan->can.ctrlmode_supported = CAN_CTRLMODE_LOOPBACK |

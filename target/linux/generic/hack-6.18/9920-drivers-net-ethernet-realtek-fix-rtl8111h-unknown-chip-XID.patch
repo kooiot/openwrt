@@ -1,0 +1,12 @@
+--- a/drivers/net/ethernet/realtek/r8169_main.c
++++ b/drivers/net/ethernet/realtek/r8169_main.c
+@@ -5430,7 +5430,8 @@ static int rtl_init_one(struct pci_dev *
+ 		dev_info(&pdev->dev, "System vendor flags ASPM as safe\n");
+ 		rc = 0;
+ 	} else {
+-		rc = pci_disable_link_state(pdev, PCIE_LINK_STATE_L1);
++		rc = pci_disable_link_state(pdev, PCIE_LINK_STATE_L0S | PCIE_LINK_STATE_L1 |
++											PCIE_LINK_STATE_CLKPM);
+ 	}
+ 	tp->aspm_manageable = !rc;
+ 
