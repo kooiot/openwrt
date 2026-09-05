@@ -1,0 +1,70 @@
+From 27996d161f1f4a1a17ea78fca0be1f75ee5afd92 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sat, 31 Jan 2026 23:38:15 +0000
+Subject: [PATCH 9002/9034] ram: rockchip: Add basic support for RK3506
+
+Add support for reading DRAM size information from PMUGRF os_reg2 reg.
+
+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
+Tested-by: Aaron Griffith <aargri@gmail.com>
+Reviewed-by: Kever Yang <kever.yang@rock-chips.com>
+---
+ drivers/ram/rockchip/Makefile       |  1 +
+ drivers/ram/rockchip/sdram_rk3506.c | 33 +++++++++++++++++++++++++++++
+ 2 files changed, 34 insertions(+)
+ create mode 100644 drivers/ram/rockchip/sdram_rk3506.c
+
+diff --git a/drivers/ram/rockchip/Makefile b/drivers/ram/rockchip/Makefile
+index 36dc0500dab..2fec31974b3 100644
+--- a/drivers/ram/rockchip/Makefile
++++ b/drivers/ram/rockchip/Makefile
+@@ -13,6 +13,7 @@ obj-$(CONFIG_ROCKCHIP_RK3288) = sdram_rk3288.o
+ obj-$(CONFIG_ROCKCHIP_RK3308) = sdram_rk3308.o
+ obj-$(CONFIG_ROCKCHIP_RK3328) = sdram_rk3328.o sdram_pctl_px30.o sdram_phy_px30.o
+ obj-$(CONFIG_ROCKCHIP_RK3399) += sdram_rk3399.o
++obj-$(CONFIG_ROCKCHIP_RK3506) += sdram_rk3506.o
+ obj-$(CONFIG_ROCKCHIP_RK3568) += sdram_rk3568.o
+ obj-$(CONFIG_ROCKCHIP_RK3588) += sdram_rk3588.o
+ obj-$(CONFIG_ROCKCHIP_RV1126) += sdram_rv1126.o sdram_pctl_px30.o
+diff --git a/drivers/ram/rockchip/sdram_rk3506.c b/drivers/ram/rockchip/sdram_rk3506.c
+new file mode 100644
+index 00000000000..a8396ea8888
+--- /dev/null
++++ b/drivers/ram/rockchip/sdram_rk3506.c
+@@ -0,0 +1,33 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++// Copyright Contributors to the U-Boot project.
++
++#include <dm.h>
++#include <ram.h>
++#include <asm/arch-rockchip/sdram.h>
++
++#define PMUGRF_BASE			0xff910000
++#define OS_REG2_REG			0x208
++
++static int rk3506_dmc_get_info(struct udevice *dev, struct ram_info *info)
++{
++	info->base = CFG_SYS_SDRAM_BASE;
++	info->size = rockchip_sdram_size(PMUGRF_BASE + OS_REG2_REG);
++
++	return 0;
++}
++
++static struct ram_ops rk3506_dmc_ops = {
++	.get_info = rk3506_dmc_get_info,
++};
++
++static const struct udevice_id rk3506_dmc_ids[] = {
++	{ .compatible = "rockchip,rk3506-dmc" },
++	{ }
++};
++
++U_BOOT_DRIVER(rockchip_rk3506_dmc) = {
++	.name = "rockchip_rk3506_dmc",
++	.id = UCLASS_RAM,
++	.of_match = rk3506_dmc_ids,
++	.ops = &rk3506_dmc_ops,
++};
+-- 
+2.55.0
+

@@ -1,0 +1,32 @@
+From f49aab30354e6c610f0c7f95b5e1f62c366b0bfc Mon Sep 17 00:00:00 2001
+From: Xuhui Lin <xuhui.lin@rock-chips.com>
+Date: Sat, 31 Jan 2026 23:38:14 +0000
+Subject: [PATCH 9001/9034] rockchip: mkimage: Add support for RK3506
+
+Add support for generating Rockchip Boot Image for RK3506.
+
+The RK3506 has 48 KiB SRAM and 4 KiB is reserved for BootROM.
+
+Signed-off-by: Xuhui Lin <xuhui.lin@rock-chips.com>
+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
+Tested-by: Aaron Griffith <aargri@gmail.com>
+Reviewed-by: Kever Yang <kever.yang@rock-chips.com>
+---
+ tools/rkcommon.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/tools/rkcommon.c b/tools/rkcommon.c
+index 3e52236b15a..b18bb5925c3 100644
+--- a/tools/rkcommon.c
++++ b/tools/rkcommon.c
+@@ -132,6 +132,7 @@ static struct spl_info spl_infos[] = {
+ 	{ "rk3328", "RK32", 0x8000 - 0x800, false, RK_HEADER_V1 },
+ 	{ "rk3368", "RK33", 0x8000 - 0x1000, false, RK_HEADER_V1 },
+ 	{ "rk3399", "RK33", 0x30000 - 0x2000, false, RK_HEADER_V1 },
++	{ "rk3506", "RK35", 0xC000 - 0x1000, false, RK_HEADER_V2 },
+ 	{ "rv1108", "RK11", 0x1800, false, RK_HEADER_V1 },
+ 	{ "rv1126", "110B", 0x10000 - 0x1000, false, RK_HEADER_V1 },
+ 	{ "rk3568", "RK35", 0x10000 - 0x1000, false, RK_HEADER_V2 },
+-- 
+2.55.0
+

@@ -19,7 +19,7 @@ include $(INCLUDE_DIR)/package.mk
 
 define U-Boot/Default
   BUILD_TARGET:=rockchip
-  UENV:=default
+  UENV:=
   HIDDEN:=1
 endef
 
@@ -164,6 +164,22 @@ define U-Boot/rockpro64-rk3399
     pine64_rockpro64
 endef
 
+# RK3506 boards
+
+define U-Boot/rk3506/Default
+  BUILD_SUBTARGET:=armv7
+  DEPENDS:=+PACKAGE_u-boot-$(1):trusted-firmware-a-rk3506
+  TEE:=rk3506_tee_v2.40.bin
+  TPL:=rk3506_ddr_750MHz_v1.06.bin
+endef
+
+define U-Boot/vx-hd-rk3506-iot-spinand
+  $(U-Boot/rk3506/Default)
+  NAME:=HD-RK3506-IOT (SPINAND)
+  UENV:=nand
+  BUILD_DEVICES:= \
+       vanxoak_vx-hd-rk3506-iot-spinand
+endef
 
 # RK3566 boards
 
@@ -258,7 +274,6 @@ endef
 
 define U-Boot/station-p2-rk3568
   $(U-Boot/rk3568/Default)
-  BUILD_SUBTARGET:=armv8
   NAME:=StationP2
   BUILD_DEVICES:= \
        firefly_station-p2
@@ -289,7 +304,6 @@ endef
 
 define U-Boot/tlink-r4x-rk3568
   $(U-Boot/rk3568/Default)
-  BUILD_SUBTARGET:=armv8
   NAME:=ThingsLink R4x
   BUILD_DEVICES:= \
        kooiot_tlink-r4x
@@ -297,7 +311,6 @@ endef
 
 define U-Boot/tlink-r7-rk3568
   $(U-Boot/rk3568/Default)
-  BUILD_SUBTARGET:=armv8
   NAME:=ThingsLink R7
   BUILD_DEVICES:= \
        kooiot_tlink-r7
@@ -374,6 +387,7 @@ UBOOT_TARGETS := \
   roc-cc-rk3328 \
   rock64-rk3328 \
   rock-pi-e-rk3328 \
+  vx-hd-rk3506-iot-spinand \
   opc-h68k-rk3568 \
   station-p2-rk3568 \
   rock-pi-e-v3-rk3328 \
@@ -405,8 +419,15 @@ UBOOT_CUSTOMIZE_CONFIG := \
 	--set-str MKIMAGE_DTC_PATH $(PKG_BUILD_DIR)/scripts/dtc/dtc
 
 UBOOT_MAKE_FLAGS += \
-  BL31=$(STAGING_DIR_IMAGE)/$(ATF) \
+  $(if $(ATF),BL31=$(STAGING_DIR_IMAGE)/$(ATF)) \
+  $(if $(TEE),TEE=$(STAGING_DIR_IMAGE)/$(TEE)) \
   $(if $(TPL),ROCKCHIP_TPL=$(STAGING_DIR_IMAGE)/$(TPL))
+
+define Build/Configure
+	$(call Build/Configure/U-Boot)
+
+	$(if $(strip $(UENV)), $(CP) uEnv-$(UENV).txt $(PKG_BUILD_DIR)/.default_env)
+endef
 
 define Build/InstallDev
 	$(INSTALL_DIR) $(STAGING_DIR_IMAGE)

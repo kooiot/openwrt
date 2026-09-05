@@ -1,0 +1,54 @@
+From 2edb11ea8ca76c56deb213a002c84bccda66e84f Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sat, 31 Jan 2026 23:38:21 +0000
+Subject: [PATCH 9007/9034] phy: rockchip-inno-usb2: Add support for RK3506
+
+Add support for the two USB2.0 PHYs use in the RK3506 SoC.
+
+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
+Tested-by: Aaron Griffith <aargri@gmail.com>
+Reviewed-by: Kever Yang <kever.yang@rock-chips.com>
+---
+ drivers/phy/rockchip/phy-rockchip-inno-usb2.c | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
+
+diff --git a/drivers/phy/rockchip/phy-rockchip-inno-usb2.c b/drivers/phy/rockchip/phy-rockchip-inno-usb2.c
+index 43f6e020a6a..ccadec1e801 100644
+--- a/drivers/phy/rockchip/phy-rockchip-inno-usb2.c
++++ b/drivers/phy/rockchip/phy-rockchip-inno-usb2.c
+@@ -389,6 +389,22 @@ static const struct rockchip_usb2phy_cfg rk3399_usb2phy_cfgs[] = {
+ 	{ /* sentinel */ }
+ };
+ 
++static const struct rockchip_usb2phy_cfg rk3506_phy_cfgs[] = {
++	{
++		.reg		= 0xff2b0000,
++		.clkout_ctl_phy = { 0x041c, 7, 2, 0, 0x27 },
++		.port_cfgs	= {
++			[USB2PHY_PORT_OTG] = {
++				.phy_sus	= { 0x0060, 1, 0, 2, 1 },
++			},
++			[USB2PHY_PORT_HOST] = {
++				.phy_sus	= { 0x0070, 1, 0, 2, 1 },
++			}
++		},
++	},
++	{ /* sentinel */ }
++};
++
+ static const struct rockchip_usb2phy_cfg rk3568_phy_cfgs[] = {
+ 	{
+ 		.reg		= 0xfe8a0000,
+@@ -471,6 +487,9 @@ static const struct udevice_id rockchip_usb2phy_ids[] = {
+ 		.data = (ulong)&rk3399_usb2phy_cfgs,
+ 	},
+ 	{
++		.compatible = "rockchip,rk3506-usb2phy",
++		.data = (ulong)&rk3506_phy_cfgs,
++	},
+ 		.compatible = "rockchip,rk3568-usb2phy",
+ 		.data = (ulong)&rk3568_phy_cfgs,
+ 	},
+-- 
+2.55.0
+
