@@ -1,0 +1,30 @@
+From ef2842ffdde555cd7231bf15698f7f98e2a40899 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Mon, 3 Aug 2026 19:09:39 +0000
+Subject: [PATCH 9017/9034] rockchip: rk3506: Imply OF_UPSTREAM
+
+The Rockchip platform typically require new board targets to use
+OF_UPSTREAM and board device trees from dts/upstream.
+
+Imply OF_UPSTREAM at SoC level for RK3506.
+
+Signed-off-by: Austin Lane <vidplace7@gmail.com>
+---
+ arch/arm/mach-rockchip/Kconfig | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/arm/mach-rockchip/Kconfig b/arch/arm/mach-rockchip/Kconfig
+index 4b26bbb1d8a..835f2a4fc4f 100644
+--- a/arch/arm/mach-rockchip/Kconfig
++++ b/arch/arm/mach-rockchip/Kconfig
+@@ -332,6 +332,7 @@ config ROCKCHIP_RK3506
+ 	imply MISC_INIT_R
+ 	imply OF_LIBFDT_OVERLAY
+ 	imply OF_LIVE
++	imply OF_UPSTREAM
+ 	imply RNG_ROCKCHIP
+ 	imply ROCKCHIP_COMMON_BOARD
+ 	imply ROCKCHIP_COMMON_STACK_ADDR
+-- 
+2.55.0
+

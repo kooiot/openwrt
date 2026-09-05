@@ -1,0 +1,265 @@
+From 41b630439493e7d2a9ca3507f159552d5df2b5f3 Mon Sep 17 00:00:00 2001
+From: Dirk Chang <dirk@kooiot.com>
+Date: Sat, 5 Sep 2026 23:34:14 +0800
+Subject: [PATCH 9033/9034] arm: rockchip: vx-hd-rk3506 boards support boot
+ from spi nand
+
+---
+ ...k3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi |  6 ++++++
+ .../dts/rk3506-vx-hd-rk3506-iot-u-boot.dtsi   |  6 ++++++
+ arch/arm/dts/rockchip-u-boot.dtsi             |  5 +++++
+ arch/arm/mach-rockchip/spl.c                  | 15 +++++++++++++
+ common/spl/spl_fit.c                          |  4 ++--
+ configs/vx-hd-rk3506-iot-spinand_defconfig    | 21 ++++++++++---------
+ configs/vx-hd-rk3506-iot_defconfig            | 11 +++-------
+ lib/hang.c                                    |  7 +++++++
+ 8 files changed, 55 insertions(+), 20 deletions(-)
+
+diff --git a/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi
+index 7f4304d7702..e730ec745b8 100644
+--- a/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi
++++ b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi
+@@ -2,6 +2,12 @@
+ 
+ #include "rk3506-u-boot.dtsi"
+ 
++/ {
++	chosen {
++		u-boot,spl-boot-order = "same-as-spl", &sdmmc, &flash;
++	};
++};
++
+ &flash {
+ 	bootph-pre-ram;
+ 	bootph-some-ram;
+diff --git a/arch/arm/dts/rk3506-vx-hd-rk3506-iot-u-boot.dtsi b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-u-boot.dtsi
+index 7f4304d7702..579e31733b0 100644
+--- a/arch/arm/dts/rk3506-vx-hd-rk3506-iot-u-boot.dtsi
++++ b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-u-boot.dtsi
+@@ -2,6 +2,12 @@
+ 
+ #include "rk3506-u-boot.dtsi"
+ 
++/ {
++       chosen {
++               u-boot,spl-boot-order = "same-as-spl", &sdmmc, &flash;
++       };
++};
++
+ &flash {
+ 	bootph-pre-ram;
+ 	bootph-some-ram;
+diff --git a/arch/arm/dts/rockchip-u-boot.dtsi b/arch/arm/dts/rockchip-u-boot.dtsi
+index c8c928c7e50..5b6295890e0 100644
+--- a/arch/arm/dts/rockchip-u-boot.dtsi
++++ b/arch/arm/dts/rockchip-u-boot.dtsi
+@@ -126,8 +126,13 @@
+ 					arch = "arm";
+ 					os = "tee";
+ 					compression = "none";
++#ifdef CONFIG_ROCKCHIP_RK3506
++					load = <(CFG_SYS_SDRAM_BASE + 0x1000)>;
++					entry = <(CFG_SYS_SDRAM_BASE + 0x1000)>;
++#else
+ 					load = <(CFG_SYS_SDRAM_BASE + 0x8400000)>;
+ 					entry = <(CFG_SYS_SDRAM_BASE + 0x8400000)>;
++#endif
+ 
+ 					tee-os {
+ 					};
+diff --git a/arch/arm/mach-rockchip/spl.c b/arch/arm/mach-rockchip/spl.c
+index 3ce7e792b5a..d3dcf2383e5 100644
+--- a/arch/arm/mach-rockchip/spl.c
++++ b/arch/arm/mach-rockchip/spl.c
+@@ -116,6 +116,21 @@ __weak int arch_cpu_init(void)
+ 	return 0;
+ }
+ 
++#ifdef CONFIG_SPL_BUILD
++void spl_hang_reset(void)
++{
++#if defined(CONFIG_SPL_SYSRESET) && defined(CONFIG_SPL_DRIVERS_MISC_SUPPORT)
++	/* reset is available after dm setup */
++	if (gd->flags & GD_FLG_SPL_EARLY_INIT) {
++		printf("# Reset the board to bootrom #\n");
++		writel(BOOT_BROM_DOWNLOAD, CONFIG_ROCKCHIP_BOOT_MODE_REG);
++		do_reset(NULL, 0, 0, NULL);
++	}
++#endif
++}
++#endif
++
++
+ void board_init_f(ulong dummy)
+ {
+ 	int ret;
+diff --git a/common/spl/spl_fit.c b/common/spl/spl_fit.c
+index 2a097f4464c..adffee12f2c 100644
+--- a/common/spl/spl_fit.c
++++ b/common/spl/spl_fit.c
+@@ -291,8 +291,8 @@ static int load_simple_fit(struct spl_load_info *info, ulong fit_offset,
+ 	}
+ 
+ 	if (CONFIG_IS_ENABLED(FIT_SIGNATURE)) {
+-		printf("## Checking hash(es) for Image %s ... ",
+-		       fit_get_name(fit, node, NULL));
++		printf("## Checking hash(es) for Image %s 0x%08x ... ",
++		       fit_get_name(fit, node, NULL), (int)src);
+ 		if (!fit_image_verify_with_data(fit, node, gd_fdt_blob(), src,
+ 						length))
+ 			return -EPERM;
+diff --git a/configs/vx-hd-rk3506-iot-spinand_defconfig b/configs/vx-hd-rk3506-iot-spinand_defconfig
+index 3b67029cb20..7132428d1ee 100644
+--- a/configs/vx-hd-rk3506-iot-spinand_defconfig
++++ b/configs/vx-hd-rk3506-iot-spinand_defconfig
+@@ -2,7 +2,7 @@ CONFIG_ARM=y
+ CONFIG_SKIP_LOWLEVEL_INIT=y
+ CONFIG_COUNTER_FREQUENCY=24000000
+ CONFIG_ARCH_ROCKCHIP=y
+-CONFIG_SYS_MALLOC_LEN=0x200000
++CONFIG_SYS_MALLOC_LEN=0x100000
+ CONFIG_SF_DEFAULT_SPEED=50000000
+ CONFIG_SF_DEFAULT_MODE=0x1
+ CONFIG_DEFAULT_DEVICE_TREE="rk3506-vx-hd-rk3506-iot-spinand"
+@@ -10,16 +10,19 @@ CONFIG_ROCKCHIP_RK3506=y
+ CONFIG_DEBUG_UART_BASE=0xFF0A0000
+ CONFIG_DEBUG_UART_CLOCK=24000000
+ CONFIG_SPL_LIBDISK_SUPPORT=y
++CONFIG_SPL_SPI_FLASH_SUPPORT=y
++CONFIG_SPL_SPI=y
+ CONFIG_SYS_LOAD_ADDR=0x200000
+ CONFIG_DEBUG_UART=y
+ CONFIG_STACK_SIZE=0x100000
+-CONFIG_SPL_FIT_IMAGE_POST_PROCESS=y
+ CONFIG_SYS_BOOTM_LEN=0x2000000
+ CONFIG_USE_BOOTARGS=y
+ # CONFIG_DISPLAY_CPUINFO is not set
+ CONFIG_SPL_MAX_SIZE=0x80000
+-CONFIG_SPL_BOARD_INIT=y
+ # CONFIG_SPL_RAW_IMAGE_SUPPORT is not set
++CONFIG_SPL_MTD=y
++CONFIG_SPL_SPI_NAND_LOAD=y
++CONFIG_SYS_SPI_U_BOOT_OFFS=0x80000
+ CONFIG_CMD_MEMINFO=y
+ CONFIG_CMD_ADC=y
+ CONFIG_CMD_GPIO=y
+@@ -44,6 +47,7 @@ CONFIG_SYS_REDUNDAND_ENVIRONMENT=y
+ CONFIG_ENV_UBI_PART="ubi"
+ CONFIG_ENV_UBI_VOLUME="ubootenv"
+ CONFIG_ENV_UBI_VOLUME_REDUND="ubootenv2"
++CONFIG_SYS_RELOC_GD_ENV_ADDR=y
+ CONFIG_USE_DEFAULT_ENV_FILE=y
+ CONFIG_DEFAULT_ENV_FILE=".default_env"
+ CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG=y
+@@ -56,6 +60,9 @@ CONFIG_LED_GPIO=y
+ CONFIG_MMC_DW=y
+ CONFIG_MMC_DW_ROCKCHIP=y
+ CONFIG_DM_MTD=y
++CONFIG_MTD_RAW_NAND=y
++CONFIG_SYS_NAND_U_BOOT_LOCATIONS=y
++CONFIG_SYS_NAND_U_BOOT_OFFS=0x4000
+ CONFIG_MTD_SPI_NAND=y
+ CONFIG_SPI_FLASH_SFDP_SUPPORT=y
+ CONFIG_SPI_FLASH_GIGADEVICE=y
+@@ -70,8 +77,6 @@ CONFIG_DM_MDIO=y
+ CONFIG_DWC_ETH_QOS=y
+ CONFIG_DWC_ETH_QOS_ROCKCHIP=y
+ CONFIG_PHY_ROCKCHIP_INNO_USB2=y
+-CONFIG_ROCKCHIP_SDRAM_COMMON=y
+-CONFIG_BAUDRATE=115200
+ CONFIG_DEBUG_UART_SHIFT=2
+ CONFIG_SYS_NS16550_MEM32=y
+ CONFIG_ROCKCHIP_SFC=y
+@@ -83,10 +88,6 @@ CONFIG_USB_GADGET_DWC2_OTG=y
+ CONFIG_USB_GADGET_VBUS_DRAW=500
+ CONFIG_USB_GADGET_DOWNLOAD=y
+ CONFIG_USB_FUNCTION_ROCKUSB=y
+-CONFIG_SPL_TINY_MEMSET=y
+-CONFIG_LZ4=y
+-CONFIG_LZMA=y
+-CONFIG_SPL_LZMA=y
+-CONFIG_SPL_GZIP=y
+ CONFIG_ERRNO_STR=y
+ CONFIG_OPTEE_IMAGE=y
++CONFIG_ROCKCHIP_SDRAM_COMMON=y
+diff --git a/configs/vx-hd-rk3506-iot_defconfig b/configs/vx-hd-rk3506-iot_defconfig
+index 2b99db3dda9..c4809ba237d 100644
+--- a/configs/vx-hd-rk3506-iot_defconfig
++++ b/configs/vx-hd-rk3506-iot_defconfig
+@@ -13,12 +13,10 @@ CONFIG_SPL_LIBDISK_SUPPORT=y
+ CONFIG_SYS_LOAD_ADDR=0x200000
+ CONFIG_DEBUG_UART=y
+ CONFIG_STACK_SIZE=0x100000
+-CONFIG_SPL_FIT_IMAGE_POST_PROCESS=y
+ CONFIG_SYS_BOOTM_LEN=0x2000000
+ CONFIG_USE_BOOTARGS=y
+ # CONFIG_DISPLAY_CPUINFO is not set
+ CONFIG_SPL_MAX_SIZE=0x80000
+-CONFIG_SPL_BOARD_INIT=y
+ # CONFIG_SPL_RAW_IMAGE_SUPPORT is not set
+ CONFIG_CMD_MEMINFO=y
+ CONFIG_CMD_ADC=y
+@@ -41,6 +39,7 @@ CONFIG_CMD_UBI=y
+ CONFIG_OF_SPL_REMOVE_PROPS="clock-names interrupt-parent assigned-clocks assigned-clock-rates assigned-clock-parents"
+ CONFIG_ENV_IS_IN_UBI=y
+ CONFIG_SYS_REDUNDAND_ENVIRONMENT=y
++CONFIG_SYS_RELOC_GD_ENV_ADDR=y
+ CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG=y
+ CONFIG_BUTTON=y
+ CONFIG_BUTTON_ADC=y
+@@ -51,6 +50,8 @@ CONFIG_LED_GPIO=y
+ CONFIG_MMC_DW=y
+ CONFIG_MMC_DW_ROCKCHIP=y
+ CONFIG_DM_MTD=y
++CONFIG_DM_SPI=y
++CONFIG_SPL_DM_SPI=y
+ CONFIG_MTD_SPI_NAND=y
+ CONFIG_SPI_FLASH_SFDP_SUPPORT=y
+ CONFIG_SPI_FLASH_GIGADEVICE=y
+@@ -65,7 +66,6 @@ CONFIG_DM_MDIO=y
+ CONFIG_DWC_ETH_QOS=y
+ CONFIG_DWC_ETH_QOS_ROCKCHIP=y
+ CONFIG_PHY_ROCKCHIP_INNO_USB2=y
+-CONFIG_ROCKCHIP_SDRAM_COMMON=y
+ CONFIG_DEBUG_UART_SHIFT=2
+ CONFIG_SYS_NS16550_MEM32=y
+ CONFIG_ROCKCHIP_SFC=y
+@@ -77,10 +77,5 @@ CONFIG_USB_GADGET_DWC2_OTG=y
+ CONFIG_USB_GADGET_VBUS_DRAW=500
+ CONFIG_USB_GADGET_DOWNLOAD=y
+ CONFIG_USB_FUNCTION_ROCKUSB=y
+-CONFIG_SPL_TINY_MEMSET=y
+-CONFIG_LZ4=y
+-CONFIG_LZMA=y
+-CONFIG_SPL_LZMA=y
+-CONFIG_SPL_GZIP=y
+ CONFIG_ERRNO_STR=y
+ CONFIG_OPTEE_IMAGE=y
+diff --git a/lib/hang.c b/lib/hang.c
+index 3cfb06e9ca8..08ace8343d0 100644
+--- a/lib/hang.c
++++ b/lib/hang.c
+@@ -12,6 +12,10 @@
+ #include <stdio.h>
+ #include <os.h>
+ 
++#ifdef CONFIG_SPL_BUILD
++__weak void spl_hang_reset(void) {}
++#endif
++
+ /**
+  * hang - stop processing by staying in an endless loop
+  *
+@@ -28,6 +32,9 @@ void hang(void)
+ 	puts("### ERROR ### Please RESET the board ###\n");
+ #endif
+ 	bootstage_error(BOOTSTAGE_ID_NEED_RESET);
++#ifdef CONFIG_SPL_BUILD
++	spl_hang_reset();
++#endif
+ 	if (IS_ENABLED(CONFIG_SANDBOX))
+ 		os_exit(1);
+ 	for (;;)
+-- 
+2.55.0
+

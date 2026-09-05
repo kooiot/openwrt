@@ -1,0 +1,24 @@
+From e9187136136d805b886136f674008699c009180a Mon Sep 17 00:00:00 2001
+From: Dirk Chang <dirk@kooiot.com>
+Date: Thu, 3 Sep 2026 18:54:53 +0800
+Subject: [PATCH 9029/9034] arm: rockchip set default TEXT_BASE for rk3506
+
+---
+ arch/arm/mach-rockchip/rk3506/Kconfig | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/arch/arm/mach-rockchip/rk3506/Kconfig b/arch/arm/mach-rockchip/rk3506/Kconfig
+index 92f187458c6..944b2c35662 100644
+--- a/arch/arm/mach-rockchip/rk3506/Kconfig
++++ b/arch/arm/mach-rockchip/rk3506/Kconfig
+@@ -12,4 +12,7 @@ config SYS_SOC
+ config SYS_CONFIG_NAME
+ 	default "rk3506_common"
+ 
++config TEXT_BASE
++	default 0x00a00000
++
+ endif
+-- 
+2.55.0
+

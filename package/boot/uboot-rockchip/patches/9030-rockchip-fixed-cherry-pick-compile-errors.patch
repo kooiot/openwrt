@@ -1,0 +1,210 @@
+From 0504c356b87c4c88d8c9140afb7561502560ec78 Mon Sep 17 00:00:00 2001
+From: Dirk Chang <dirk@kooiot.com>
+Date: Thu, 3 Sep 2026 19:25:51 +0800
+Subject: [PATCH 9030/9034] rockchip: fixed cherry-pick compile errors
+
+---
+ arch/arm/dts/Makefile                         |  2 +-
+ ...k3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi |  8 ++---
+ .../dts/rk3506-vx-hd-rk3506-iot-u-boot.dtsi   |  8 ++---
+ arch/arm/dts/rk3506-vx-hd-rk3506-iot.dts      | 36 +++++++++++++------
+ drivers/clk/rockchip/clk_rk3506.c             |  1 +
+ drivers/phy/rockchip/phy-rockchip-inno-usb2.c |  3 +-
+ .../pinctrl/rockchip/pinctrl-rockchip-core.c  |  4 +--
+ drivers/spi/rockchip_sfc.c                    |  4 +--
+ 8 files changed, 39 insertions(+), 27 deletions(-)
+
+diff --git a/arch/arm/dts/Makefile b/arch/arm/dts/Makefile
+index 35aac282024..af243663f18 100644
+--- a/arch/arm/dts/Makefile
++++ b/arch/arm/dts/Makefile
+@@ -88,7 +88,7 @@ dtb-$(CONFIG_ROCKCHIP_RK3368) += \
+ 	rk3368-px5-evb.dtb
+ 
+ dtb-$(CONFIG_ROCKCHIP_RK3506) += \
+-	rk3506-rk3506-vx-hd-rk3506-iot-spinand.dts.dtb
++	rk3506-vx-hd-rk3506-iot-spinand.dtb
+ 
+ dtb-$(CONFIG_ARCH_S5P4418) += \
+ 	s5p4418-nanopi2.dtb
+diff --git a/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi
+index c3dcaa97f0f..7f4304d7702 100644
+--- a/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi
++++ b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi
+@@ -2,11 +2,9 @@
+ 
+ #include "rk3506-u-boot.dtsi"
+ 
+-&fspi {
+-	flash@0 {
+-		bootph-pre-ram;
+-		bootph-some-ram;
+-	};
++&flash {
++	bootph-pre-ram;
++	bootph-some-ram;
+ };
+ 
+ &sdmmc_det_pin {
+diff --git a/arch/arm/dts/rk3506-vx-hd-rk3506-iot-u-boot.dtsi b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-u-boot.dtsi
+index c3dcaa97f0f..7f4304d7702 100644
+--- a/arch/arm/dts/rk3506-vx-hd-rk3506-iot-u-boot.dtsi
++++ b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-u-boot.dtsi
+@@ -2,11 +2,9 @@
+ 
+ #include "rk3506-u-boot.dtsi"
+ 
+-&fspi {
+-	flash@0 {
+-		bootph-pre-ram;
+-		bootph-some-ram;
+-	};
++&flash {
++	bootph-pre-ram;
++	bootph-some-ram;
+ };
+ 
+ &sdmmc_det_pin {
+diff --git a/arch/arm/dts/rk3506-vx-hd-rk3506-iot.dts b/arch/arm/dts/rk3506-vx-hd-rk3506-iot.dts
+index b629a5548d5..cfabff3acc6 100644
+--- a/arch/arm/dts/rk3506-vx-hd-rk3506-iot.dts
++++ b/arch/arm/dts/rk3506-vx-hd-rk3506-iot.dts
+@@ -21,16 +21,18 @@
+ 		stdout-path = "serial0:115200n8";
+ 	};
+ 
+-	leds {
+-		compatible = "gpio-leds";
++	ext_gmac0: external-gmac-clock-0 {
++		compatible = "fixed-clock";
++		#clock-cells = <0>;
++		clock-frequency = <50000000>;
++		clock-output-names = "ext_gmac_0";
++	};
+ 
+-		status_led: status-led {
+-			label = "kooiot:green:status";
+-			gpios = <&gpio1 RK_PB3 GPIO_ACTIVE_HIGH>;
+-			linux,default-trigger = "heartbeat";
+-			pinctrl-names = "default";
+-			pinctrl-0 = <&status_led>;
+-		};
++	ext_gmac1: external-gmac-clock-1 {
++		compatible = "fixed-clock";
++		#clock-cells = <0>;
++		clock-frequency = <50000000>;
++		clock-output-names = "ext_gmac_1";
+ 	};
+ 
+ 	vcc12v_dc: vcc12v-dc {
+@@ -71,6 +73,18 @@
+ 		regulator-max-microvolt = <1800000>;
+ 		vin-supply = <&vcc3v3_stb>;
+ 	};
++
++	leds {
++		compatible = "gpio-leds";
++
++		status_led: status-led {
++			label = "kooiot:green:status";
++			gpios = <&gpio1 RK_PB3 GPIO_ACTIVE_HIGH>;
++			linux,default-trigger = "heartbeat";
++			pinctrl-names = "default";
++			pinctrl-0 = <&status_led_pin>;
++		};
++	};
+ };
+ 
+ &saradc {
+@@ -81,7 +95,7 @@
+ &sfc {
+ 	status = "okay";
+ 
+-	flash@0 {
++	flash: spinand@0 {
+ 		compatible = "spi-nand";
+ 		reg = <0>;
+ 		spi-max-frequency = <80000000>;
+@@ -204,7 +218,7 @@
+ 
+ 	leds {
+ 		/omit-if-no-ref/
+-		status_led: status-led {
++		status_led_pin: status-led-pin {
+ 			rockchip,pins = <1 RK_PB3 RK_FUNC_GPIO &pcfg_pull_none>;
+ 		};
+ 	};
+diff --git a/drivers/clk/rockchip/clk_rk3506.c b/drivers/clk/rockchip/clk_rk3506.c
+index ca31ce79b77..c2419dff72d 100644
+--- a/drivers/clk/rockchip/clk_rk3506.c
++++ b/drivers/clk/rockchip/clk_rk3506.c
+@@ -6,6 +6,7 @@
+ 
+ #define LOG_CATEGORY UCLASS_CLK
+ 
++#include <dm.h>
+ #include <clk-uclass.h>
+ #include <asm/arch-rockchip/clock.h>
+ #include <asm/arch-rockchip/cru_rk3506.h>
+diff --git a/drivers/phy/rockchip/phy-rockchip-inno-usb2.c b/drivers/phy/rockchip/phy-rockchip-inno-usb2.c
+index ccadec1e801..5116bc55024 100644
+--- a/drivers/phy/rockchip/phy-rockchip-inno-usb2.c
++++ b/drivers/phy/rockchip/phy-rockchip-inno-usb2.c
+@@ -392,7 +392,7 @@ static const struct rockchip_usb2phy_cfg rk3399_usb2phy_cfgs[] = {
+ static const struct rockchip_usb2phy_cfg rk3506_phy_cfgs[] = {
+ 	{
+ 		.reg		= 0xff2b0000,
+-		.clkout_ctl_phy = { 0x041c, 7, 2, 0, 0x27 },
++		.clkout_ctl = { 0x041c, 7, 2, 0, 0x27 },
+ 		.port_cfgs	= {
+ 			[USB2PHY_PORT_OTG] = {
+ 				.phy_sus	= { 0x0060, 1, 0, 2, 1 },
+@@ -490,6 +490,7 @@ static const struct udevice_id rockchip_usb2phy_ids[] = {
+ 		.compatible = "rockchip,rk3506-usb2phy",
+ 		.data = (ulong)&rk3506_phy_cfgs,
+ 	},
++	{
+ 		.compatible = "rockchip,rk3568-usb2phy",
+ 		.data = (ulong)&rk3568_phy_cfgs,
+ 	},
+diff --git a/drivers/pinctrl/rockchip/pinctrl-rockchip-core.c b/drivers/pinctrl/rockchip/pinctrl-rockchip-core.c
+index 7266a1b48e8..2bdbcc75d1d 100644
+--- a/drivers/pinctrl/rockchip/pinctrl-rockchip-core.c
++++ b/drivers/pinctrl/rockchip/pinctrl-rockchip-core.c
+@@ -676,9 +676,9 @@ int rockchip_pinctrl_probe(struct udevice *dev)
+ 	if (dev_read_bool(dev, "rockchip,ioc1")) {
+ 		priv->regmap_ioc1 =
+ 			syscon_regmap_lookup_by_phandle(dev, "rockchip,ioc1");
+-		if (IS_ERR(priv->regmap_ioc1)) {
++		if (!priv->regmap_ioc1) {
+ 			debug("unable to find rockchip,ioc1 regmap\n");
+-			return PTR_ERR(priv->regmap_ioc1);
++			return -ENODEV;
+ 		}
+ 	}
+ 
+diff --git a/drivers/spi/rockchip_sfc.c b/drivers/spi/rockchip_sfc.c
+index 94e17e676a1..6a9ec1f04ea 100644
+--- a/drivers/spi/rockchip_sfc.c
++++ b/drivers/spi/rockchip_sfc.c
+@@ -660,7 +660,7 @@ static void rockchip_sfc_delay_lines_tuning(struct rockchip_sfc *sfc, struct spi
+ 	u16 right, w_left = 0;
+ 	u16 best_left = 0, best_right = 0;
+ 	bool in_window = false;
+-	u8 cs = plat->cs[0];
++	u8 cs = plat->cs;
+ 
+ 	rockchip_sfc_clk_set_rate(sfc, SFC_DLL_THRESHOLD_RATE);
+ 	op.data.buf.in = &id;
+@@ -760,7 +760,7 @@ static int rockchip_sfc_exec_op(struct spi_slave *mem,
+ 	 */
+ 	if (rockchip_sfc_get_version(sfc) >= SFC_VER_4) {
+ 		struct dm_spi_slave_plat *plat = dev_get_parent_plat(mem->dev);
+-		u8 cs = plat->cs[0];
++		u8 cs = plat->cs;
+ 
+ 		if (!sfc->dll_cells[cs] && sfc->speed > SFC_DLL_THRESHOLD_RATE)
+ 			rockchip_sfc_delay_lines_tuning(sfc, mem);
+-- 
+2.55.0
+

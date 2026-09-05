@@ -1,0 +1,12 @@
+ipaddr=192.168.1.248
+serverip=192.168.1.139
+bootconf=config-1
+mtdids=spi-nand0=0
+mtdparts=mtdparts=0:1M(boot),-(ubi)
+console=console=ttyS0
+bootcmd=run boot_production
+bootdelay=2
+bootargs=console=ttyS0,115200 earlyprintk panic=5 ubi.mtd=ubi
+boot_default=run bootcmd ; replacevol=1 ; run boot_tftp_forever
+boot_production=run ubi_read_production && bootm $kernel_addr_r - $fdt_addr_r
+ubi_read_production=ubifsmount ubi:kernel && ubifsload $kernel_addr_r uImage && ubifsload $fdt_addr_r dtb && ubifsumount

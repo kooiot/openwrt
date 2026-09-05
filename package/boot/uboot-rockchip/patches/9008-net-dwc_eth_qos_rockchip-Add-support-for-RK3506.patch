@@ -1,0 +1,143 @@
+From ccf2aff98c3fc8edb16babe690c58c0e788a2600 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sat, 31 Jan 2026 23:38:22 +0000
+Subject: [PATCH 9008/9034] net: dwc_eth_qos_rockchip: Add support for RK3506
+
+Rockchip RK3506 has two Ethernet controllers based on Synopsys DWC
+Ethernet QoS IP.
+
+Add initial support for the RK3506 GMAC variant.
+
+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
+Reviewed-by: Kever Yang <kever.yang@rock-chips.com>
+---
+ drivers/net/dwc_eth_qos.c          |  4 ++
+ drivers/net/dwc_eth_qos_rockchip.c | 90 ++++++++++++++++++++++++++++++
+ 2 files changed, 94 insertions(+)
+
+diff --git a/drivers/net/dwc_eth_qos.c b/drivers/net/dwc_eth_qos.c
+index 43f0ec7637d..e618fea3136 100644
+--- a/drivers/net/dwc_eth_qos.c
++++ b/drivers/net/dwc_eth_qos.c
+@@ -1546,6 +1546,10 @@ static const struct udevice_id eqos_ids[] = {
+ 	},
+ #endif
+ #if IS_ENABLED(CONFIG_DWC_ETH_QOS_ROCKCHIP)
++	{
++		.compatible = "rockchip,rk3506-gmac",
++		.data = (ulong)&eqos_rockchip_config
++	},
+ 	{
+ 		.compatible = "rockchip,rk3568-gmac",
+ 		.data = (ulong)&eqos_rockchip_config
+diff --git a/drivers/net/dwc_eth_qos_rockchip.c b/drivers/net/dwc_eth_qos_rockchip.c
+index c4557e57988..6fae0e84598 100644
+--- a/drivers/net/dwc_eth_qos_rockchip.c
++++ b/drivers/net/dwc_eth_qos_rockchip.c
+@@ -46,6 +46,84 @@ struct rockchip_platform_data {
+ #define GRF_BIT(nr)	(BIT(nr) | BIT((nr) + 16))
+ #define GRF_CLR_BIT(nr)	(BIT((nr) + 16))
+ 
++#define DELAY_ENABLE(soc, tx, rx) \
++	(((tx) ? soc##_GMAC_TXCLK_DLY_ENABLE : soc##_GMAC_TXCLK_DLY_DISABLE) | \
++	 ((rx) ? soc##_GMAC_RXCLK_DLY_ENABLE : soc##_GMAC_RXCLK_DLY_DISABLE))
++
++#define RK3506_GRF_SOC_CON8		0x0020
++#define RK3506_GRF_SOC_CON11		0x002c
++
++#define RK3506_GMAC_RMII_MODE		GRF_BIT(1)
++
++#define RK3506_GMAC_CLK_RMII_DIV2	GRF_BIT(3)
++#define RK3506_GMAC_CLK_RMII_DIV20	GRF_CLR_BIT(3)
++
++#define RK3506_GMAC_CLK_SELECT_CRU	GRF_CLR_BIT(5)
++#define RK3506_GMAC_CLK_SELECT_IO	GRF_BIT(5)
++
++#define RK3506_GMAC_CLK_RMII_GATE	GRF_BIT(2)
++#define RK3506_GMAC_CLK_RMII_NOGATE	GRF_CLR_BIT(2)
++
++static int rk3506_set_to_rgmii(struct udevice *dev,
++			       int tx_delay, int rx_delay)
++{
++	return -EINVAL;
++}
++
++static int rk3506_set_to_rmii(struct udevice *dev)
++{
++	struct eth_pdata *pdata = dev_get_plat(dev);
++	struct rockchip_platform_data *data = pdata->priv_pdata;
++	u32 reg;
++
++	reg = data->id == 1 ? RK3506_GRF_SOC_CON11 :
++			      RK3506_GRF_SOC_CON8;
++	regmap_write(data->grf, reg, RK3506_GMAC_RMII_MODE);
++
++	return 0;
++}
++
++static int rk3506_set_gmac_speed(struct udevice *dev)
++{
++	struct eqos_priv *eqos = dev_get_priv(dev);
++	struct eth_pdata *pdata = dev_get_plat(dev);
++	struct rockchip_platform_data *data = pdata->priv_pdata;
++	u32 val, reg;
++
++	switch (eqos->phy->speed) {
++	case SPEED_10:
++		val = RK3506_GMAC_CLK_RMII_DIV20;
++		break;
++	case SPEED_100:
++		val = RK3506_GMAC_CLK_RMII_DIV2;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	reg = data->id == 1 ? RK3506_GRF_SOC_CON11 :
++			      RK3506_GRF_SOC_CON8;
++	regmap_write(data->grf, reg, val);
++
++	return 0;
++}
++
++static void rk3506_set_clock_selection(struct udevice *dev, bool enable)
++{
++	struct eth_pdata *pdata = dev_get_plat(dev);
++	struct rockchip_platform_data *data = pdata->priv_pdata;
++	u32 val, reg;
++
++	val = data->clock_input ? RK3506_GMAC_CLK_SELECT_IO :
++				  RK3506_GMAC_CLK_SELECT_CRU;
++	val |= enable ? RK3506_GMAC_CLK_RMII_NOGATE :
++			RK3506_GMAC_CLK_RMII_GATE;
++
++	reg = data->id == 1 ? RK3506_GRF_SOC_CON11 :
++			      RK3506_GRF_SOC_CON8;
++	regmap_write(data->grf, reg, val);
++}
++
+ #define RK3568_GRF_GMAC0_CON0		0x0380
+ #define RK3568_GRF_GMAC0_CON1		0x0384
+ #define RK3568_GRF_GMAC1_CON0		0x0388
+@@ -263,6 +341,18 @@ static void rk3588_set_clock_selection(struct udevice *dev, bool enable)
+ }
+ 
+ static const struct rk_gmac_ops rk_gmac_ops[] = {
++	{
++		.compatible = "rockchip,rk3506-gmac",
++		.set_to_rgmii = rk3506_set_to_rgmii,
++		.set_to_rmii = rk3506_set_to_rmii,
++		.set_gmac_speed = rk3506_set_gmac_speed,
++		.set_clock_selection = rk3506_set_clock_selection,
++		.regs = {
++			0xff4c8000, /* gmac0 */
++			0xff4d0000, /* gmac1 */
++			0x0, /* sentinel */
++		},
++	},
+ 	{
+ 		.compatible = "rockchip,rk3568-gmac",
+ 		.set_to_rgmii = rk3568_set_to_rgmii,
+-- 
+2.55.0
+

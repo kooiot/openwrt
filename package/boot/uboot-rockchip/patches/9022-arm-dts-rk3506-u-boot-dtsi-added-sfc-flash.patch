@@ -1,0 +1,41 @@
+From bcd0467f7136f9b0af45cbc01bce23e6f534713e Mon Sep 17 00:00:00 2001
+From: Dirk Chang <dirk@kooiot.com>
+Date: Thu, 3 Sep 2026 16:22:53 +0800
+Subject: [PATCH 9022/9034] arm: dts: rk3506 u-boot dtsi added sfc flash
+
+---
+ arch/arm/dts/rk3506-u-boot.dtsi | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
+
+diff --git a/arch/arm/dts/rk3506-u-boot.dtsi b/arch/arm/dts/rk3506-u-boot.dtsi
+index 960da6b663a..0d94973a039 100644
+--- a/arch/arm/dts/rk3506-u-boot.dtsi
++++ b/arch/arm/dts/rk3506-u-boot.dtsi
+@@ -33,6 +33,24 @@
+ 	bootph-all;
+ };
+ 
++&sfc {
++	bootph-all;
++	status = "okay";
++
++	flash@0 {
++		compatible = "spi-nand";
++		reg = <0>;
++		/* 50 MHz + DLL. RW writes were corrupt at all speeds — root cause was
++		 * the SFC TX-FIFO level mask width (5-bit vs RK3506's 6-bit); fixed in
++		 * the driver. Back to target 50 MHz. U-Boot's FSPI clk reads 100 MHz
++		 * (rk3506 cru set_rate no-op) but it only reads the kernel FIT. */
++		spi-max-frequency = <50000000>;
++		spi-rx-bus-width = <4>;
++		spi-tx-bus-width = <1>;
++		bootph-all;
++	};
++};
++
+ &ioc1 {
+ 	bootph-all;
+ };
+-- 
+2.55.0
+
