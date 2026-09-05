@@ -1,0 +1,52 @@
+From ca1c11a1057599c1ec14fc409b425c8b4af20533 Mon Sep 17 00:00:00 2001
+From: Dirk Chang <dirk@kooiot.com>
+Date: Fri, 4 Sep 2026 10:25:05 +0800
+Subject: [PATCH 1/1] rockchip: rk3506 boot selection
+
+---
+ arch/arm/mach-rockchip/rk3506/Kconfig | 15 +++++++++++++++
+ arch/arm/mach-rockchip/spl.c          |  3 ++-
+ 2 files changed, 17 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm/mach-rockchip/rk3506/Kconfig b/arch/arm/mach-rockchip/rk3506/Kconfig
+index 944b2c35662..5271bc4f4e8 100644
+--- a/arch/arm/mach-rockchip/rk3506/Kconfig
++++ b/arch/arm/mach-rockchip/rk3506/Kconfig
+@@ -1,5 +1,20 @@
+ if ROCKCHIP_RK3506
+ 
++choice
++	prompt "RK3506 board type select"
++
++config TARGET_RK3506_SPINAND
++	bool "RK3506 board using SPINAND"
++	help
++	  Boards using SPINAND to boot from.
++
++config TARGET_RK3506_MMC
++	bool "RK3506 board using MMC/SD"
++	help
++	  Boards using MMC/SD to boot from.
++
++endchoice
++
+ config ROCKCHIP_BOOT_MODE_REG
+ 	default 0xff910200
+ 
+diff --git a/arch/arm/mach-rockchip/spl.c b/arch/arm/mach-rockchip/spl.c
+index 3ce7e792b5a..da13c9199ae 100644
+--- a/arch/arm/mach-rockchip/spl.c
++++ b/arch/arm/mach-rockchip/spl.c
+@@ -65,7 +65,8 @@ u32 spl_boot_device(void)
+ 		defined(CONFIG_TARGET_CHROMEBOOK_MINNIE) || \
+ 		defined(CONFIG_TARGET_CHROMEBOOK_SPEEDY) || \
+ 		defined(CONFIG_TARGET_CHROMEBOOK_BOB) || \
+-		defined(CONFIG_TARGET_CHROMEBOOK_KEVIN)
++		defined(CONFIG_TARGET_CHROMEBOOK_KEVIN) || \
++		defined(CONFIG_TARGET_RK3506_SPINAND)
+ 	return BOOT_DEVICE_SPI;
+ #endif
+ 	if (CONFIG_IS_ENABLED(ROCKCHIP_BACK_TO_BROM))
+-- 
+2.55.0
+

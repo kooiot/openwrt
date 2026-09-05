@@ -1,0 +1,342 @@
+From 2371daf4553a7fe7215c24c10120b43915a49905 Mon Sep 17 00:00:00 2001
+From: Dirk Chang <dirk@kooiot.com>
+Date: Thu, 3 Sep 2026 16:57:10 +0800
+Subject: [PATCH 9027/9034] arm: dts: added vanxoak hd-3506-iot device dts
+
+---
+ arch/arm/dts/Makefile                         |   5 +-
+ ...k3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi |  15 ++
+ .../dts/rk3506-vx-hd-rk3506-iot-spinand.dts   |  33 +++
+ .../dts/rk3506-vx-hd-rk3506-iot-u-boot.dtsi   |  15 ++
+ arch/arm/dts/rk3506-vx-hd-rk3506-iot.dts      | 219 ++++++++++++++++++
+ 5 files changed, 286 insertions(+), 1 deletion(-)
+ create mode 100644 arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi
+ create mode 100644 arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand.dts
+ create mode 100644 arch/arm/dts/rk3506-vx-hd-rk3506-iot-u-boot.dtsi
+ create mode 100644 arch/arm/dts/rk3506-vx-hd-rk3506-iot.dts
+
+diff --git a/arch/arm/dts/Makefile b/arch/arm/dts/Makefile
+index 2d931c23fc8..35aac282024 100644
+--- a/arch/arm/dts/Makefile
++++ b/arch/arm/dts/Makefile
+@@ -85,7 +85,10 @@ dtb-$(CONFIG_ROCKCHIP_RK3288) += \
+ dtb-$(CONFIG_ROCKCHIP_RK3368) += \
+ 	rk3368-sheep.dtb \
+ 	rk3368-geekbox.dtb \
+-	rk3368-px5-evb.dtb \
++	rk3368-px5-evb.dtb
++
++dtb-$(CONFIG_ROCKCHIP_RK3506) += \
++	rk3506-rk3506-vx-hd-rk3506-iot-spinand.dts.dtb
+ 
+ dtb-$(CONFIG_ARCH_S5P4418) += \
+ 	s5p4418-nanopi2.dtb
+diff --git a/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi
+new file mode 100644
+index 00000000000..c3dcaa97f0f
+--- /dev/null
++++ b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi
+@@ -0,0 +1,15 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++
++#include "rk3506-u-boot.dtsi"
++
++&fspi {
++	flash@0 {
++		bootph-pre-ram;
++		bootph-some-ram;
++	};
++};
++
++&sdmmc_det_pin {
++	bootph-pre-ram;
++	bootph-some-ram;
++};
+diff --git a/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand.dts b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand.dts
+new file mode 100644
+index 00000000000..5ce422bed28
+--- /dev/null
++++ b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand.dts
+@@ -0,0 +1,33 @@
++// SPDX-License-Identifier: (GPL-2.0+ or MIT)
++// Copyright (C) 2026 Dirk Chang <dirk@kooiot.com>
++
++/dts-v1/;
++
++#include "rk3506-vx-hd-rk3506-iot.dts"
++
++/ {
++	model = "HD-RK3506-IOT (SPI-NAND)";
++	compatible = "vanxoak,vx-hd-rk3506-iot-spinand", "rockchip,rk3506";
++
++	chosen {
++		bootargs = "root=/dev/fit0 rootwait";
++	};
++};
++
++&flash {
++	partitions {
++		compatible = "fixed-partitions";
++		#address-cells = <1>;
++		#size-cells = <1>;
++		boot@0 {
++			label = "boot";
++			reg = <0x0000000 0x0100000>;
++			read-only;
++		};
++
++		ubi0@100000 {
++			label = "ubi";
++			reg = <0x0100000 0x0000000>;
++		};
++	};
++};
+diff --git a/arch/arm/dts/rk3506-vx-hd-rk3506-iot-u-boot.dtsi b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-u-boot.dtsi
+new file mode 100644
+index 00000000000..c3dcaa97f0f
+--- /dev/null
++++ b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-u-boot.dtsi
+@@ -0,0 +1,15 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++
++#include "rk3506-u-boot.dtsi"
++
++&fspi {
++	flash@0 {
++		bootph-pre-ram;
++		bootph-some-ram;
++	};
++};
++
++&sdmmc_det_pin {
++	bootph-pre-ram;
++	bootph-some-ram;
++};
+diff --git a/arch/arm/dts/rk3506-vx-hd-rk3506-iot.dts b/arch/arm/dts/rk3506-vx-hd-rk3506-iot.dts
+new file mode 100644
+index 00000000000..b629a5548d5
+--- /dev/null
++++ b/arch/arm/dts/rk3506-vx-hd-rk3506-iot.dts
+@@ -0,0 +1,219 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++
++/dts-v1/;
++
++#include <dt-bindings/leds/common.h>
++#include "rk3506.dtsi"
++
++/ {
++	model = "HD-RK3506-IOT (SD)";
++	compatible = "vanxoak,vx-hd-rk3506-iot-spinand", "rockchip,rk3506";
++
++	aliases {
++		ethernet0 = <&gmac0>;
++		ethernet1 = <&gmac1>;
++		mmc0 = &sdmmc;
++		serial0 = &uart0;
++		spi0 = &sfc;
++	};
++
++	chosen {
++		stdout-path = "serial0:115200n8";
++	};
++
++	leds {
++		compatible = "gpio-leds";
++
++		status_led: status-led {
++			label = "kooiot:green:status";
++			gpios = <&gpio1 RK_PB3 GPIO_ACTIVE_HIGH>;
++			linux,default-trigger = "heartbeat";
++			pinctrl-names = "default";
++			pinctrl-0 = <&status_led>;
++		};
++	};
++
++	vcc12v_dc: vcc12v-dc {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc12v_dc";
++		regulator-always-on;
++		regulator-boot-on;
++		regulator-min-microvolt = <12000000>;
++		regulator-max-microvolt = <12000000>;
++	};
++
++	vcc_sys: vcc-sys {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc_sys";
++		regulator-always-on;
++		regulator-boot-on;
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++		vin-supply = <&vcc12v_dc>;
++	};
++
++	vcc3v3_stb: vcc3v3-stb {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc3v3_stb";
++		regulator-always-on;
++		regulator-boot-on;
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		vin-supply = <&vcc_sys>;
++	};
++
++	vcc_1v8: vcc-1v8 {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc_1v8";
++		regulator-always-on;
++		regulator-boot-on;
++		regulator-min-microvolt = <1800000>;
++		regulator-max-microvolt = <1800000>;
++		vin-supply = <&vcc3v3_stb>;
++	};
++};
++
++&saradc {
++	vref-supply = <&vcc_1v8>;
++	status = "okay";
++};
++
++&sfc {
++	status = "okay";
++
++	flash@0 {
++		compatible = "spi-nand";
++		reg = <0>;
++		spi-max-frequency = <80000000>;
++		spi-rx-bus-width = <4>;
++		spi-tx-bus-width = <1>;
++		vcc-supply = <&vcc3v3_stb>;
++	};
++};
++
++&sdmmc {
++	bus-width = <4>;
++	cd-gpios = <&gpio0 RK_PB0 GPIO_ACTIVE_LOW>;
++	cap-sd-highspeed;
++	disable-wp;
++	no-sdio;
++	no-mmc;
++	no-1-8-v;
++	pinctrl-names = "default";
++	pinctrl-0 = <&sdmmc_bus4>, <&sdmmc_clk>, <&sdmmc_cmd>, <&sdmmc_det_pin>;
++	vmmc-supply = <&vcc3v3_stb>;
++	vqmmc-supply = <&vcc3v3_stb>;
++	status = "okay";
++};
++
++&uart0 {
++	status = "okay";
++};
++
++&usb2phy {
++	status = "okay";
++};
++
++&usb2phy_otg0 {
++	status = "okay";
++};
++
++&usb2phy_otg1 {
++	status = "okay";
++};
++
++&usb20_otg0 {
++	dr_mode = "peripheral";
++	status = "okay";
++};
++
++&usb20_otg1 {
++	dr_mode = "host";
++	status = "okay";
++};
++
++&gmac0 {
++	phy-mode = "rmii";
++	clock_in_out = "input";
++
++	snps,reset-gpio = <&gpio0 RK_PB3 GPIO_ACTIVE_LOW>;
++	snps,reset-active-low;
++	snps,reset-delays-us = <0 20000 100000>;
++
++	assigned-clocks = <&cru CLK_MAC0_PTP>;
++	assigned-clock-parents = <&ext_gmac0>;
++
++	pinctrl-names = "default";
++	pinctrl-0 = <&eth_rmii0_miim>, <&eth_rmii0_tx_bus2>,
++		    <&eth_rmii0_rx_bus2>, <&eth_rmii0_clk>;
++
++	phy-handle = <&rmii_phy0>;
++	phy-supply = <&vcc3v3_stb>;
++
++	status = "okay";
++};
++
++&mdio0 {
++	rmii_phy0: ethernet-phy@0 {
++		compatible = "ethernet-phy-ieee802.3-c22";
++		reg = <0>;
++	};
++};
++
++&gmac1 {
++	phy-mode = "rmii";
++	clock_in_out = "input";
++
++	snps,reset-gpio = <&gpio0 RK_PB4 GPIO_ACTIVE_LOW>;
++	snps,reset-active-low;
++	snps,reset-delays-us = <0 20000 100000>;
++
++	assigned-clocks = <&cru CLK_MAC1_PTP>;
++	assigned-clock-parents = <&ext_gmac1>;
++
++	pinctrl-names = "default";
++	pinctrl-0 = <&eth_rmii1_miim>, <&eth_rmii1_tx_bus2>,
++		    <&eth_rmii1_rx_bus2>, <&eth_rmii1_clk>;
++
++	phy-handle = <&rmii_phy1>;
++	phy-supply = <&vcc3v3_stb>;
++
++	status = "okay";
++};
++
++
++&mdio1 {
++	rmii_phy1: ethernet-phy@0 {
++		compatible = "ethernet-phy-ieee802.3-c22";
++		reg = <0>;
++	};
++};
++
++&pinctrl {
++	ethernet {
++		/omit-if-no-ref/
++		rmii0_rstn: rmii0-rstn {
++			rockchip,pins = <0 RK_PB3 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++
++		/omit-if-no-ref/
++		rmii1_rstn: rmii1-rstn {
++			rockchip,pins = <0 RK_PB4 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++	};
++
++	leds {
++		/omit-if-no-ref/
++		status_led: status-led {
++			rockchip,pins = <1 RK_PB3 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++	};
++
++	sdmmc {
++		/omit-if-no-ref/
++		sdmmc_det_pin: sdmmc-det-pin {
++			rockchip,pins = <0 RK_PB0 RK_FUNC_GPIO &pcfg_pull_up>;
++		};
++	};
++};
++
+-- 
+2.55.0
+

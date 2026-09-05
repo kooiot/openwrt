@@ -1,0 +1,193 @@
+From 7a9d9ff81c5402a2204fef070ea46b96154f27f4 Mon Sep 17 00:00:00 2001
+From: Dirk Chang <dirk@kooiot.com>
+Date: Sat, 5 Sep 2026 23:33:17 +0800
+Subject: [PATCH 9032/9034] rockchip: port the ram mapping from master
+
+---
+ arch/arm/mach-rockchip/Kconfig                | 47 ++++++++++++++-----
+ arch/arm/mach-rockchip/rk3506/Kconfig         |  3 --
+ arch/arm/mach-rockchip/rk3506/Makefile        |  1 +
+ arch/arm/mach-rockchip/rk3506/clk_rk3506.c    |  8 +++-
+ arch/arm/mach-rockchip/rk3506/syscon_rk3506.c | 19 ++++++++
+ include/configs/rk3506_common.h               | 14 +++---
+ 6 files changed, 71 insertions(+), 21 deletions(-)
+ create mode 100644 arch/arm/mach-rockchip/rk3506/syscon_rk3506.c
+
+diff --git a/arch/arm/mach-rockchip/Kconfig b/arch/arm/mach-rockchip/Kconfig
+index 835f2a4fc4f..a02c849b91b 100644
+--- a/arch/arm/mach-rockchip/Kconfig
++++ b/arch/arm/mach-rockchip/Kconfig
+@@ -684,40 +684,65 @@ source "arch/arm/mach-rockchip/rv1126/Kconfig"
+ if ROCKCHIP_COMMON_STACK_ADDR && SPL_SHARES_INIT_SP_ADDR
+ 
+ config CUSTOM_SYS_INIT_SP_ADDR
+-	default 0x3f00000
++	default 0x63f00000 if SPL_TEXT_BASE = 0x60000000
++	default 0x43f00000 if SPL_TEXT_BASE = 0x40000000
++	default 0x03f00000 if SPL_TEXT_BASE = 0x00000000
+ 
+ config SYS_MALLOC_F_LEN
+-	default 0x10000 if CUSTOM_SYS_INIT_SP_ADDR = 0x3f00000
++	default 0x10000 if CUSTOM_SYS_INIT_SP_ADDR = 0x63f00000
++	default 0x10000 if CUSTOM_SYS_INIT_SP_ADDR = 0x43f00000
++	default 0x10000 if CUSTOM_SYS_INIT_SP_ADDR = 0x03f00000
+ 
+ config SPL_SYS_MALLOC_F_LEN
+-	default 0x8000 if CUSTOM_SYS_INIT_SP_ADDR = 0x3f00000
++	default 0x8000 if CUSTOM_SYS_INIT_SP_ADDR = 0x63f00000
++	default 0x8000 if CUSTOM_SYS_INIT_SP_ADDR = 0x43f00000
++	default 0x8000 if CUSTOM_SYS_INIT_SP_ADDR = 0x03f00000
+ 
+ config TPL_SYS_MALLOC_F_LEN
+-	default 0x4000 if CUSTOM_SYS_INIT_SP_ADDR = 0x3f00000
++	default 0x0800 if CUSTOM_SYS_INIT_SP_ADDR = 0x63f00000
++	default 0x4000 if CUSTOM_SYS_INIT_SP_ADDR = 0x43f00000
++	default 0x4000 if CUSTOM_SYS_INIT_SP_ADDR = 0x03f00000
+ 
+ config TEXT_BASE
+-	default 0x00200000 if ARM64
++	default 0x60800000 if SPL_TEXT_BASE = 0x60000000
++	default 0x40800000 if SPL_TEXT_BASE = 0x40000000
++	default 0x00800000 if SPL_TEXT_BASE = 0x00000000
+ 
+ config SPL_TEXT_BASE
+-	default 0x0 if ARM64
++	default 0x60000000 if ROCKCHIP_RK3036 || ROCKCHIP_RK3066 || \
++			      ROCKCHIP_RK3128 || ROCKCHIP_RK3188 || \
++			      ROCKCHIP_RK322X || ROCKCHIP_RV1108
++	default 0x40000000 if ROCKCHIP_RK3576
++	default 0x40000000 if ROCKCHIP_RK3506
++	default 0x00000000
+ 
+ config SPL_HAS_BSS_LINKER_SECTION
+ 	default y if ARM64
+ 
+ config SPL_BSS_START_ADDR
+-	default 0x3f80000
++	default 0x63f80000 if SPL_TEXT_BASE = 0x60000000
++	default 0x43f80000 if SPL_TEXT_BASE = 0x40000000
++	default 0x03f80000 if SPL_TEXT_BASE = 0x00000000
+ 
+ config SPL_BSS_MAX_SIZE
+-	default 0x8000 if SPL_BSS_START_ADDR = 0x3f80000
++	default 0x8000 if SPL_BSS_START_ADDR = 0x63f80000
++	default 0x8000 if SPL_BSS_START_ADDR = 0x43f80000
++	default 0x8000 if SPL_BSS_START_ADDR = 0x03f80000
+ 
+ config SPL_STACK_R
+-	default y if CUSTOM_SYS_INIT_SP_ADDR = 0x3f00000
++	default y if CUSTOM_SYS_INIT_SP_ADDR = 0x63f00000
++	default y if CUSTOM_SYS_INIT_SP_ADDR = 0x43f00000
++	default y if CUSTOM_SYS_INIT_SP_ADDR = 0x03f00000
+ 
+ config SPL_STACK_R_ADDR
+-	default 0x3e00000 if CUSTOM_SYS_INIT_SP_ADDR = 0x3f00000
++	default 0x63e00000 if CUSTOM_SYS_INIT_SP_ADDR = 0x63f00000
++	default 0x43e00000 if CUSTOM_SYS_INIT_SP_ADDR = 0x43f00000
++	default 0x03e00000 if CUSTOM_SYS_INIT_SP_ADDR = 0x03f00000
+ 
+ config SPL_STACK_R_MALLOC_SIMPLE_LEN
+-	default 0x200000 if SPL_STACK_R_ADDR = 0x3e00000
++	default 0x200000 if SPL_STACK_R_ADDR = 0x63e00000
++	default 0x200000 if SPL_STACK_R_ADDR = 0x43e00000
++	default 0x200000 if SPL_STACK_R_ADDR = 0x03e00000
+ 
+ endif
+ endif
+diff --git a/arch/arm/mach-rockchip/rk3506/Kconfig b/arch/arm/mach-rockchip/rk3506/Kconfig
+index 944b2c35662..92f187458c6 100644
+--- a/arch/arm/mach-rockchip/rk3506/Kconfig
++++ b/arch/arm/mach-rockchip/rk3506/Kconfig
+@@ -12,7 +12,4 @@ config SYS_SOC
+ config SYS_CONFIG_NAME
+ 	default "rk3506_common"
+ 
+-config TEXT_BASE
+-	default 0x00a00000
+-
+ endif
+diff --git a/arch/arm/mach-rockchip/rk3506/Makefile b/arch/arm/mach-rockchip/rk3506/Makefile
+index 63a6c2c2d18..a1760bd0f0a 100644
+--- a/arch/arm/mach-rockchip/rk3506/Makefile
++++ b/arch/arm/mach-rockchip/rk3506/Makefile
+@@ -2,3 +2,4 @@
+ 
+ obj-y += rk3506.o
+ obj-y += clk_rk3506.o
++obj-y += syscon_rk3506.o
+diff --git a/arch/arm/mach-rockchip/rk3506/clk_rk3506.c b/arch/arm/mach-rockchip/rk3506/clk_rk3506.c
+index e3161418302..96723f403cf 100644
+--- a/arch/arm/mach-rockchip/rk3506/clk_rk3506.c
++++ b/arch/arm/mach-rockchip/rk3506/clk_rk3506.c
+@@ -1,9 +1,15 @@
+ // SPDX-License-Identifier: GPL-2.0-or-later
+ // Copyright Contributors to the U-Boot project.
+ 
+-#include <linux/kernel.h>
++#include <dm.h>
+ #include <asm/arch-rockchip/cru_rk3506.h>
+ 
++int rockchip_get_clk(struct udevice **devp)
++{
++	return uclass_get_device_by_driver(UCLASS_CLK,
++				DM_DRIVER_GET(rockchip_rk3506_cru), devp);
++}
++
+ void *rockchip_get_cru(void)
+ {
+ 	return (void *)RK3506_CRU_BASE;
+diff --git a/arch/arm/mach-rockchip/rk3506/syscon_rk3506.c b/arch/arm/mach-rockchip/rk3506/syscon_rk3506.c
+new file mode 100644
+index 00000000000..2548b0fa2d3
+--- /dev/null
++++ b/arch/arm/mach-rockchip/rk3506/syscon_rk3506.c
+@@ -0,0 +1,19 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++// Copyright Contributors to the U-Boot project.
++
++#include <dm.h>
++#include <asm/arch-rockchip/clock.h>
++
++static const struct udevice_id rk3506_syscon_ids[] = {
++	{ .compatible = "rockchip,rk3506-grf", .data = ROCKCHIP_SYSCON_GRF },
++	{ }
++};
++
++U_BOOT_DRIVER(rockchip_rk3506_syscon) = {
++	.name = "rockchip_rk3506_syscon",
++	.id = UCLASS_SYSCON,
++	.of_match = rk3506_syscon_ids,
++#if CONFIG_IS_ENABLED(OF_REAL)
++	.bind = dm_scan_fdt_dev,
++#endif
++};
+diff --git a/include/configs/rk3506_common.h b/include/configs/rk3506_common.h
+index 80810a44d06..c008fee8211 100644
+--- a/include/configs/rk3506_common.h
++++ b/include/configs/rk3506_common.h
+@@ -19,14 +19,16 @@
+ #endif
+ 
+ #define ENV_MEM_LAYOUT_SETTINGS			\
+-	"scriptaddr=0x00180000\0"		\
++	"scriptaddr=0x00500000\0"		\
+ 	"script_offset_f=0xffe000\0"		\
+ 	"script_size_f=0x2000\0"		\
+-	"pxefile_addr_r=0x00100000\0"		\
+-	"kernel_addr_r=0x00400000\0"		\
+-	"fdt_addr_r=0x00200000\0"		\
+-	"fdtoverlay_addr_r=0x00300000\0"	\
+-	"ramdisk_addr_r=0x02400000\0"
++	"pxefile_addr_r=0x00600000\0"		\
++	"kernel_addr_r=0x02080000\0"		\
++	"kernel_comp_addr_r=0x08000000\0"	\
++	"fdt_addr_r=0x01e00000\0"		\
++	"fdtoverlay_addr_r=0x01f00000\0"	\
++	"ramdisk_addr_r=0x06000000\0"		\
++	"kernel_comp_size=0x2000000\0"
+ 
+ #define CFG_EXTRA_ENV_SETTINGS			\
+ 	"fdtfile=" CONFIG_DEFAULT_FDT_FILE "\0"	\
+-- 
+2.55.0
+

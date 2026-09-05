@@ -1,0 +1,32 @@
+From d38a701a61bc59b1ebf065d8ae3b3f1b5f0d800b Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sat, 31 Jan 2026 23:38:20 +0000
+Subject: [PATCH 9006/9034] rockchip: otp: Add support for RK3506
+
+Add support for the OTP controller in RK3506. The OTPC is similar to the
+OTPC in RK3568 and can use the same ops for reading OTP data.
+
+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
+Reviewed-by: Kever Yang <kever.yang@rock-chips.com>
+---
+ drivers/misc/rockchip-otp.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/misc/rockchip-otp.c b/drivers/misc/rockchip-otp.c
+index 2123c31038f..5ce56eb23d5 100644
+--- a/drivers/misc/rockchip-otp.c
++++ b/drivers/misc/rockchip-otp.c
+@@ -383,6 +383,10 @@ static const struct udevice_id rockchip_otp_ids[] = {
+ 		.compatible = "rockchip,rk3308-otp",
+ 		.data = (ulong)&px30_data,
+ 	},
++	{
++		.compatible = "rockchip,rk3506-otp",
++		.data = (ulong)&rk3568_data,
++	},
+ 	{
+ 		.compatible = "rockchip,rk3568-otp",
+ 		.data = (ulong)&rk3568_data,
+-- 
+2.55.0
+
