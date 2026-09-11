@@ -1,0 +1,33 @@
+From dbf39cfd96ac7b25fd58e5023e2d3f881ef28054 Mon Sep 17 00:00:00 2001
+From: Dirk Chang <dirk@kooiot.com>
+Date: Sun, 6 Sep 2026 02:17:14 +0800
+Subject: [PATCH 1/1] rockchip: support LZMA compresss
+
+---
+ configs/vx-hd-rk3506-iot-spinand_defconfig | 2 ++
+ configs/vx-hd-rk3506-iot_defconfig         | 2 ++
+ 2 files changed, 4 insertions(+)
+
+diff --git a/configs/vx-hd-rk3506-iot-spinand_defconfig b/configs/vx-hd-rk3506-iot-spinand_defconfig
+index 134f05a6f71..311e81c18c1 100644
+--- a/configs/vx-hd-rk3506-iot-spinand_defconfig
++++ b/configs/vx-hd-rk3506-iot-spinand_defconfig
+@@ -90,3 +90,5 @@ CONFIG_USB_FUNCTION_ROCKUSB=y
+ CONFIG_ERRNO_STR=y
+ CONFIG_OPTEE_IMAGE=y
+ CONFIG_ROCKCHIP_SDRAM_COMMON=y
++CONFIG_LZ4=y
++CONFIG_LZMA=y
+diff --git a/configs/vx-hd-rk3506-iot_defconfig b/configs/vx-hd-rk3506-iot_defconfig
+index c4809ba237d..61c394538ed 100644
+--- a/configs/vx-hd-rk3506-iot_defconfig
++++ b/configs/vx-hd-rk3506-iot_defconfig
+@@ -79,3 +79,5 @@ CONFIG_USB_GADGET_DOWNLOAD=y
+ CONFIG_USB_FUNCTION_ROCKUSB=y
+ CONFIG_ERRNO_STR=y
+ CONFIG_OPTEE_IMAGE=y
++CONFIG_LZ4=y
++CONFIG_LZMA=y
+-- 
+2.55.0
+

@@ -1,0 +1,103 @@
+#!/bin/sh
+
+. /lib/functions.sh
+. /lib/functions/system.sh
+. /lib/functions/tlink.sh
+
+export FORCE=0
+export OFFSET=0
+export HELP=0
+
+# parse options
+while [ -n "$1" ]; do
+	case "$1" in
+		-o) export OFFSET="$2"; shift;;
+		-f|--force) export FORCE=1;;
+		-h|--help) export HELP=1;;
+		-*)
+			echo "Invalid option: $1" >&2
+			exit 1
+		;;
+		*) break;;
+	esac
+	shift;
+done
+
+MAC_ADDR="$1"
+if [ -z "${MAC_ADDR}" ]; then
+	export HELP=1
+fi
+
+if [ $HELP -ne 0 ]; then
+    cat <<EOF
+Usage:	${0} [<write-option>...] <mac_base>
+
+write-option:
+	-o <offset>   Offset for writing mac
+	-f | --force  Force write without confirmation
+	-h | --help   Show help
+EOF
+	exit 1
+fi
+
+mac_addr_w=$(macaddr_2bin "${MAC_ADDR}")
+
+if [ ${#mac_addr_w} -ne 6 ]; then
+	echo "MAC Address incorrect! e.g. 11:22:33:44:55:66"
+	exit 2
+fi
+
+echo "MAC_ADDRESS: ${MAC_ADDR}"
+
+if [ ${FORCE} -eq 0 ]; then
+	#----------------------------------------------------------
+	echo ""
+	echo -n "WARNING: MAC ADRESSSES WILL BE REPLACED !, Continue (y/N)?  "
+	read -n 1 ANSWER
+
+	if [ ! "${ANSWER}" = "y" ] ; then
+		echo "."
+		echo "Canceled.."
+		exit 0
+	fi
+	echo ""
+	#----------------------------------------------------------
+fi
+
+NVMEM_PATH="/sys/bus/i2c/devices/0-0050/eeprom"
+if [ ! -f ${NVMEM_PATH} ]; then
+	NVMEM_PATH="/sys/bus/i2c/devices/0-0050/0-00501/nvmem"
+fi
+
+case "$(board_name)" in
+	"kooiot,tlink-k2")
+		NVMEM_PATH="/sys/bus/i2c/devices/3-0050/eeprom"
+		if [ ! -f ${NVMEM_PATH} ]; then
+			NVMEM_PATH="/sys/bus/i2c/devices/3-0050/3-00501/nvmem"
+		fi
+		;;
+	"*")
+		NVMEM_PATH="/sys/bus/i2c/devices/0-0050/eeprom"
+		if [ ! -f ${NVMEM_PATH} ]; then
+			NVMEM_PATH="/sys/bus/i2c/devices/0-0050/0-00501/nvmem"
+		fi
+		;;
+esac
+
+if [ ! -f ${NVMEM_PATH} ]; then
+    echo "EEPROM not found! MAC Address will be writen to EMMC!!!"
+
+	echo ${mac_addr_w} | dd of=/dev/mmcblk1 count=6 bs=1 seek=410144
+
+	mac_addr=$(get_mac_binary "/dev/mmcblk1" 0x20)
+else
+	echo ${mac_addr_w} | dd of=${NVMEM_PATH} count=6 bs=1 seek=32
+
+	mac_addr=$(get_mac_binary "${NVMEM_PATH}" 0x20)
+fi
+
+echo "Loaded MAC Address: ${mac_addr}"
+
+echo "Done!"
+
+exit 0

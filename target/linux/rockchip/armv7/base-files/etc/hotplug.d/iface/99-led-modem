@@ -1,0 +1,23 @@
+#!/bin/sh
+
+. /lib/functions.sh
+
+[ "$ACTION" = ifup -a -n "$DEVICE" ] || exit 0
+
+
+process_iface_up() {
+	local proto
+	config_get proto "$INTERFACE" proto
+
+	[ "$proto" = wwan ] || return 0
+
+	local dev=$(uci_get_state system led_modem dev)
+	[ "$dev" = "$DEVICE" ] || {
+		uci set system.led_modem.dev="$DEVICE"
+		uci commit system
+		/etc/init.d/led restart
+	}
+}
+
+config_load network
+process_iface_up
