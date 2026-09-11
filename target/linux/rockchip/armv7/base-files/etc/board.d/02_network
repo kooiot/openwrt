@@ -1,0 +1,64 @@
+#!/bin/sh
+
+. /lib/functions/uci-defaults.sh
+. /lib/functions/system.sh
+. /lib/functions/tlink.sh
+
+rockchip_setup_interfaces()
+{
+	local board="$1"
+
+	case "$board" in
+	hzhy,rk3506sp-mini-evm|\
+	hzhy,rk3506sp-mini-evm-emmc|\
+	hzhy,rk3506sp-mini-evm-nand)
+		ucidef_set_interfaces_lan_wan "eth1" "eth0"
+		;;
+	vanxoak,hd-rk3506-iot)
+#		ucidef_set_interfaces_lan_wan "eth0" "eth1"
+		ucidef_set_interface_lan "eth0"
+		ucidef_set_interface "lan2" device "eth1" protocol "static"
+		;;
+	*)
+		ucidef_set_interface_lan 'eth0'
+		;;
+	esac
+}
+
+tlink_gen_sid_mac()
+{
+	. /lib/functions/tlink.sh
+
+	local lan_mac=$(tlink_gen_mac_cpuinfo 0)
+	echo $lan_mac
+}
+
+rockchip_setup_macs()
+{
+	local board="$1"
+	local lan_mac=""
+	local wan_mac=""
+	local label_mac=""
+
+	case "$board" in
+	vanxoak,hd-rk3506-iot)
+		lan_mac=$(tlink_gen_sid_mac)
+		echo "LAN MAC: "$lan_mac > /dev/kmsg
+		[ -n "$lan_mac" ] && ucidef_set_interface_macaddr "lan2" $(macaddr_add "$lan_mac" 1)
+		;;
+	esac
+
+	[ -n "$lan_mac" ] && ucidef_set_interface_macaddr "lan" $lan_mac
+	[ -n "$wan_mac" ] && ucidef_set_interface_macaddr "wan" $wan_mac
+	[ -n "$label_mac" ] && ucidef_set_label_macaddr $label_mac
+
+	echo "Set Ethernet MAC done!" > /dev/kmsg
+}
+
+board_config_update
+board=$(board_name)
+rockchip_setup_interfaces $board
+rockchip_setup_macs $board
+board_config_flush
+
+exit 0
