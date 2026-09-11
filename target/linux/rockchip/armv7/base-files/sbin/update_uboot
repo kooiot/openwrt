@@ -1,0 +1,88 @@
+#!/bin/sh
+
+if [ "$(id -u)" != "0" ]; then
+   echo "Script must be run as root !"
+   exit 0
+fi
+
+BOARD_NAME=`cat /tmp/sysinfo/board_name  | sed "s/.*\,\(.*\)$/\1/"`
+
+
+echo ""
+date
+echo -e "\033[36m==============================="
+echo "Installing U-Boot to eMMC"
+echo "Board Name: $BOARD_NAME"
+echo -e "===============================\033[37m"
+echo ""
+
+EMMC_DISK="/dev/mmcblk1"
+
+# If blk1 not there try blk2 (in R40 borads)
+if [ ! -b ${EMMC_DISK} ]; then
+	EMMC_DISK="/dev/mmcblk2"
+fi
+
+EMMC_FIRST_SECTOR=65536
+EMMC_BOOTFS_SIZE=$((30 * 1024 * 1024))
+EMMC_ROOTFS_SIZE=$((256 * 1024 * 1024))
+EMMC_DATA_FIRST_SECTOR=$(( 800 * 1024 ))
+
+BOOT_DIR="/tmp/boot"
+BOOTFS_DIR="/tmp/_boot"
+
+if [ ! -b ${EMMC_DISK}boot0 ]; then
+    echo "Error: EMMC not found."
+    exit 1
+fi
+
+if [ ! -d ${BOOT_DIR} ]; then
+	mkdir ${BOOT_DIR}
+	mount /dev/mmcblk0p1 ${BOOT_DIR}
+fi
+
+if [ ! -f ${BOOT_DIR}/${BOARD_NAME}-rk3568-u-boot-rockchip.bin ]; then
+	echo "Error: ${BOARD_NAME}-rk3568-u-boot-rockchip.bin not found."
+	exit 1
+fi
+
+if [ ! -f ${BOOT_DIR}/rootfs.size ]; then
+    echo "Error: rootfs.size not found."
+    exit 1
+fi
+ROOTFS_SIZE=`cat ${BOOT_DIR}/rootfs.size`
+ROOTFS_SIZE=$(( (${ROOTFS_SIZE} + 511) / 512 ))
+
+
+umount ${EMMC_DISK}* > /dev/null 2>&1
+
+#************************************************************************
+echo ""
+echo "Instaling u-boot to EMMC ..."
+if [ -f ${BOOT_DIR}/${BOARD_NAME}-rk3568-u-boot-rockchip.bin ]; then
+	dd if=${BOOT_DIR}/${BOARD_NAME}-rk3568-u-boot-rockchip.bin of=${EMMC_DISK} seek=64 > /dev/null 2>&1
+	if [ $? -ne 0 ]; then
+		echo "ERROR installing u-boot (${BOARD_NAME}-rk3568-u-boot-rockchip.bin)"
+		exit 1
+	fi
+fi
+sync
+#************************************************************************
+
+
+# -------------------------------------------------------------------
+
+umount $BOOTFS_DIR > /dev/null 2>&1
+if [ ! -d $BOOTFS_DIR ]; then
+    mkdir -p $BOOTFS_DIR
+fi
+rm $BOOTFS_DIR/* > /dev/null 2>&1
+sync
+
+echo ""
+echo -e "\033[36m*******************************"
+echo "U-Boot installed to EMMC."
+echo -e "*******************************\033[37m"
+echo ""
+
+exit 0
