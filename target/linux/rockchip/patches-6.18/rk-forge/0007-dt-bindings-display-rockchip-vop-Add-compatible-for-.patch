@@ -1,0 +1,32 @@
+From 3684df51f9938756f472cf8810d604d9e8a42efa Mon Sep 17 00:00:00 2001
+From: Chaoyi Chen <chaoyi.chen@rock-chips.com>
+Date: Thu, 6 Nov 2025 10:06:27 +0800
+Subject: [PATCH 07/39] dt-bindings: display: rockchip,vop: Add compatible for
+ rk3506
+
+The rk3506 VOP has adopted a new implementation.
+Add a new compatible string for it.
+
+Signed-off-by: Chaoyi Chen <chaoyi.chen@rock-chips.com>
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patch.msgid.link/20251106020632.92-5-kernel@airkyi.com
+---
+ .../devicetree/bindings/display/rockchip/rockchip-vop.yaml       | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/Documentation/devicetree/bindings/display/rockchip/rockchip-vop.yaml b/Documentation/devicetree/bindings/display/rockchip/rockchip-vop.yaml
+index df61cb5f5c54..c9954f5cee52 100644
+--- a/Documentation/devicetree/bindings/display/rockchip/rockchip-vop.yaml
++++ b/Documentation/devicetree/bindings/display/rockchip/rockchip-vop.yaml
+@@ -31,6 +31,7 @@ properties:
+       - rockchip,rk3368-vop
+       - rockchip,rk3399-vop-big
+       - rockchip,rk3399-vop-lit
++      - rockchip,rk3506-vop
+ 
+   reg:
+     minItems: 1
+-- 
+2.55.0
+

@@ -12,6 +12,7 @@ define Device/rk3506
 endef
 
 define Device/rk3506-nand
+  $(Device/arm32)
   $(Device/NAND)
   SOC := rk3506
   BOOT_SCRIPT := rk3506
@@ -63,7 +64,7 @@ define Device/vanxoak_vx-hd-rk3506-iot
   DEVICE_PACKAGES:=kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
     kmod-ledtrig-netdev kmod-ledtrig-gpio \
-    kmod-rtc-sd3078 kmod-usb-net-asix \
+    kmod-rtc-ds1307 kmod-usb-net-asix \
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
     kmod-usb-net-cdc-eem kmod-usb-net-cdc-ether \
@@ -75,6 +76,7 @@ define Device/vanxoak_vx-hd-rk3506-iot
     luci-app-freeioe luci-proto-qmi \
     luci-proto-3g luci-proto-wwan \
     tlink-r7-firmware wpad-basic-mbedtls \
+	kmod-rtw88-8723du rtl8723bu-firmware \
     tinc-freeioe-tunnel iperf3 \
     uqmi fdisk usbutils freeioe wwan-watch \
     blockd kmod-eeprom-at24 fdisk
@@ -88,7 +90,7 @@ define Device/vanxoak_vx-hd-rk3506-iot-spinand
   DEVICE_PACKAGES:=kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
     kmod-ledtrig-netdev kmod-ledtrig-gpio \
-    kmod-rtc-sd3078 kmod-usb-net-asix \
+    kmod-rtc-ds1307 kmod-usb-net-asix \
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
     kmod-usb-net-cdc-eem kmod-usb-net-cdc-ether \
@@ -100,6 +102,7 @@ define Device/vanxoak_vx-hd-rk3506-iot-spinand
     luci-app-freeioe luci-proto-qmi \
     luci-proto-3g luci-proto-wwan \
     tlink-r7-firmware wpad-basic-mbedtls \
+	kmod-rtw88-8723du rtl8723bu-firmware \
     tinc-freeioe-tunnel iperf3 \
     uqmi fdisk usbutils freeioe wwan-watch \
     blockd kmod-eeprom-at24 fdisk

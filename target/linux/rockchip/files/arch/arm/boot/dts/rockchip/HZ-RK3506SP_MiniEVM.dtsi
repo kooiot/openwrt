@@ -1,0 +1,408 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright (c) 2025 HZHY Electronics Co., Ltd.
+ *
+ * HZ-RK3506SP MiniEVM common device tree include.
+ * Ported from HZHY kernel-6.1 SDK to mainline Linux 7.1 / OpenWrt.
+ */
+
+#include "rk3506.dtsi"
+
+/ {
+	model = "HZ-RK3506SP_MiniEVM";
+	compatible = "rockchip,rk3506-evb1-v10", "rockchip,rk3506";
+
+	/* PSCI is provided by the Rockchip OP-TEE secure monitor.
+	 * Linux brings up secondary CPUs via PSCI SMC calls. */
+
+	aliases {
+		serial0 = &uart0;
+		serial1 = &uart1;
+		serial2 = &uart2;
+		serial3 = &uart3;
+		ethernet0 = &gmac0;
+		ethernet1 = &gmac1;
+		i2c0 = &i2c0;
+		i2c2 = &i2c2;
+	};
+
+	chosen {
+		stdout-path = &uart0;
+	};
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0x0 0x20000000>;
+	};
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		/* OP-TEE / trust resident memory.
+		 * The SPL/loader pins OP-TEE in low DRAM [0x0, ~0x62000).
+		 * Without this carve-out the kernel adds those pages to the
+		 * free pool and hands them to user space; the secure world
+		 * then rejects the access as a precise external abort.
+		 * Mirrors the vendor rk3506 DT's trust@0 reservation. */
+		trust@0 {
+			/* OP-TEE reports 0x62000 bytes, but the secure DRAM firewall may
+			 * protect low memory at a coarser granularity.  Keep Linux and the
+			 * zImage output above the first 2 MiB. */
+			reg = <0x0 0x200000>;
+		};
+	};
+
+	vcc12v_dc: vcc12v-dc {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc12v_dc";
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <12000000>;
+		regulator-max-microvolt = <12000000>;
+	};
+
+	vcc_sys: vcc-sys {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc_sys";
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		vin-supply = <&vcc12v_dc>;
+	};
+
+	vcc3v3_stb: vcc3v3-stb {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc3v3_stb";
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		vin-supply = <&vcc_sys>;
+	};
+
+	vcc_1v8: vcc-1v8 {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc_1v8";
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		vin-supply = <&vcc3v3_stb>;
+	};
+
+	vcc_3v3: vcc-3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc_3v3";
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		vin-supply = <&vcc_sys>;
+	};
+
+	vccio_sd: vccio-sd-regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "vccio_sd";
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		vin-supply = <&vcc_sys>;
+	};
+
+	vcc5v0_otg0: vcc5v0-otg0-regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc5v0_otg0";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		enable-active-high;
+		gpio = <&gpio1 RK_PA2 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&vcc5v0_otg0_en>;
+	};
+
+	vcc5v0_otg1: vcc5v0-otg1-regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc5v0_otg1";
+		regulator-boot-on;
+		regulator-always-on;
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		enable-active-high;
+		gpio = <&gpio1 RK_PA1 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&vcc5v0_otg1_en>;
+	};
+
+	leds: leds {
+		compatible = "gpio-leds";
+		status = "okay";
+		run_led: run-led {
+			label = "run";
+			gpios = <&gpio1 RK_PA4 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "heartbeat";
+			default-state = "on";
+		};
+	};
+
+};
+
+/* CPU operating points (OPP).
+ * Without an OPP table the cpufreq-dt driver has no valid frequency
+ * targets; ondemand may attempt to scale the PVTPLL to an undefined
+ * rate and hang the system.  These are conservative, clk-only points.
+ * If a PMIC-based cpu-supply is added later, append voltage columns. */
+&cpu0 {
+	operating-points = <
+		1200000	0	/* 1.2 GHz (stock boot speed) */
+		1008000	0	/* 1.008 GHz */
+		816000	0	/* 816 MHz */
+		600000	0	/* 600 MHz */
+		408000	0	/* 408 MHz */
+	>;
+};
+
+&cpu1 {
+	/* PSCI brings up cpu1 */
+};
+
+&cpu2 {
+	/* PSCI brings up cpu2 */
+};
+
+&uart0 {
+	status = "okay";
+};
+
+&uart1 {
+	status = "disabled";
+};
+
+&uart2 {
+	status = "disabled";
+};
+
+&uart3 {
+	status = "disabled";
+};
+
+&i2c0 {
+	status = "disabled";
+};
+
+&i2c2 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&rm_io4_i2c2_scl &rm_io5_i2c2_sda>;
+
+	lt8912b: lt8912b@48 {
+		compatible = "lontium,lt8912b-hdmi";
+		reg = <0x48>;
+		reset-gpios = <&gpio1 RK_PA5 GPIO_ACTIVE_LOW>;
+		status = "okay";
+	};
+};
+
+&sai1 {
+	status = "disabled";
+};
+
+&spi0 {
+	status = "disabled";
+	num-cs = <2>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&rm_io14_spi0_clk &rm_io13_spi0_csn0 &rm_io15_spi0_csn1 &rm_io17_spi0_mosi &rm_io16_spi0_miso>;
+	flash@0 {
+		compatible = "winbond,w25q20cl", "jedec,spi-nor";
+		reg = <0>;
+		spi-max-frequency = <50000000>;
+	};
+	flash@1 {
+		compatible = "winbond,w25q20cl", "jedec,spi-nor";
+		reg = <1>;
+		spi-max-frequency = <50000000>;
+	};
+};
+
+&sfc {
+	status = "okay";
+};
+
+&usb2phy {
+	status = "disabled";
+};
+
+&u2phy_otg0 {
+	status = "disabled";
+};
+
+&u2phy_otg1 {
+	status = "disabled";
+};
+
+&usb20_otg0 {
+	status = "disabled";
+};
+
+&usb20_otg1 {
+	status = "disabled";
+};
+
+&gmac0 {
+	phy-mode = "rmii";
+	clock_in_out = "output";
+
+	snps,reset-gpio = <&gpio1 RK_PA4 GPIO_ACTIVE_LOW>;
+	snps,reset-active-low;
+	snps,reset-delays-us = <0 20000 100000>;
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&eth_rmii0_miim_pins
+	&eth_rmii0_tx_bus2_pins
+	&eth_rmii0_rx_bus2_pins
+	&eth_rmii0_clk_pins>;
+
+	phy-handle = <&rmii_phy0>;
+	status = "okay";
+};
+
+&mdio0 {
+	rmii_phy0: phy@1 {
+		compatible = "ethernet-phy-ieee802.3-c22";
+		reg = <0x1>;
+	};
+};
+
+&gmac1 {
+	phy-mode = "rmii";
+	clock_in_out = "input";
+
+	//snps,reset-gpio = <&gpio4 RK_PA3 GPIO_ACTIVE_LOW>;
+	snps,reset-gpio = <&gpio0 RK_PB4 GPIO_ACTIVE_LOW>;
+	snps,reset-active-low;
+	snps,reset-delays-us = <0 20000 100000>;
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&eth_rmii1_miim_pins
+	&eth_rmii1_tx_bus2_pins
+	&eth_rmii1_rx_bus2_pins
+	&eth_rmii1_clk_pins>;
+
+	phy-handle = <&rmii_phy1>;
+	status = "disabled";
+};
+
+&mdio1 {
+	rmii_phy1: phy@0 {
+		compatible = "ethernet-phy-ieee802.3-c22";
+		reg = <0x0>;
+	};
+};
+
+&pinctrl {
+	headphone {
+		hp_det: hp-det {
+			rockchip,pins = <1 RK_PA6 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+	};
+	usb {
+		vcc5v0_otg0_en: vcc5v0-otg0-en {
+			rockchip,pins = <1 RK_PA2 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+		vcc5v0_otg1_en: vcc5v0-otg1-en {
+			rockchip,pins = <1 RK_PA1 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+	};
+	/*
+	 * HZHY MiniEVM RMIO pin groups — additional mappings beyond the
+	 * AES reference set. /omit-if-no-ref/ guarded; no conflict with
+	 * existing groups (different pad/function combinations).
+	 */
+	i2c0_hzhy {
+		/omit-if-no-ref/
+		rm_io25_i2c0_sda: rm-io25-i2c0-sda {
+			rockchip,pins = <1 RK_PB2 32 &pcfg_pull_none>;
+		};
+		/omit-if-no-ref/
+		rm_io26_i2c0_scl: rm-io26-i2c0-scl {
+			rockchip,pins = <1 RK_PB3 33 &pcfg_pull_none>;
+		};
+	};
+	i2c1_hzhy {
+		/omit-if-no-ref/
+		rm_io27_i2c1_sda: rm-io27-i2c1-sda {
+			rockchip,pins = <1 RK_PC2 33 &pcfg_pull_none>;
+		};
+		/omit-if-no-ref/
+		rm_io28_i2c1_scl: rm-io28-i2c1-scl {
+			rockchip,pins = <1 RK_PC3 34 &pcfg_pull_none>;
+		};
+	};
+	uart1_hzhy {
+		/omit-if-no-ref/
+		rm_io0_uart1_rx: rm-io0-uart1-rx {
+			rockchip,pins = <0 RK_PA0 17 &pcfg_pull_up>;
+		};
+		/omit-if-no-ref/
+		rm_io2_uart1_tx: rm-io2-uart1-tx {
+			rockchip,pins = <0 RK_PA2 16 &pcfg_pull_none>;
+		};
+	};
+	uart2_hzhy {
+		/omit-if-no-ref/
+		rm_io16_uart2_rx: rm-io16-uart2-rx {
+			rockchip,pins = <0 RK_PC0 19 &pcfg_pull_up>;
+		};
+		/omit-if-no-ref/
+		rm_io17_uart2_tx: rm-io17-uart2-tx {
+			rockchip,pins = <0 RK_PC1 18 &pcfg_pull_none>;
+		};
+	};
+	uart3_hzhy {
+		/omit-if-no-ref/
+		rm_io14_uart3_tx: rm-io14-uart3-tx {
+			rockchip,pins = <0 RK_PB6 18 &pcfg_pull_none>;
+		};
+		/omit-if-no-ref/
+		rm_io15_uart3_rx: rm-io15-uart3-rx {
+			rockchip,pins = <0 RK_PB7 19 &pcfg_pull_up>;
+		};
+	};
+	spi0_hzhy {
+		/omit-if-no-ref/
+		rm_io13_spi0_csn0: rm-io13-spi0-csn0 {
+			rockchip,pins = <0 RK_PB5 14 &pcfg_pull_none>;
+		};
+		/omit-if-no-ref/
+		rm_io14_spi0_clk: rm-io14-spi0-clk {
+			rockchip,pins = <0 RK_PB6 14 &pcfg_pull_none>;
+		};
+		/omit-if-no-ref/
+		rm_io15_spi0_csn1: rm-io15-spi0-csn1 {
+			rockchip,pins = <0 RK_PB7 14 &pcfg_pull_none>;
+		};
+		/omit-if-no-ref/
+		rm_io16_spi0_miso: rm-io16-spi0-miso {
+			rockchip,pins = <0 RK_PC0 14 &pcfg_pull_none>;
+		};
+		/omit-if-no-ref/
+		rm_io17_spi0_mosi: rm-io17-spi0-mosi {
+			rockchip,pins = <0 RK_PC1 14 &pcfg_pull_none>;
+		};
+	};
+	mclk_hzhy {
+		/omit-if-no-ref/
+		rm_io8_sai1_mclk: rm-io8-sai1-mclk {
+			rockchip,pins = <0 RK_PB0 1 &pcfg_pull_none>;
+		};
+	};
+	pwm0_ch3_hzhy {
+		/omit-if-no-ref/
+		rm_io6_pwm0_ch3: rm-io6-pwm0-ch3 {
+			rockchip,pins = <0 RK_PA6 4 &pcfg_pull_none>;
+		};
+	};
+};

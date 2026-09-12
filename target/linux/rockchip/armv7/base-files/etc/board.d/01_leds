@@ -14,7 +14,8 @@ hzhy,rk3506sp-mini-evm-emmc|\
 hzhy,rk3506sp-mini-evm-nand)
 	ucidef_set_led_netdev "wan" "WAN" "green:wan" "eth0"
 	;;
-vanxoak,hd-rk3506-iot)
+vanxoak,hd-rk3506-iot|\
+vanxoak,hd-rk3506-iot-spinand)
 	ucidef_set_led_netdev "modem" "modem" "kooiot:green:modem" "wwan0"
 	;;
 esac

@@ -1,0 +1,762 @@
+From b74ee42e1db315b47dee81db14dcef70b1dc8f71 Mon Sep 17 00:00:00 2001
+From: Dirk Chang <dirk@kooiot.com>
+Date: Fri, 28 Aug 2026 10:22:36 +0800
+Subject: [PATCH 13/39] spi: spi-rockchip & spi-rockchip-sfc: port changes from
+ v7.1
+
+---
+ drivers/spi/spi-rockchip-sfc.c | 264 ++++++++++++++++++++++++++-------
+ drivers/spi/spi-rockchip.c     | 130 ++++++----------
+ 2 files changed, 257 insertions(+), 137 deletions(-)
+
+diff --git a/drivers/spi/spi-rockchip-sfc.c b/drivers/spi/spi-rockchip-sfc.c
+index 0d7fadcd4ed3..95be242f815b 100644
+--- a/drivers/spi/spi-rockchip-sfc.c
++++ b/drivers/spi/spi-rockchip-sfc.c
+@@ -13,12 +13,14 @@
+ #include <linux/completion.h>
+ #include <linux/dma-mapping.h>
+ #include <linux/iopoll.h>
++#include <linux/interrupt.h>
+ #include <linux/mm.h>
+ #include <linux/module.h>
+ #include <linux/of.h>
++#include <linux/pinctrl/consumer.h>
+ #include <linux/platform_device.h>
++#include <linux/pm_runtime.h>
+ #include <linux/slab.h>
+-#include <linux/interrupt.h>
+ #include <linux/spi/spi-mem.h>
+ 
+ /* System control */
+@@ -110,8 +112,9 @@
+ #define  SFC_VER_3			0x3
+ #define  SFC_VER_4			0x4
+ #define  SFC_VER_5			0x5
++#define  SFC_VER_8			0x8
+ 
+-/* Delay line controller resiter */
++/* Delay line controller register */
+ #define SFC_DLL_CTRL0			0x3C
+ #define SFC_DLL_CTRL0_SCLK_SMP_DLL	BIT(15)
+ #define SFC_DLL_CTRL0_DLL_MAX_VER4	0xFFU
+@@ -150,16 +153,13 @@
+ /* Data */
+ #define SFC_DATA			0x108
+ 
+-/* The controller and documentation reports that it supports up to 4 CS
+- * devices (0-3), however I have only been able to test a single CS (CS 0)
+- * due to the configuration of my device.
+- */
+-#define SFC_MAX_CHIPSELECT_NUM		4
++#define SFC_CS1_REG_OFFSET		0x200
++
++#define SFC_MAX_CHIPSELECT_NUM		2
+ 
+-/* The SFC can transfer max 16KB - 1 at one time
+- * we set it to 15.5KB here for alignment.
+- */
+ #define SFC_MAX_IOSIZE_VER3		(512 * 31)
++/* Although up to 4GB, 64KB is enough with less mem reserved */
++#define SFC_MAX_IOSIZE_VER4		(0x10000U)
+ 
+ /* DMA is only enabled for large data transmission */
+ #define SFC_DMA_TRANS_THRETHOLD		(0x40)
+@@ -169,12 +169,14 @@
+  */
+ #define SFC_MAX_SPEED		(150 * 1000 * 1000)
+ 
++#define ROCKCHIP_AUTOSUSPEND_DELAY	2000
++
+ struct rockchip_sfc {
+ 	struct device *dev;
+ 	void __iomem *regbase;
+ 	struct clk *hclk;
+ 	struct clk *clk;
+-	u32 frequency;
++	u32 speed[SFC_MAX_CHIPSELECT_NUM];
+ 	/* virtual mapped addr for dma_buffer */
+ 	void *buffer;
+ 	dma_addr_t dma_buffer;
+@@ -182,6 +184,7 @@ struct rockchip_sfc {
+ 	bool use_dma;
+ 	u32 max_iosize;
+ 	u16 version;
++	struct spi_controller *host;
+ };
+ 
+ static int rockchip_sfc_reset(struct rockchip_sfc *sfc)
+@@ -215,6 +218,22 @@ static u32 rockchip_sfc_get_max_iosize(struct rockchip_sfc *sfc)
+ 	return SFC_MAX_IOSIZE_VER3;
+ }
+ 
++static int rockchip_sfc_clk_set_rate(struct rockchip_sfc *sfc, unsigned long  speed)
++{
++	if (sfc->version >= SFC_VER_8)
++		return clk_set_rate(sfc->clk, speed * 2);
++	else
++		return clk_set_rate(sfc->clk, speed);
++}
++
++static unsigned long rockchip_sfc_clk_get_rate(struct rockchip_sfc *sfc)
++{
++	if (sfc->version >= SFC_VER_8)
++		return clk_get_rate(sfc->clk) / 2;
++	else
++		return clk_get_rate(sfc->clk);
++}
++
+ static void rockchip_sfc_irq_unmask(struct rockchip_sfc *sfc, u32 mask)
+ {
+ 	u32 reg;
+@@ -301,6 +320,7 @@ static int rockchip_sfc_xfer_setup(struct rockchip_sfc *sfc,
+ 				   u32 len)
+ {
+ 	u32 ctrl = 0, cmd = 0;
++	u8 cs = spi_get_chipselect(mem->spi, 0);
+ 
+ 	/* set CMD */
+ 	cmd = op->cmd.opcode;
+@@ -314,7 +334,8 @@ static int rockchip_sfc_xfer_setup(struct rockchip_sfc *sfc,
+ 			cmd |= SFC_CMD_ADDR_24BITS << SFC_CMD_ADDR_SHIFT;
+ 		} else {
+ 			cmd |= SFC_CMD_ADDR_XBITS << SFC_CMD_ADDR_SHIFT;
+-			writel(op->addr.nbytes * 8 - 1, sfc->regbase + SFC_ABIT);
++			writel(op->addr.nbytes * 8 - 1,
++			       sfc->regbase + cs * SFC_CS1_REG_OFFSET + SFC_ABIT);
+ 		}
+ 
+ 		ctrl |= ((op->addr.buswidth >> 1) << SFC_CTRL_ADDR_BITS_SHIFT);
+@@ -346,7 +367,7 @@ static int rockchip_sfc_xfer_setup(struct rockchip_sfc *sfc,
+ 
+ 	/* set the Controller */
+ 	ctrl |= SFC_CTRL_PHASE_SEL_NEGETIVE;
+-	cmd |= spi_get_chipselect(mem->spi, 0) << SFC_CMD_CS_SHIFT;
++	cmd |= cs << SFC_CMD_CS_SHIFT;
+ 
+ 	dev_dbg(sfc->dev, "sfc addr.nbytes=%x(x%d) dummy.nbytes=%x(x%d)\n",
+ 		op->addr.nbytes, op->addr.buswidth,
+@@ -354,7 +375,7 @@ static int rockchip_sfc_xfer_setup(struct rockchip_sfc *sfc,
+ 	dev_dbg(sfc->dev, "sfc ctrl=%x cmd=%x addr=%llx len=%x\n",
+ 		ctrl, cmd, op->addr.val, len);
+ 
+-	writel(ctrl, sfc->regbase + SFC_CTRL);
++	writel(ctrl, sfc->regbase + cs * SFC_CS1_REG_OFFSET + SFC_CTRL);
+ 	writel(cmd, sfc->regbase + SFC_CMD);
+ 	if (op->addr.nbytes)
+ 		writel(op->addr.val, sfc->regbase + SFC_ADDR);
+@@ -452,8 +473,10 @@ static int rockchip_sfc_xfer_data_dma(struct rockchip_sfc *sfc,
+ 
+ 	dev_dbg(sfc->dev, "sfc xfer_dma len=%x\n", len);
+ 
+-	if (op->data.dir == SPI_MEM_DATA_OUT)
++	if (op->data.dir == SPI_MEM_DATA_OUT) {
+ 		memcpy(sfc->buffer, op->data.buf.out, len);
++		dma_sync_single_for_device(sfc->dev, sfc->dma_buffer, len, DMA_TO_DEVICE);
++	}
+ 
+ 	ret = rockchip_sfc_fifo_transfer_dma(sfc, sfc->dma_buffer, len);
+ 	if (!wait_for_completion_timeout(&sfc->cp, msecs_to_jiffies(2000))) {
+@@ -461,8 +484,11 @@ static int rockchip_sfc_xfer_data_dma(struct rockchip_sfc *sfc,
+ 		ret = -ETIMEDOUT;
+ 	}
+ 	rockchip_sfc_irq_mask(sfc, SFC_IMR_DMA);
+-	if (op->data.dir == SPI_MEM_DATA_IN)
++
++	if (op->data.dir == SPI_MEM_DATA_IN) {
++		dma_sync_single_for_cpu(sfc->dev, sfc->dma_buffer, len, DMA_FROM_DEVICE);
+ 		memcpy(op->data.buf.in, sfc->buffer, len);
++	}
+ 
+ 	return ret;
+ }
+@@ -472,6 +498,16 @@ static int rockchip_sfc_xfer_done(struct rockchip_sfc *sfc, u32 timeout_us)
+ 	int ret = 0;
+ 	u32 status;
+ 
++	/*
++	 * There is very little data left in fifo, and the controller will
++	 * complete the transmission in a short period of time.
++	 */
++	ret = readl_poll_timeout(sfc->regbase + SFC_SR, status,
++				 !(status & SFC_SR_IS_BUSY),
++				 0, 10);
++	if (!ret)
++		return 0;
++
+ 	ret = readl_poll_timeout(sfc->regbase + SFC_SR, status,
+ 				 !(status & SFC_SR_IS_BUSY),
+ 				 20, timeout_us);
+@@ -490,20 +526,28 @@ static int rockchip_sfc_exec_mem_op(struct spi_mem *mem, const struct spi_mem_op
+ 	struct rockchip_sfc *sfc = spi_controller_get_devdata(mem->spi->controller);
+ 	u32 len = op->data.nbytes;
+ 	int ret;
++	u8 cs = spi_get_chipselect(mem->spi, 0);
+ 
+-	if (unlikely(mem->spi->max_speed_hz != sfc->frequency)) {
+-		ret = clk_set_rate(sfc->clk, mem->spi->max_speed_hz);
++	ret = pm_runtime_get_sync(sfc->dev);
++	if (ret < 0) {
++		pm_runtime_put_noidle(sfc->dev);
++		return ret;
++	}
++
++	if (unlikely(op->max_freq != sfc->speed[cs]) &&
++	    !has_acpi_companion(sfc->dev)) {
++		ret = rockchip_sfc_clk_set_rate(sfc, op->max_freq);
+ 		if (ret)
+-			return ret;
+-		sfc->frequency = mem->spi->max_speed_hz;
++			goto out;
++		sfc->speed[cs] = op->max_freq;
+ 		dev_dbg(sfc->dev, "set_freq=%dHz real_freq=%ldHz\n",
+-			sfc->frequency, clk_get_rate(sfc->clk));
++			sfc->speed[cs], rockchip_sfc_clk_get_rate(sfc));
+ 	}
+ 
+ 	rockchip_sfc_adjust_op_work((struct spi_mem_op *)op);
+ 	rockchip_sfc_xfer_setup(sfc, mem, op, len);
+ 	if (len) {
+-		if (likely(sfc->use_dma) && len >= SFC_DMA_TRANS_THRETHOLD) {
++		if (likely(sfc->use_dma) && len >= SFC_DMA_TRANS_THRETHOLD && !(len & 0x3)) {
+ 			init_completion(&sfc->cp);
+ 			rockchip_sfc_irq_unmask(sfc, SFC_IMR_DMA);
+ 			ret = rockchip_sfc_xfer_data_dma(sfc, op, len);
+@@ -514,11 +558,16 @@ static int rockchip_sfc_exec_mem_op(struct spi_mem *mem, const struct spi_mem_op
+ 		if (ret != len) {
+ 			dev_err(sfc->dev, "xfer data failed ret %d dir %d\n", ret, op->data.dir);
+ 
+-			return -EIO;
++			ret = -EIO;
++			goto out;
+ 		}
+ 	}
+ 
+-	return rockchip_sfc_xfer_done(sfc, 100000);
++	ret = rockchip_sfc_xfer_done(sfc, 100000);
++out:
++	pm_runtime_put_autosuspend(sfc->dev);
++
++	return ret;
+ }
+ 
+ static int rockchip_sfc_adjust_op_size(struct spi_mem *mem, struct spi_mem_op *op)
+@@ -535,6 +584,10 @@ static const struct spi_controller_mem_ops rockchip_sfc_mem_ops = {
+ 	.adjust_op_size = rockchip_sfc_adjust_op_size,
+ };
+ 
++static const struct spi_controller_mem_caps rockchip_sfc_mem_caps = {
++	.per_op_freq = true,
++};
++
+ static irqreturn_t rockchip_sfc_irq_handler(int irq, void *dev_id)
+ {
+ 	struct rockchip_sfc *sfc = dev_id;
+@@ -560,6 +613,7 @@ static int rockchip_sfc_probe(struct platform_device *pdev)
+ 	struct spi_controller *host;
+ 	struct rockchip_sfc *sfc;
+ 	int ret;
++	u32 i, val;
+ 
+ 	host = devm_spi_alloc_host(&pdev->dev, sizeof(*sfc));
+ 	if (!host)
+@@ -568,46 +622,42 @@ static int rockchip_sfc_probe(struct platform_device *pdev)
+ 	host->flags = SPI_CONTROLLER_HALF_DUPLEX;
+ 	host->mem_ops = &rockchip_sfc_mem_ops;
+ 	host->dev.of_node = pdev->dev.of_node;
++	host->mem_caps = &rockchip_sfc_mem_caps;
+ 	host->mode_bits = SPI_TX_QUAD | SPI_TX_DUAL | SPI_RX_QUAD | SPI_RX_DUAL;
+ 	host->max_speed_hz = SFC_MAX_SPEED;
+ 	host->num_chipselect = SFC_MAX_CHIPSELECT_NUM;
+ 
+ 	sfc = spi_controller_get_devdata(host);
+ 	sfc->dev = dev;
++	sfc->host = host;
+ 
+ 	sfc->regbase = devm_platform_ioremap_resource(pdev, 0);
+ 	if (IS_ERR(sfc->regbase))
+ 		return PTR_ERR(sfc->regbase);
+ 
+-	sfc->clk = devm_clk_get(&pdev->dev, "clk_sfc");
+-	if (IS_ERR(sfc->clk)) {
+-		dev_err(&pdev->dev, "Failed to get sfc interface clk\n");
+-		return PTR_ERR(sfc->clk);
+-	}
+-
+-	sfc->hclk = devm_clk_get(&pdev->dev, "hclk_sfc");
+-	if (IS_ERR(sfc->hclk)) {
+-		dev_err(&pdev->dev, "Failed to get sfc ahb clk\n");
+-		return PTR_ERR(sfc->hclk);
+-	}
++	if (!has_acpi_companion(&pdev->dev))
++		sfc->clk = devm_clk_get(&pdev->dev, "clk_sfc");
++	if (IS_ERR(sfc->clk))
++		return dev_err_probe(&pdev->dev, PTR_ERR(sfc->clk),
++				     "Failed to get sfc interface clk\n");
+ 
+-	sfc->use_dma = !of_property_read_bool(sfc->dev->of_node,
+-					      "rockchip,sfc-no-dma");
+-
+-	if (sfc->use_dma) {
+-		ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(32));
+-		if (ret) {
+-			dev_warn(dev, "Unable to set dma mask\n");
+-			return ret;
+-		}
++	if (!has_acpi_companion(&pdev->dev))
++		sfc->hclk = devm_clk_get(&pdev->dev, "hclk_sfc");
++	if (IS_ERR(sfc->hclk))
++		return dev_err_probe(&pdev->dev, PTR_ERR(sfc->hclk),
++				     "Failed to get sfc ahb clk\n");
+ 
+-		sfc->buffer = dmam_alloc_coherent(dev, SFC_MAX_IOSIZE_VER3,
+-						  &sfc->dma_buffer,
+-						  GFP_KERNEL);
+-		if (!sfc->buffer)
+-			return -ENOMEM;
++	if (has_acpi_companion(&pdev->dev)) {
++		ret = device_property_read_u32(&pdev->dev, "clock-frequency", &val);
++		if (ret)
++			return dev_err_probe(&pdev->dev, ret,
++					     "Failed to find clock-frequency in ACPI\n");
++		for (i = 0; i < SFC_MAX_CHIPSELECT_NUM; i++)
++			sfc->speed[i] = val;
+ 	}
+ 
++	sfc->use_dma = !of_property_read_bool(sfc->dev->of_node, "rockchip,sfc-no-dma");
++
+ 	ret = clk_prepare_enable(sfc->hclk);
+ 	if (ret) {
+ 		dev_err(&pdev->dev, "Failed to enable ahb clk\n");
+@@ -629,23 +679,57 @@ static int rockchip_sfc_probe(struct platform_device *pdev)
+ 			       0, pdev->name, sfc);
+ 	if (ret) {
+ 		dev_err(dev, "Failed to request irq\n");
+-
+ 		goto err_irq;
+ 	}
+ 
++	platform_set_drvdata(pdev, sfc);
++
+ 	ret = rockchip_sfc_init(sfc);
+ 	if (ret)
+ 		goto err_irq;
+ 
+-	sfc->max_iosize = rockchip_sfc_get_max_iosize(sfc);
+ 	sfc->version = rockchip_sfc_get_version(sfc);
++	sfc->max_iosize = rockchip_sfc_get_max_iosize(sfc);
++
++	pm_runtime_set_autosuspend_delay(dev, ROCKCHIP_AUTOSUSPEND_DELAY);
++	pm_runtime_use_autosuspend(dev);
++	pm_runtime_set_active(dev);
++	pm_runtime_enable(dev);
++	pm_runtime_get_noresume(dev);
++
++	if (sfc->use_dma) {
++		sfc->buffer = (u8 *)__get_free_pages(GFP_KERNEL | GFP_DMA32,
++						     get_order(sfc->max_iosize));
++		if (!sfc->buffer) {
++			ret = -ENOMEM;
++			goto err_dma;
++		}
++		sfc->dma_buffer = dma_map_single(dev, sfc->buffer,
++					    sfc->max_iosize, DMA_BIDIRECTIONAL);
++		if (dma_mapping_error(dev, sfc->dma_buffer)) {
++			ret = -ENOMEM;
++			goto err_dma_map;
++		}
++	}
+ 
+ 	ret = spi_register_controller(host);
+ 	if (ret)
+-		goto err_irq;
++		goto err_register;
+ 
+-	return 0;
++	pm_runtime_put_autosuspend(dev);
+ 
++	return 0;
++err_register:
++	dma_unmap_single(dev, sfc->dma_buffer, sfc->max_iosize,
++			 DMA_BIDIRECTIONAL);
++err_dma_map:
++	free_pages((unsigned long)sfc->buffer, get_order(sfc->max_iosize));
++err_dma:
++	pm_runtime_get_sync(dev);
++	pm_runtime_put_noidle(dev);
++	pm_runtime_disable(dev);
++	pm_runtime_set_suspended(dev);
++	pm_runtime_dont_use_autosuspend(dev);
+ err_irq:
+ 	clk_disable_unprepare(sfc->clk);
+ err_clk:
+@@ -656,14 +740,84 @@ static int rockchip_sfc_probe(struct platform_device *pdev)
+ 
+ static void rockchip_sfc_remove(struct platform_device *pdev)
+ {
+-	struct spi_controller *host = platform_get_drvdata(pdev);
+ 	struct rockchip_sfc *sfc = platform_get_drvdata(pdev);
++	struct spi_controller *host = sfc->host;
+ 
+ 	spi_unregister_controller(host);
++	dma_unmap_single(&pdev->dev, sfc->dma_buffer, sfc->max_iosize,
++			 DMA_BIDIRECTIONAL);
++	free_pages((unsigned long)sfc->buffer, get_order(sfc->max_iosize));
++
++	clk_disable_unprepare(sfc->clk);
++	clk_disable_unprepare(sfc->hclk);
++}
++
++#ifdef CONFIG_PM
++static int rockchip_sfc_runtime_suspend(struct device *dev)
++{
++	struct rockchip_sfc *sfc = dev_get_drvdata(dev);
+ 
+ 	clk_disable_unprepare(sfc->clk);
+ 	clk_disable_unprepare(sfc->hclk);
++
++	return 0;
++}
++
++static int rockchip_sfc_runtime_resume(struct device *dev)
++{
++	struct rockchip_sfc *sfc = dev_get_drvdata(dev);
++	int ret;
++
++	ret = clk_prepare_enable(sfc->hclk);
++	if (ret < 0)
++		return ret;
++
++	ret = clk_prepare_enable(sfc->clk);
++	if (ret < 0)
++		clk_disable_unprepare(sfc->hclk);
++
++	return ret;
++}
++#endif /* CONFIG_PM */
++
++#ifdef CONFIG_PM_SLEEP
++static int rockchip_sfc_suspend(struct device *dev)
++{
++	pinctrl_pm_select_sleep_state(dev);
++
++	return pm_runtime_force_suspend(dev);
++}
++
++static int rockchip_sfc_resume(struct device *dev)
++{
++	struct rockchip_sfc *sfc = dev_get_drvdata(dev);
++	int ret;
++
++	ret = pm_runtime_force_resume(dev);
++	if (ret < 0)
++		return ret;
++
++	pinctrl_pm_select_default_state(dev);
++
++	ret = pm_runtime_get_sync(dev);
++	if (ret < 0) {
++		pm_runtime_put_noidle(dev);
++		return ret;
++	}
++
++	rockchip_sfc_init(sfc);
++
++	pm_runtime_put_autosuspend(dev);
++
++	return 0;
+ }
++#endif /* CONFIG_PM_SLEEP */
++
++static const struct dev_pm_ops rockchip_sfc_pm_ops = {
++	SET_RUNTIME_PM_OPS(rockchip_sfc_runtime_suspend,
++			   rockchip_sfc_runtime_resume, NULL)
++	SET_SYSTEM_SLEEP_PM_OPS(rockchip_sfc_suspend, rockchip_sfc_resume)
++};
+ 
+ static const struct of_device_id rockchip_sfc_dt_ids[] = {
+ 	{ .compatible = "rockchip,sfc"},
+@@ -675,6 +829,7 @@ static struct platform_driver rockchip_sfc_driver = {
+ 	.driver = {
+ 		.name	= "rockchip-sfc",
+ 		.of_match_table = rockchip_sfc_dt_ids,
++		.pm = &rockchip_sfc_pm_ops,
+ 	},
+ 	.probe	= rockchip_sfc_probe,
+ 	.remove_new = rockchip_sfc_remove,
+diff --git a/drivers/spi/spi-rockchip.c b/drivers/spi/spi-rockchip.c
+index 03a11aed055e..852aca784ebe 100644
+--- a/drivers/spi/spi-rockchip.c
++++ b/drivers/spi/spi-rockchip.c
+@@ -98,7 +98,6 @@
+ #define CR0_FRF_MICROWIRE			0x2
+ 
+ #define CR0_XFM_OFFSET				18
+-#define CR0_XFM_MASK				(0x03 << SPI_XFM_OFFSET)
+ #define CR0_XFM_TR					0x0
+ #define CR0_XFM_TO					0x1
+ #define CR0_XFM_RO					0x2
+@@ -109,8 +108,6 @@
+ 
+ #define CR0_SOI_OFFSET				23
+ 
+-#define CR0_MTM_OFFSET				0x21
+-
+ /* Bit fields in SER, 2bit */
+ #define SER_MASK					0x3
+ 
+@@ -160,8 +157,7 @@
+  */
+ #define ROCKCHIP_SPI_MAX_TRANLEN		0xffff
+ 
+-/* 2 for native cs, 2 for cs-gpio */
+-#define ROCKCHIP_SPI_MAX_CS_NUM			4
++#define ROCKCHIP_SPI_MAX_NATIVE_CS_NUM		2
+ #define ROCKCHIP_SPI_VER2_TYPE1			0x05EC0002
+ #define ROCKCHIP_SPI_VER2_TYPE2			0x00110002
+ 
+@@ -192,10 +188,8 @@ struct rockchip_spi {
+ 	u8 n_bytes;
+ 	u8 rsd;
+ 
+-	bool cs_asserted[ROCKCHIP_SPI_MAX_CS_NUM];
+-
+ 	bool target_abort;
+-	bool cs_inactive; /* spi target tansmition stop when cs inactive */
++	bool cs_inactive; /* spi target transmission stop when cs inactive */
+ 	bool cs_high_supported; /* native CS supports active-high polarity */
+ 
+ 	struct spi_transfer *xfer; /* Store xfer temporarily */
+@@ -244,9 +238,19 @@ static void rockchip_spi_set_cs(struct spi_device *spi, bool enable)
+ 	struct spi_controller *ctlr = spi->controller;
+ 	struct rockchip_spi *rs = spi_controller_get_devdata(ctlr);
+ 	bool cs_asserted = spi->mode & SPI_CS_HIGH ? enable : !enable;
++	bool cs_actual;
+ 
+-	/* Return immediately for no-op */
+-	if (cs_asserted == rs->cs_asserted[spi_get_chipselect(spi, 0)])
++	/*
++	 * SPI subsystem tries to avoid no-op calls that would break the PM
++	 * refcount below. It can't however for the first time it is used.
++	 * To detect this case we read it here and bail out early for no-ops.
++	 */
++	if (spi_get_csgpiod(spi, 0))
++		cs_actual = !!(readl_relaxed(rs->regs + ROCKCHIP_SPI_SER) & 1);
++	else
++		cs_actual = !!(readl_relaxed(rs->regs + ROCKCHIP_SPI_SER) &
++			       BIT(spi_get_chipselect(spi, 0)));
++	if (unlikely(cs_actual == cs_asserted))
+ 		return;
+ 
+ 	if (cs_asserted) {
+@@ -268,8 +272,6 @@ static void rockchip_spi_set_cs(struct spi_device *spi, bool enable)
+ 		/* Drop reference from when we first asserted CS */
+ 		pm_runtime_put(rs->dev);
+ 	}
+-
+-	rs->cs_asserted[spi_get_chipselect(spi, 0)] = cs_asserted;
+ }
+ 
+ static void rockchip_spi_handle_err(struct spi_controller *ctlr,
+@@ -752,22 +754,20 @@ static int rockchip_spi_setup(struct spi_device *spi)
+ 
+ static int rockchip_spi_probe(struct platform_device *pdev)
+ {
+-	int ret;
+-	struct rockchip_spi *rs;
++	struct device_node *np = pdev->dev.of_node;
+ 	struct spi_controller *ctlr;
++	struct rockchip_spi *rs;
+ 	struct resource *mem;
+-	struct device_node *np = pdev->dev.of_node;
+ 	u32 rsd_nsecs, num_cs;
+ 	bool target_mode;
++	int ret;
+ 
+ 	target_mode = of_property_read_bool(np, "spi-slave");
+ 
+ 	if (target_mode)
+-		ctlr = spi_alloc_target(&pdev->dev,
+-				sizeof(struct rockchip_spi));
++		ctlr = devm_spi_alloc_target(&pdev->dev, sizeof(*rs));
+ 	else
+-		ctlr = spi_alloc_host(&pdev->dev,
+-				sizeof(struct rockchip_spi));
++		ctlr = devm_spi_alloc_host(&pdev->dev, sizeof(*rs));
+ 
+ 	if (!ctlr)
+ 		return -ENOMEM;
+@@ -778,47 +778,31 @@ static int rockchip_spi_probe(struct platform_device *pdev)
+ 
+ 	/* Get basic io resource and map it */
+ 	rs->regs = devm_platform_get_and_ioremap_resource(pdev, 0, &mem);
+-	if (IS_ERR(rs->regs)) {
+-		ret =  PTR_ERR(rs->regs);
+-		goto err_put_ctlr;
+-	}
++	if (IS_ERR(rs->regs))
++		return PTR_ERR(rs->regs);
+ 
+-	rs->apb_pclk = devm_clk_get(&pdev->dev, "apb_pclk");
++	rs->apb_pclk = devm_clk_get_enabled(&pdev->dev, "apb_pclk");
+ 	if (IS_ERR(rs->apb_pclk)) {
+-		dev_err(&pdev->dev, "Failed to get apb_pclk\n");
+-		ret = PTR_ERR(rs->apb_pclk);
+-		goto err_put_ctlr;
++		return dev_err_probe(&pdev->dev, PTR_ERR(rs->apb_pclk),
++				     "Failed to get apb_pclk\n");
+ 	}
+ 
+-	rs->spiclk = devm_clk_get(&pdev->dev, "spiclk");
++	rs->spiclk = devm_clk_get_enabled(&pdev->dev, "spiclk");
+ 	if (IS_ERR(rs->spiclk)) {
+-		dev_err(&pdev->dev, "Failed to get spi_pclk\n");
+-		ret = PTR_ERR(rs->spiclk);
+-		goto err_put_ctlr;
+-	}
+-
+-	ret = clk_prepare_enable(rs->apb_pclk);
+-	if (ret < 0) {
+-		dev_err(&pdev->dev, "Failed to enable apb_pclk\n");
+-		goto err_put_ctlr;
+-	}
+-
+-	ret = clk_prepare_enable(rs->spiclk);
+-	if (ret < 0) {
+-		dev_err(&pdev->dev, "Failed to enable spi_clk\n");
+-		goto err_disable_apbclk;
++		return dev_err_probe(&pdev->dev, PTR_ERR(rs->spiclk),
++				     "Failed to get spi_pclk\n");
+ 	}
+ 
+ 	spi_enable_chip(rs, false);
+ 
+ 	ret = platform_get_irq(pdev, 0);
+ 	if (ret < 0)
+-		goto err_disable_spiclk;
++		return ret;
+ 
+-	ret = devm_request_threaded_irq(&pdev->dev, ret, rockchip_spi_isr, NULL,
+-			IRQF_ONESHOT, dev_name(&pdev->dev), ctlr);
++	ret = devm_request_irq(&pdev->dev, ret, rockchip_spi_isr, 0,
++			       dev_name(&pdev->dev), ctlr);
+ 	if (ret)
+-		goto err_disable_spiclk;
++		return ret;
+ 
+ 	rs->dev = &pdev->dev;
+ 	rs->freq = clk_get_rate(rs->spiclk);
+@@ -826,26 +810,22 @@ static int rockchip_spi_probe(struct platform_device *pdev)
+ 	if (!of_property_read_u32(pdev->dev.of_node, "rx-sample-delay-ns",
+ 				  &rsd_nsecs)) {
+ 		/* rx sample delay is expressed in parent clock cycles (max 3) */
+-		u32 rsd = DIV_ROUND_CLOSEST(rsd_nsecs * (rs->freq >> 8),
+-				1000000000 >> 8);
++		u32 rsd = DIV_ROUND_CLOSEST(rsd_nsecs * (rs->freq >> 8), 1000000000 >> 8);
+ 		if (!rsd) {
+ 			dev_warn(rs->dev, "%u Hz are too slow to express %u ns delay\n",
+-					rs->freq, rsd_nsecs);
++				 rs->freq, rsd_nsecs);
+ 		} else if (rsd > CR0_RSD_MAX) {
+ 			rsd = CR0_RSD_MAX;
+-			dev_warn(rs->dev, "%u Hz are too fast to express %u ns delay, clamping at %u ns\n",
+-					rs->freq, rsd_nsecs,
+-					CR0_RSD_MAX * 1000000000U / rs->freq);
++			dev_warn(rs->dev,
++				 "%u Hz are too fast to express %u ns delay, clamping at %u ns\n",
++				 rs->freq, rsd_nsecs, CR0_RSD_MAX * 1000000000U / rs->freq);
+ 		}
+ 		rs->rsd = rsd;
+ 	}
+ 
+ 	rs->fifo_len = get_fifo_len(rs);
+-	if (!rs->fifo_len) {
+-		dev_err(&pdev->dev, "Failed to get fifo length\n");
+-		ret = -EINVAL;
+-		goto err_disable_spiclk;
+-	}
++	if (!rs->fifo_len)
++		return dev_err_probe(&pdev->dev, -EINVAL, "Failed to get fifo length\n");
+ 
+ 	pm_runtime_set_autosuspend_delay(&pdev->dev, ROCKCHIP_AUTOSUSPEND_TIMEOUT);
+ 	pm_runtime_use_autosuspend(&pdev->dev);
+@@ -860,7 +840,7 @@ static int rockchip_spi_probe(struct platform_device *pdev)
+ 		ctlr->target_abort = rockchip_spi_target_abort;
+ 	} else {
+ 		ctlr->flags = SPI_CONTROLLER_GPIO_SS;
+-		ctlr->max_native_cs = ROCKCHIP_SPI_MAX_CS_NUM;
++		ctlr->max_native_cs = ROCKCHIP_SPI_MAX_NATIVE_CS_NUM;
+ 		/*
+ 		 * rk spi0 has two native cs, spi1..5 one cs only
+ 		 * if num-cs is missing in the dts, default to 1
+@@ -883,22 +863,21 @@ static int rockchip_spi_probe(struct platform_device *pdev)
+ 
+ 	ctlr->dma_tx = dma_request_chan(rs->dev, "tx");
+ 	if (IS_ERR(ctlr->dma_tx)) {
+-		/* Check tx to see if we need defer probing driver */
+-		if (PTR_ERR(ctlr->dma_tx) == -EPROBE_DEFER) {
+-			ret = -EPROBE_DEFER;
++		/* Check tx to see if we need to defer driver probing */
++		ret = dev_warn_probe(rs->dev, PTR_ERR(ctlr->dma_tx),
++				     "Failed to request optional TX DMA channel\n");
++		if (ret == -EPROBE_DEFER)
+ 			goto err_disable_pm_runtime;
+-		}
+-		dev_warn(rs->dev, "Failed to request TX DMA channel\n");
+ 		ctlr->dma_tx = NULL;
+ 	}
+ 
+ 	ctlr->dma_rx = dma_request_chan(rs->dev, "rx");
+ 	if (IS_ERR(ctlr->dma_rx)) {
+-		if (PTR_ERR(ctlr->dma_rx) == -EPROBE_DEFER) {
+-			ret = -EPROBE_DEFER;
++		/* Check rx to see if we need to defer driver probing */
++		ret = dev_warn_probe(rs->dev, PTR_ERR(ctlr->dma_rx),
++				     "Failed to request optional RX DMA channel\n");
++		if (ret == -EPROBE_DEFER)
+ 			goto err_free_dma_tx;
+-		}
+-		dev_warn(rs->dev, "Failed to request RX DMA channel\n");
+ 		ctlr->dma_rx = NULL;
+ 	}
+ 
+@@ -938,26 +917,16 @@ static int rockchip_spi_probe(struct platform_device *pdev)
+ 		dma_release_channel(ctlr->dma_tx);
+ err_disable_pm_runtime:
+ 	pm_runtime_disable(&pdev->dev);
+-err_disable_spiclk:
+-	clk_disable_unprepare(rs->spiclk);
+-err_disable_apbclk:
+-	clk_disable_unprepare(rs->apb_pclk);
+-err_put_ctlr:
+-	spi_controller_put(ctlr);
+ 
+ 	return ret;
+ }
+ 
+ static void rockchip_spi_remove(struct platform_device *pdev)
+ {
+-	struct spi_controller *ctlr = spi_controller_get(platform_get_drvdata(pdev));
+-	struct rockchip_spi *rs = spi_controller_get_devdata(ctlr);
++	struct spi_controller *ctlr = platform_get_drvdata(pdev);
+ 
+ 	pm_runtime_get_sync(&pdev->dev);
+ 
+-	clk_disable_unprepare(rs->spiclk);
+-	clk_disable_unprepare(rs->apb_pclk);
+-
+ 	spi_unregister_controller(ctlr);
+ 
+ 	pm_runtime_put_noidle(&pdev->dev);
+@@ -968,8 +937,6 @@ static void rockchip_spi_remove(struct platform_device *pdev)
+ 		dma_release_channel(ctlr->dma_tx);
+ 	if (ctlr->dma_rx)
+ 		dma_release_channel(ctlr->dma_rx);
+-
+-	spi_controller_put(ctlr);
+ }
+ 
+ #ifdef CONFIG_PM_SLEEP
+-- 
+2.55.0
+
