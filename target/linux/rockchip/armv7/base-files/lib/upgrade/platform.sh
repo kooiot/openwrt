@@ -1,8 +1,8 @@
 REQUIRE_IMAGE_METADATA=1
 
 tlink_get_type_magic() {
-	# 0x2dcf3
-	local skip_base=187635
+	# 0x5f690
+	local skip_base=390800
 	local skip_offset=$(($skip_base))
 	local name_len=$2
 	get_image_dd "$1" bs=1 count=$name_len skip=$skip_offset 2>/dev/null | hexdump -v -n $name_len -e '/1 "%c"'
@@ -10,11 +10,10 @@ tlink_get_type_magic() {
 
 tlink_check_image() {
 	local cur_name=$(board_name)
-	local cur_name_s=${cur_name:7}
-	local name_len_s=${#cur_name_s}
-	local typemagic="$(tlink_get_type_magic "$1" $name_len_s)"
-	[ "${typemagic}"x != "${cur_name_s}"x ] && {
-		echo "Invalid image, bad type:${typemagic}!=${cur_name_s}."
+	local name_len=${#cur_name}
+	local typemagic="$(tlink_get_type_magic "$1" $name_len)"
+	[ "${typemagic}"x != "${cur_name}"x ] && {
+		echo "Invalid image, bad type:${typemagic}!=${cur_name}."
 		return 1
 	}
 	return 0
@@ -24,9 +23,9 @@ platform_check_image() {
 	local diskdev partdev diff
 
 	case "$(board_name)" in
-		"kooiot,tlink-e2-spinand"|\
-		"kooiot,tlink-ex-spinand"|\
-		"kooiot,tlink-dly-e102-spinand")
+		"vanxoak,hd-rk3506-iot-spinand" |\
+		"kooiot,tlink-rk3506-iot" |\
+		"kooiot,tlink-rk3506-iot-spinand")
 			nand_do_platform_check "$(board_name)" "$1"
 			return $?
 			;;
@@ -57,8 +56,8 @@ platform_check_image() {
 	fi
 
 	case "$(board_name)" in
-		"kooiot,tlink-r4x" | \
-		"kooiot,tlink-r7")
+		"vanxoak,hd-rk3506-iot" |\
+		"kooiot,tlink-rk3506-iot")
 			tlink_check_image "$1" && return 0
 			return 1
 			;;
@@ -97,9 +96,8 @@ platform_do_upgrade() {
 	local diskdev partdev diff
 
 	case "$(board_name)" in
-		"kooiot,tlink-e2-spinand"|\
-		"kooiot,tlink-ex-spinand"|\
-		"kooiot,tlink-dly-e102-spinand")
+		"vanxoak,vx-hd-rk3506-iot-spinand"|\
+		"kooiot,tlink-rk3506-iot-spinand")
 			echo "Do SPI-NAND sysupgrade!!!"
 			CI_KERNPART="kernel"
 			CI_UBIPART="ubi"
