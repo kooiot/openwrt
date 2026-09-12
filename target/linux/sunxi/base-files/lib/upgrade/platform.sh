@@ -233,7 +233,7 @@ platform_do_upgrade() {
 	done < /tmp/partmap.image
 
 	#copy partition uuid
-	# Do not copy parition uuid
+	# Do not copy partition uuid
 	# echo "Writing new UUID to /dev/$diskdev..."
 	# get_image_dd "$1" of="/dev/$diskdev" bs=1 skip=440 count=4 seek=440 conv=fsync
 }
