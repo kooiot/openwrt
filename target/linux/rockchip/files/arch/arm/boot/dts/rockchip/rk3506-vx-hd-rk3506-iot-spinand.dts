@@ -1,0 +1,33 @@
+// SPDX-License-Identifier: (GPL-2.0+ or MIT)
+// Copyright (C) 2026 Dirk Chang <dirk@kooiot.com>
+
+/dts-v1/;
+
+#include "rk3506-vx-hd-rk3506-iot.dts"
+
+/ {
+	model = "HD-RK3506-IOT (SPI-NAND)";
+	compatible = "vanxoak,vx-hd-rk3506-iot-spinand", "rockchip,rk3506";
+
+	chosen {
+		bootargs = "root=/dev/fit0 rootwait";
+	};
+};
+
+&flash {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		boot@0 {
+			label = "boot";
+			reg = <0x0000000 0x0200000>;
+			read-only;
+		};
+
+		ubi0@200000 {
+			label = "ubi";
+			reg = <0x0200000 0x0000000>;
+		};
+	};
+};

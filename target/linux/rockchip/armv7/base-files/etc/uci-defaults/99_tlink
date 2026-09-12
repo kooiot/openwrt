@@ -179,8 +179,9 @@ tlink_default() {
 }
 
 case "$(board_name)" in
-"kooiot,tlink-r4x"|\
-"vanxoak,hd-rk3506-iot")
+"kooiot,tlink-rk3506-iot"|\
+"vanxoak,hd-rk3506-iot"|\
+"vanxoak,hd-rk3506-iot-spinand")
 	tlink_default
 	;;
 esac

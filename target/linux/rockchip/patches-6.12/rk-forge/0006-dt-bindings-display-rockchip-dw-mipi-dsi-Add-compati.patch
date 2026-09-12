@@ -1,0 +1,39 @@
+From 2ba75c0e9efcf72b0944b1323f447c01d0704280 Mon Sep 17 00:00:00 2001
+From: Chaoyi Chen <chaoyi.chen@rock-chips.com>
+Date: Thu, 6 Nov 2025 10:06:26 +0800
+Subject: [PATCH 06/39] dt-bindings: display: rockchip,dw-mipi-dsi: Add
+ compatible for rk3506
+
+Document a compatible string for the rk3506 mipi-dsi.
+
+Signed-off-by: Chaoyi Chen <chaoyi.chen@rock-chips.com>
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patch.msgid.link/20251106020632.92-4-kernel@airkyi.com
+---
+ .../bindings/display/rockchip/rockchip,dw-mipi-dsi.yaml         | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/display/rockchip/rockchip,dw-mipi-dsi.yaml b/Documentation/devicetree/bindings/display/rockchip/rockchip,dw-mipi-dsi.yaml
+index 8e8a40879140..47b531a6f622 100644
+--- a/Documentation/devicetree/bindings/display/rockchip/rockchip,dw-mipi-dsi.yaml
++++ b/Documentation/devicetree/bindings/display/rockchip/rockchip,dw-mipi-dsi.yaml
+@@ -17,6 +17,7 @@ properties:
+           - rockchip,px30-mipi-dsi
+           - rockchip,rk3288-mipi-dsi
+           - rockchip,rk3399-mipi-dsi
++          - rockchip,rk3506-mipi-dsi
+           - rockchip,rk3568-mipi-dsi
+       - const: snps,dw-mipi-dsi
+ 
+@@ -76,6 +77,7 @@ allOf:
+           contains:
+             enum:
+               - rockchip,px30-mipi-dsi
++              - rockchip,rk3506-mipi-dsi
+               - rockchip,rk3568-mipi-dsi
+ 
+     then:
+-- 
+2.55.0
+
