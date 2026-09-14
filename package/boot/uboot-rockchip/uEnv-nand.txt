@@ -1,8 +1,10 @@
 ipaddr=192.168.1.248
 serverip=192.168.1.139
 bootconf=config-1
+kernel_addr_r=0x02080000
+fdt_addr_r=0x01e00000
 mtdids=spi-nand0=0
-mtdparts=mtdparts=0:1M(boot),-(ubi)
+mtdparts=mtdparts=0:2M(boot),-(ubi)
 console=console=ttyS0
 bootcmd=run boot_production
 bootdelay=2
