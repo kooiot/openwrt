@@ -6,7 +6,6 @@ define Device/rk3506
   $(Device/arm32)
   SOC := rk3506
   BOOT_SCRIPT:= rk3506
-  RKIMG_TYPE := rk3506-img
   KERNEL_LOADADDR := 0x03200000
   DEVICE_DTS_LOADADDR := 0x02000000
 endef
@@ -60,7 +59,7 @@ define Device/vanxoak_vx-hd-rk3506-iot
   $(Device/rk3506)
   DEVICE_VENDOR := Vanxoak
   DEVICE_MODEL := HD-RK3506-IOT (SD)
-  UBOOT_DEVICE_NAME := evb-rk3506
+  # UBOOT_DEVICE_NAME := evb-rk3506
   DEVICE_PACKAGES:=kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
     kmod-ledtrig-netdev kmod-ledtrig-gpio \
