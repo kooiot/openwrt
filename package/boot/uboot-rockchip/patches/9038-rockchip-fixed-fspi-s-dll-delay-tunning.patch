@@ -1,7 +1,7 @@
 From 9dcb0741b5f67b00ccc718df8612fcd51ec020db Mon Sep 17 00:00:00 2001
 From: Dirk Chang <dirk@kooiot.com>
 Date: Tue, 8 Sep 2026 22:15:38 +0800
-Subject: [PATCH 9038/9038] rockchip: fixed fspi's dll delay tunning
+Subject: [PATCH] rockchip: fixed fspi's dll delay tunning
 
 ---
  arch/arm/dts/rk3506-u-boot.dtsi |  8 +--

@@ -1,7 +1,7 @@
 From 57a5478dcf922e6fa31739b5828e0912485df91e Mon Sep 17 00:00:00 2001
 From: Dirk Chang <dirk@kooiot.com>
 Date: Sun, 6 Sep 2026 02:25:44 +0800
-Subject: [PATCH 9037/9037] rockchip: correct ubi mtd part offset
+Subject: [PATCH] rockchip: correct ubi mtd part offset
 
 ---
  arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand.dts | 6 +++---

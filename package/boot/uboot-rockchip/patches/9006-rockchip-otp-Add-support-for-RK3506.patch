@@ -1,7 +1,7 @@
 From d38a701a61bc59b1ebf065d8ae3b3f1b5f0d800b Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sat, 31 Jan 2026 23:38:20 +0000
-Subject: [PATCH 9006/9034] rockchip: otp: Add support for RK3506
+Subject: [PATCH] rockchip: otp: Add support for RK3506
 
 Add support for the OTP controller in RK3506. The OTPC is similar to the
 OTPC in RK3568 and can use the same ops for reading OTP data.

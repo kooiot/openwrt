@@ -1,8 +1,8 @@
 From d13e71f32d58a6af75199402bd708f0ea56385f0 Mon Sep 17 00:00:00 2001
 From: CharlieChen114514 <725610365@qq.com>
 Date: Sun, 21 Jun 2026 10:50:05 +0800
-Subject: [PATCH 9024/9034] uboot: evb-rk3506 SD autoboot via
- CONFIG_BOOTCOMMAND (mmc read + bootm)
+Subject: [PATCH] uboot: evb-rk3506 SD autoboot via CONFIG_BOOTCOMMAND (mmc
+ read + bootm)
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit

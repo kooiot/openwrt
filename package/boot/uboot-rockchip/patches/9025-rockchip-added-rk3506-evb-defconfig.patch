@@ -1,7 +1,7 @@
 From cf16df43dc443561ccbcf0bb6629126c3918ecc4 Mon Sep 17 00:00:00 2001
 From: Dirk Chang <dirk@kooiot.com>
 Date: Thu, 3 Sep 2026 16:26:52 +0800
-Subject: [PATCH 9025/9034] rockchip: added rk3506 evb defconfig
+Subject: [PATCH] rockchip: added rk3506 evb defconfig
 
 ---
  configs/evb-rk3506_defconfig | 52 ++++++++++++++++++++++++++++++++++++

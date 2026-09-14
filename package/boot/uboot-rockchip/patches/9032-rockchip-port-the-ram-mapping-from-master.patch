@@ -1,7 +1,7 @@
 From 7a9d9ff81c5402a2204fef070ea46b96154f27f4 Mon Sep 17 00:00:00 2001
 From: Dirk Chang <dirk@kooiot.com>
 Date: Sat, 5 Sep 2026 23:33:17 +0800
-Subject: [PATCH 9032/9034] rockchip: port the ram mapping from master
+Subject: [PATCH] rockchip: port the ram mapping from master
 
 ---
  arch/arm/mach-rockchip/Kconfig                | 47 ++++++++++++++-----

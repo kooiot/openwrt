@@ -1,7 +1,7 @@
 From 22e1c3578d60172538e442a11d7a16dbe289f0ba Mon Sep 17 00:00:00 2001
 From: Dirk Chang <dirk@kooiot.com>
 Date: Sat, 5 Sep 2026 23:24:54 +0800
-Subject: [PATCH 9031/9034] spl: support rockchip SPI NAND boot
+Subject: [PATCH] spl: support rockchip SPI NAND boot
 
 ---
  arch/arm/mach-rockchip/spl-boot-order.c |  9 +++

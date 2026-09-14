@@ -1,7 +1,7 @@
 From 3eb1b9355aeec29de9f6e73e47f295a104d6d61c Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sat, 15 Aug 2026 13:26:49 +0000
-Subject: [PATCH 9016/9034] rockchip: rk3506: Identify RK3506Gx SoC variants
+Subject: [PATCH] rockchip: rk3506: Identify RK3506Gx SoC variants
 
 OTP data at offset 0x36 and 0x37 can be used to help identify G-variants
 of the RK3506 SoC.

@@ -1,7 +1,7 @@
 From 2cb48bc1d6f6b757ec460c3eda8f3cc11828e62c Mon Sep 17 00:00:00 2001
 From: Dirk Chang <dirk@kooiot.com>
 Date: Thu, 3 Sep 2026 16:52:19 +0800
-Subject: [PATCH 9026/9034] arm: dts: rockchip rk3506 sfc spi improve
+Subject: [PATCH] arm: dts: rockchip rk3506 sfc spi improve
 
 ---
  arch/arm/dts/rk3506.dtsi | 4 +++-

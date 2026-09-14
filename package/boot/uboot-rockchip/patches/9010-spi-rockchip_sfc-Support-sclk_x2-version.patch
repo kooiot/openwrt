@@ -1,7 +1,7 @@
 From 91cb86fe885fe9fee353c40b876e092a8e517f02 Mon Sep 17 00:00:00 2001
 From: Jon Lin <jon.lin@rock-chips.com>
 Date: Sun, 19 Oct 2025 15:47:15 +0000
-Subject: [PATCH 9010/9034] spi: rockchip_sfc: Support sclk_x2 version
+Subject: [PATCH] spi: rockchip_sfc: Support sclk_x2 version
 
 SFC after version 8 supports dtr mode, so the IO is the binary output of
 the controller clock.
