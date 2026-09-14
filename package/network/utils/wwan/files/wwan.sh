@@ -73,7 +73,7 @@ proto_wwan_setup() {
 		done
 	fi
 
-	echo "wwan[$$]" "Using usb device $devicename : $susb"
+	echo "wwan[$$]" "Using usb device $devicename : $usb"
 
 	[ -n "$usb" ] && {
 		local old_cb control data
@@ -92,6 +92,12 @@ proto_wwan_setup() {
 			}
 			[ -n "$data" ] && {
 				dat_device=/dev/$(echo $ttys | cut -d" " -f $((data + 1)))
+			}
+			# Validate tty ports before using it
+			[ "$ctl_device" = "/dev/" -o "$dat_device" = "/dev/" -o "$ctl_device" = "$dat_device" ] &&  {
+				echo "Failed to get modem tty ports"
+				proto_notify_error "$interface" NO_DEVICE
+				return 1
 			}
 		}
 		case $type in
@@ -131,7 +137,7 @@ proto_wwan_setup() {
 		echo "wwan[$$]" "Using proto:$proto device:$ctl_device iface:$net desc:$desc"
 	done
 
-	[ -n "$ctl_device" -o "$ctl_device" = "/dev/" ] || {
+	[ -n "$ctl_device" ] || {
 		echo "wwan[$$]" "No valid device was found"
 		proto_notify_error "$interface" NO_DEVICE
 		proto_block_restart "$interface"
