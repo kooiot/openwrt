@@ -1,7 +1,7 @@
 From 148a387cfb3ee1afd262f578ecf93b109786a203 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Tue, 4 Aug 2026 10:57:17 +0000
-Subject: [PATCH 9018/9034] rockchip: rk3506: Remove unneeded syscon driver
+Subject: [PATCH] rockchip: rk3506: Remove unneeded syscon driver
 
 Modern Rockchip device drivers use syscon_regmap_lookup_by_phandle()
 to get a regmap or use a constant to get the fixed base address.

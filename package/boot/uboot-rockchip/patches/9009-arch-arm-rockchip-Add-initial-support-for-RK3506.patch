@@ -1,7 +1,7 @@
 From cc4dc5d3fe061bbd83220dbd13c5eeb1ff2f67a2 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sat, 31 Jan 2026 23:38:23 +0000
-Subject: [PATCH 9009/9034] arch: arm: rockchip: Add initial support for RK3506
+Subject: [PATCH] arch: arm: rockchip: Add initial support for RK3506
 
 Rockchip RK3506 is a ARM-based SoC with tri-core Cortex-A7.
 

@@ -1,7 +1,7 @@
 From 877128aecd0f14caecf7f85b75d68cbe062bd3e9 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Wed, 5 Feb 2025 01:24:07 +0000
-Subject: [PATCH 9013/9034] rockchip: rk3506: Enable use of SPL_OPTEE_IMAGE
+Subject: [PATCH] rockchip: rk3506: Enable use of SPL_OPTEE_IMAGE
 
 Vendor OP-TEE blob provides PSCI that is used to enable CPU cores on
 RK3506. The OP-TEE blob is expected to be loaded and executed from

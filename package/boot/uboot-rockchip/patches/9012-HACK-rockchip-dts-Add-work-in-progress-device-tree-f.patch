@@ -1,8 +1,8 @@
 From da510ef62f47f299a9d9172861f8d1e918ce1360 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Wed, 5 Feb 2025 01:16:05 +0000
-Subject: [PATCH 9012/9034] HACK: rockchip: dts: Add work-in-progress device
- tree files for RK3506
+Subject: [PATCH] HACK: rockchip: dts: Add work-in-progress device tree files
+ for RK3506
 
 Add work-in-progress device tree files for RK3506 until reviewed DTs
 have landed in dts/upstream.

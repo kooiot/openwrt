@@ -1,8 +1,7 @@
 From a66b3b811d308cfe42d0830cc6b0928ffdffe110 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Tue, 4 Aug 2026 21:44:39 +0000
-Subject: [PATCH 9019/9034] rockchip: rk3506: Remove unused rockchip_get_clk()
- helper
+Subject: [PATCH] rockchip: rk3506: Remove unused rockchip_get_clk() helper
 
 The rockchip_get_clk() helper is typically used by SDRAM init code of
 older SoC generations or to help get the CRU base address from the clock

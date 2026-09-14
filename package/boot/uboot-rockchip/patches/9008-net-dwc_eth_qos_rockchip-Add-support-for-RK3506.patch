@@ -1,7 +1,7 @@
 From ccf2aff98c3fc8edb16babe690c58c0e788a2600 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sat, 31 Jan 2026 23:38:22 +0000
-Subject: [PATCH 9008/9034] net: dwc_eth_qos_rockchip: Add support for RK3506
+Subject: [PATCH] net: dwc_eth_qos_rockchip: Add support for RK3506
 
 Rockchip RK3506 has two Ethernet controllers based on Synopsys DWC
 Ethernet QoS IP.

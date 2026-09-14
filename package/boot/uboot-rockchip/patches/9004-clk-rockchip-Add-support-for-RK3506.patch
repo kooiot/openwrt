@@ -1,7 +1,7 @@
 From a4826bccdbe2138667afc658c1413b79032bd9f7 Mon Sep 17 00:00:00 2001
 From: Finley Xiao <finley.xiao@rock-chips.com>
 Date: Sat, 31 Jan 2026 23:38:17 +0000
-Subject: [PATCH 9004/9034] clk: rockchip: Add support for RK3506
+Subject: [PATCH] clk: rockchip: Add support for RK3506
 
 Add clock driver for RK3506.
 

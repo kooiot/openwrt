@@ -1,7 +1,7 @@
 From 7649215c51a62d59e5fa726fd75feb59cb5c425b Mon Sep 17 00:00:00 2001
 From: Dirk Chang <dirk@kooiot.com>
 Date: Thu, 3 Sep 2026 17:54:22 +0800
-Subject: [PATCH 9028/9034] defconfig: added vanxoak hd-rk3506-iot boards
+Subject: [PATCH] defconfig: added vanxoak hd-rk3506-iot boards
 
 ---
  configs/vx-hd-rk3506-iot-spinand_defconfig | 92 ++++++++++++++++++++++

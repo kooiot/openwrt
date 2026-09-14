@@ -1,7 +1,7 @@
 From 27996d161f1f4a1a17ea78fca0be1f75ee5afd92 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sat, 31 Jan 2026 23:38:15 +0000
-Subject: [PATCH 9002/9034] ram: rockchip: Add basic support for RK3506
+Subject: [PATCH] ram: rockchip: Add basic support for RK3506
 
 Add support for reading DRAM size information from PMUGRF os_reg2 reg.
 

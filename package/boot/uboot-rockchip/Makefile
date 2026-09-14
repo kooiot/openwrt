@@ -19,7 +19,7 @@ include $(INCLUDE_DIR)/package.mk
 
 define U-Boot/Default
   BUILD_TARGET:=rockchip
-  UENV:=
+  UENV:=default
   HIDDEN:=1
 endef
 
@@ -29,8 +29,8 @@ endef
 define U-Boot/rk3308/Default
   BUILD_SUBTARGET:=armv8
   DEPENDS:=+PACKAGE_u-boot-$(1):trusted-firmware-a-rk3308
-  ATF:=rk3308_bl31_v2.27.elf
-  TPL:=rk3308_ddr_589MHz_uart2_m1_v2.10.bin
+  ATF:=rk3308_bl31_v2.28.elf
+  TPL:=rk3308_ddr_589MHz_uart2_m1_v2.11.bin
 endef
 
 define U-Boot/rock-pi-s-rk3308
@@ -176,8 +176,15 @@ endef
 define U-Boot/rk3506/Default
   BUILD_SUBTARGET:=armv7
   DEPENDS:=+PACKAGE_u-boot-$(1):trusted-firmware-a-rk3506
-  TEE:=rk3506_tee_v2.40.bin
-  TPL:=rk3506_ddr_750MHz_v1.06.bin
+  TEE:=rk3506_tee_v2.50.bin
+  TPL:=rk3506_ddr_750MHz_v1.08.bin
+endef
+
+define U-Boot/vx-hd-rk3506-iot
+  $(U-Boot/rk3506/Default)
+  NAME:=HD-RK3506-IOT (SD)
+  BUILD_DEVICES:= \
+       vanxoak_vx-hd-rk3506-iot
 endef
 
 define U-Boot/vx-hd-rk3506-iot-spinand
@@ -225,8 +232,8 @@ endef
 define U-Boot/rk3566/Default
   BUILD_SUBTARGET:=armv8
   DEPENDS:=+PACKAGE_u-boot-$(1):trusted-firmware-a-rk3566
-  ATF:=rk3568_bl31_v1.45.elf
-  TPL:=rk3566_ddr_1056MHz_v1.23.bin
+  ATF:=rk3568_bl31_v1.46.elf
+  TPL:=rk3566_ddr_1056MHz_v1.26.bin
 endef
 
 define U-Boot/nanopi-r3s-rk3566
@@ -263,8 +270,8 @@ endef
 define U-Boot/rk3568/Default
   BUILD_SUBTARGET:=armv8
   DEPENDS:=+PACKAGE_u-boot-$(1):trusted-firmware-a-rk3568
-  ATF:=rk3568_bl31_v1.45.elf
-  TPL:=rk3568_ddr_1560MHz_v1.23.bin
+  ATF:=rk3568_bl31_v1.46.elf
+  TPL:=rk3568_ddr_1560MHz_v1.26.bin
 endef
 
 define U-Boot/bpi-r2-pro-rk3568
@@ -364,7 +371,7 @@ define U-Boot/rk3576/Default
 	+PACKAGE_u-boot-$(1):trusted-firmware-a-rk3576 \
 	+PACKAGE_u-boot-$(1):trusted-firmware-a-rk3576-tpl
   ATF:=rk3576_bl31.elf
-  TPL:=rk3576_ddr_lp4_2112MHz_lp5_2736MHz_v1.09.bin
+  TPL:=rk3576_ddr_lp4_2112MHz_lp5_2736MHz_v1.13.bin
 endef
 
 define U-Boot/generic-rk3576
@@ -480,6 +487,7 @@ UBOOT_TARGETS := \
   roc-cc-rk3328 \
   rock64-rk3328 \
   rock-pi-e-rk3328 \
+  vx-hd-rk3506-iot \
   vx-hd-rk3506-iot-spinand \
   opc-h68k-rk3568 \
   station-p2-rk3568 \
