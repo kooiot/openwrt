@@ -1,8 +1,8 @@
 From 18be057c2dd2fff53ba9665703ac8e957ddbdf02 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sat, 4 Jul 2026 02:27:31 +0000
-Subject: [PATCH 9011/9034] rockchip: spl: Allow use of
- ROCKCHIP_SPL_RESERVE_IRAM on ARMv7
+Subject: [PATCH] rockchip: spl: Allow use of ROCKCHIP_SPL_RESERVE_IRAM on
+ ARMv7
 
 Users of ROCKCHIP_SPL_RESERVE_IRAM started to be removed with the commit
 5ce94c74a6b5 ("rockchip: rk3399: defconfig: no need to reserve IRAM for

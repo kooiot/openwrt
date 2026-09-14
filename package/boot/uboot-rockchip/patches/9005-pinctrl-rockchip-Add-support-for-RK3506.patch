@@ -1,7 +1,7 @@
 From 3d8e410ce12d5ec32181225ab34b92a955a27d4d Mon Sep 17 00:00:00 2001
 From: Ye Zhang <ye.zhang@rock-chips.com>
 Date: Sat, 31 Jan 2026 23:38:19 +0000
-Subject: [PATCH 9005/9034] pinctrl: rockchip: Add support for RK3506
+Subject: [PATCH] pinctrl: rockchip: Add support for RK3506
 
 Add pinctrl driver for RK3506.
 

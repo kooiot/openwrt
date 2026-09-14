@@ -1,7 +1,7 @@
 From 2edb11ea8ca76c56deb213a002c84bccda66e84f Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sat, 31 Jan 2026 23:38:21 +0000
-Subject: [PATCH 9007/9034] phy: rockchip-inno-usb2: Add support for RK3506
+Subject: [PATCH] phy: rockchip-inno-usb2: Add support for RK3506
 
 Add support for the two USB2.0 PHYs use in the RK3506 SoC.
 

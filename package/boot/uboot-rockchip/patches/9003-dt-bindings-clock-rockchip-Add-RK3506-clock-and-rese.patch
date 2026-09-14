@@ -1,8 +1,7 @@
 From d70395bcd26f2ec007a355dbaa84582f04bd58d0 Mon Sep 17 00:00:00 2001
 From: Finley Xiao <finley.xiao@rock-chips.com>
 Date: Sat, 31 Jan 2026 23:38:16 +0000
-Subject: [PATCH 9003/9034] dt-bindings: clock: rockchip: Add RK3506 clock and
- reset unit
+Subject: [PATCH] dt-bindings: clock: rockchip: Add RK3506 clock and reset unit
 
 Add device tree bindings for clock and reset unit on RK3506 SoC.
 Add clock and reset IDs for RK3506 SoC.

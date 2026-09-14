@@ -1,7 +1,7 @@
 From e53759a64bb2d84f666fb950ee21ac6641db30ee Mon Sep 17 00:00:00 2001
 From: Dirk Chang <dirk@kooiot.com>
 Date: Sun, 6 Sep 2026 00:04:47 +0800
-Subject: [PATCH 2/2] rockchip: correct RK3506's SRAM start address
+Subject: [PATCH] rockchip: correct RK3506's SRAM start address
 
 ---
  arch/arm/mach-rockchip/Kconfig             | 2 +-

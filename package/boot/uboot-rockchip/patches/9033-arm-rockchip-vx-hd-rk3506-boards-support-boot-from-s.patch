@@ -1,8 +1,7 @@
 From 41b630439493e7d2a9ca3507f159552d5df2b5f3 Mon Sep 17 00:00:00 2001
 From: Dirk Chang <dirk@kooiot.com>
 Date: Sat, 5 Sep 2026 23:34:14 +0800
-Subject: [PATCH 9033/9034] arm: rockchip: vx-hd-rk3506 boards support boot
- from spi nand
+Subject: [PATCH] arm: rockchip: vx-hd-rk3506 boards support boot from spi nand
 
 ---
  ...k3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi |  6 ++++++

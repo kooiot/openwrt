@@ -1,7 +1,7 @@
 From 2371daf4553a7fe7215c24c10120b43915a49905 Mon Sep 17 00:00:00 2001
 From: Dirk Chang <dirk@kooiot.com>
 Date: Thu, 3 Sep 2026 16:57:10 +0800
-Subject: [PATCH 9027/9034] arm: dts: added vanxoak hd-3506-iot device dts
+Subject: [PATCH] arm: dts: added vanxoak hd-3506-iot device dts
 
 ---
  arch/arm/dts/Makefile                         |   5 +-

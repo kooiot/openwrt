@@ -1,7 +1,7 @@
 From dbf39cfd96ac7b25fd58e5023e2d3f881ef28054 Mon Sep 17 00:00:00 2001
 From: Dirk Chang <dirk@kooiot.com>
 Date: Sun, 6 Sep 2026 02:17:14 +0800
-Subject: [PATCH 1/1] rockchip: support LZMA compresss
+Subject: [PATCH] rockchip: support LZMA compresss
 
 ---
  configs/vx-hd-rk3506-iot-spinand_defconfig | 2 ++

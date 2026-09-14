@@ -1,8 +1,7 @@
 From 5b9c85fde85b179b73bc4ce196c6f6162acaa28b Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Thu, 30 Jul 2026 14:13:02 +0000
-Subject: [PATCH 9015/9034] clk: rockchip: rk3506: Fix trivial clock
- configuration errors
+Subject: [PATCH] clk: rockchip: rk3506: Fix trivial clock configuration errors
 
 The RK3506 clock driver has a few trivial copy-paste mistakes in its
 clock handling.

@@ -1,7 +1,7 @@
 From 0504c356b87c4c88d8c9140afb7561502560ec78 Mon Sep 17 00:00:00 2001
 From: Dirk Chang <dirk@kooiot.com>
 Date: Thu, 3 Sep 2026 19:25:51 +0800
-Subject: [PATCH 9030/9034] rockchip: fixed cherry-pick compile errors
+Subject: [PATCH] rockchip: fixed cherry-pick compile errors
 
 ---
  arch/arm/dts/Makefile                         |  2 +-

@@ -1,7 +1,7 @@
 From 138e8a2b2a99260701b23c90395d5e57e5f693d9 Mon Sep 17 00:00:00 2001
 From: Dirk Chang <dirk@kooiot.com>
 Date: Sun, 6 Sep 2026 00:04:17 +0800
-Subject: [PATCH 1/2] mtd: nand: xtx spi nand supports more chips
+Subject: [PATCH] mtd: nand: xtx spi nand supports more chips
 
 ---
  drivers/mtd/nand/spi/xtx.c | 218 +++++++++++++++++++++++++++++++++++++

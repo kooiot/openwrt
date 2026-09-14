@@ -1,7 +1,7 @@
 From b0ef4d67836f89717ab0de6b8035062c2c41b381 Mon Sep 17 00:00:00 2001
 From: CharlieChen114514 <725610365@qq.com>
 Date: Wed, 17 Jun 2026 00:04:04 +0800
-Subject: [PATCH 9023/9034] spi: rockchip_sfc: DLL tuning + WPEN; dts: SFC node
+Subject: [PATCH] spi: rockchip_sfc: DLL tuning + WPEN; dts: SFC node
 
 Mirror of the linux-side SFC fix for U-Boot:
 - sampling delay-line tuning (vendor rockchip_sfc_delay_lines_tuning ported)

@@ -1,7 +1,7 @@
 From f49aab30354e6c610f0c7f95b5e1f62c366b0bfc Mon Sep 17 00:00:00 2001
 From: Xuhui Lin <xuhui.lin@rock-chips.com>
 Date: Sat, 31 Jan 2026 23:38:14 +0000
-Subject: [PATCH 9001/9034] rockchip: mkimage: Add support for RK3506
+Subject: [PATCH] rockchip: mkimage: Add support for RK3506
 
 Add support for generating Rockchip Boot Image for RK3506.
 

@@ -1,7 +1,7 @@
 From d78851ce413a37297c84e06470c6c4e1dc953089 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Mon, 3 Aug 2026 19:09:41 +0000
-Subject: [PATCH 9020/9034] adc: rockchip-saradc: Add driver data for RK3506
+Subject: [PATCH] adc: rockchip-saradc: Add driver data for RK3506
 
 The SARADC dt-bindings fallback for RK3506, rockchip,rk3528-saradc,
 instructs the driver to request a 1 MHz clock rate. However, CLK_SARADC

@@ -1,8 +1,7 @@
 From 53983b2fab7afae97affb20f36fae5f99233096a Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Mon, 3 Aug 2026 19:09:42 +0000
-Subject: [PATCH 9014/9034] clk: rockchip: rk3506: Fix CLK_SARADC set rate
- issues
+Subject: [PATCH] clk: rockchip: rk3506: Fix CLK_SARADC set rate issues
 
 The set_rate ops for the CLK_SARADC clock in RK3506 clock driver
 force use of 32 KHz or 400 KHz rates when any requested rate is
