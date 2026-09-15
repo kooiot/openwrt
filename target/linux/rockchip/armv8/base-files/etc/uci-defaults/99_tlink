@@ -91,6 +91,19 @@ EOF
 	fi
 }
 
+tlink_mount_tfcard() {
+	rule_name=$(uci add fstab mount)
+	uci batch <<EOF
+set fstab.$rule_name.target='/mnt/sdcard'
+set fstab.$rule_name.device='/dev/mmcblk0p1'
+set fstab.$rule_name.enabled='1'
+set fstab.$rule_name.check_fs='1'
+EOF
+	uci commit fstab
+
+	return 0
+}
+
 tlink_add_wwan_interface() {
 	uci set network.wwan='interface'
 	uci set network.wwan.proto='wwan'
@@ -314,6 +327,12 @@ tlink_default() {
 		tlink_mount_storage )
 	then
 		echo "Storage disk mount point added!" > /dev/kmsg
+	fi
+	# add tf-card partition mount
+	if ( grep -qs '/mnt/tfcard' /etc/config/fstab || \
+		tlink_mount_tfcard )
+	then
+		echo "TF-Card mount point added!!!" > /dev/kmsg
 	fi
 
 	#case "$(board_name)" in
