@@ -19,16 +19,16 @@ tlink_mount_data() {
 	fi
 	# 检查data分区是否存在
 	if [ ! -b $data_blk_p ]; then
-		echo "ERROR: EMC data partition not found!!!" > /dev/kmsg
+		echo "ERROR: eMMC data partition not found!!!" > /dev/kmsg
 		return 1
 	fi
 
 	if [ -b "/dev/mmcblk1p4"]; then
-		echo "EMC not initialized!!!" > /dev/kmsg
+		echo "eMMC not initialized!!!" > /dev/kmsg
 		return 1
 	fi
 	if [ -b "/dev/mmcblk1p5"]; then
-		echo "EMC not initialized!!!" > /dev/kmsg
+		echo "eMMC not initialized!!!" > /dev/kmsg
 		return 1
 	fi
 
@@ -54,6 +54,19 @@ find_backup_dev() {
         fi
     done
     return 1
+}
+
+tlink_mount_tfcard() {
+	rule_name=$(uci add fstab mount)
+	uci batch <<EOF
+set fstab.$rule_name.target='/mnt/sdcard'
+set fstab.$rule_name.device='/dev/mmcblk0p1'
+set fstab.$rule_name.enabled='1'
+set fstab.$rule_name.check_fs='1'
+EOF
+	uci commit fstab
+
+	return 0
 }
 
 tlink_mount_ubi_backup() {
@@ -319,6 +332,12 @@ tlink_default() {
 		tlink_mount_ubi_backup )
 	then
 		echo "UBI Backup parition mount point added!!!" > /dev/kmsg
+	fi
+	# add tf-card partition mount
+	if ( grep -qs '/mnt/tfcard' /etc/config/fstab || \
+		tlink_mount_tfcard )
+	then
+		echo "TF-Card mount point added!!!" > /dev/kmsg
 	fi
 
 	case "$(board_name)" in
