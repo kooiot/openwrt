@@ -1,0 +1,41 @@
+CONFIG_TARGET_rockchip=y
+CONFIG_TARGET_rockchip_armv7=y
+CONFIG_TARGET_rockchip_armv7_DEVICE_vanxoak_vx-hd-rk3506-iot-spinand=y
+CONFIG_BUSYBOX_CUSTOM=y
+CONFIG_BRCMFMAC_PCIE=y
+CONFIG_BRCMFMAC_SDIO=y
+CONFIG_BRCMFMAC_USB=y
+CONFIG_BUSYBOX_CONFIG_BC=y
+CONFIG_DRIVER_11AC_SUPPORT=y
+CONFIG_LUCI_LANG_zh_Hans=y
+CONFIG_PACKAGE_brcmfmac-firmware-usb=y
+# CONFIG_PACKAGE_freeioe is not set
+CONFIG_PACKAGE_kmod-bluetooth=y
+CONFIG_PACKAGE_kmod-brcmfmac=y
+CONFIG_PACKAGE_kmod-brcmutil=y
+CONFIG_PACKAGE_kmod-crypto-ecb=y
+CONFIG_PACKAGE_kmod-crypto-ecdh=y
+CONFIG_PACKAGE_kmod-crypto-kpp=y
+CONFIG_PACKAGE_kmod-hid=y
+CONFIG_PACKAGE_kmod-input-core=y
+CONFIG_PACKAGE_kmod-input-evdev=y
+CONFIG_PACKAGE_kmod-lib-crc16=y
+CONFIG_PACKAGE_kmod-phy-realtek=y
+CONFIG_PACKAGE_kmod-rtc-hym8563=y
+CONFIG_PACKAGE_kmod-rtc-sd3078=y
+CONFIG_PACKAGE_libopenssl-v1=y
+CONFIG_PACKAGE_libreadline=y
+# CONFIG_PACKAGE_luci-app-freeioe is not set
+CONFIG_PACKAGE_luci-i18n-base-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-firewall-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-package-manager-zh-cn=y
+# CONFIG_PACKAGE_skynet is not set
+CONFIG_PACKAGE_symlink-psn=y
+CONFIG_PACKAGE_yolink=y
+# CONFIG_TARGET_ROOTFS_EXT4FS is not set
+CONFIG_TARGET_ROOTFS_PARTSIZE=100
+CONFIG_OPENSSL_ENGINE_BUILTIN=y
+# CONFIG_OPENSSL_ENGINE_BUILTIN_AFALG is not set
+# CONFIG_OPENSSL_ENGINE_BUILTIN_DEVCRYPTO is not set
+CONFIG_OPENSSL_WITH_SM234=y
+CONFIG_PACKAGE_process-monitor=y
