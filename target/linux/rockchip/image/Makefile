@@ -95,6 +95,8 @@ define Build/armv7-backup-ubifs
 
 	$(STAGING_DIR_HOST)/bin/mkfs.ubifs \
 		-r $@.backup -F -m $(PAGESIZE) -e 124KiB -c 64 -U -v -o $@.backup.ubifs
+
+	rm -rf $@.backup
 endef
 
 define Device/NAND
