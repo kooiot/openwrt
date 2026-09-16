@@ -665,8 +665,6 @@ define Device/kooiot_tlink-k2
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
     kmod-usb-net-asix kmod-serial-wk2xxx-spi \
-	kmod-phy-motorcomm \
-    uqmi fdisk usbutils freeioe wwanleds \
     uqmi fdisk usbutils freeioe wwan-watch \
     luci-app-freeioe \
 	luci-proto-qmi luci-proto-3g luci-proto-ncm luci-proto-wwan \
@@ -693,7 +691,7 @@ define Device/kooiot_tlink-k2x
     kmod-usb-net-asix kmod-serial-wk2xxx-spi \
 	kmod-can kmod-can-mcp251x \
 	kmod-can-bcm kmod-can-raw ip-full\
-	kmod-phy-motorcomm kmod-motorcomm-yt8512c \
+    kmod-phy-motorcomm \
     uqmi fdisk usbutils freeioe wwan-watch \
 	luci-proto-qmi luci-proto-3g luci-proto-ncm luci-proto-wwan \
 	luci-app-freeioe luci-app-ser2net tinc-freeioe-tunnel \
@@ -721,7 +719,7 @@ define Device/kooiot_tlink-k4a
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
     kmod-serial-ch9434 kmod-can kmod-can-mcp251x \
     kmod-can-bcm kmod-can-raw ip-full\
-	kmod-phy-motorcomm kmod-motorcomm-yt8512c \
+    kmod-phy-motorcomm \
     uqmi fdisk usbutils freeioe wwan-watch \
 	luci-proto-qmi luci-proto-3g luci-proto-ncm luci-proto-wwan \
     luci-app-freeioe luci-app-ser2net tinc-freeioe-tunnel\
@@ -749,7 +747,7 @@ define Device/kooiot_tlink-k4g
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
     kmod-serial-ch9434 kmod-can kmod-can-mcp251x \
     kmod-can-bcm kmod-can-raw ip-full\
-	kmod-phy-motorcomm kmod-motorcomm-yt8512c \
+    kmod-phy-motorcomm \
     uqmi fdisk usbutils freeioe wwan-watch \
 	luci-proto-qmi luci-proto-3g luci-proto-ncm luci-proto-wwan \
     luci-app-freeioe luci-app-ser2net tinc-freeioe-tunnel\

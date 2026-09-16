@@ -10,7 +10,7 @@
  	sun8i-s3-pinecube.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-r40-tlink-k1.dts
-@@ -0,0 +1,649 @@
+@@ -0,0 +1,653 @@
 +/*
 + * Copyright (C) 2021 Dirk Chang <dirk@kooiot.com>
 + *
@@ -317,6 +317,10 @@
 +		// reset-deassert-us = <1000000>;
 +		// interrupt-parent = <&pio>;
 +		// interrupts = <&pio 0 17 GPIO_ACTIVE_LOW>; /* PA17 */
++		rx-internal-delay-ps = <2250>;
++		tx-internal-delay-ps = <2250>;
++		motorcomm,auto-sleep-disabled;
++		motorcomm,keep-pll-enabled;
 +		motorcomm,led1 = <0x1e00>;
 +		motorcomm,led2 = <0x24>;
 +	};
