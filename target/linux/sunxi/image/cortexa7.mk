@@ -708,6 +708,7 @@ define Device/kooiot_tlink-e1-v0
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-can-bcm kmod-can-raw ip-full\
+    kmod-phy-motorcomm \
     uqmi fdisk usbutils freeioe wwan-watch \
     luci-app-freeioe luci-proto-qmi luci-proto-3g luci-proto-wwan \
     tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
@@ -728,6 +729,7 @@ define Device/kooiot_tlink-e1
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-can-bcm kmod-can-raw ip-full\
+    kmod-phy-motorcomm \
     uqmi fdisk usbutils freeioe wwan-watch \
     luci-app-freeioe \
 	luci-proto-qmi luci-proto-3g luci-proto-ncm luci-proto-wwan \
@@ -750,6 +752,7 @@ define Device/kooiot_tlink-e2
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-can-bcm kmod-can-raw ip-full\
+    kmod-phy-motorcomm \
     uqmi fdisk usbutils freeioe wwan-watch \
     luci-app-freeioe \
 	luci-proto-qmi luci-proto-3g luci-proto-ncm luci-proto-wwan \
@@ -773,6 +776,7 @@ define Device/kooiot_tlink-e2-spinand
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-can-bcm kmod-can-raw ip-full\
+    kmod-phy-motorcomm \
     uqmi fdisk usbutils freeioe wwan-watch \
     luci-app-freeioe \
 	luci-proto-qmi luci-proto-3g luci-proto-ncm luci-proto-wwan \
@@ -795,6 +799,7 @@ define Device/kooiot_tlink-ex
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-can-bcm kmod-can-raw ip-full\
+    kmod-phy-motorcomm \
     uqmi fdisk usbutils freeioe wwan-watch \
     luci-app-freeioe \
 	luci-proto-qmi luci-proto-3g luci-proto-ncm luci-proto-wwan \
@@ -818,6 +823,7 @@ define Device/kooiot_tlink-ex-spinand
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-can-bcm kmod-can-raw ip-full\
+    kmod-phy-motorcomm \
     uqmi fdisk usbutils freeioe wwan-watch \
     luci-app-freeioe \
 	luci-proto-qmi luci-proto-3g luci-proto-ncm luci-proto-wwan \
@@ -840,6 +846,7 @@ define Device/kooiot_tlink-dly-e102
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-can-bcm kmod-can-raw ip-full\
     uqmi fdisk usbutils freeioe wwan-watch \
+    kmod-phy-motorcomm \
     luci-app-freeioe \
 	luci-proto-qmi luci-proto-3g luci-proto-ncm luci-proto-wwan \
     tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
@@ -862,6 +869,7 @@ define Device/kooiot_tlink-dly-e102-spinand
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-can-bcm kmod-can-raw ip-full\
+    kmod-phy-motorcomm \
     uqmi fdisk usbutils freeioe wwan-watch \
     luci-app-freeioe \
 	luci-proto-qmi luci-proto-3g luci-proto-ncm luci-proto-wwan \
@@ -884,6 +892,7 @@ define Device/kooiot_tlink-dly-e204
     kmod-usb-serial kmod-usb-serial-option \
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-can-bcm kmod-can-raw ip-full\
+    kmod-phy-motorcomm \
     uqmi fdisk usbutils freeioe wwan-watch \
     luci-app-freeioe \
 	luci-proto-qmi luci-proto-3g luci-proto-ncm luci-proto-wwan \
