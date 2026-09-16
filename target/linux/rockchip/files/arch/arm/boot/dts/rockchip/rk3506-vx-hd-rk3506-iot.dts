@@ -265,6 +265,8 @@
 &mdio0 {
 	rmii_phy0: phy@1 {
 		compatible = "ethernet-phy-ieee802.3-c22";
+		motorcomm,led0 = <0x30>;
+		motorcomm,led1 = <0x331>;
 		reg = <0x0>;
 	};
 };
@@ -293,6 +295,8 @@
 &mdio1 {
 	rmii_phy1: phy@0 {
 		compatible = "ethernet-phy-ieee802.3-c22";
+		motorcomm,led0 = <0x30>;
+		motorcomm,led1 = <0x331>;
 		reg = <0x0>;
 	};
 };
