@@ -12,7 +12,7 @@
  	sun9i-a80-cubieboard4.dtb
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-t113-tlink-ex.dts
-@@ -0,0 +1,538 @@
+@@ -0,0 +1,517 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 +
@@ -216,30 +216,38 @@
 +		};
 +	};
 +
-+	wifi_pwrseq: wifi-pwrseq {
-+		compatible = "mmc-pwrseq-simple";
-+		// pinctrl-names = "default";
-+		// pinctrl-0 = <&wifi_en_pin>;
-+		post-power-on-delay-ms = <50>;
-+		reset-gpios = <&pio 6 13 GPIO_ACTIVE_LOW>; /* PG13 */
++	/* 默认开启，并可以控制 */
++	usb_modem_power: usb-modem-power {
++		compatible = "regulator-fixed";
++		regulator-name = "modem-pwrkey";
++		gpio = <&pio 3 9 GPIO_ACTIVE_HIGH>; /* PD9 */
++		startup-delay-us = <1000000>;       /* 1s ( 700ms最少 )*/
++		enable-active-high;
++		regulator-boot-on;
++		regulator-always-on;
 +	};
 +
-+	/* 默认开启，并可以控制 */
-+    usb_modem_power: usb-modem-power {
-+        compatible = "regulator-fixed";
-+        regulator-name = "modem-pwrkey";
-+        gpio = <&pio 3 9 GPIO_ACTIVE_HIGH>; /* PD9 */
-+        startup-delay-us = <1000000>;       /* 1s ( 700ms最少 )*/
-+        regulator-boot-on;
-+    };
++	/* WIFI USB 模组使能 */
++	wifi_power: wifi-power {
++		compatible = "regulator-fixed";
++		regulator-name = "wifi-en";
++		gpio = <&pio 6 13 GPIO_ACTIVE_HIGH>; /* PG13 */
++		startup-delay-us = <1000000>;       /* 1s ( 700ms最少 )*/
++		enable-active-high;
++		regulator-boot-on;
++		regulator-always-on;
++	};
++
 +
 +	/* 默认不开启 */
 +	bt_power: bt-power {
-+        compatible = "regulator-fixed";
-+        regulator-name = "bt-en";
-+        gpio = <&pio 6 14 GPIO_ACTIVE_HIGH>; /* PG14 */
++		compatible = "regulator-fixed";
++		regulator-name = "bt-en";
++		gpio = <&pio 6 14 GPIO_ACTIVE_HIGH>; /* PG14 */
++		startup-delay-us = <200000>;	/* 200ms */
 +		enable-active-high;
-+        startup-delay-us = <200000>;	/* 200ms */
++		regulator-boot-on;
++		regulator-always-on;
 +	};
 +
 +	clocks {
@@ -411,34 +419,6 @@
 +	bias-pull-up;
 +};
 +
-+&mmc1 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&mmc1_pins>;
-+	vmmc-supply = <&reg_vcc_3v3>;
-+	vqmmc-supply = <&reg_ldoa>;
-+	mmc-pwrseq = <&wifi_pwrseq>;
-+	bus-width = <4>;
-+	max-frequency = <150000000>;
-+	non-removable;
-+	no-mmc;
-+	no-sd;
-+	// cap-sdio-irq;
-+	cap-sd-highspeed;
-+	mmc-hs200-1_8v;
-+	mmc-ddr-1_8v;
-+	// sd-uhs-ddr50;
-+	keep-power-in-suspend;
-+	ignore-pm-notify;
-+	status = "okay";
-+
-+	aw869a: sdio_wifi@1 {
-+		reg = <1>;
-+		interrupt-parent = <&pio>;
-+		interrupts = <6 12 IRQ_TYPE_LEVEL_HIGH>; /* PG12 */
-+		interrupt-names = "host-wake";
-+	};
-+};
-+
 +&mmc2 {
 +	bus-width = <4>;
 +	non-removable;
@@ -506,7 +486,6 @@
 +	ext_rmii_phy: ethernet-phy@3 {
 +		compatible = "ethernet-phy-ieee802.3-c22";
 +		reg = <3>;
-+		tlink,yt8512b-hack;
 +		motorcomm,led0 = <0x30>;
 +		motorcomm,led1 = <0x330>;
 +	};
