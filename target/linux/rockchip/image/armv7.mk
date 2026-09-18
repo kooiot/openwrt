@@ -76,6 +76,7 @@ define Device/vanxoak_vx-hd-rk3506g-iot
     luci-proto-3g luci-proto-wwan \
     tlink-r7-firmware wpad-basic-mbedtls \
 	kmod-rtw88-8723du rtl8723bu-firmware \
+	kmod-bluetooth rtl8723bu-bt-firmware \
     tinc-freeioe-tunnel iperf3 \
     uqmi fdisk usbutils freeioe wwan-watch \
     blockd kmod-eeprom-at24 fdisk
@@ -102,6 +103,7 @@ define Device/vanxoak_vx-hd-rk3506g-iot-spinand
     luci-proto-3g luci-proto-wwan \
     tlink-r7-firmware wpad-basic-mbedtls \
 	kmod-rtw88-8723du rtl8723bu-firmware \
+	kmod-bluetooth rtl8723bu-bt-firmware \
     tinc-freeioe-tunnel iperf3 \
     uqmi fdisk usbutils freeioe wwan-watch \
     blockd kmod-eeprom-at24 fdisk
