@@ -110,6 +110,15 @@ define Package/rtl8723bu-firmware/install
 endef
 $(eval $(call BuildPackage,rtl8723bu-firmware))
 
+Package/rtl8723bu-bt-firmware = $(call Package/firmware-default,RealTek RTL8723BU Bluetooth firmware,,LICENCE.rtlwifi_firmware.txt)
+define Package/rtl8723bu-bt-firmware/install
+	$(INSTALL_DIR) $(1)/lib/firmware/rtl_bt
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/rtl_bt/rtl8723d_fw.bin $(1)/lib/firmware/rtl_bt
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/rtl_bt/rtl8821c_config.bin $(1)/lib/firmware/rtl_bt
+	ln -s rtl8821c_config.bin $(1)/lib/firmware/rtl_bt/rtl8723d_config.bin
+endef
+$(eval $(call BuildPackage,rtl8723bu-bt-firmware))
+
 Package/rtl8723de-firmware = $(call Package/firmware-default,RealTek RTL8723DE firmware)
 define Package/rtl8723de-firmware/install
 	$(INSTALL_DIR) $(1)/lib/firmware/rtw88
