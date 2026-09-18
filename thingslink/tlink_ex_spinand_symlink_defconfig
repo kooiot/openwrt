@@ -69,7 +69,6 @@ CONFIG_PACKAGE_kmod-iio-ad7192=y
 CONFIG_PACKAGE_kmod-iio-core=y
 CONFIG_PACKAGE_kmod-iio-kfifo-buf=y
 CONFIG_PACKAGE_kmod-industrialio-triggered-buffer=y
-CONFIG_PACKAGE_kmod-libphy=y
 CONFIG_PACKAGE_kmod-mac80211=y
 CONFIG_PACKAGE_kmod-mmc=y
 CONFIG_PACKAGE_kmod-mt7601u=y

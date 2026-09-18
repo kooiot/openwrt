@@ -10,16 +10,8 @@ CONFIG_DRIVER_11AC_SUPPORT=y
 CONFIG_LUCI_LANG_zh_Hans=y
 CONFIG_PACKAGE_brcmfmac-firmware-usb=y
 # CONFIG_PACKAGE_freeioe is not set
-CONFIG_PACKAGE_kmod-bluetooth=y
 CONFIG_PACKAGE_kmod-brcmfmac=y
 CONFIG_PACKAGE_kmod-brcmutil=y
-CONFIG_PACKAGE_kmod-crypto-ecb=y
-CONFIG_PACKAGE_kmod-crypto-ecdh=y
-CONFIG_PACKAGE_kmod-crypto-kpp=y
-CONFIG_PACKAGE_kmod-hid=y
-CONFIG_PACKAGE_kmod-input-core=y
-CONFIG_PACKAGE_kmod-input-evdev=y
-CONFIG_PACKAGE_kmod-lib-crc16=y
 CONFIG_PACKAGE_kmod-phy-realtek=y
 CONFIG_PACKAGE_libopenssl-v1=y
 CONFIG_PACKAGE_libreadline=y
