@@ -177,7 +177,7 @@ define U-Boot/vx-hd-rk3506-iot
   $(U-Boot/rk3506/Default)
   NAME:=HD-RK3506-IOT (SD)
   BUILD_DEVICES:= \
-       vanxoak_vx-hd-rk3506-iot
+       vanxoak_vx-hd-rk3506g-iot
 endef
 
 define U-Boot/vx-hd-rk3506-iot-spinand
@@ -185,7 +185,22 @@ define U-Boot/vx-hd-rk3506-iot-spinand
   NAME:=HD-RK3506-IOT (SPINAND)
   UENV:=nand
   BUILD_DEVICES:= \
-       vanxoak_vx-hd-rk3506-iot-spinand
+       vanxoak_vx-hd-rk3506g-iot-spinand
+endef
+
+define U-Boot/vx-hd-rk3506g-m-iot
+  $(U-Boot/rk3506/Default)
+  NAME:=HD-RK3506G-M-IOT (SD)
+  BUILD_DEVICES:= \
+       vanxoak_vx-hd-rk3506g-m-iot
+endef
+
+define U-Boot/vx-hd-rk3506g-m-iot-spinand
+  $(U-Boot/rk3506/Default)
+  NAME:=HD-RK3506G-M-IOT (SPINAND)
+  UENV:=nand
+  BUILD_DEVICES:= \
+       vanxoak_vx-hd-rk3506g-m-iot-spinand
 endef
 
 # RK3566 boards
@@ -396,6 +411,8 @@ UBOOT_TARGETS := \
   rock-pi-e-rk3328 \
   vx-hd-rk3506-iot \
   vx-hd-rk3506-iot-spinand \
+  vx-hd-rk3506g-m-iot \
+  vx-hd-rk3506g-m-iot-spinand \
   opc-h68k-rk3568 \
   station-p2-rk3568 \
   rock-pi-e-v3-rk3328 \

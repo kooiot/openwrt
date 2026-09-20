@@ -3,7 +3,7 @@
 
 /dts-v1/;
 
-#include "rk3506-vx-hd-rk3506-iot.dts"
+#include "rk3506-vx-hd-rk3506g-iot.dts"
 
 / {
 	model = "HD-RK3506-IOT (SPI-NAND)";

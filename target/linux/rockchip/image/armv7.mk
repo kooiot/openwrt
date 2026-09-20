@@ -55,10 +55,66 @@ define Device/hzhy_mini_evm_sd
 endef
 TARGET_DEVICES += hzhy_mini_evm_sd
 
-define Device/vanxoak_vx-hd-rk3506-iot
+define Device/vanxoak_vx-hd-rk3506g-iot
   $(Device/rk3506)
   DEVICE_VENDOR := Vanxoak
-  DEVICE_MODEL := HD-RK3506-IOT (SD)
+  DEVICE_MODEL := HD-RK3506G-IOT (SD)
+  UBOOT_DEVICE_NAME := vx-hd-rk3506-iot
+  DEVICE_PACKAGES:=kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-rtc-ds1307 kmod-usb-net-asix \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+    kmod-usb-net-cdc-eem kmod-usb-net-cdc-ether \
+    kmod-usb-net-cdc-mbim kmod-usb-net-rndis \
+    kmod-usb-xhci-pci kmod-i2c-fusb30x \
+    kmod-phy-motorcomm kmod-mmc \
+    kmod-can kmod-can-rockchip-canfd \
+    kmod-ata-ahci kmod-ata-ahci-dwc \
+    luci-app-freeioe luci-proto-qmi \
+    luci-proto-3g luci-proto-wwan \
+    tlink-r7-firmware wpad-basic-mbedtls \
+	kmod-rtw88-8723du rtl8723bu-firmware \
+	kmod-bluetooth rtl8723bu-bt-firmware \
+    tinc-freeioe-tunnel iperf3 \
+    uqmi fdisk usbutils freeioe wwan-watch \
+    blockd kmod-eeprom-at24 fdisk
+endef
+TARGET_DEVICES += vanxoak_vx-hd-rk3506g-iot
+
+define Device/vanxoak_vx-hd-rk3506g-iot-spinand
+  $(Device/rk3506-nand)
+  DEVICE_VENDOR := Vanxoak
+  DEVICE_MODEL := HD-RK3506G-IOT (SPINAND)
+  UBOOT_DEVICE_NAME := vx-hd-rk3506-iot-spinand
+  DEVICE_PACKAGES:=kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-rtc-ds1307 kmod-usb-net-asix \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+    kmod-usb-net-cdc-eem kmod-usb-net-cdc-ether \
+    kmod-usb-net-cdc-mbim kmod-usb-net-rndis \
+    kmod-usb-xhci-pci kmod-i2c-fusb30x \
+    kmod-phy-motorcomm kmod-mmc \
+    kmod-can kmod-can-rockchip-canfd \
+    kmod-ata-ahci kmod-ata-ahci-dwc \
+    luci-app-freeioe luci-proto-qmi \
+    luci-proto-3g luci-proto-wwan \
+    tlink-r7-firmware wpad-basic-mbedtls \
+	kmod-rtw88-8723du rtl8723bu-firmware \
+	kmod-bluetooth rtl8723bu-bt-firmware \
+    tinc-freeioe-tunnel iperf3 \
+    uqmi fdisk usbutils freeioe wwan-watch \
+    blockd kmod-eeprom-at24 fdisk
+endef
+TARGET_DEVICES += vanxoak_vx-hd-rk3506g-iot-spinand
+
+define Device/vanxoak_vx-hd-rk3506g-m-iot
+  $(Device/rk3506)
+  DEVICE_VENDOR := Vanxoak
+  DEVICE_MODEL := HD-RK3506G-M-IOT (SD)
   # UBOOT_DEVICE_NAME := evb-rk3506
   DEVICE_PACKAGES:=kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
@@ -81,12 +137,12 @@ define Device/vanxoak_vx-hd-rk3506-iot
     uqmi fdisk usbutils freeioe wwan-watch \
     blockd kmod-eeprom-at24 fdisk
 endef
-TARGET_DEVICES += vanxoak_vx-hd-rk3506-iot
+TARGET_DEVICES += vanxoak_vx-hd-rk3506g-m-iot
 
-define Device/vanxoak_vx-hd-rk3506-iot-spinand
+define Device/vanxoak_vx-hd-rk3506g-m-iot-spinand
   $(Device/rk3506-nand)
   DEVICE_VENDOR := Vanxoak
-  DEVICE_MODEL := HD-RK3506-IOT (SPINAND)
+  DEVICE_MODEL := HD-RK3506G-M-IOT (SPINAND)
   DEVICE_PACKAGES:=kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
     kmod-ledtrig-netdev kmod-ledtrig-gpio \
@@ -108,4 +164,4 @@ define Device/vanxoak_vx-hd-rk3506-iot-spinand
     uqmi fdisk usbutils freeioe wwan-watch \
     blockd kmod-eeprom-at24 fdisk
 endef
-TARGET_DEVICES += vanxoak_vx-hd-rk3506-iot-spinand
+TARGET_DEVICES += vanxoak_vx-hd-rk3506g-m-iot-spinand
