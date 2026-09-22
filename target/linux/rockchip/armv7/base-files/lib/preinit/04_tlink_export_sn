@@ -66,8 +66,8 @@ do_kooiot_tlink_generic() {
 	. /lib/functions.sh
 
 	case "$(board_name)" in
-	"kooiot,tlink-rk3506-iot"|\
-	"kooiot,tlink-rk3506-iot-spinand")
+	"kooiot,tlink-rk3506g-iot"|\
+	"kooiot,tlink-rk3506g-iot-spinand")
 		do_product_sn_kooiot "0" "0050"
 		;;
 	*)

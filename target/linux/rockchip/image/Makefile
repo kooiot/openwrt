@@ -80,7 +80,7 @@ endef
 define Build/armv7-kernelubifs
 	mkdir -p $@.ubifs-kernel
 	# populate the kernel fs with the dtb and the kernel image
-	$(CP) $(DTS_DIR)/$(DEVICE_DTS).dtb $@.ubifs-kernel/dtb
+	$(CP) $(DTS_DIR)/rockchip/$(DEVICE_DTS).dtb $@.ubifs-kernel/dtb
 	$(CP) $@ $@.ubifs-kernel/uImage
 
 	# create ubifs

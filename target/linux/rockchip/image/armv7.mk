@@ -25,7 +25,7 @@ define Device/hzhy_mini_evm_emmc
   $(Device/rk3506)
   DEVICE_VENDOR := HZHY
   DEVICE_MODEL := RK3506SP MiniEVM (eMMC)
-  DEVICE_DTS := rockchip/HZ-RK3506SP_MiniEVM_EMMC
+  DEVICE_DTS := HZ-RK3506SP_MiniEVM_EMMC
   DEVICE_PACKAGES := kmod-usb-hid kmod-usb-ohci kmod-usb2 kmod-usb-storage \
     kmod-usb-storage-extras kmod-usb-net kmod-usb-core kmod-gpio-button-hotplug \
     urandom-seed
@@ -36,7 +36,7 @@ define Device/hzhy_mini_evm_nand
   $(Device/rk3506)
   DEVICE_VENDOR := HZHY
   DEVICE_MODEL := RK3506SP MiniEVM (NAND)
-  DEVICE_DTS := rockchip/HZ-RK3506SP_MiniEVM_NAND
+  DEVICE_DTS := HZ-RK3506SP_MiniEVM_NAND
   DEVICE_PACKAGES := kmod-usb-hid kmod-usb-ohci kmod-usb2 kmod-usb-storage \
     kmod-usb-storage-extras kmod-usb-net kmod-usb-core kmod-gpio-button-hotplug \
     kmod-mtd-rw urandom-seed
@@ -47,7 +47,7 @@ define Device/hzhy_mini_evm_sd
   $(Device/rk3506)
   DEVICE_VENDOR := HZHY
   DEVICE_MODEL := RK3506SP MiniEVM (SD)
-  DEVICE_DTS := rockchip/HZ-RK3506SP_MiniEVM_SD
+  DEVICE_DTS := HZ-RK3506SP_MiniEVM_SD
   DEVICE_PACKAGES := kmod-usb-hid kmod-usb-ohci kmod-usb2 kmod-usb-storage \
     kmod-usb-storage-extras kmod-usb-net kmod-usb-core kmod-gpio-button-hotplug \
     urandom-seed
@@ -55,10 +55,10 @@ define Device/hzhy_mini_evm_sd
 endef
 TARGET_DEVICES += hzhy_mini_evm_sd
 
-define Device/vanxoak_vx-hd-rk3506-iot
+define Device/vanxoak_vx-hd-rk3506g-iot
   $(Device/rk3506)
   DEVICE_VENDOR := Vanxoak
-  DEVICE_MODEL := HD-RK3506-IOT (SD)
+  DEVICE_MODEL := HD-RK3506G-IOT (SD)
   # UBOOT_DEVICE_NAME := evb-rk3506
   DEVICE_PACKAGES:=kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
@@ -80,12 +80,12 @@ define Device/vanxoak_vx-hd-rk3506-iot
     uqmi fdisk usbutils freeioe wwan-watch \
     blockd kmod-eeprom-at24 fdisk
 endef
-TARGET_DEVICES += vanxoak_vx-hd-rk3506-iot
+TARGET_DEVICES += vanxoak_vx-hd-rk3506g-iot
 
-define Device/vanxoak_vx-hd-rk3506-iot-spinand
+define Device/vanxoak_vx-hd-rk3506g-iot-spinand
   $(Device/rk3506-nand)
   DEVICE_VENDOR := Vanxoak
-  DEVICE_MODEL := HD-RK3506-IOT (SPINAND)
+  DEVICE_MODEL := HD-RK3506G-IOT (SPINAND)
   DEVICE_PACKAGES:=kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
     kmod-ledtrig-netdev kmod-ledtrig-gpio \
@@ -106,4 +106,4 @@ define Device/vanxoak_vx-hd-rk3506-iot-spinand
     uqmi fdisk usbutils freeioe wwan-watch \
     blockd kmod-eeprom-at24 fdisk
 endef
-TARGET_DEVICES += vanxoak_vx-hd-rk3506-iot-spinand
+TARGET_DEVICES += vanxoak_vx-hd-rk3506g-iot-spinand
