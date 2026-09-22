@@ -200,7 +200,9 @@ tlink_default() {
 case "$(board_name)" in
 "kooiot,tlink-rk3506g-iot"|\
 "vanxoak,vx-hd-rk3506g-iot"|\
-"vanxoak,vx-hd-rk3506g-iot-spinand")
+"vanxoak,vx-hd-rk3506g-iot-spinand"|\
+"vanxoak,vx-hd-rk3506g-m-iot"|\
+"vanxoak,vx-hd-rk3506g-m-iot-spinand")
 	tlink_default
 	;;
 esac

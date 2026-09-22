@@ -15,7 +15,9 @@ rockchip_setup_interfaces()
 		ucidef_set_interfaces_lan_wan "eth1" "eth0"
 		;;
 	vanxoak,vx-hd-rk3506g-iot|\
-	vanxoak,vx-hd-rk3506g-iot-spinand)
+	vanxoak,vx-hd-rk3506g-iot-spinand|\
+	vanxoak,vx-hd-rk3506g-m-iot|\
+	vanxoak,vx-hd-rk3506g-m-iot-spinand)
 #		ucidef_set_interfaces_lan_wan "eth0" "eth1"
 		ucidef_set_interface_lan "eth0"
 		ucidef_set_interface "lan2" device "eth1" protocol "static"
@@ -43,7 +45,9 @@ rockchip_setup_macs()
 
 	case "$board" in
 	vanxoak,vx-hd-rk3506g-iot|\
-	vanxoak,vx-hd-rk3506g-iot-spinand)
+	vanxoak,vx-hd-rk3506g-iot-spinand|\
+	vanxoak,vx-hd-rk3506g-m-iot|\
+	vanxoak,vx-hd-rk3506g-m-iot-spinand)
 		lan_mac=$(tlink_gen_sid_mac)
 		echo "LAN MAC: "$lan_mac > /dev/kmsg
 		[ -n "$lan_mac" ] && ucidef_set_interface_macaddr "lan2" $(macaddr_add "$lan_mac" 1)

@@ -9,14 +9,11 @@
 #include "rk3506.dtsi"
 
 / {
-	model = "HD-RK3506G-IOT";
-	compatible = "vanxoak,vx-hd-rk3506g-iot", "rockchip,rk3506";
+	model = "HD-RK3506G-M-IOT";
+	compatible = "vanxoak,vx-hd-rk3506g-m-iot", "rockchip,rk3506";
 	chosen: chosen {
 		stdout-path = "serial0:115200n8";
 	};
-
-	/* PSCI is provided by the Rockchip OP-TEE secure monitor.
-	 * Linux brings up secondary CPUs via PSCI SMC calls. */
 
 	aliases {
 		serial0 = &uart0;
@@ -116,7 +113,7 @@
 
 		status_led: status-led {
 			label = "kooiot:green:status";
-			gpios = <&gpio1 RK_PB3 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio0 RK_PA1 GPIO_ACTIVE_LOW>;
 			linux,default-trigger = "heartbeat";
 		};
 	};
@@ -129,7 +126,7 @@
 		reset {
 			label = "reset";
 			linux,code = <KEY_RESTART>;
-			gpios = <&gpio4 RK_PB1 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio0 RK_PB3 GPIO_ACTIVE_LOW>; /* SAI1_SDI RM_IO11 */
 		};
 	};
 	
@@ -137,6 +134,7 @@
 		compatible = "gpio-export";
 		#size-cells = <0>;
 
+		/*
 		hub_reset {
 			gpio-export,name = "hub_reset";
 			gpio-export,output=<1>;
@@ -144,6 +142,28 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&hub_reset_pin>;
 		};
+		*/
+	};
+
+	/* 默认开启，并可以控制 */
+	usb_modem_power: usb-modem-power {
+		compatible = "regulator-fixed";
+		regulator-name = "modem-pwrkey";
+		gpio = <&gpio1 RK_PB2 GPIO_ACTIVE_HIGH>; /* GPIO1_PB2 */
+		startup-delay-us = <1000000>;       /* 1s */
+		enable-active-high;
+		regulator-boot-on;
+		regulator-always-on;
+	};
+
+	watchdog: watchdog {
+		compatible = "linux,wdt-gpio";
+		pinctrl-names = "default";
+		pinctrl-0 = <&wdi_gpio>;
+		gpios = <&gpio1 RK_PB3 GPIO_ACTIVE_LOW>;
+		hw_algo = "toggle";
+		always-running = "true";
+		hw_margin_ms = <1600>;
 	};
 };
 
@@ -156,33 +176,57 @@
 };
 
 &uart1 {
-	status = "disabled";
+	pinctrl-names = "default";
+	pinctrl-0 = <&rm_io16_uart1_rx &rm_io17_uart1_tx>;
+	status = "okay";
 };
 
 &uart2 {
-	status = "disabled";
+	pinctrl-names = "default";
+	pinctrl-0 = <&rm_io0_uart2_rx &rm_io2_uart2_tx>;
+	status = "okay";
 };
 
 &uart3 {
-	status = "disabled";
+	pinctrl-names = "default";
+	pinctrl-0 = <&rm_io15_uart3_rx &rm_io14_uart3_tx>;
+	status = "okay";
+};
+
+&can0 {
+	rockchip,rx-max-data = <18>;
+	assigned-clocks = <&cru CLK_CAN0>;
+	assigned-clock-rates = <300000000>;
+	pinctrl-0 = <&rm_io19_can0_tx &rm_io20_can0_rx>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+&can1 {
+	rockchip,rx-max-data = <18>;
+	assigned-clocks = <&cru CLK_CAN1>;
+	assigned-clock-rates = <300000000>;
+	pinctrl-0 = <&rm_io13_can1_tx &rm_io18_can1_rx>;
+	pinctrl-names = "default";
+	status = "okay";
 };
 
 &i2c0 {
 	status = "okay";
 	pinctrl-names = "default";
-	pinctrl-0 = <&rm_io25_i2c0_scl &rm_io24_i2c0_sda>;
-
-	rtc_RS4C1339: rtc@68 {
-		compatible = "dallas,ds1339";
-		reg = <0x68>;
-		status = "okay";
-	};
+	pinctrl-0 = <&rm_io8_i2c0_scl &rm_io9_i2c0_sda>;
 };
 
 &i2c2 {
 	status = "okay";
 	pinctrl-names = "default";
 	pinctrl-0 = <&rm_io4_i2c2_scl &rm_io5_i2c2_sda>;
+
+	hym8563: hym8563@51 {
+		compatible = "haoyu,hym8563";
+		reg = <0x51>;
+		status = "okay";
+	};
 
 	rjgt102: crypt@68 {
 		compatible = "rjgt102";
@@ -225,7 +269,7 @@
 	phy-mode = "rmii";
 	clock_in_out = "input";
 
-	snps,reset-gpio = <&gpio0 RK_PB3 GPIO_ACTIVE_LOW>;
+	snps,reset-gpio = <&gpio1 RK_PB1 GPIO_ACTIVE_LOW>;
 	snps,reset-active-low;
 	snps,reset-delays-us = <0 20000 100000>;
 
@@ -256,7 +300,7 @@
 	phy-mode = "rmii";
 	clock_in_out = "input";
 
-	snps,reset-gpio = <&gpio0 RK_PB4 GPIO_ACTIVE_LOW>;
+	snps,reset-gpio = <&gpio1 RK_PB2 GPIO_ACTIVE_LOW>;
 	snps,reset-active-low;
 	snps,reset-delays-us = <0 20000 100000>;
 
@@ -301,7 +345,7 @@
 
 &mmc {
 	bus-width = <4>;
-	cs-gpios = <&gpio0 RK_PB0 GPIO_ACTIVE_LOW>;
+	cs-gpios = <&gpio1 RK_PC3 GPIO_ACTIVE_LOW>;
 	cap-sd-highspeed;
 	disable-wp;
 	no-sdio;
@@ -322,7 +366,12 @@
 	};
 	keys {
 		key_reset_pin: key-reset-pin {
-			rockchip,pins = <4 RK_PB1 RK_FUNC_GPIO &pcfg_pull_up>;
+			rockchip,pins = <0 RK_PB3 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+	};
+	leds {
+		led_status_pin: led-status-pin {
+			rockchip,pins = <0 RK_PA1 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
 	usb {
@@ -338,22 +387,81 @@
 	};
 	i2c0 {
 		/omit-if-no-ref/
-		rm_io25_i2c0_scl: rm-io25-i2c0-scl {
+		rm_io8_i2c0_scl: rm-io8-i2c0-scl {
 			rockchip,pins =
-				<1 RK_PB2 30 &pcfg_pull_none>;
+				<0 RK_PB0 30 &pcfg_pull_none>;
 		};
 
 		/omit-if-no-ref/
-		rm_io24_i2c0_sda: rm-io24-i2c0-sda {
+		rm_io9_i2c0_sda: rm-io9-i2c0-sda {
 			rockchip,pins =
-				<1 RK_PB1 31 &pcfg_pull_none>;
+				<0 RK_PB1 31 &pcfg_pull_none>;
 		};
 	};
-	pwm {
+	uart1 {
 		/omit-if-no-ref/
-		rm_io29_pwm0_ch2: rm-io29-pwm0-ch2 {
+		rm_io16_uart1_rx: rm-io16-uart1-rx {
 			rockchip,pins =
-				<1 RK_PD1 47 &pcfg_pull_none_drv_level_1>;
+				<0 RK_PC0 17 &pcfg_pull_up>;
+		};
+
+		/omit-if-no-ref/
+		rm_io17_uart1_tx: rm-io17-uart1-tx {
+			rockchip,pins =
+				<0 RK_PC1 16 &pcfg_pull_none>;
+		};
+	};
+	uart2 {
+		/omit-if-no-ref/
+		rm_io0_uart2_rx: rm-io0-uart2-rx {
+			rockchip,pins =
+				<0 RK_PA0 19 &pcfg_pull_up>;
+		};
+		/omit-if-no-ref/
+		rm_io2_uart2_tx: rm-io2-uart2-tx {
+			rockchip,pins =
+				<0 RK_PA2 18 &pcfg_pull_none>;
+		};
+	};
+	uart3 {
+		/omit-if-no-ref/
+		rm_io15_uart3_rx: rm-io15-uart3-rx {
+			rockchip,pins =
+				<0 RK_PB7 21 &pcfg_pull_up>;
+		};
+		/omit-if-no-ref/
+		rm_io14_uart3_tx: rm-io14-uart3-tx {
+			rockchip,pins =
+				<0 RK_PB6 20 &pcfg_pull_none>;
+		};
+	};
+	can0 {
+		/omit-if-no-ref/
+		rm_io19_can0_tx: rm-io19-can0-tx {
+			rockchip,pins =
+				<0 RK_PC3 43 &pcfg_pull_none>;
+		};
+		/omit-if-no-ref/
+		rm_io20_can0_rx: rm-io20-can0-rx {
+			rockchip,pins =
+				<0 RK_PC4 44 &pcfg_pull_none>;
+		};
+	};
+	can1 {
+		/omit-if-no-ref/
+		rm_io13_can1_tx: rm-io13-can1-tx {
+			rockchip,pins =
+				<0 RK_PB5 41 &pcfg_pull_none>;
+		};
+		/omit-if-no-ref/
+		rm_io18_can1_rx: rm-io18-can1-rx {
+			rockchip,pins =
+				<0 RK_PC2 42 &pcfg_pull_none>;
+		};
+	};
+	watchdog {
+		wdi_gpio: wdi_gpio {
+			rockchip,pins = <1 RK_PB3 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
 	sdmmc_det {
@@ -361,7 +469,14 @@
 		sdmmc_det_pins: sdmmc-det-pins {
 			rockchip,pins =
 				/* sdmmc_det */
-				<0 RK_PB0 1 &pcfg_pull_up_drv_level_3>;
+				<1 RK_PC3 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+	};
+	pwm {
+		/omit-if-no-ref/
+		rm_io29_pwm0_ch2: rm-io29-pwm0-ch2 {
+			rockchip,pins =
+				<1 RK_PD1 47 &pcfg_pull_none_drv_level_1>;
 		};
 	};
 
