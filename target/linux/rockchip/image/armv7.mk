@@ -107,3 +107,55 @@ define Device/vanxoak_vx-hd-rk3506g-iot-spinand
     blockd kmod-eeprom-at24 fdisk
 endef
 TARGET_DEVICES += vanxoak_vx-hd-rk3506g-iot-spinand
+
+define Device/vanxoak_vx-hd-rk3506g-m-iot
+  $(Device/rk3506)
+  DEVICE_VENDOR := Vanxoak
+  DEVICE_MODEL := HD-RK3506G-M-IOT (SD)
+  DEVICE_PACKAGES:=kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-rtc-hym8563 kmod-usb-net-asix \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+    kmod-usb-net-cdc-eem kmod-usb-net-cdc-ether \
+    kmod-usb-net-cdc-mbim kmod-usb-net-rndis \
+    kmod-usb-xhci-pci kmod-i2c-fusb30x \
+    kmod-phy-motorcomm kmod-mmc \
+    kmod-can kmod-can-rockchip-canfd \
+    kmod-ata-ahci kmod-ata-ahci-dwc \
+    luci-app-freeioe luci-proto-qmi \
+    luci-proto-3g luci-proto-wwan \
+    tlink-r7-firmware wpad-basic-mbedtls \
+	kmod-rtw88-8723du rtl8723bu-firmware \
+    tinc-freeioe-tunnel iperf3 \
+    uqmi fdisk usbutils freeioe wwan-watch \
+    blockd kmod-eeprom-at24 fdisk
+endef
+TARGET_DEVICES += vanxoak_vx-hd-rk3506g-m-iot
+
+define Device/vanxoak_vx-hd-rk3506g-m-iot-spinand
+  $(Device/rk3506-nand)
+  DEVICE_VENDOR := Vanxoak
+  DEVICE_MODEL := HD-RK3506G-M-IOT (SPINAND)
+  DEVICE_PACKAGES:=kmod-gpio-button-hotplug \
+    kmod-leds-gpio kmod-ledtrig-heartbeat \
+    kmod-ledtrig-netdev kmod-ledtrig-gpio \
+    kmod-rtc-hym8563 kmod-usb-net-asix \
+    kmod-usb-serial kmod-usb-serial-option \
+    kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+    kmod-usb-net-cdc-eem kmod-usb-net-cdc-ether \
+    kmod-usb-net-cdc-mbim kmod-usb-net-rndis \
+    kmod-usb-xhci-pci kmod-i2c-fusb30x \
+    kmod-phy-motorcomm kmod-mmc \
+    kmod-can kmod-can-rockchip-canfd \
+    kmod-ata-ahci kmod-ata-ahci-dwc \
+    luci-app-freeioe luci-proto-qmi \
+    luci-proto-3g luci-proto-wwan \
+    tlink-r7-firmware wpad-basic-mbedtls \
+	kmod-rtw88-8723du rtl8723bu-firmware \
+    tinc-freeioe-tunnel iperf3 \
+    uqmi fdisk usbutils freeioe wwan-watch \
+    blockd kmod-eeprom-at24 fdisk
+endef
+TARGET_DEVICES += vanxoak_vx-hd-rk3506g-m-iot-spinand

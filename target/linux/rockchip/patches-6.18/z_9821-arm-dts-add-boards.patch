@@ -1,6 +1,6 @@
 --- a/arch/arm/boot/dts/rockchip/Makefile
 +++ b/arch/arm/boot/dts/rockchip/Makefile
-@@ -42,4 +42,9 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += \
+@@ -42,4 +42,11 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += \
  	rk3288-veyron-pinky.dtb \
  	rk3288-veyron-speedy.dtb \
  	rk3288-veyron-tiger.dtb \
@@ -10,4 +10,6 @@
 +	HZ-RK3506SP_MiniEVM_NAND.dtb \
 +	HZ-RK3506SP_MiniEVM_SD.dtb \
 +	rk3506-vx-hd-rk3506g-iot.dtb \
-+	rk3506-vx-hd-rk3506g-iot-spinand.dtb
++	rk3506-vx-hd-rk3506g-iot-spinand.dtb \
++	rk3506-vx-hd-rk3506g-m-iot.dtb \
++	rk3506-vx-hd-rk3506g-m-iot-spinand.dtb
