@@ -1,6 +1,6 @@
 CONFIG_TARGET_rockchip=y
 CONFIG_TARGET_rockchip_armv7=y
-CONFIG_TARGET_rockchip_armv7_DEVICE_vanxoak_vx-hd-rk3506-iot-spinand=y
+CONFIG_TARGET_rockchip_armv7_DEVICE_vanxoak_vx-hd-rk3506g-iot=y
 CONFIG_BUSYBOX_CUSTOM=y
 CONFIG_BRCMFMAC_PCIE=y
 CONFIG_BRCMFMAC_SDIO=y
