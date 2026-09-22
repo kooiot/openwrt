@@ -23,15 +23,12 @@ Reviewed-by: Kever Yang <kever.yang@rock-chips.com>
  create mode 100644 drivers/clk/rockchip/clk_rk3506.c
  create mode 100644 drivers/reset/rst-rk3506.c
 
-diff --git a/arch/arm/include/asm/arch-rockchip/clock.h b/arch/arm/include/asm/arch-rockchip/clock.h
-index 73e5283108b..0ab39bab8d8 100644
 --- a/arch/arm/include/asm/arch-rockchip/clock.h
 +++ b/arch/arm/include/asm/arch-rockchip/clock.h
-@@ -207,6 +207,16 @@ int rockchip_reset_bind(struct udevice *pdev, u32 reg_offset, u32 reg_number);
-  */
+@@ -215,6 +215,16 @@ int rockchip_reset_bind(struct udevice *
  int rockchip_reset_bind_lut(struct udevice *pdev, const int *lookup_table,
  			    u32 reg_offset, u32 reg_number);
-+/*
+ /*
 + * rk3506_reset_bind_lut() - Bind soft reset device as child of clock device
 + *			     using dedicated RK3506 lookup table
 + *
@@ -41,12 +38,10 @@ index 73e5283108b..0ab39bab8d8 100644
 + * Return: 0 success, or error value
 + */
 +int rk3506_reset_bind_lut(struct udevice *pdev, u32 reg_offset, u32 reg_number);
- /*
-  * rk3588_reset_bind_lut() - Bind soft reset device as child of clock device
-  *			     using dedicated RK3588 lookup table
-diff --git a/arch/arm/include/asm/arch-rockchip/cru_rk3506.h b/arch/arm/include/asm/arch-rockchip/cru_rk3506.h
-new file mode 100644
-index 00000000000..2f79e5eaf09
++/*
+  * rk3528_reset_bind_lut() - Bind soft reset device as child of clock device
+  *			     using dedicated RK3528 lookup table
+  *
 --- /dev/null
 +++ b/arch/arm/include/asm/arch-rockchip/cru_rk3506.h
 @@ -0,0 +1,181 @@
@@ -231,21 +226,16 @@ index 00000000000..2f79e5eaf09
 +};
 +
 +#endif /* _ASM_ARCH_CRU_RK3506_H */
-diff --git a/drivers/clk/rockchip/Makefile b/drivers/clk/rockchip/Makefile
-index 9e379cc2e3b..a63fd36b6af 100644
 --- a/drivers/clk/rockchip/Makefile
 +++ b/drivers/clk/rockchip/Makefile
-@@ -15,6 +15,7 @@ obj-$(CONFIG_ROCKCHIP_RK3308) += clk_rk3308.o
+@@ -15,6 +15,7 @@ obj-$(CONFIG_ROCKCHIP_RK3308) += clk_rk3
  obj-$(CONFIG_ROCKCHIP_RK3328) += clk_rk3328.o
  obj-$(CONFIG_ROCKCHIP_RK3368) += clk_rk3368.o
  obj-$(CONFIG_ROCKCHIP_RK3399) += clk_rk3399.o
 +obj-$(CONFIG_ROCKCHIP_RK3506) += clk_rk3506.o
+ obj-$(CONFIG_ROCKCHIP_RK3528) += clk_rk3528.o
  obj-$(CONFIG_ROCKCHIP_RK3568) += clk_rk3568.o
- obj-$(CONFIG_ROCKCHIP_RK3588) += clk_rk3588.o
- obj-$(CONFIG_ROCKCHIP_RV1108) += clk_rv1108.o
-diff --git a/drivers/clk/rockchip/clk_rk3506.c b/drivers/clk/rockchip/clk_rk3506.c
-new file mode 100644
-index 00000000000..38066c5c3e3
+ obj-$(CONFIG_ROCKCHIP_RK3576) += clk_rk3576.o
 --- /dev/null
 +++ b/drivers/clk/rockchip/clk_rk3506.c
 @@ -0,0 +1,1166 @@
@@ -1415,22 +1405,17 @@ index 00000000000..38066c5c3e3
 +	.bind		= rk3506_clk_bind,
 +	.probe		= rk3506_clk_probe,
 +};
-diff --git a/drivers/reset/Makefile b/drivers/reset/Makefile
-index 2eb639e4a65..c02b992da43 100644
 --- a/drivers/reset/Makefile
 +++ b/drivers/reset/Makefile
-@@ -16,7 +16,7 @@ obj-$(CONFIG_RESET_BCM6345) += reset-bcm6345.o
+@@ -16,7 +16,7 @@ obj-$(CONFIG_RESET_BCM6345) += reset-bcm
  obj-$(CONFIG_RESET_UNIPHIER) += reset-uniphier.o
  obj-$(CONFIG_RESET_AST2500) += reset-ast2500.o
  obj-$(CONFIG_RESET_AST2600) += reset-ast2600.o
--obj-$(CONFIG_RESET_ROCKCHIP) += reset-rockchip.o rst-rk3588.o
-+obj-$(CONFIG_RESET_ROCKCHIP) += reset-rockchip.o rst-rk3506.o rst-rk3588.o
+-obj-$(CONFIG_RESET_ROCKCHIP) += reset-rockchip.o rst-rk3528.o rst-rk3576.o rst-rk3588.o
++obj-$(CONFIG_RESET_ROCKCHIP) += reset-rockchip.o rst-rk3528.o rst-rk3506.o rst-rk3576.o rst-rk3588.o
  obj-$(CONFIG_RESET_MESON) += reset-meson.o
  obj-$(CONFIG_RESET_SOCFPGA) += reset-socfpga.o
  obj-$(CONFIG_RESET_MEDIATEK) += reset-mediatek.o
-diff --git a/drivers/reset/rst-rk3506.c b/drivers/reset/rst-rk3506.c
-new file mode 100644
-index 00000000000..9c384db0589
 --- /dev/null
 +++ b/drivers/reset/rst-rk3506.c
 @@ -0,0 +1,222 @@
@@ -1656,6 +1641,3 @@ index 00000000000..9c384db0589
 +	return rockchip_reset_bind_lut(pdev, rk3506_register_offset,
 +				       reg_offset, reg_number);
 +}
--- 
-2.55.0
-

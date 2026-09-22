@@ -32,35 +32,32 @@ Signed-off-by: Austin Lane <vidplace7@gmail.com>
  arch/arm/mach-rockchip/Kconfig             | 1 +
  2 files changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/arch/arm/include/asm/arch-rockchip/boot0.h b/arch/arm/include/asm/arch-rockchip/boot0.h
-index 0c375e543a5..13f99899a37 100644
 --- a/arch/arm/include/asm/arch-rockchip/boot0.h
 +++ b/arch/arm/include/asm/arch-rockchip/boot0.h
-@@ -44,6 +44,10 @@ entry_counter:
+@@ -44,6 +44,11 @@ entry_counter:
  	b reset
  #endif
  
-+#if defined(CONFIG_SPL_BUILD) && (CONFIG_ROCKCHIP_SPL_RESERVE_IRAM > 0)
-+	.space CONFIG_ROCKCHIP_SPL_RESERVE_IRAM	/* space for TF-A/OP-TEE */
++#if !defined(CONFIG_TPL_BUILD) && defined(CONFIG_XPL_BUILD) && \
++	(CONFIG_ROCKCHIP_SPL_RESERVE_IRAM > 0)
++	.space CONFIG_ROCKCHIP_SPL_RESERVE_IRAM	/* space for the ATF data */
 +#endif
 +
  #if !defined(CONFIG_ARM64)
  	/*
  	 * For armv7, the addr '_start' will used as vector start address
-@@ -53,8 +57,3 @@ entry_counter:
+@@ -53,8 +58,3 @@ entry_counter:
  _start:
  	ARM_VECTORS
  #endif
 -
--#if !defined(CONFIG_TPL_BUILD) && defined(CONFIG_SPL_BUILD) && \
+-#if !defined(CONFIG_TPL_BUILD) && defined(CONFIG_XPL_BUILD) && \
 -	(CONFIG_ROCKCHIP_SPL_RESERVE_IRAM > 0)
 -	.space CONFIG_ROCKCHIP_SPL_RESERVE_IRAM	/* space for the ATF data */
 -#endif
-diff --git a/arch/arm/mach-rockchip/Kconfig b/arch/arm/mach-rockchip/Kconfig
-index 82689790740..05fe7ac05f3 100644
 --- a/arch/arm/mach-rockchip/Kconfig
 +++ b/arch/arm/mach-rockchip/Kconfig
-@@ -567,6 +567,7 @@ config ROCKCHIP_STIMER_BASE
+@@ -679,6 +679,7 @@ config ROCKCHIP_STIMER_BASE
  config ROCKCHIP_SPL_RESERVE_IRAM
  	hex "Size of IRAM reserved in SPL"
  	default 0x0
@@ -68,6 +65,3 @@ index 82689790740..05fe7ac05f3 100644
  	help
  	  SPL may need reserve memory for firmware loaded by SPL, whose load
  	  address is in IRAM and may overlay with SPL text area if not
--- 
-2.55.0
-

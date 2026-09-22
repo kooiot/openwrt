@@ -5,9 +5,9 @@ Subject: [PATCH] rockchip: fixed cherry-pick compile errors
 
 ---
  arch/arm/dts/Makefile                         |  2 +-
- ...k3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi |  8 ++---
- .../dts/rk3506-vx-hd-rk3506-iot-u-boot.dtsi   |  8 ++---
- arch/arm/dts/rk3506-vx-hd-rk3506-iot.dts      | 36 +++++++++++++------
+ ...k3506-vx-hd-rk3506g-iot-spinand-u-boot.dtsi |  8 ++---
+ .../dts/rk3506-vx-hd-rk3506g-iot-u-boot.dtsi   |  8 ++---
+ arch/arm/dts/rk3506-vx-hd-rk3506g-iot.dts      | 36 +++++++++++++------
  drivers/clk/rockchip/clk_rk3506.c             |  1 +
  drivers/phy/rockchip/phy-rockchip-inno-usb2.c |  3 +-
  .../pinctrl/rockchip/pinctrl-rockchip-core.c  |  4 +--
@@ -22,15 +22,15 @@ index 35aac282024..af243663f18 100644
  	rk3368-px5-evb.dtb
  
  dtb-$(CONFIG_ROCKCHIP_RK3506) += \
--	rk3506-rk3506-vx-hd-rk3506-iot-spinand.dts.dtb
-+	rk3506-vx-hd-rk3506-iot-spinand.dtb
+-	rk3506-vx-hd-rk3506g-iot-spinand.dts.dtb
++	rk3506-vx-hd-rk3506g-iot-spinand.dtb
  
  dtb-$(CONFIG_ARCH_S5P4418) += \
  	s5p4418-nanopi2.dtb
-diff --git a/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi
+diff --git a/arch/arm/dts/rk3506-vx-hd-rk3506g-iot-spinand-u-boot.dtsi b/arch/arm/dts/rk3506-vx-hd-rk3506g-iot-spinand-u-boot.dtsi
 index c3dcaa97f0f..7f4304d7702 100644
---- a/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi
-+++ b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi
+--- a/arch/arm/dts/rk3506-vx-hd-rk3506g-iot-spinand-u-boot.dtsi
++++ b/arch/arm/dts/rk3506-vx-hd-rk3506g-iot-spinand-u-boot.dtsi
 @@ -2,11 +2,9 @@
  
  #include "rk3506-u-boot.dtsi"
@@ -46,10 +46,10 @@ index c3dcaa97f0f..7f4304d7702 100644
  };
  
  &sdmmc_det_pin {
-diff --git a/arch/arm/dts/rk3506-vx-hd-rk3506-iot-u-boot.dtsi b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-u-boot.dtsi
+diff --git a/arch/arm/dts/rk3506-vx-hd-rk3506g-iot-u-boot.dtsi b/arch/arm/dts/rk3506-vx-hd-rk3506g-iot-u-boot.dtsi
 index c3dcaa97f0f..7f4304d7702 100644
---- a/arch/arm/dts/rk3506-vx-hd-rk3506-iot-u-boot.dtsi
-+++ b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-u-boot.dtsi
+--- a/arch/arm/dts/rk3506-vx-hd-rk3506g-iot-u-boot.dtsi
++++ b/arch/arm/dts/rk3506-vx-hd-rk3506g-iot-u-boot.dtsi
 @@ -2,11 +2,9 @@
  
  #include "rk3506-u-boot.dtsi"
@@ -65,10 +65,10 @@ index c3dcaa97f0f..7f4304d7702 100644
  };
  
  &sdmmc_det_pin {
-diff --git a/arch/arm/dts/rk3506-vx-hd-rk3506-iot.dts b/arch/arm/dts/rk3506-vx-hd-rk3506-iot.dts
+diff --git a/arch/arm/dts/rk3506-vx-hd-rk3506g-iot.dts b/arch/arm/dts/rk3506-vx-hd-rk3506g-iot.dts
 index b629a5548d5..cfabff3acc6 100644
---- a/arch/arm/dts/rk3506-vx-hd-rk3506-iot.dts
-+++ b/arch/arm/dts/rk3506-vx-hd-rk3506-iot.dts
+--- a/arch/arm/dts/rk3506-vx-hd-rk3506g-iot.dts
++++ b/arch/arm/dts/rk3506-vx-hd-rk3506g-iot.dts
 @@ -21,16 +21,18 @@
  		stdout-path = "serial0:115200n8";
  	};
@@ -183,28 +183,6 @@ index 7266a1b48e8..2bdbcc75d1d 100644
  		}
  	}
  
-diff --git a/drivers/spi/rockchip_sfc.c b/drivers/spi/rockchip_sfc.c
-index 94e17e676a1..6a9ec1f04ea 100644
---- a/drivers/spi/rockchip_sfc.c
-+++ b/drivers/spi/rockchip_sfc.c
-@@ -660,7 +660,7 @@ static void rockchip_sfc_delay_lines_tuning(struct rockchip_sfc *sfc, struct spi
- 	u16 right, w_left = 0;
- 	u16 best_left = 0, best_right = 0;
- 	bool in_window = false;
--	u8 cs = plat->cs[0];
-+	u8 cs = plat->cs;
- 
- 	rockchip_sfc_clk_set_rate(sfc, SFC_DLL_THRESHOLD_RATE);
- 	op.data.buf.in = &id;
-@@ -760,7 +760,7 @@ static int rockchip_sfc_exec_op(struct spi_slave *mem,
- 	 */
- 	if (rockchip_sfc_get_version(sfc) >= SFC_VER_4) {
- 		struct dm_spi_slave_plat *plat = dev_get_parent_plat(mem->dev);
--		u8 cs = plat->cs[0];
-+		u8 cs = plat->cs;
- 
- 		if (!sfc->dll_cells[cs] && sfc->speed > SFC_DLL_THRESHOLD_RATE)
- 			rockchip_sfc_delay_lines_tuning(sfc, mem);
 -- 
 2.55.0
 

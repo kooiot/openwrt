@@ -15,8 +15,6 @@ ENOENT) but DLL-tuned reads are reliable.
  drivers/spi/rockchip_sfc.c | 210 ++++++++++++++++++++++++++++++++++++-
  1 file changed, 207 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/spi/rockchip_sfc.c b/drivers/spi/rockchip_sfc.c
-index 2432475d616..94e17e676a1 100644
 --- a/drivers/spi/rockchip_sfc.c
 +++ b/drivers/spi/rockchip_sfc.c
 @@ -22,6 +22,7 @@
@@ -77,7 +75,7 @@ index 2432475d616..94e17e676a1 100644
  	u16 version;
  };
  
-@@ -214,6 +235,33 @@ static u32 rockchip_sfc_get_max_iosize(struct rockchip_sfc *sfc)
+@@ -214,6 +235,33 @@ static u32 rockchip_sfc_get_max_iosize(s
  	return SFC_MAX_IOSIZE_VER3;
  }
  
@@ -111,8 +109,8 @@ index 2432475d616..94e17e676a1 100644
  static int rockchip_sfc_init(struct rockchip_sfc *sfc)
  {
  	writel(0, sfc->regbase + SFC_CTRL);
-@@ -233,6 +281,10 @@ static int rockchip_sfc_ofdata_to_platdata(struct udevice *bus)
- 	if (IS_ENABLED(CONFIG_SPL_BUILD) && sfc->use_dma)
+@@ -233,6 +281,10 @@ static int rockchip_sfc_ofdata_to_platda
+ 	if (IS_ENABLED(CONFIG_XPL_BUILD) && sfc->use_dma)
  		sfc->use_dma = !dev_read_bool(bus, "u-boot,spl-sfc-no-dma");
  
 +	sfc->max_dll_cells = dev_read_u32_default(bus, "rockchip,max-dll", 0);
@@ -122,7 +120,7 @@ index 2432475d616..94e17e676a1 100644
  #if CONFIG_IS_ENABLED(CLK)
  	int ret;
  
-@@ -408,8 +460,10 @@ static int rockchip_sfc_xfer_setup(struct rockchip_sfc *sfc,
+@@ -408,8 +460,10 @@ static int rockchip_sfc_xfer_setup(struc
  	if (!len && op->addr.nbytes)
  		cmd |= SFC_CMD_DIR_WR << SFC_CMD_DIR_SHIFT;
  
@@ -132,10 +130,10 @@ index 2432475d616..94e17e676a1 100644
 +	 * pin driving; the vendor fspi driver sets it on every transfer.
 +	 */
 +	ctrl |= SFC_CTRL_PHASE_SEL_NEGETIVE | SFC_CTRL_WPEN;
- 	cmd |= plat->cs << SFC_CMD_CS_SHIFT;
+ 	cmd |= plat->cs[0] << SFC_CMD_CS_SHIFT;
  
  	dev_dbg(sfc->dev, "sfc addr.nbytes=%x(x%d) dummy.nbytes=%x(x%d)\n",
-@@ -556,6 +610,141 @@ static int rockchip_sfc_xfer_done(struct rockchip_sfc *sfc, u32 timeout_us)
+@@ -556,6 +610,141 @@ static int rockchip_sfc_xfer_done(struct
  	return ret;
  }
  
@@ -277,7 +275,7 @@ index 2432475d616..94e17e676a1 100644
  static int rockchip_sfc_exec_op(struct spi_slave *mem,
  				const struct spi_mem_op *op)
  {
-@@ -563,6 +752,21 @@ static int rockchip_sfc_exec_op(struct spi_slave *mem,
+@@ -563,6 +752,21 @@ static int rockchip_sfc_exec_op(struct s
  	u32 len = min_t(u32, op->data.nbytes, sfc->max_iosize);
  	int ret;
  
@@ -299,6 +297,3 @@ index 2432475d616..94e17e676a1 100644
  	rockchip_sfc_adjust_op_work((struct spi_mem_op *)op);
  	rockchip_sfc_xfer_setup(sfc, mem, op, len);
  	if (len) {
--- 
-2.55.0
-

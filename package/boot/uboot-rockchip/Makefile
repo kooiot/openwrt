@@ -19,7 +19,7 @@ include $(INCLUDE_DIR)/package.mk
 
 define U-Boot/Default
   BUILD_TARGET:=rockchip
-  UENV:=default
+  UENV:=
   HIDDEN:=1
 endef
 
@@ -180,19 +180,19 @@ define U-Boot/rk3506/Default
   TPL:=rk3506_ddr_750MHz_v1.08.bin
 endef
 
-define U-Boot/vx-hd-rk3506-iot
+define U-Boot/vx-hd-rk3506g-iot
   $(U-Boot/rk3506/Default)
-  NAME:=HD-RK3506-IOT (SD)
+  NAME:=HD-RK3506G-IOT (SD)
   BUILD_DEVICES:= \
-       vanxoak_vx-hd-rk3506-iot
+       vanxoak_vx-hd-rk3506g-iot
 endef
 
-define U-Boot/vx-hd-rk3506-iot-spinand
+define U-Boot/vx-hd-rk3506g-iot-spinand
   $(U-Boot/rk3506/Default)
-  NAME:=HD-RK3506-IOT (SPINAND)
+  NAME:=HD-RK3506G-IOT (SPINAND)
   UENV:=nand
   BUILD_DEVICES:= \
-       vanxoak_vx-hd-rk3506-iot-spinand
+       vanxoak_vx-hd-rk3506g-iot-spinand
 endef
 
 # RK3528 boards
@@ -487,8 +487,8 @@ UBOOT_TARGETS := \
   roc-cc-rk3328 \
   rock64-rk3328 \
   rock-pi-e-rk3328 \
-  vx-hd-rk3506-iot \
-  vx-hd-rk3506-iot-spinand \
+  vx-hd-rk3506g-iot \
+  vx-hd-rk3506g-iot-spinand \
   opc-h68k-rk3568 \
   station-p2-rk3568 \
   rock-pi-e-v3-rk3328 \

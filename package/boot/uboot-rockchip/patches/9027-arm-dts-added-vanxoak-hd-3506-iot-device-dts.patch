@@ -6,14 +6,14 @@ Subject: [PATCH] arm: dts: added vanxoak hd-3506-iot device dts
 ---
  arch/arm/dts/Makefile                         |   5 +-
  ...k3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi |  15 ++
- .../dts/rk3506-vx-hd-rk3506-iot-spinand.dts   |  33 +++
- .../dts/rk3506-vx-hd-rk3506-iot-u-boot.dtsi   |  15 ++
- arch/arm/dts/rk3506-vx-hd-rk3506-iot.dts      | 219 ++++++++++++++++++
+ .../dts/rk3506-vx-hd-rk3506g-iot-spinand.dts   |  33 +++
+ .../dts/rk3506-vx-hd-rk3506g-iot-u-boot.dtsi   |  15 ++
+ arch/arm/dts/rk3506-vx-hd-rk3506g-iot.dts      | 219 ++++++++++++++++++
  5 files changed, 286 insertions(+), 1 deletion(-)
- create mode 100644 arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi
- create mode 100644 arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand.dts
- create mode 100644 arch/arm/dts/rk3506-vx-hd-rk3506-iot-u-boot.dtsi
- create mode 100644 arch/arm/dts/rk3506-vx-hd-rk3506-iot.dts
+ create mode 100644 arch/arm/dts/rk3506-vx-hd-rk3506g-iot-spinand-u-boot.dtsi
+ create mode 100644 arch/arm/dts/rk3506-vx-hd-rk3506g-iot-spinand.dts
+ create mode 100644 arch/arm/dts/rk3506-vx-hd-rk3506g-iot-u-boot.dtsi
+ create mode 100644 arch/arm/dts/rk3506-vx-hd-rk3506g-iot.dts
 
 diff --git a/arch/arm/dts/Makefile b/arch/arm/dts/Makefile
 index 2d931c23fc8..35aac282024 100644
@@ -27,15 +27,15 @@ index 2d931c23fc8..35aac282024 100644
 +	rk3368-px5-evb.dtb
 +
 +dtb-$(CONFIG_ROCKCHIP_RK3506) += \
-+	rk3506-rk3506-vx-hd-rk3506-iot-spinand.dts.dtb
++	rk3506-vx-hd-rk3506g-iot-spinand.dts.dtb
  
  dtb-$(CONFIG_ARCH_S5P4418) += \
  	s5p4418-nanopi2.dtb
-diff --git a/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi
+diff --git a/arch/arm/dts/rk3506-vx-hd-rk3506g-iot-spinand-u-boot.dtsi b/arch/arm/dts/rk3506-vx-hd-rk3506g-iot-spinand-u-boot.dtsi
 new file mode 100644
 index 00000000000..c3dcaa97f0f
 --- /dev/null
-+++ b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand-u-boot.dtsi
++++ b/arch/arm/dts/rk3506-vx-hd-rk3506g-iot-spinand-u-boot.dtsi
 @@ -0,0 +1,15 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +
@@ -52,22 +52,22 @@ index 00000000000..c3dcaa97f0f
 +	bootph-pre-ram;
 +	bootph-some-ram;
 +};
-diff --git a/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand.dts b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand.dts
+diff --git a/arch/arm/dts/rk3506-vx-hd-rk3506g-iot-spinand.dts b/arch/arm/dts/rk3506-vx-hd-rk3506g-iot-spinand.dts
 new file mode 100644
 index 00000000000..5ce422bed28
 --- /dev/null
-+++ b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand.dts
++++ b/arch/arm/dts/rk3506-vx-hd-rk3506g-iot-spinand.dts
 @@ -0,0 +1,33 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2026 Dirk Chang <dirk@kooiot.com>
 +
 +/dts-v1/;
 +
-+#include "rk3506-vx-hd-rk3506-iot.dts"
++#include "rk3506-vx-hd-rk3506g-iot.dts"
 +
 +/ {
-+	model = "HD-RK3506-IOT (SPI-NAND)";
-+	compatible = "vanxoak,vx-hd-rk3506-iot-spinand", "rockchip,rk3506";
++	model = "HD-RK3506G-IOT (SPI-NAND)";
++	compatible = "vanxoak,vx-hd-rk3506g-iot-spinand", "rockchip,rk3506";
 +
 +	chosen {
 +		bootargs = "root=/dev/fit0 rootwait";
@@ -91,11 +91,11 @@ index 00000000000..5ce422bed28
 +		};
 +	};
 +};
-diff --git a/arch/arm/dts/rk3506-vx-hd-rk3506-iot-u-boot.dtsi b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-u-boot.dtsi
+diff --git a/arch/arm/dts/rk3506-vx-hd-rk3506g-iot-u-boot.dtsi b/arch/arm/dts/rk3506-vx-hd-rk3506g-iot-u-boot.dtsi
 new file mode 100644
 index 00000000000..c3dcaa97f0f
 --- /dev/null
-+++ b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-u-boot.dtsi
++++ b/arch/arm/dts/rk3506-vx-hd-rk3506g-iot-u-boot.dtsi
 @@ -0,0 +1,15 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +
@@ -112,11 +112,11 @@ index 00000000000..c3dcaa97f0f
 +	bootph-pre-ram;
 +	bootph-some-ram;
 +};
-diff --git a/arch/arm/dts/rk3506-vx-hd-rk3506-iot.dts b/arch/arm/dts/rk3506-vx-hd-rk3506-iot.dts
+diff --git a/arch/arm/dts/rk3506-vx-hd-rk3506g-iot.dts b/arch/arm/dts/rk3506-vx-hd-rk3506g-iot.dts
 new file mode 100644
 index 00000000000..b629a5548d5
 --- /dev/null
-+++ b/arch/arm/dts/rk3506-vx-hd-rk3506-iot.dts
++++ b/arch/arm/dts/rk3506-vx-hd-rk3506g-iot.dts
 @@ -0,0 +1,219 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +
@@ -126,8 +126,8 @@ index 00000000000..b629a5548d5
 +#include "rk3506.dtsi"
 +
 +/ {
-+	model = "HD-RK3506-IOT (SD)";
-+	compatible = "vanxoak,vx-hd-rk3506-iot-spinand", "rockchip,rk3506";
++	model = "HD-RK3506G-IOT (SD)";
++	compatible = "vanxoak,vx-hd-rk3506g-iot-spinand", "rockchip,rk3506";
 +
 +	aliases {
 +		ethernet0 = <&gmac0>;

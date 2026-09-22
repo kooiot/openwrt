@@ -4,13 +4,13 @@ Date: Sun, 6 Sep 2026 02:25:44 +0800
 Subject: [PATCH] rockchip: correct ubi mtd part offset
 
 ---
- arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand.dts | 6 +++---
+ arch/arm/dts/rk3506-vx-hd-rk3506g-iot-spinand.dts | 6 +++---
  1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand.dts b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand.dts
+diff --git a/arch/arm/dts/rk3506-vx-hd-rk3506g-iot-spinand.dts b/arch/arm/dts/rk3506-vx-hd-rk3506g-iot-spinand.dts
 index 5ce422bed28..4e5bc3945dc 100644
---- a/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand.dts
-+++ b/arch/arm/dts/rk3506-vx-hd-rk3506-iot-spinand.dts
+--- a/arch/arm/dts/rk3506-vx-hd-rk3506g-iot-spinand.dts
++++ b/arch/arm/dts/rk3506-vx-hd-rk3506g-iot-spinand.dts
 @@ -21,13 +21,13 @@
  		#size-cells = <1>;
  		boot@0 {
