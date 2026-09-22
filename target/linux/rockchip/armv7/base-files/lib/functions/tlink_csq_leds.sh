@@ -150,10 +150,10 @@ tlink_csq_leds_single()
 }
 
 case $(board_name) in
-	kooiot,tlink-rk3506-iot)
+	kooiot,tlink-rk3506g-iot)
 		tlink_csq_leds_mixed
 		;;
-	kooiot,tlink-rk3506-iot-slim)
+	kooiot,tlink-rk3506g-iot-slim)
 		tlink_csq_leds_single
 		;;
 	*)

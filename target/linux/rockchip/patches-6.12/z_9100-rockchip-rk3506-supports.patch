@@ -1,0 +1,2779 @@
+diff --git a/Documentation/devicetree/bindings/spi/rockchip-sfc.yaml b/Documentation/devicetree/bindings/spi/rockchip-sfc.yaml
+index ac1503de0..de2013e8e 100644
+--- a/Documentation/devicetree/bindings/spi/rockchip-sfc.yaml
++++ b/Documentation/devicetree/bindings/spi/rockchip-sfc.yaml
+@@ -15,11 +15,19 @@ allOf:
+ 
+ properties:
+   compatible:
+-    const: rockchip,sfc
++    enum:
++      - rockchip,fspi
++      - rockchip,rk3506-fspi
++      - rockchip,rk3538-fspi
++      - rockchip,rv1103b-fspi
++      - rockchip,rv1126b-fspi
++      - rockchip,sfc
++
+     description:
+       The rockchip sfc controller is a standalone IP with version register,
+       and the driver can handle all the feature difference inside the IP
+       depending on the version register.
++      The rockchip flexible spi controller is the next generation IP of sfc.
+ 
+   reg:
+     maxItems: 1
+@@ -40,10 +48,31 @@ properties:
+   power-domains:
+     maxItems: 1
+ 
++  reset-gpios:
++    description:
++      Specifies the reset gpio pin to be used for resetting the devices.
++
+   rockchip,sfc-no-dma:
+     description: Disable DMA and utilize FIFO mode only
+     type: boolean
+ 
++  rockchip,sclk-x2-bypass:
++    description:
++      Turn off the internal 2 frequency division logic of the controller clock,
++      and the interface clock is 1:1 with the controller working clock.
++    type: boolean
++
++  rockchip,max-dll:
++    description:
++      Setting maximum dll cell.
++    $ref: /schemas/types.yaml#/definitions/uint32
++
++  sfc-cs-gpios:
++    description:
++      Specifies the gpio pins to be used for chipselects. The gpios will be
++      referred to as reg = <index> in the SPI child nodes. If unspecified, a
++      single SPI device without a chip select can be used.
++
+ patternProperties:
+   "^flash@[0-3]$":
+     type: object
+@@ -66,7 +95,9 @@ unevaluatedProperties: false
+ examples:
+   - |
+     #include <dt-bindings/clock/px30-cru.h>
++    #include <dt-bindings/gpio/gpio.h>
+     #include <dt-bindings/interrupt-controller/arm-gic.h>
++    #include <dt-bindings/pinctrl/rockchip.h>
+     #include <dt-bindings/power/px30-power.h>
+ 
+     sfc: spi@ff3a0000 {
+@@ -78,6 +109,8 @@ examples:
+         pinctrl-0 = <&sfc_clk &sfc_cs &sfc_bus2>;
+         pinctrl-names = "default";
+         power-domains = <&power PX30_PD_MMC_NAND>;
++        sfc-cs-gpios = <&gpio4 RK_PB0 GPIO_ACTIVE_LOW>, <&gpio4 RK_PA5 GPIO_ACTIVE_LOW>;
++        reset-gpios = <&gpio1 RK_PB0 GPIO_ACTIVE_LOW>;
+         #address-cells = <1>;
+         #size-cells = <0>;
+ 
+diff --git a/drivers/clk/rockchip/Kconfig b/drivers/clk/rockchip/Kconfig
+index a039199c9..5b844a3e3 100644
+--- a/drivers/clk/rockchip/Kconfig
++++ b/drivers/clk/rockchip/Kconfig
+@@ -93,6 +93,13 @@ config CLK_RK3399
+ 	help
+ 	  Build the driver for RK3399 Clock Driver.
+ 
++config CLK_RK3506
++	bool "Rockchip RK3506 clock controller support"
++	depends on ARM || COMPILE_TEST
++	default y
++	help
++	  Build the driver for RK3506 Clock Driver.
++
+ config CLK_RK3528
+ 	bool "Rockchip RK3528 clock controller support"
+ 	depends on ARM64 || COMPILE_TEST
+diff --git a/drivers/clk/rockchip/Makefile b/drivers/clk/rockchip/Makefile
+index e7e9f715d..8b7397b76 100644
+--- a/drivers/clk/rockchip/Makefile
++++ b/drivers/clk/rockchip/Makefile
+@@ -29,6 +29,7 @@ obj-$(CONFIG_CLK_RK3308)        += clk-rk3308.o
+ obj-$(CONFIG_CLK_RK3328)        += clk-rk3328.o
+ obj-$(CONFIG_CLK_RK3368)        += clk-rk3368.o
+ obj-$(CONFIG_CLK_RK3399)        += clk-rk3399.o
++obj-$(CONFIG_CLK_RK3506)	+= clk-rk3506.o rst-rk3506.o
+ obj-$(CONFIG_CLK_RK3528)	+= clk-rk3528.o rst-rk3528.o
+ obj-$(CONFIG_CLK_RK3568)	+= clk-rk3568.o
+ obj-$(CONFIG_CLK_RK3576)	+= clk-rk3576.o rst-rk3576.o
+diff --git a/drivers/clk/rockchip/clk-cpu.c b/drivers/clk/rockchip/clk-cpu.c
+index 398a226ad..677bd0dd6 100644
+--- a/drivers/clk/rockchip/clk-cpu.c
++++ b/drivers/clk/rockchip/clk-cpu.c
+@@ -16,14 +16,14 @@
+  * of the SoC or supplied after the SoC characterization.
+  *
+  * The below implementation of the CPU clock allows the rate changes of the CPU
+- * clock and the corresponding rate changes of the auxillary clocks of the CPU
++ * clock and the corresponding rate changes of the auxiliary clocks of the CPU
+  * domain. The platform clock driver provides a clock register configuration
+  * for each configurable rate which is then used to program the clock hardware
+- * registers to acheive a fast co-oridinated rate change for all the CPU domain
++ * registers to achieve a fast co-oridinated rate change for all the CPU domain
+  * clocks.
+  *
+  * On a rate change request for the CPU clock, the rate change is propagated
+- * upto the PLL supplying the clock to the CPU domain clock blocks. While the
++ * up to the PLL supplying the clock to the CPU domain clock blocks. While the
+  * CPU domain PLL is reconfigured, the CPU domain clocks are driven using an
+  * alternate clock source. If required, the alternate clock source is divided
+  * down in order to keep the output clock rate within the previous OPP limits.
+@@ -396,3 +396,168 @@ struct clk *rockchip_clk_register_cpuclk(const char *name,
+ 	kfree(cpuclk);
+ 	return ERR_PTR(ret);
+ }
++
++static int rockchip_cpuclk_multi_pll_pre_rate_change(struct rockchip_cpuclk *cpuclk,
++						     struct clk_notifier_data *ndata)
++{
++	unsigned long new_rate = roundup(ndata->new_rate, 1000);
++	const struct rockchip_cpuclk_rate_table *rate;
++	unsigned long flags;
++
++	rate = rockchip_get_cpuclk_settings(cpuclk, new_rate);
++	if (!rate) {
++		pr_err("%s: Invalid rate : %lu for cpuclk\n",
++		       __func__, new_rate);
++		return -EINVAL;
++	}
++
++	if (new_rate > ndata->old_rate) {
++		spin_lock_irqsave(cpuclk->lock, flags);
++		rockchip_cpuclk_set_dividers(cpuclk, rate);
++		spin_unlock_irqrestore(cpuclk->lock, flags);
++	}
++
++	return 0;
++}
++
++static int rockchip_cpuclk_multi_pll_post_rate_change(struct rockchip_cpuclk *cpuclk,
++						      struct clk_notifier_data *ndata)
++{
++	unsigned long new_rate = roundup(ndata->new_rate, 1000);
++	const struct rockchip_cpuclk_rate_table *rate;
++	unsigned long flags;
++
++	rate = rockchip_get_cpuclk_settings(cpuclk, new_rate);
++	if (!rate) {
++		pr_err("%s: Invalid rate : %lu for cpuclk\n",
++		       __func__, new_rate);
++		return -EINVAL;
++	}
++
++	if (new_rate < ndata->old_rate) {
++		spin_lock_irqsave(cpuclk->lock, flags);
++		rockchip_cpuclk_set_dividers(cpuclk, rate);
++		spin_unlock_irqrestore(cpuclk->lock, flags);
++	}
++
++	return 0;
++}
++
++static int rockchip_cpuclk_multi_pll_notifier_cb(struct notifier_block *nb,
++						 unsigned long event, void *data)
++{
++	struct clk_notifier_data *ndata = data;
++	struct rockchip_cpuclk *cpuclk = to_rockchip_cpuclk_nb(nb);
++	int ret = 0;
++
++	pr_debug("%s: event %lu, old_rate %lu, new_rate: %lu\n",
++		 __func__, event, ndata->old_rate, ndata->new_rate);
++	if (event == PRE_RATE_CHANGE)
++		ret = rockchip_cpuclk_multi_pll_pre_rate_change(cpuclk, ndata);
++	else if (event == POST_RATE_CHANGE)
++		ret = rockchip_cpuclk_multi_pll_post_rate_change(cpuclk, ndata);
++
++	return notifier_from_errno(ret);
++}
++
++struct clk *rockchip_clk_register_cpuclk_multi_pll(const char *name,
++						   const char *const *parent_names,
++						   u8 num_parents, void __iomem *base,
++						   int muxdiv_offset, u8 mux_shift,
++						   u8 mux_width, u8 mux_flags,
++						   int div_offset, u8 div_shift,
++						   u8 div_width, u8 div_flags,
++						   unsigned long flags, spinlock_t *lock,
++						   const struct rockchip_cpuclk_rate_table *rates,
++						   int nrates)
++{
++	struct rockchip_cpuclk *cpuclk;
++	struct clk_hw *hw;
++	struct clk_mux *mux = NULL;
++	struct clk_divider *div = NULL;
++	const struct clk_ops *mux_ops = NULL, *div_ops = NULL;
++	int ret;
++
++	if (num_parents > 1) {
++		mux = kzalloc_obj(*mux);
++		if (!mux)
++			return ERR_PTR(-ENOMEM);
++
++		mux->reg = base + muxdiv_offset;
++		mux->shift = mux_shift;
++		mux->mask = BIT(mux_width) - 1;
++		mux->flags = mux_flags;
++		mux->lock = lock;
++		mux_ops = (mux_flags & CLK_MUX_READ_ONLY) ? &clk_mux_ro_ops
++							: &clk_mux_ops;
++	}
++
++	if (div_width > 0) {
++		div = kzalloc_obj(*div);
++		if (!div) {
++			ret = -ENOMEM;
++			goto free_mux;
++		}
++
++		div->flags = div_flags;
++		if (div_offset)
++			div->reg = base + div_offset;
++		else
++			div->reg = base + muxdiv_offset;
++		div->shift = div_shift;
++		div->width = div_width;
++		div->lock = lock;
++		div_ops = (div_flags & CLK_DIVIDER_READ_ONLY)
++						? &clk_divider_ro_ops
++						: &clk_divider_ops;
++	}
++
++	hw = clk_hw_register_composite(NULL, name, parent_names, num_parents,
++				       mux ? &mux->hw : NULL, mux_ops,
++				       div ? &div->hw : NULL, div_ops,
++				       NULL, NULL, flags);
++	if (IS_ERR(hw)) {
++		ret = PTR_ERR(hw);
++		goto free_div;
++	}
++
++	cpuclk = kzalloc_obj(*cpuclk);
++	if (!cpuclk) {
++		ret = -ENOMEM;
++		goto unregister_clk;
++	}
++
++	cpuclk->reg_base = base;
++	cpuclk->lock = lock;
++	cpuclk->clk_nb.notifier_call = rockchip_cpuclk_multi_pll_notifier_cb;
++	ret = clk_notifier_register(hw->clk, &cpuclk->clk_nb);
++	if (ret) {
++		pr_err("%s: failed to register clock notifier for %s\n",
++		       __func__, name);
++		goto free_cpuclk;
++	}
++
++	if (nrates > 0) {
++		cpuclk->rate_count = nrates;
++		cpuclk->rate_table = kmemdup(rates,
++					     sizeof(*rates) * nrates,
++					     GFP_KERNEL);
++		if (!cpuclk->rate_table) {
++			ret = -ENOMEM;
++			goto free_cpuclk;
++		}
++	}
++
++	return hw->clk;
++
++free_cpuclk:
++	kfree(cpuclk);
++unregister_clk:
++	clk_hw_unregister_composite(hw);
++free_div:
++	kfree(div);
++free_mux:
++	kfree(mux);
++
++	return ERR_PTR(ret);
++}
+diff --git a/drivers/clk/rockchip/clk.c b/drivers/clk/rockchip/clk.c
+index 805ab4a6f..0d6366e43 100644
+--- a/drivers/clk/rockchip/clk.c
++++ b/drivers/clk/rockchip/clk.c
+@@ -429,6 +429,24 @@ void rockchip_clk_of_add_provider(struct device_node *np,
+ }
+ EXPORT_SYMBOL_GPL(rockchip_clk_of_add_provider);
+ 
++int rockchip_clk_add_grf(struct rockchip_clk_provider *ctx,
++			 struct regmap *grf,
++			 enum rockchip_grf_type type)
++{
++	struct rockchip_aux_grf *aux_grf;
++
++	aux_grf = kzalloc_obj(*aux_grf);
++	if (!aux_grf)
++		return -ENOMEM;
++
++	aux_grf->grf = grf;
++	aux_grf->type = type;
++	hash_add(ctx->aux_grf_table, &aux_grf->node, type);
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(rockchip_clk_add_grf);
++
+ void rockchip_clk_register_plls(struct rockchip_clk_provider *ctx,
+ 				struct rockchip_pll_clock *list,
+ 				unsigned int nr_pll, int grf_lock_offset)
+@@ -722,6 +740,30 @@ void rockchip_clk_register_armclk(struct rockchip_clk_provider *ctx,
+ }
+ EXPORT_SYMBOL_GPL(rockchip_clk_register_armclk);
+ 
++void rockchip_clk_register_armclk_multi_pll(struct rockchip_clk_provider *ctx,
++					    struct rockchip_clk_branch *list,
++					    const struct rockchip_cpuclk_rate_table *rates,
++					    int nrates)
++{
++	struct clk *clk;
++
++	clk = rockchip_clk_register_cpuclk_multi_pll(list->name, list->parent_names,
++						     list->num_parents, ctx->reg_base,
++						     list->muxdiv_offset, list->mux_shift,
++						     list->mux_width, list->mux_flags,
++						     list->div_offset, list->div_shift,
++						     list->div_width, list->div_flags,
++						     list->flags, &ctx->lock, rates, nrates);
++	if (IS_ERR(clk)) {
++		pr_err("%s: failed to register clock %s: %ld\n",
++		       __func__, list->name, PTR_ERR(clk));
++		return;
++	}
++
++	rockchip_clk_set_lookup(ctx, clk, list->id);
++}
++EXPORT_SYMBOL_GPL(rockchip_clk_register_armclk_multi_pll);
++
+ void rockchip_clk_protect_critical(const char *const clocks[],
+ 				   int nclocks)
+ {
+diff --git a/drivers/clk/rockchip/clk.h b/drivers/clk/rockchip/clk.h
+index 31f8e17e0..4dcac9154 100644
+--- a/drivers/clk/rockchip/clk.h
++++ b/drivers/clk/rockchip/clk.h
+@@ -208,6 +208,18 @@ struct clk;
+ #define RK3399_PMU_CLKGATE_CON(x)	((x) * 0x4 + 0x100)
+ #define RK3399_PMU_SOFTRST_CON(x)	((x) * 0x4 + 0x110)
+ 
++#define RK3506_PMU_CRU_BASE		0x10000
++#define RK3506_PLL_CON(x)		((x) * 0x4 + RK3506_PMU_CRU_BASE)
++#define RK3506_CLKSEL_CON(x)		((x) * 0x4 + 0x300)
++#define RK3506_CLKGATE_CON(x)		((x) * 0x4 + 0x800)
++#define RK3506_SOFTRST_CON(x)		((x) * 0x4 + 0xa00)
++#define RK3506_PMU_CLKSEL_CON(x)	((x) * 0x4 + 0x300 + RK3506_PMU_CRU_BASE)
++#define RK3506_PMU_CLKGATE_CON(x)	((x) * 0x4 + 0x800 + RK3506_PMU_CRU_BASE)
++#define RK3506_MODE_CON			0x280
++#define RK3506_GLB_CNT_TH		0xc00
++#define RK3506_GLB_SRST_FST		0xc08
++#define RK3506_GLB_SRST_SND		0xc0c
++
+ #define RK3528_PMU_CRU_BASE		0x10000
+ #define RK3528_PCIE_CRU_BASE		0x20000
+ #define RK3528_DDRPHY_CRU_BASE		0x28000
+@@ -583,6 +595,17 @@ struct clk *rockchip_clk_register_cpuclk(const char *name,
+ 			const struct rockchip_cpuclk_rate_table *rates,
+ 			int nrates, void __iomem *reg_base, spinlock_t *lock);
+ 
++struct clk *rockchip_clk_register_cpuclk_multi_pll(const char *name,
++						   const char *const *parent_names,
++						   u8 num_parents, void __iomem *base,
++						   int muxdiv_offset, u8 mux_shift,
++						   u8 mux_width, u8 mux_flags,
++						   int div_offset, u8 div_shift,
++						   u8 div_width, u8 div_flags,
++						   unsigned long flags, spinlock_t *lock,
++						   const struct rockchip_cpuclk_rate_table *rates,
++						   int nrates);
++
+ struct clk *rockchip_clk_register_mmc(const char *name,
+ 				const char *const *parent_names, u8 num_parents,
+ 				void __iomem *reg,
+@@ -1152,6 +1175,9 @@ struct rockchip_clk_provider *rockchip_clk_init_early(struct device_node *np,
+ void rockchip_clk_finalize(struct rockchip_clk_provider *ctx);
+ void rockchip_clk_of_add_provider(struct device_node *np,
+ 				struct rockchip_clk_provider *ctx);
++int rockchip_clk_add_grf(struct rockchip_clk_provider *ctx,
++			 struct regmap *grf,
++			 enum rockchip_grf_type type);
+ unsigned long rockchip_clk_find_max_clk_id(struct rockchip_clk_branch *list,
+ 					   unsigned int nr_clk);
+ void rockchip_clk_register_branches(struct rockchip_clk_provider *ctx,
+@@ -1170,6 +1196,10 @@ void rockchip_clk_register_armclk(struct rockchip_clk_provider *ctx,
+ 			const struct rockchip_cpuclk_reg_data *reg_data,
+ 			const struct rockchip_cpuclk_rate_table *rates,
+ 			int nrates);
++void rockchip_clk_register_armclk_multi_pll(struct rockchip_clk_provider *ctx,
++					    struct rockchip_clk_branch *list,
++					    const struct rockchip_cpuclk_rate_table *rates,
++					    int nrates);
+ void rockchip_clk_protect_critical(const char *const clocks[], int nclocks);
+ void rockchip_register_restart_notifier(struct rockchip_clk_provider *ctx,
+ 					unsigned int reg, void (*cb)(void));
+@@ -1208,6 +1238,7 @@ static inline void rockchip_register_softrst(struct device_node *np,
+ 	return rockchip_register_softrst_lut(np, NULL, num_regs, base, flags);
+ }
+ 
++void rk3506_rst_init(struct device_node *np, void __iomem *reg_base);
+ void rk3528_rst_init(struct device_node *np, void __iomem *reg_base);
+ void rk3576_rst_init(struct device_node *np, void __iomem *reg_base);
+ void rk3588_rst_init(struct device_node *np, void __iomem *reg_base);
+diff --git a/drivers/dma/pl330.c b/drivers/dma/pl330.c
+index 82a9fe88a..60204b6fb 100644
+--- a/drivers/dma/pl330.c
++++ b/drivers/dma/pl330.c
+@@ -2144,19 +2144,49 @@ static struct dma_chan *of_dma_pl330_xlate(struct of_phandle_args *dma_spec,
+ {
+ 	int count = dma_spec->args_count;
+ 	struct pl330_dmac *pl330 = ofdma->of_dma_data;
++	struct dma_chan *chan;
+ 	unsigned int chan_id;
+ 
+ 	if (!pl330)
+ 		return NULL;
+ 
+-	if (count != 1)
++	if (count < 1)
+ 		return NULL;
+ 
+ 	chan_id = dma_spec->args[0];
+ 	if (chan_id >= pl330->num_peripherals)
+ 		return NULL;
+ 
+-	return dma_get_slave_channel(&pl330->peripherals[chan_id].chan);
++	chan = dma_get_slave_channel(&pl330->peripherals[chan_id].chan);
++
++	/* Support dmamux set, such as rk3506 */
++	if (chan && count == 5) {
++		void __iomem *r;
++
++		/* dmamux pair0: args[1]: reg0 args[2]: val0 */
++		if (dma_spec->args[1]) {
++			r = ioremap(dma_spec->args[1], 0x4);
++			if (r) {
++				writel(dma_spec->args[2], r);
++				iounmap(r);
++			}
++		}
++
++		/* dmamux pair1: args[3]: reg1 args[4]: val1 */
++		if (dma_spec->args[3]) {
++			r = ioremap(dma_spec->args[3], 0x4);
++			if (r) {
++				writel(dma_spec->args[4], r);
++				iounmap(r);
++			}
++		}
++
++		dev_dbg(pl330->ddma.dev, "r0: 0x%08x v0: 0x%08x r1: 0x%08x, v1: 0x%08x\n",
++			dma_spec->args[1], dma_spec->args[2],
++			dma_spec->args[3], dma_spec->args[4]);
++	}
++
++	return chan;
+ }
+ 
+ static int pl330_alloc_chan_resources(struct dma_chan *chan)
+diff --git a/drivers/iio/adc/rockchip_saradc.c b/drivers/iio/adc/rockchip_saradc.c
+index 41681e7a1..9dc8f616b 100644
+--- a/drivers/iio/adc/rockchip_saradc.c
++++ b/drivers/iio/adc/rockchip_saradc.c
+@@ -290,6 +290,25 @@ static const struct rockchip_saradc_data rk3528_saradc_data = {
+ 	.read = rockchip_saradc_read_v2,
+ };
+ 
++static const struct iio_chan_spec rockchip_rk3562_saradc_iio_channels[] = {
++	SARADC_CHANNEL(0, "adc0", 10),
++	SARADC_CHANNEL(1, "adc1", 10),
++	SARADC_CHANNEL(2, "adc2", 10),
++	SARADC_CHANNEL(3, "adc3", 10),
++	SARADC_CHANNEL(4, "adc4", 10),
++	SARADC_CHANNEL(5, "adc5", 10),
++	SARADC_CHANNEL(6, "adc6", 10),
++	SARADC_CHANNEL(7, "adc7", 10),
++};
++
++static const struct rockchip_saradc_data rk3562_saradc_data = {
++	.channels = rockchip_rk3562_saradc_iio_channels,
++	.num_channels = ARRAY_SIZE(rockchip_rk3562_saradc_iio_channels),
++	.clk_rate = 1000000,
++	.start = rockchip_saradc_start_v2,
++	.read = rockchip_saradc_read_v2,
++};
++
+ static const struct iio_chan_spec rockchip_rk3568_saradc_iio_channels[] = {
+ 	SARADC_CHANNEL(0, "adc0", 10),
+ 	SARADC_CHANNEL(1, "adc1", 10),
+@@ -342,6 +361,9 @@ static const struct of_device_id rockchip_saradc_match[] = {
+ 	}, {
+ 		.compatible = "rockchip,rk3528-saradc",
+ 		.data = &rk3528_saradc_data,
++	}, {
++		.compatible = "rockchip,rk3562-saradc",
++		.data = &rk3562_saradc_data,
+ 	}, {
+ 		.compatible = "rockchip,rk3568-saradc",
+ 		.data = &rk3568_saradc_data,
+diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
+index 99e5ef5b3..363a27908 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
+@@ -1032,6 +1032,84 @@ static const struct rk_gmac_ops rk3399_ops = {
+ 	.set_rmii_speed = rk3399_set_rmii_speed,
+ };
+ 
++#define RK3506_GRF_SOC_CON8		0X0020
++#define RK3506_GRF_SOC_CON11		0X002c
++
++#define RK3506_GMAC_RMII_MODE		GRF_BIT(1)
++
++#define RK3506_GMAC_CLK_RMII_DIV2	GRF_BIT(3)
++#define RK3506_GMAC_CLK_RMII_DIV20	GRF_CLR_BIT(3)
++
++#define RK3506_GMAC_CLK_SELET_CRU	GRF_CLR_BIT(5)
++#define RK3506_GMAC_CLK_SELET_IO	GRF_BIT(5)
++
++#define RK3506_GMAC_CLK_RMII_GATE	GRF_BIT(2)
++#define RK3506_GMAC_CLK_RMII_NOGATE	GRF_CLR_BIT(2)
++
++static void rk3506_set_to_rmii(struct rk_priv_data *bsp_priv)
++{
++	struct device *dev = &bsp_priv->pdev->dev;
++	unsigned int id = bsp_priv->id, offset;
++
++	if (IS_ERR(bsp_priv->grf)) {
++		dev_err(dev, "%s: Missing rockchip,grf property\n", __func__);
++		return;
++	}
++
++	offset = (id == 1) ? RK3506_GRF_SOC_CON11 : RK3506_GRF_SOC_CON8;
++	regmap_write(bsp_priv->grf, offset, RK3506_GMAC_RMII_MODE);
++}
++
++static void rk3506_set_rmii_speed(struct rk_priv_data *bsp_priv, int speed)
++{
++	struct device *dev = &bsp_priv->pdev->dev;
++	unsigned int val, offset, id = bsp_priv->id;
++
++	switch (speed) {
++	case 10:
++		val = RK3506_GMAC_CLK_RMII_DIV20;
++		break;
++	case 100:
++		val = RK3506_GMAC_CLK_RMII_DIV2;
++		break;
++	default:
++		goto err;
++	}
++
++	offset = (id == 1) ? RK3506_GRF_SOC_CON11 : RK3506_GRF_SOC_CON8;
++	regmap_write(bsp_priv->grf, offset, val);
++
++	return;
++err:
++	dev_err(dev, "unknown RMII speed value for GMAC speed=%d", speed);
++}
++
++static void rk3506_set_clock_selection(struct rk_priv_data *bsp_priv,
++				       bool input, bool enable)
++{
++	unsigned int value, offset, id = bsp_priv->id;
++
++	offset = (id == 1) ? RK3506_GRF_SOC_CON11 : RK3506_GRF_SOC_CON8;
++
++	value = input ? RK3506_GMAC_CLK_SELET_IO :
++			RK3506_GMAC_CLK_SELET_CRU;
++	value |= enable ? RK3506_GMAC_CLK_RMII_NOGATE :
++			  RK3506_GMAC_CLK_RMII_GATE;
++	regmap_write(bsp_priv->grf, offset, value);
++}
++
++static const struct rk_gmac_ops rk3506_ops = {
++	.set_to_rmii = rk3506_set_to_rmii,
++	.set_rmii_speed = rk3506_set_rmii_speed,
++	.set_clock_selection = rk3506_set_clock_selection,
++	.regs_valid = true,
++	.regs = {
++		0xff4c8000, /* gmac0 */
++		0xff4d0000, /* gmac1 */
++		0x0, /* sentinel */
++	},
++};
++
+ #define RK3528_VO_GRF_GMAC_CON		0x0018
+ #define RK3528_VO_GRF_MACPHY_CON0	0x001c
+ #define RK3528_VO_GRF_MACPHY_CON1	0x0020
+@@ -2201,6 +2279,7 @@ static const struct of_device_id rk_gmac_dwmac_match[] = {
+ 	{ .compatible = "rockchip,rk3366-gmac", .data = &rk3366_ops },
+ 	{ .compatible = "rockchip,rk3368-gmac", .data = &rk3368_ops },
+ 	{ .compatible = "rockchip,rk3399-gmac", .data = &rk3399_ops },
++	{ .compatible = "rockchip,rk3506-gmac", .data = &rk3506_ops },
+ 	{ .compatible = "rockchip,rk3528-gmac", .data = &rk3528_ops },
+ 	{ .compatible = "rockchip,rk3568-gmac", .data = &rk3568_ops },
+ 	{ .compatible = "rockchip,rk3576-gmac", .data = &rk3576_ops },
+diff --git a/drivers/nvmem/rockchip-otp.c b/drivers/nvmem/rockchip-otp.c
+index 59cb08ad3..2dc665007 100644
+--- a/drivers/nvmem/rockchip-otp.c
++++ b/drivers/nvmem/rockchip-otp.c
+@@ -337,6 +337,14 @@ static const char * const rk3528_otp_clocks[] = {
+ 	"otp", "apb_pclk", "sbpi",
+ };
+ 
++static const struct rockchip_data rk3506_data = {
++	.size = 0x78,
++	.word_size = sizeof(u16),
++	.clks = rk3528_otp_clocks,
++	.num_clks = ARRAY_SIZE(rk3528_otp_clocks),
++	.reg_read = rk3568_otp_read,
++};
++
+ static const struct rockchip_data rk3528_data = {
+ 	.size = 0x80,
+ 	.word_size = sizeof(u16),
+@@ -388,6 +396,10 @@ static const struct of_device_id rockchip_otp_match[] = {
+ 		.compatible = "rockchip,rk3308-otp",
+ 		.data = &px30_data,
+ 	},
++	{
++		.compatible = "rockchip,rk3506-otp",
++		.data = &rk3506_data,
++	},
+ 	{
+ 		.compatible = "rockchip,rk3528-otp",
+ 		.data = &rk3528_data,
+diff --git a/drivers/phy/rockchip/phy-rockchip-inno-usb2.c b/drivers/phy/rockchip/phy-rockchip-inno-usb2.c
+index 59e0646d4..679bd4da6 100644
+--- a/drivers/phy/rockchip/phy-rockchip-inno-usb2.c
++++ b/drivers/phy/rockchip/phy-rockchip-inno-usb2.c
+@@ -1611,6 +1611,63 @@ static int rk3588_usb2phy_tuning(struct rockchip_usb2phy *rphy)
+ 	return ret;
+ }
+ 
++static const struct rockchip_usb2phy_cfg rk3036_phy_cfgs[] = {
++	{
++		.reg = 0x17c,
++		.num_ports	= 2,
++		.phy_tuning	= rk3128_usb2phy_tuning,
++		.clkout_ctl	= { 0x017c, 11, 11, 1, 0 },
++		.port_cfgs	= {
++			[USB2PHY_PORT_OTG] = {
++				.phy_sus	= { 0x017c, 8, 0, 0, 0x1d1 },
++				.bvalid_det_en	= { 0x017c, 14, 14, 0, 1 },
++				.bvalid_det_st	= { 0x017c, 15, 15, 0, 1 },
++				.bvalid_det_clr	= { 0x017c, 15, 15, 0, 1 },
++				.ls_det_en	= { 0x017c, 12, 12, 0, 1 },
++				.ls_det_st	= { 0x017c, 13, 13, 0, 1 },
++				.ls_det_clr	= { 0x017c, 13, 13, 0, 1 },
++				.utmi_bvalid	= { 0x014c, 8, 8, 0, 1 },
++				.utmi_id	= { 0x014c, 11, 11, 0, 1 },
++				.utmi_ls	= { 0x014c, 10, 9, 0, 1 },
++
++			},
++			[USB2PHY_PORT_HOST] = {
++				.phy_sus	= { 0x0194, 8, 0, 0, 0x1d1 },
++				.ls_det_en	= { 0x0194, 14, 14, 0, 1 },
++				.ls_det_st	= { 0x0194, 15, 15, 0, 1 },
++				.ls_det_clr	= { 0x0194, 15, 15, 0, 1 }
++			}
++		},
++	},
++	{ /* sentinel */ }
++};
++
++static int rk3506_usb2phy_tuning(struct rockchip_usb2phy *rphy)
++{
++	int ret = 0;
++	void __iomem *base = rphy->phy_base;
++
++	/* Turn off otg0 port differential receiver in suspend mode */
++	writel(readl(base + 0x030) & ~BIT(2), base + 0x030);
++
++	/* Turn off otg1 port differential receiver in suspend mode */
++	writel(readl(base + 0x430) & ~BIT(2), base + 0x430);
++
++	/* Set otg0 port HS eye height to 425mv(default is 450mv) */
++	writel((readl(base + 0x030) & ~GENMASK(6, 4)) | (0x05 << 4), base + 0x030);
++
++	/* Set otg1 port HS eye height to 425mv(default is 450mv) */
++	writel((readl(base + 0x430) & ~GENMASK(6, 4)) | (0x05 << 4), base + 0x430);
++
++	/* Choose the Tx fs/ls data as linestate from TX driver for otg0 port */
++	writel((readl(base + 0x094) & ~GENMASK(6, 3)) | (0x03 << 3), base + 0x094);
++
++	/* Choose the Tx fs/ls data as linestate from TX driver for otg1 port */
++	writel((readl(base + 0x494) & ~GENMASK(6, 3)) | (0x03 << 3), base + 0x494);
++
++	return ret;
++}
++
+ static const struct rockchip_usb2phy_cfg rk3128_phy_cfgs[] = {
+ 	{
+ 		.reg = 0x17c,
+@@ -1920,6 +1977,70 @@ static const struct rockchip_usb2phy_cfg rk3399_phy_cfgs[] = {
+ 	{ /* sentinel */ }
+ };
+ 
++static const struct rockchip_usb2phy_cfg rk3506_phy_cfgs[] = {
++	{
++		.reg = 0xff2b0000,
++		.num_ports	= 2,
++		.phy_tuning	= rk3506_usb2phy_tuning,
++		.clkout_ctl_phy = { 0x041c, 7, 2, 0, 0x27 },
++		.port_cfgs	= {
++			[USB2PHY_PORT_OTG] = {
++				.phy_sus	= { 0x0060, 8, 0, 0, 0x1d1 },
++				.bvalid_det_en	= { 0x0150, 2, 2, 0, 1 },
++				.bvalid_det_st	= { 0x0154, 2, 2, 0, 1 },
++				.bvalid_det_clr = { 0x0158, 2, 2, 0, 1 },
++				.idfall_det_en	= { 0x0150, 5, 5, 0, 1 },
++				.idfall_det_st	= { 0x0154, 5, 5, 0, 1 },
++				.idfall_det_clr = { 0x0158, 5, 5, 0, 1 },
++				.idrise_det_en	= { 0x0150, 4, 4, 0, 1 },
++				.idrise_det_st	= { 0x0154, 4, 4, 0, 1 },
++				.idrise_det_clr = { 0x0158, 4, 4, 0, 1 },
++				.ls_det_en	= { 0x0150, 0, 0, 0, 1 },
++				.ls_det_st	= { 0x0154, 0, 0, 0, 1 },
++				.ls_det_clr	= { 0x0158, 0, 0, 0, 1 },
++				.disfall_en	= { 0x0150, 7, 7, 0, 0 },
++				.disfall_st	= { 0x0154, 7, 7, 0, 1 },
++				.disfall_clr	= { 0x0158, 7, 7, 0, 1 },
++				.disrise_en	= { 0x0150, 6, 6, 0, 0 },
++				.disrise_st	= { 0x0154, 6, 6, 0, 1 },
++				.disrise_clr	= { 0x0158, 6, 6, 0, 1 },
++				.utmi_avalid	= { 0x0118, 1, 1, 0, 1 },
++				.utmi_bvalid	= { 0x0118, 0, 0, 0, 1 },
++				.utmi_id	= { 0x0118, 6, 6, 0, 1 },
++				.utmi_ls	= { 0x0118, 5, 4, 0, 1 },
++				.utmi_hstdet	= { 0x0118, 7, 7, 0, 1 },
++			},
++			[USB2PHY_PORT_HOST] = {
++				.phy_sus	= { 0x0070, 8, 0, 0, 0x1d1 },
++				.bvalid_det_en	= { 0x0170, 2, 2, 0, 1 },
++				.bvalid_det_st	= { 0x0174, 2, 2, 0, 1 },
++				.bvalid_det_clr = { 0x0178, 2, 2, 0, 1 },
++				.idfall_det_en	= { 0x0170, 5, 5, 0, 1 },
++				.idfall_det_st	= { 0x0174, 5, 5, 0, 1 },
++				.idfall_det_clr = { 0x0178, 5, 5, 0, 1 },
++				.idrise_det_en	= { 0x0170, 4, 4, 0, 1 },
++				.idrise_det_st	= { 0x0174, 4, 4, 0, 1 },
++				.idrise_det_clr = { 0x0178, 4, 4, 0, 1 },
++				.ls_det_en	= { 0x0170, 0, 0, 0, 1 },
++				.ls_det_st	= { 0x0174, 0, 0, 0, 1 },
++				.ls_det_clr	= { 0x0178, 0, 0, 0, 1 },
++				.disfall_en	= { 0x0170, 7, 7, 0, 0 },
++				.disfall_st	= { 0x0174, 7, 7, 0, 1 },
++				.disfall_clr	= { 0x0178, 7, 7, 0, 1 },
++				.disrise_en	= { 0x0170, 6, 6, 0, 0 },
++				.disrise_st	= { 0x0174, 6, 6, 0, 1 },
++				.disrise_clr	= { 0x0178, 6, 6, 0, 1 },
++				.utmi_avalid	= { 0x0118, 9, 9, 0, 1 },
++				.utmi_bvalid	= { 0x0118, 8, 8, 0, 1 },
++				.utmi_id	= { 0x0118, 14, 14, 0, 1 },
++				.utmi_ls	= { 0x0118, 13, 12, 0, 1 },
++				.utmi_hstdet	= { 0x0118, 15, 15, 0, 1 },
++			}
++		},
++	},
++	{ /* sentinel */ }
++};
++
+ static const struct rockchip_usb2phy_cfg rk3528_phy_cfgs[] = {
+ 	{
+ 		.reg = 0xffdf0000,
+@@ -2289,6 +2410,7 @@ static const struct of_device_id rockchip_usb2phy_dt_match[] = {
+ 	{ .compatible = "rockchip,rk3328-usb2phy", .data = &rk3328_phy_cfgs },
+ 	{ .compatible = "rockchip,rk3366-usb2phy", .data = &rk3366_phy_cfgs },
+ 	{ .compatible = "rockchip,rk3399-usb2phy", .data = &rk3399_phy_cfgs },
++	{ .compatible = "rockchip,rk3506-usb2phy", .data = &rk3506_phy_cfgs },
+ 	{ .compatible = "rockchip,rk3528-usb2phy", .data = &rk3528_phy_cfgs },
+ 	{ .compatible = "rockchip,rk3568-usb2phy", .data = &rk3568_phy_cfgs },
+ 	{ .compatible = "rockchip,rk3576-usb2phy", .data = &rk3576_phy_cfgs },
+diff --git a/drivers/pinctrl/pinctrl-rockchip.c b/drivers/pinctrl/pinctrl-rockchip.c
+index 1f8c54fc2..7ba8e9d19 100644
+--- a/drivers/pinctrl/pinctrl-rockchip.c
++++ b/drivers/pinctrl/pinctrl-rockchip.c
+@@ -1,7 +1,7 @@
+ // SPDX-License-Identifier: GPL-2.0-only
+ /*
+  * Pinctrl driver for Rockchip SoCs
+- *
++ * Copyright (c) 2020-2024 Rockchip Electronics Co., Ltd.
+  * Copyright (c) 2013 MundoReader S.L.
+  * Author: Heiko Stuebner <heiko@sntech.de>
+  *
+@@ -105,6 +105,29 @@
+ 		.pull_type[3] = pull3,					\
+ 	}
+ 
++#define PIN_BANK_IOMUX_FLAGS_OFFSET_DRV_FLAGS(id, pins, label, iom0,	\
++					       iom1, iom2, iom3,	\
++					       offset0, offset1,	\
++					       offset2, offset3, drv0,	\
++					       drv1, drv2, drv3)	\
++	{								\
++		.bank_num	= id,					\
++		.nr_pins	= pins,					\
++		.name		= label,				\
++		.iomux		= {					\
++			{ .type = iom0, .offset = offset0 },		\
++			{ .type = iom1, .offset = offset1 },		\
++			{ .type = iom2, .offset = offset2 },		\
++			{ .type = iom3, .offset = offset3 },		\
++		},							\
++		.drv		= {					\
++			{ .drv_type = drv0, .offset = -1 },		\
++			{ .drv_type = drv1, .offset = -1 },		\
++			{ .drv_type = drv2, .offset = -1 },		\
++			{ .drv_type = drv3, .offset = -1 },		\
++		},							\
++	}
++
+ #define PIN_BANK_DRV_FLAGS(id, pins, label, type0, type1, type2, type3) \
+ 	{								\
+ 		.bank_num	= id,					\
+@@ -233,6 +256,35 @@
+ 		.pull_type[3] = pull3,					\
+ 	}
+ 
++#define PIN_BANK_IOMUX_FLAGS_OFFSET_DRV_FLAGS_PULL_FLAGS(id, pins,	\
++						label, iom0, iom1,	\
++						iom2, iom3, offset0,	\
++						offset1, offset2,	\
++						offset3, drv0, drv1,	\
++						drv2, drv3, pull0,	\
++						pull1, pull2, pull3)	\
++	{								\
++		.bank_num	= id,					\
++		.nr_pins	= pins,					\
++		.name		= label,				\
++		.iomux		= {					\
++			{ .type = iom0, .offset = offset0 },		\
++			{ .type = iom1, .offset = offset1 },		\
++			{ .type = iom2, .offset = offset2 },		\
++			{ .type = iom3, .offset = offset3 },		\
++		},							\
++		.drv		= {					\
++			{ .drv_type = drv0, .offset = -1 },		\
++			{ .drv_type = drv1, .offset = -1 },		\
++			{ .drv_type = drv2, .offset = -1 },		\
++			{ .drv_type = drv3, .offset = -1 },		\
++		},							\
++		.pull_type[0] = pull0,					\
++		.pull_type[1] = pull1,					\
++		.pull_type[2] = pull2,					\
++		.pull_type[3] = pull3,					\
++	}
++
+ #define PIN_BANK_MUX_ROUTE_FLAGS(ID, PIN, FUNC, REG, VAL, FLAG)		\
+ 	{								\
+ 		.bank_num	= ID,					\
+@@ -1120,6 +1172,17 @@ static int rockchip_get_mux(struct rockchip_pin_bank *bank, int pin)
+ 	else
+ 		regmap = info->regmap_base;
+ 
++	/* Banks with their own IOC block use its regmap for the iomux */
++	if (bank->regmap_ioc)
++		regmap = bank->regmap_ioc;
++
++	if (ctrl->type == RK3506) {
++		if (bank->bank_num == 1)
++			regmap = info->regmap_ioc1;
++		else if (bank->bank_num == 4)
++			return 0;
++	}
++
+ 	/* get basic quadrupel of mux registers and the correct reg inside */
+ 	mux_type = bank->iomux[iomux_num].type;
+ 	reg = bank->iomux[iomux_num].offset;
+@@ -1199,6 +1262,74 @@ static int rockchip_verify_mux(struct rockchip_pin_bank *bank,
+ 	return 0;
+ }
+ 
++static int rockchip_set_rmio(struct rockchip_pin_bank *bank, int pin, int *mux)
++{
++	struct rockchip_pinctrl *info = bank->drvdata;
++	struct rockchip_pin_ctrl *ctrl = info->ctrl;
++	struct regmap *regmap;
++	int reg, function;
++	u32 data, rmask;
++	int ret = 0;
++	int iomux_num = (pin / 8);
++	u32 iomux_max, mux_type;
++
++	mux_type = bank->iomux[iomux_num].type;
++	if (mux_type & IOMUX_WIDTH_4BIT)
++		iomux_max = (1 << 4) - 1;
++	else if (mux_type & IOMUX_WIDTH_3BIT)
++		iomux_max = (1 << 3) - 1;
++	else
++		iomux_max = (1 << 2) - 1;
++
++	if (*mux > iomux_max)
++		function = *mux - iomux_max;
++	else
++		return 0;
++
++	switch (ctrl->type) {
++	case RK3506:
++		regmap = info->regmap_rmio;
++		if (bank->bank_num == 0) {
++			if (pin < 24)
++				reg = 0x80 + 0x4 * pin;
++			else
++				ret = -EINVAL;
++		} else if (bank->bank_num == 1) {
++			if (pin >= 9 && pin <= 11)
++				reg = 0xbc + 0x4 * pin;
++			else if (pin >= 18 && pin <= 19)
++				reg = 0xa4 + 0x4 * pin;
++			else if (pin >= 25 && pin <= 27)
++				reg = 0x90 + 0x4 * pin;
++			else
++				ret = -EINVAL;
++		} else {
++			ret = -EINVAL;
++		}
++
++		if (ret) {
++			dev_err(info->dev,
++				"rmio unsupported bank_num %d function %d\n",
++				bank->bank_num, function);
++
++			return -EINVAL;
++		}
++
++		rmask = 0x7f007f;
++		data = 0x7f0000 | function;
++		*mux = 7;
++		ret = regmap_update_bits(regmap, reg, rmask, data);
++		if (ret)
++			return ret;
++		break;
++
++	default:
++		break;
++	}
++
++	return 0;
++}
++
+ /*
+  * Set a new mux function for a pin.
+  *
+@@ -1232,6 +1363,10 @@ static int rockchip_set_mux(struct rockchip_pin_bank *bank, int pin, int mux)
+ 
+ 	dev_dbg(dev, "setting mux of GPIO%d-%d to %d\n", bank->bank_num, pin, mux);
+ 
++	ret = rockchip_set_rmio(bank, pin, &mux);
++	if (ret)
++		return ret;
++
+ 	if (bank->iomux[iomux_num].type & IOMUX_SOURCE_PMU)
+ 		regmap = info->regmap_pmu;
+ 	else if (bank->iomux[iomux_num].type & IOMUX_L_SOURCE_PMU)
+@@ -1239,6 +1374,17 @@ static int rockchip_set_mux(struct rockchip_pin_bank *bank, int pin, int mux)
+ 	else
+ 		regmap = info->regmap_base;
+ 
++	/* Banks with their own IOC block use its regmap for the iomux */
++	if (bank->regmap_ioc)
++		regmap = bank->regmap_ioc;
++
++	if (ctrl->type == RK3506) {
++		if (bank->bank_num == 1)
++			regmap = info->regmap_ioc1;
++		else if (bank->bank_num == 4)
++			return 0;
++	}
++
+ 	/* get basic quadrupel of mux registers and the correct reg inside */
+ 	mux_type = bank->iomux[iomux_num].type;
+ 	reg = bank->iomux[iomux_num].offset;
+@@ -2003,6 +2149,262 @@ static int rk3399_calc_drv_reg_and_bit(struct rockchip_pin_bank *bank,
+ 	return 0;
+ }
+ 
++#define RK3506_DRV_BITS_PER_PIN		8
++#define RK3506_DRV_PINS_PER_REG		2
++#define RK3506_DRV_GPIO0_A_OFFSET	0x100
++#define RK3506_DRV_GPIO0_D_OFFSET	0x830
++#define RK3506_DRV_GPIO1_OFFSET		0x140
++#define RK3506_DRV_GPIO2_OFFSET		0x180
++#define RK3506_DRV_GPIO3_OFFSET		0x1c0
++#define RK3506_DRV_GPIO4_OFFSET		0x840
++
++static int rk3506_calc_drv_reg_and_bit(struct rockchip_pin_bank *bank,
++					int pin_num, struct regmap **regmap,
++					int *reg, u8 *bit)
++{
++	struct rockchip_pinctrl *info = bank->drvdata;
++	int ret = 0;
++
++	switch (bank->bank_num) {
++	case 0:
++		*regmap = info->regmap_pmu;
++		if (pin_num > 24) {
++			ret = -EINVAL;
++		} else if (pin_num < 24) {
++			*reg = RK3506_DRV_GPIO0_A_OFFSET;
++		} else {
++			*reg = RK3506_DRV_GPIO0_D_OFFSET;
++			*bit = 3;
++
++			return 0;
++		}
++		break;
++
++	case 1:
++		*regmap = info->regmap_ioc1;
++		if (pin_num < 28)
++			*reg = RK3506_DRV_GPIO1_OFFSET;
++		else
++			ret = -EINVAL;
++		break;
++
++	case 2:
++		*regmap = info->regmap_base;
++		if (pin_num < 17)
++			*reg = RK3506_DRV_GPIO2_OFFSET;
++		else
++			ret = -EINVAL;
++		break;
++
++	case 3:
++		*regmap = info->regmap_base;
++		if (pin_num < 15)
++			*reg = RK3506_DRV_GPIO3_OFFSET;
++		else
++			ret = -EINVAL;
++		break;
++
++	case 4:
++		*regmap = info->regmap_base;
++		if (pin_num < 8 || pin_num > 11) {
++			ret = -EINVAL;
++		} else {
++			*reg = RK3506_DRV_GPIO4_OFFSET;
++			*bit = 10;
++
++			return 0;
++		}
++		break;
++
++	default:
++		ret = -EINVAL;
++		break;
++	}
++
++	if (ret) {
++		dev_err(info->dev, "unsupported bank_num %d pin_num %d\n", bank->bank_num, pin_num);
++
++		return ret;
++	}
++
++	*reg += ((pin_num / RK3506_DRV_PINS_PER_REG) * 4);
++	*bit = pin_num % RK3506_DRV_PINS_PER_REG;
++	*bit *= RK3506_DRV_BITS_PER_PIN;
++
++	return 0;
++}
++
++#define RK3506_PULL_BITS_PER_PIN	2
++#define RK3506_PULL_PINS_PER_REG	8
++#define RK3506_PULL_GPIO0_A_OFFSET	0x200
++#define RK3506_PULL_GPIO0_D_OFFSET	0x830
++#define RK3506_PULL_GPIO1_OFFSET	0x210
++#define RK3506_PULL_GPIO2_OFFSET	0x220
++#define RK3506_PULL_GPIO3_OFFSET	0x230
++#define RK3506_PULL_GPIO4_OFFSET	0x840
++
++static int rk3506_calc_pull_reg_and_bit(struct rockchip_pin_bank *bank,
++					 int pin_num, struct regmap **regmap,
++					 int *reg, u8 *bit)
++{
++	struct rockchip_pinctrl *info = bank->drvdata;
++	int ret = 0;
++
++	switch (bank->bank_num) {
++	case 0:
++		*regmap = info->regmap_pmu;
++		if (pin_num > 24) {
++			ret = -EINVAL;
++		} else if (pin_num < 24) {
++			*reg = RK3506_PULL_GPIO0_A_OFFSET;
++		} else {
++			*reg = RK3506_PULL_GPIO0_D_OFFSET;
++			*bit = 5;
++
++			return 0;
++		}
++		break;
++
++	case 1:
++		*regmap = info->regmap_ioc1;
++		if (pin_num < 28)
++			*reg = RK3506_PULL_GPIO1_OFFSET;
++		else
++			ret = -EINVAL;
++		break;
++
++	case 2:
++		*regmap = info->regmap_base;
++		if (pin_num < 17)
++			*reg = RK3506_PULL_GPIO2_OFFSET;
++		else
++			ret = -EINVAL;
++		break;
++
++	case 3:
++		*regmap = info->regmap_base;
++		if (pin_num < 15)
++			*reg = RK3506_PULL_GPIO3_OFFSET;
++		else
++			ret = -EINVAL;
++		break;
++
++	case 4:
++		*regmap = info->regmap_base;
++		if (pin_num < 8 || pin_num > 11) {
++			ret = -EINVAL;
++		} else {
++			*reg = RK3506_PULL_GPIO4_OFFSET;
++			*bit = 13;
++
++			return 0;
++		}
++		break;
++
++	default:
++		ret = -EINVAL;
++		break;
++	}
++
++	if (ret) {
++		dev_err(info->dev, "unsupported bank_num %d pin_num %d\n", bank->bank_num, pin_num);
++
++		return ret;
++	}
++
++	*reg += ((pin_num / RK3506_PULL_PINS_PER_REG) * 4);
++	*bit = pin_num % RK3506_PULL_PINS_PER_REG;
++	*bit *= RK3506_PULL_BITS_PER_PIN;
++
++	return 0;
++}
++
++#define RK3506_SMT_BITS_PER_PIN		1
++#define RK3506_SMT_PINS_PER_REG		8
++#define RK3506_SMT_GPIO0_A_OFFSET	0x400
++#define RK3506_SMT_GPIO0_D_OFFSET	0x830
++#define RK3506_SMT_GPIO1_OFFSET		0x410
++#define RK3506_SMT_GPIO2_OFFSET		0x420
++#define RK3506_SMT_GPIO3_OFFSET		0x430
++#define RK3506_SMT_GPIO4_OFFSET		0x840
++
++static int rk3506_calc_schmitt_reg_and_bit(struct rockchip_pin_bank *bank,
++					   int pin_num,
++					   struct regmap **regmap,
++					   int *reg, u8 *bit)
++{
++	struct rockchip_pinctrl *info = bank->drvdata;
++	int ret = 0;
++
++	switch (bank->bank_num) {
++	case 0:
++		*regmap = info->regmap_pmu;
++		if (pin_num > 24) {
++			ret = -EINVAL;
++		} else if (pin_num < 24) {
++			*reg = RK3506_SMT_GPIO0_A_OFFSET;
++		} else {
++			*reg = RK3506_SMT_GPIO0_D_OFFSET;
++			*bit = 9;
++
++			return 0;
++		}
++		break;
++
++	case 1:
++		*regmap = info->regmap_ioc1;
++		if (pin_num < 28)
++			*reg = RK3506_SMT_GPIO1_OFFSET;
++		else
++			ret = -EINVAL;
++		break;
++
++	case 2:
++		*regmap = info->regmap_base;
++		if (pin_num < 17)
++			*reg = RK3506_SMT_GPIO2_OFFSET;
++		else
++			ret = -EINVAL;
++		break;
++
++	case 3:
++		*regmap = info->regmap_base;
++		if (pin_num < 15)
++			*reg = RK3506_SMT_GPIO3_OFFSET;
++		else
++			ret = -EINVAL;
++		break;
++
++	case 4:
++		*regmap = info->regmap_base;
++		if (pin_num < 8 || pin_num > 11) {
++			ret = -EINVAL;
++		} else {
++			*reg = RK3506_SMT_GPIO4_OFFSET;
++			*bit = 8;
++
++			return 0;
++		}
++		break;
++
++	default:
++		ret = -EINVAL;
++		break;
++	}
++
++	if (ret) {
++		dev_err(info->dev, "unsupported bank_num %d pin_num %d\n", bank->bank_num, pin_num);
++
++		return ret;
++	}
++
++	*reg += ((pin_num / RK3506_SMT_PINS_PER_REG) * 4);
++	*bit = pin_num % RK3506_SMT_PINS_PER_REG;
++	*bit *= RK3506_SMT_BITS_PER_PIN;
++
++	return 0;
++}
++
+ #define RK3528_DRV_BITS_PER_PIN		8
+ #define RK3528_DRV_PINS_PER_REG		2
+ #define RK3528_DRV_GPIO0_OFFSET		0x100
+@@ -2567,6 +2969,25 @@ static int rockchip_get_drive_perpin(struct rockchip_pin_bank *bank,
+ 	case DRV_TYPE_IO_1V8_ONLY:
+ 		rmask_bits = RK3288_DRV_BITS_PER_PIN;
+ 		break;
++	case DRV_TYPE_IO_LEVEL_2_BIT:
++		ret = regmap_read(regmap, reg, &data);
++		if (ret)
++			return ret;
++		data >>= bit;
++
++		return data & 0x3;
++	case DRV_TYPE_IO_LEVEL_8_BIT:
++		ret = regmap_read(regmap, reg, &data);
++		if (ret)
++			return ret;
++		data >>= bit;
++		data &= (1 << 8) - 1;
++
++		ret = hweight8(data);
++		if (ret > 0)
++			return ret - 1;
++		else
++			return -EINVAL;
+ 	default:
+ 		dev_err(dev, "unsupported pinctrl drive type: %d\n", drv_type);
+ 		return -EINVAL;
+@@ -2604,7 +3025,8 @@ static int rockchip_set_drive_perpin(struct rockchip_pin_bank *bank,
+ 		rmask_bits = RK3588_DRV_BITS_PER_PIN;
+ 		ret = strength;
+ 		goto config;
+-	} else if (ctrl->type == RK3528 ||
++	} else if (ctrl->type == RK3506 ||
++		   ctrl->type == RK3528 ||
+ 		   ctrl->type == RK3568) {
+ 		rmask_bits = RK3568_DRV_BITS_PER_PIN;
+ 		ret = (1 << (strength + 1)) - 1;
+@@ -2688,6 +3110,13 @@ static int rockchip_set_drive_perpin(struct rockchip_pin_bank *bank,
+ 	}
+ 
+ config:
++	if (ctrl->type == RK3506) {
++		if ((bank->bank_num == 0 && pin_num == 24) || bank->bank_num == 4) {
++			rmask_bits = 2;
++			ret = strength;
++		}
++	}
++
+ 	/* enable the write to the equivalent lower bits */
+ 	data = ((1 << rmask_bits) - 1) << (bit + 16);
+ 	rmask = data | (data >> 16);
+@@ -2810,6 +3239,7 @@ static int rockchip_set_pull(struct rockchip_pin_bank *bank,
+ 	case RK3328:
+ 	case RK3368:
+ 	case RK3399:
++	case RK3506:
+ 	case RK3528:
+ 	case RK3568:
+ 	case RK3576:
+@@ -2928,6 +3358,10 @@ static int rockchip_get_schmitt(struct rockchip_pin_bank *bank, int pin_num)
+ 		break;
+ 	}
+ 
++	if (ctrl->type == RK3506)
++		if ((bank->bank_num == 0 && pin_num == 24) ||  bank->bank_num == 4)
++			return data & 0x3;
++
+ 	return data & 0x1;
+ }
+ 
+@@ -2962,6 +3396,14 @@ static int rockchip_set_schmitt(struct rockchip_pin_bank *bank,
+ 		break;
+ 	}
+ 
++	if (ctrl->type == RK3506) {
++		if ((bank->bank_num == 0 && pin_num == 24) || bank->bank_num == 4) {
++			data = 0x3 << (bit + 16);
++			rmask = data | (data >> 16);
++			data |= ((enable ? 0x3 : 0) << bit);
++		}
++	}
++
+ 	return regmap_update_bits(regmap, reg, rmask, data);
+ }
+ 
+@@ -3076,6 +3518,7 @@ static bool rockchip_pinconf_pull_valid(struct rockchip_pin_ctrl *ctrl,
+ 	case RK3328:
+ 	case RK3368:
+ 	case RK3399:
++	case RK3506:
+ 	case RK3528:
+ 	case RK3568:
+ 	case RK3576:
+@@ -3522,6 +3965,16 @@ static struct rockchip_pin_ctrl *rockchip_pinctrl_get_soc_data(
+ 	pmu_offs = ctrl->pmu_mux_offset;
+ 	drv_pmu_offs = ctrl->pmu_drv_offset;
+ 	drv_grf_offs = ctrl->grf_drv_offset;
++
++	/*
++	 * This function mutates the static per-SoC data. Most of it is
++	 * idempotent: recalculated iomux and drv offsets anchor at the
++	 * values calculated by a previous run. The pin count is not, so
++	 * reset it here; otherwise it accumulates when the probe runs
++	 * again after a probe deferral, shifting every bank's pin_base.
++	 */
++	ctrl->nr_pins = 0;
++
+ 	bank = ctrl->pin_banks;
+ 	for (i = 0; i < ctrl->nr_banks; ++i, ++bank) {
+ 		int bank_pins = 0;
+@@ -3596,7 +4049,18 @@ static struct rockchip_pin_ctrl *rockchip_pinctrl_get_soc_data(
+ 
+ 			bank_pins += 8;
+ 		}
++	}
++
++	return ctrl;
++}
++
++static void iomux_recalced_routes_init(struct rockchip_pinctrl *info)
++{
++	struct rockchip_pin_ctrl *ctrl = info->ctrl;
++	struct rockchip_pin_bank *bank = ctrl->pin_banks;
++	int i, j;
+ 
++	for (i = 0; i < ctrl->nr_banks; ++i, ++bank) {
+ 		/* calculate the per-bank recalced_mask */
+ 		for (j = 0; j < ctrl->niomux_recalced; j++) {
+ 			int pin = 0;
+@@ -3617,8 +4081,6 @@ static struct rockchip_pin_ctrl *rockchip_pinctrl_get_soc_data(
+ 			}
+ 		}
+ 	}
+-
+-	return ctrl;
+ }
+ 
+ #define RK3288_GRF_GPIO6C_IOMUX		0x64
+@@ -3678,6 +4140,7 @@ static int rockchip_pinctrl_probe(struct platform_device *pdev)
+ 	struct resource *res;
+ 	void __iomem *base;
+ 	int ret;
++	int i;
+ 
+ 	if (!dev->of_node)
+ 		return dev_err_probe(dev, -ENODEV, "device tree node not found\n");
+@@ -3726,12 +4189,52 @@ static int rockchip_pinctrl_probe(struct platform_device *pdev)
+ 	}
+ 
+ 	/* try to find the optional reference to the pmu syscon */
+-	node = of_parse_phandle(np, "rockchip,pmu", 0);
+-	if (node) {
+-		info->regmap_pmu = syscon_node_to_regmap(node);
+-		of_node_put(node);
+-		if (IS_ERR(info->regmap_pmu))
+-			return PTR_ERR(info->regmap_pmu);
++	info->regmap_pmu = syscon_regmap_lookup_by_phandle_optional(np, "rockchip,pmu");
++
++	/* try to find the optional reference to the ioc1 syscon */
++	info->regmap_ioc1 = syscon_regmap_lookup_by_phandle_optional(np, "rockchip,ioc1");
++
++	/* try to find the optional reference to the rmio syscon */
++	info->regmap_rmio = syscon_regmap_lookup_by_phandle_optional(np, "rockchip,rmio");
++
++	iomux_recalced_routes_init(info);
++
++	/*
++	 * On SoCs where each GPIO bank has its own IOC block, the bank nodes
++	 * carry a rockchip,grf phandle pointing at it. The bank number comes
++	 * from the gpio alias, as used by the gpio driver, falling back to
++	 * the node position for devicetrees without aliases. The fallback is
++	 * wrong when an SoC variant omits a bank, so aliases are needed
++	 * there.
++	 */
++	i = 0;
++	for_each_child_of_node_scoped(np, child) {
++		struct rockchip_pin_bank *bank = NULL;
++		int id, j;
++
++		if (!of_match_node(rockchip_bank_match, child))
++			continue;
++
++		id = of_alias_get_id(child, "gpio");
++		if (id < 0)
++			id = i;
++		i++;
++
++		for (j = 0; j < ctrl->nr_banks; j++) {
++			if (ctrl->pin_banks[j].bank_num == id) {
++				bank = &ctrl->pin_banks[j];
++				break;
++			}
++		}
++		if (!bank)
++			continue;
++
++		bank->regmap_ioc = syscon_regmap_lookup_by_phandle_optional(
++							child, "rockchip,grf");
++		if (IS_ERR(bank->regmap_ioc))
++			return dev_err_probe(dev, PTR_ERR(bank->regmap_ioc),
++					     "%pOFn: failed to look up bank ioc\n",
++					     child);
+ 	}
+ 
+ 	ret = rockchip_pinctrl_register(pdev, info);
+@@ -4196,6 +4699,71 @@ static struct rockchip_pin_ctrl rk3399_pin_ctrl = {
+ 		.drv_calc_reg		= rk3399_calc_drv_reg_and_bit,
+ };
+ 
++static struct rockchip_pin_bank rk3506_pin_banks[] = {
++	PIN_BANK_IOMUX_FLAGS_OFFSET_DRV_FLAGS_PULL_FLAGS(0, 32, "gpio0",
++				    IOMUX_WIDTH_4BIT | IOMUX_SOURCE_PMU,
++				    IOMUX_WIDTH_4BIT | IOMUX_SOURCE_PMU,
++				    IOMUX_WIDTH_4BIT | IOMUX_SOURCE_PMU,
++				    IOMUX_WIDTH_2BIT | IOMUX_SOURCE_PMU,
++				    0x0, 0x8, 0x10, 0x830,
++				    DRV_TYPE_IO_LEVEL_8_BIT,
++				    DRV_TYPE_IO_LEVEL_8_BIT,
++				    DRV_TYPE_IO_LEVEL_8_BIT,
++				    DRV_TYPE_IO_LEVEL_2_BIT,
++				    0, 0, 0, 1),
++	PIN_BANK_IOMUX_FLAGS_OFFSET_DRV_FLAGS(1, 32, "gpio1",
++				    IOMUX_WIDTH_4BIT,
++				    IOMUX_WIDTH_4BIT,
++				    IOMUX_WIDTH_4BIT,
++				    IOMUX_WIDTH_4BIT,
++				    0x20, 0x28, 0x30, 0x38,
++				    DRV_TYPE_IO_LEVEL_8_BIT,
++				    DRV_TYPE_IO_LEVEL_8_BIT,
++				    DRV_TYPE_IO_LEVEL_8_BIT,
++				    DRV_TYPE_IO_LEVEL_8_BIT),
++	PIN_BANK_IOMUX_FLAGS_OFFSET_DRV_FLAGS(2, 32, "gpio2",
++				    IOMUX_WIDTH_4BIT,
++				    IOMUX_WIDTH_4BIT,
++				    IOMUX_WIDTH_4BIT,
++				    IOMUX_WIDTH_4BIT,
++				    0x40, 0x48, 0x50, 0x58,
++				    DRV_TYPE_IO_LEVEL_8_BIT,
++				    DRV_TYPE_IO_LEVEL_8_BIT,
++				    DRV_TYPE_IO_LEVEL_8_BIT,
++				    DRV_TYPE_IO_LEVEL_8_BIT),
++	PIN_BANK_IOMUX_FLAGS_OFFSET_DRV_FLAGS(3, 32, "gpio3",
++				    IOMUX_WIDTH_4BIT,
++				    IOMUX_WIDTH_4BIT,
++				    IOMUX_WIDTH_4BIT,
++				    IOMUX_WIDTH_4BIT,
++				    0x60, 0x68, 0x70, 0x78,
++				    DRV_TYPE_IO_LEVEL_8_BIT,
++				    DRV_TYPE_IO_LEVEL_8_BIT,
++				    DRV_TYPE_IO_LEVEL_8_BIT,
++				    DRV_TYPE_IO_LEVEL_8_BIT),
++	PIN_BANK_IOMUX_FLAGS_OFFSET_DRV_FLAGS_PULL_FLAGS(4, 32, "gpio4",
++				    IOMUX_WIDTH_4BIT,
++				    IOMUX_WIDTH_4BIT,
++				    IOMUX_WIDTH_4BIT,
++				    IOMUX_WIDTH_4BIT,
++				    0x80, 0x88, 0x90, 0x98,
++				    DRV_TYPE_IO_LEVEL_2_BIT,
++				    DRV_TYPE_IO_LEVEL_2_BIT,
++				    DRV_TYPE_IO_LEVEL_2_BIT,
++				    DRV_TYPE_IO_LEVEL_2_BIT,
++				    1, 1, 1, 1),
++};
++
++static struct rockchip_pin_ctrl rk3506_pin_ctrl __maybe_unused = {
++	.pin_banks		= rk3506_pin_banks,
++	.nr_banks		= ARRAY_SIZE(rk3506_pin_banks),
++	.label			= "RK3506-GPIO",
++	.type			= RK3506,
++	.pull_calc_reg		= rk3506_calc_pull_reg_and_bit,
++	.drv_calc_reg		= rk3506_calc_drv_reg_and_bit,
++	.schmitt_calc_reg	= rk3506_calc_schmitt_reg_and_bit,
++};
++
+ static struct rockchip_pin_bank rk3528_pin_banks[] = {
+ 	PIN_BANK_IOMUX_FLAGS_OFFSET(0, 32, "gpio0",
+ 				    IOMUX_WIDTH_4BIT,
+@@ -4363,6 +4931,8 @@ static const struct of_device_id rockchip_pinctrl_dt_match[] = {
+ 		.data = &rk3368_pin_ctrl },
+ 	{ .compatible = "rockchip,rk3399-pinctrl",
+ 		.data = &rk3399_pin_ctrl },
++	{ .compatible = "rockchip,rk3506-pinctrl",
++		.data = &rk3506_pin_ctrl },
+ 	{ .compatible = "rockchip,rk3528-pinctrl",
+ 		.data = &rk3528_pin_ctrl },
+ 	{ .compatible = "rockchip,rk3568-pinctrl",
+diff --git a/drivers/pinctrl/pinctrl-rockchip.h b/drivers/pinctrl/pinctrl-rockchip.h
+index 194315e5e..14eecfc62 100644
+--- a/drivers/pinctrl/pinctrl-rockchip.h
++++ b/drivers/pinctrl/pinctrl-rockchip.h
+@@ -196,6 +196,7 @@ enum rockchip_pinctrl_type {
+ 	RK3328,
+ 	RK3368,
+ 	RK3399,
++	RK3506,
+ 	RK3528,
+ 	RK3568,
+ 	RK3576,
+@@ -259,6 +260,8 @@ enum rockchip_pin_drv_type {
+ 	DRV_TYPE_IO_1V8_ONLY,
+ 	DRV_TYPE_IO_1V8_3V0_AUTO,
+ 	DRV_TYPE_IO_3V3_ONLY,
++	DRV_TYPE_IO_LEVEL_2_BIT,
++	DRV_TYPE_IO_LEVEL_8_BIT,
+ 	DRV_TYPE_MAX
+ };
+ 
+@@ -290,6 +293,8 @@ struct rockchip_drv {
+  * @dev: the pinctrl device bind to the bank
+  * @reg_base: register base of the gpio bank
+  * @regmap_pull: optional separate register for additional pull settings
++ * @regmap_ioc: optional per-bank IO control regmap, for SoCs where each
++ *	    bank has its own IOC block
+  * @clk: clock of the gpio bank
+  * @db_clk: clock of the gpio debounce
+  * @irq: interrupt of the gpio bank
+@@ -318,6 +323,7 @@ struct rockchip_pin_bank {
+ 	struct device			*dev;
+ 	void __iomem			*reg_base;
+ 	struct regmap			*regmap_pull;
++	struct regmap			*regmap_ioc;
+ 	struct clk			*clk;
+ 	struct clk			*db_clk;
+ 	int				irq;
+@@ -457,6 +463,8 @@ struct rockchip_pinctrl {
+ 	int				reg_size;
+ 	struct regmap			*regmap_pull;
+ 	struct regmap			*regmap_pmu;
++	struct regmap			*regmap_ioc1;
++	struct regmap			*regmap_rmio;
+ 	struct device			*dev;
+ 	struct rockchip_pin_ctrl	*ctrl;
+ 	struct pinctrl_desc		pctl;
+diff --git a/drivers/spi/spi-rockchip-sfc.c b/drivers/spi/spi-rockchip-sfc.c
+index 0d7fadcd4..aa9bf8e53 100644
+--- a/drivers/spi/spi-rockchip-sfc.c
++++ b/drivers/spi/spi-rockchip-sfc.c
+@@ -8,25 +8,38 @@
+  *	   Jon Lin <Jon.lin@rock-chips.com>
+  */
+ 
++#include <linux/acpi.h>
+ #include <linux/bitops.h>
+ #include <linux/clk.h>
+ #include <linux/completion.h>
+ #include <linux/dma-mapping.h>
+ #include <linux/iopoll.h>
++#include <linux/interrupt.h>
++#include <linux/mfd/syscon.h>
+ #include <linux/mm.h>
+ #include <linux/module.h>
+ #include <linux/of.h>
++#include <linux/pinctrl/consumer.h>
+ #include <linux/platform_device.h>
++#include <linux/pm_runtime.h>
++#include <linux/regmap.h>
+ #include <linux/slab.h>
+-#include <linux/interrupt.h>
+ #include <linux/spi/spi-mem.h>
++#include <linux/of_gpio.h>
+ 
+ /* System control */
+ #define SFC_CTRL			0x0
+ #define  SFC_CTRL_PHASE_SEL_NEGETIVE	BIT(1)
++#define  SFC_CTRL_DTR_MODE		BIT(2)
++#define  SFC_CTRL_DATA_ORDER_FROM_HIGH	BIT(3)
+ #define  SFC_CTRL_CMD_BITS_SHIFT	8
+ #define  SFC_CTRL_ADDR_BITS_SHIFT	10
+ #define  SFC_CTRL_DATA_BITS_SHIFT	12
++#define  SFC_CTRL_DTR_MODE_BY_DEVICE	BIT(17)
++#define  SFC_CTRL_CMD_STR_SHIFT		19
++#define  SFC_CTRL_ADDR_STR_SHIFT	20
++#define  SFC_CTRL_CMD_CTRL_CMD_EXT	(2 << 27)
++#define  SFC_CTRL_WPEN			BIT(29)
+ 
+ /* Interrupt mask */
+ #define SFC_IMR				0x4
+@@ -84,7 +97,7 @@
+ #define  SFC_FSR_TX_IS_EMPTY		BIT(1)
+ #define  SFC_FSR_RX_IS_EMPTY		BIT(2)
+ #define  SFC_FSR_RX_IS_FULL		BIT(3)
+-#define  SFC_FSR_TXLV_MASK		GENMASK(12, 8)
++#define  SFC_FSR_TXLV_MASK		GENMASK(13, 8)
+ #define  SFC_FSR_TXLV_SHIFT		8
+ #define  SFC_FSR_RXLV_MASK		GENMASK(20, 16)
+ #define  SFC_FSR_RXLV_SHIFT		16
+@@ -110,18 +123,35 @@
+ #define  SFC_VER_3			0x3
+ #define  SFC_VER_4			0x4
+ #define  SFC_VER_5			0x5
++#define  SFC_VER_6			0x6
++#define  SFC_VER_8			0x8
++#define  SFC_VER_9			0x9
++#define  SFC_VER_10			0x10
++#define  SFC_CAP_X8			BIT(18)
++
++/* Ext ctrl */
++#define SFC_EXT_CTRL			0x34
++#define  SFC_SCLK_X2_BYPASS		BIT(24)
+ 
+-/* Delay line controller resiter */
++/* Delay line controller register */
+ #define SFC_DLL_CTRL0			0x3C
+ #define SFC_DLL_CTRL0_SCLK_SMP_DLL	BIT(15)
+ #define SFC_DLL_CTRL0_DLL_MAX_VER4	0xFFU
+ #define SFC_DLL_CTRL0_DLL_MAX_VER5	0x1FFU
+ 
++/* Dummy Cycle Control Register */
++#define SFC_DUMM_CTRL			0x74
++#define SFC_DUMMY_CTRL_SEL		BIT(0)
++#define SFC_DUMMY_CTRL_EXT_SHIFT	1
++
++/* Command Extend Register */
++#define SFC_CMD_EXT			0x78
++
+ /* Master trigger */
+ #define SFC_DMA_TRIGGER			0x80
+ #define SFC_DMA_TRIGGER_START		1
+ 
+-/* Src or Dst addr for master */
++/* Src or Dst addr for host */
+ #define SFC_DMA_ADDR			0x84
+ 
+ /* Length control register extension 32GB */
+@@ -129,6 +159,14 @@
+ #define SFC_LEN_CTRL_TRB_SEL		1
+ #define SFC_LEN_EXT			0x8C
+ 
++/* Device reset */
++#define SFC_DEV_RSTN			0xA4
++
++/* DMA ctrl */
++#define SFC_DMA_CTRL			0xBC
++#define  SFC_DMA_BURST_INCR8		0x1
++#define  SFC_DMA_BURST_INCR16		0x2
++
+ /* Command */
+ #define SFC_CMD				0x100
+ #define  SFC_CMD_IDX_SHIFT		0
+@@ -150,16 +188,13 @@
+ /* Data */
+ #define SFC_DATA			0x108
+ 
+-/* The controller and documentation reports that it supports up to 4 CS
+- * devices (0-3), however I have only been able to test a single CS (CS 0)
+- * due to the configuration of my device.
+- */
+-#define SFC_MAX_CHIPSELECT_NUM		4
++#define SFC_CS1_REG_OFFSET		0x200
++
++#define SFC_MAX_CHIPSELECT_NUM		2
+ 
+-/* The SFC can transfer max 16KB - 1 at one time
+- * we set it to 15.5KB here for alignment.
+- */
+ #define SFC_MAX_IOSIZE_VER3		(512 * 31)
++/* Although up to 4GB, 64KB is enough with less mem reserved */
++#define SFC_MAX_IOSIZE_VER4		(0x10000U)
+ 
+ /* DMA is only enabled for large data transmission */
+ #define SFC_DMA_TRANS_THRETHOLD		(0x40)
+@@ -168,22 +203,77 @@
+  * 150MHz. No minimum or average value is suggested.
+  */
+ #define SFC_MAX_SPEED		(150 * 1000 * 1000)
++#define SFC_DLL_THRESHOLD_RATE	(50 * 1000 * 1000)
++
++#define SFC_DLL_TRANING_STEP		10	/* Training step */
++#define SFC_DLL_TRANING_VALID_WINDOW	80	/* Valid DLL winbow */
++
++#define ROCKCHIP_AUTOSUSPEND_DELAY	2000
++
++#define SNOR_IDB_POS			0x10000
++#define SNOR_IDB_TAG_NS			"RKNS"
++#define SNOR_IDB_TAG_SS			"RKSS"
++#define SFC_TUNING_ITEM_SIZE		4
++
++enum sfc_tuning_stage {
++	SFC_TUNING_STAGE_NONE = 0,
++	SFC_TUNING_STAGE_SDR_HS,
++	SFC_TUNING_STAGE_DTR_HS,
++};
++
++enum sfc_tuning_item {
++	SFC_TUNING_CHECK_ID = 0,
++	SFC_TUNING_CHECK_OCTAL_DATA,
++};
++
++struct rockchip_sfc_powergood {
++	bool	valid;
++	u32	grf_offset;
++	u8	bits_mask;
++};
++
++struct rockchip_sfc_data {
++	struct rockchip_sfc_powergood powergood;
++	bool dma_incr16_invalid;
++};
+ 
+ struct rockchip_sfc {
+ 	struct device *dev;
+ 	void __iomem *regbase;
+ 	struct clk *hclk;
+ 	struct clk *clk;
+-	u32 frequency;
+-	/* virtual mapped addr for dma_buffer */
++	struct gpio_desc *rst_gpio;
++	struct gpio_desc **cs_gpiods;
++	struct regmap *grf;
++
++	u16 version;
++	bool use_dma;
++	bool sclk_x2_bypass;
++	bool support_octa;
++	bool shift_phase;
++	u32 max_iosize;
++	u32 max_dll_cells;
++
++	u32 speed[SFC_MAX_CHIPSELECT_NUM];
++	enum sfc_tuning_stage tuning_stage[SFC_MAX_CHIPSELECT_NUM];
++	enum sfc_tuning_item tuning_item;
++	u8 tune_pattern[SFC_TUNING_ITEM_SIZE];
++	u32 dll_cells[SFC_MAX_CHIPSELECT_NUM];
++
+ 	void *buffer;
+ 	dma_addr_t dma_buffer;
+ 	struct completion cp;
+-	bool use_dma;
+-	u32 max_iosize;
+-	u16 version;
++
++	struct spi_controller *host;
++	struct rockchip_sfc_data *data;
+ };
+ 
++static inline bool is_invalid_id(const u8 *id)
++{
++	return ((0xFF == id[0] && 0xFF == id[1]) ||
++		(0x00 == id[0] && 0x00 == id[1]));
++}
++
+ static int rockchip_sfc_reset(struct rockchip_sfc *sfc)
+ {
+ 	int err;
+@@ -212,9 +302,55 @@ static u16 rockchip_sfc_get_version(struct rockchip_sfc *sfc)
+ 
+ static u32 rockchip_sfc_get_max_iosize(struct rockchip_sfc *sfc)
+ {
++	if (sfc->version >= SFC_VER_4)
++		return SFC_MAX_IOSIZE_VER4;
++
+ 	return SFC_MAX_IOSIZE_VER3;
+ }
+ 
++static u32 rockchip_sfc_get_max_dll_cells(struct rockchip_sfc *sfc)
++{
++	if (sfc->max_dll_cells)
++		return sfc->max_dll_cells;
++
++	if (sfc->version > SFC_VER_4)
++		return SFC_DLL_CTRL0_DLL_MAX_VER5;
++	else if (sfc->version == SFC_VER_4)
++		return SFC_DLL_CTRL0_DLL_MAX_VER4;
++	else
++		return 0;
++}
++
++static void rockchip_sfc_set_delay_lines(struct rockchip_sfc *sfc, u16 cells, u8 cs)
++{
++	u16 cell_max = (u16)rockchip_sfc_get_max_dll_cells(sfc);
++	u32 val = 0;
++
++	if (cells > cell_max)
++		cells = cell_max;
++
++	if (cells)
++		val = SFC_DLL_CTRL0_SCLK_SMP_DLL | cells;
++
++	writel(val, sfc->regbase + cs * SFC_CS1_REG_OFFSET + SFC_DLL_CTRL0);
++}
++
++static int rockchip_sfc_clk_set_rate(struct rockchip_sfc *sfc, unsigned long  speed)
++{
++	if (sfc->version < SFC_VER_8 || sfc->sclk_x2_bypass)
++		return clk_set_rate(sfc->clk, speed);
++	else
++		return clk_set_rate(sfc->clk, speed * 2);
++}
++
++static unsigned long rockchip_sfc_clk_get_rate(struct rockchip_sfc *sfc)
++{
++	if (sfc->version < SFC_VER_8 || sfc->sclk_x2_bypass)
++		return clk_get_rate(sfc->clk);
++	else
++		return clk_get_rate(sfc->clk) / 2;
++}
++
+ static void rockchip_sfc_irq_unmask(struct rockchip_sfc *sfc, u32 mask)
+ {
+ 	u32 reg;
+@@ -237,11 +373,30 @@ static void rockchip_sfc_irq_mask(struct rockchip_sfc *sfc, u32 mask)
+ 
+ static int rockchip_sfc_init(struct rockchip_sfc *sfc)
+ {
++	u32 reg, i;
++
+ 	writel(0, sfc->regbase + SFC_CTRL);
+ 	writel(0xFFFFFFFF, sfc->regbase + SFC_ICLR);
+ 	rockchip_sfc_irq_mask(sfc, 0xFFFFFFFF);
+ 	if (rockchip_sfc_get_version(sfc) >= SFC_VER_4)
+ 		writel(SFC_LEN_CTRL_TRB_SEL, sfc->regbase + SFC_LEN_CTRL);
++	if (rockchip_sfc_get_version(sfc) >= SFC_VER_8 && sfc->sclk_x2_bypass) {
++		reg = readl(sfc->regbase + SFC_EXT_CTRL);
++		reg |= SFC_SCLK_X2_BYPASS;
++		writel(reg, sfc->regbase + SFC_EXT_CTRL);
++	}
++	for (i = 0; i < SFC_MAX_CHIPSELECT_NUM; i++) {
++		if (sfc->dll_cells[i])
++			rockchip_sfc_set_delay_lines(sfc, (u16)sfc->dll_cells[i], i);
++	}
++
++	if (readl(sfc->regbase + SFC_VER) & SFC_CAP_X8) {
++		sfc->support_octa = true;
++		if (sfc->data && sfc->data->dma_incr16_invalid)
++			writel(SFC_DMA_BURST_INCR8, sfc->regbase + SFC_DMA_CTRL);
++		else
++			writel(SFC_DMA_BURST_INCR16, sfc->regbase + SFC_DMA_CTRL);
++	}
+ 
+ 	return 0;
+ }
+@@ -272,7 +427,8 @@ static int rockchip_sfc_wait_rxfifo_ready(struct rockchip_sfc *sfc, u32 timeout_
+ 				 status & SFC_FSR_RXLV_MASK, 0,
+ 				 timeout_us);
+ 	if (ret) {
+-		dev_dbg(sfc->dev, "sfc wait rx fifo timeout\n");
++		print_hex_dump(KERN_WARNING, "sfc", DUMP_PREFIX_OFFSET, 4, 4, sfc->regbase, 0x104, 0);
++		dev_err(sfc->dev, "sfc wait rx fifo timeout\n");
+ 
+ 		return -ETIMEDOUT;
+ 	}
+@@ -300,11 +456,20 @@ static int rockchip_sfc_xfer_setup(struct rockchip_sfc *sfc,
+ 				   const struct spi_mem_op *op,
+ 				   u32 len)
+ {
+-	u32 ctrl = 0, cmd = 0;
++	u32 ctrl = 0, cmd = 0, cmd_ext = 0, dummy_ext = 0;
++	u8 cs = spi_get_chipselect(mem->spi, 0);
++	u32 voltage;
+ 
+ 	/* set CMD */
+-	cmd = op->cmd.opcode;
+-	ctrl |= ((op->cmd.buswidth >> 1) << SFC_CTRL_CMD_BITS_SHIFT);
++	if (op->cmd.nbytes == 2) {
++		cmd_ext = op->cmd.opcode;
++		ctrl |= SFC_CTRL_CMD_CTRL_CMD_EXT;
++	} else {
++		cmd = op->cmd.opcode;
++	}
++
++	ctrl |= (find_first_bit((unsigned long *)&op->cmd.buswidth, 8) << SFC_CTRL_CMD_BITS_SHIFT);
++	ctrl |= (!op->cmd.dtr) << SFC_CTRL_CMD_STR_SHIFT;
+ 
+ 	/* set ADDR */
+ 	if (op->addr.nbytes) {
+@@ -314,15 +479,19 @@ static int rockchip_sfc_xfer_setup(struct rockchip_sfc *sfc,
+ 			cmd |= SFC_CMD_ADDR_24BITS << SFC_CMD_ADDR_SHIFT;
+ 		} else {
+ 			cmd |= SFC_CMD_ADDR_XBITS << SFC_CMD_ADDR_SHIFT;
+-			writel(op->addr.nbytes * 8 - 1, sfc->regbase + SFC_ABIT);
++			writel(op->addr.nbytes * 8 - 1, sfc->regbase + cs * SFC_CS1_REG_OFFSET + SFC_ABIT);
++			dev_dbg(sfc->dev, "sfc addrxbits=%d\n", op->addr.nbytes * 8 - 1);
+ 		}
+ 
+-		ctrl |= ((op->addr.buswidth >> 1) << SFC_CTRL_ADDR_BITS_SHIFT);
++		ctrl |= (find_first_bit((unsigned long *)&op->addr.buswidth, 8) << SFC_CTRL_ADDR_BITS_SHIFT);
+ 	}
++	ctrl |= (!op->addr.dtr) << SFC_CTRL_ADDR_STR_SHIFT;
+ 
+ 	/* set DUMMY */
+ 	if (op->dummy.nbytes) {
+-		if (op->dummy.buswidth == 4)
++		if (op->dummy.buswidth == 8)
++			dummy_ext |= ((op->dummy.nbytes / 2) << SFC_DUMMY_CTRL_EXT_SHIFT | SFC_DUMMY_CTRL_SEL); /* dtr */
++		else if (op->dummy.buswidth == 4)
+ 			cmd |= op->dummy.nbytes * 2 << SFC_CMD_DUMMY_SHIFT;
+ 		else if (op->dummy.buswidth == 2)
+ 			cmd |= op->dummy.nbytes * 4 << SFC_CMD_DUMMY_SHIFT;
+@@ -335,26 +504,50 @@ static int rockchip_sfc_xfer_setup(struct rockchip_sfc *sfc,
+ 		writel(len, sfc->regbase + SFC_LEN_EXT);
+ 	else
+ 		cmd |= len << SFC_CMD_TRAN_BYTES_SHIFT;
+-	if (len) {
+-		if (op->data.dir == SPI_MEM_DATA_OUT)
+-			cmd |= SFC_CMD_DIR_WR << SFC_CMD_DIR_SHIFT;
+ 
+-		ctrl |= ((op->data.buswidth >> 1) << SFC_CTRL_DATA_BITS_SHIFT);
+-	}
+-	if (!len && op->addr.nbytes)
++	if ((len && op->data.dir == SPI_MEM_DATA_OUT) || (!len && op->addr.nbytes))
+ 		cmd |= SFC_CMD_DIR_WR << SFC_CMD_DIR_SHIFT;
++	if (len)
++		ctrl |= (find_first_bit((unsigned long *)&op->data.buswidth, 8) << SFC_CTRL_DATA_BITS_SHIFT);
+ 
+ 	/* set the Controller */
+-	ctrl |= SFC_CTRL_PHASE_SEL_NEGETIVE;
+-	cmd |= spi_get_chipselect(mem->spi, 0) << SFC_CMD_CS_SHIFT;
++	if (sfc->shift_phase)
++		ctrl |= SFC_CTRL_PHASE_SEL_NEGETIVE;
++	ctrl |= SFC_CTRL_WPEN;
++	if (op->cmd.buswidth > 1)
++		ctrl |= SFC_CTRL_WPEN;
+ 
+-	dev_dbg(sfc->dev, "sfc addr.nbytes=%x(x%d) dummy.nbytes=%x(x%d)\n",
++	/* Workaround, binding dqs with buswidth 8 */
++	if (op->cmd.buswidth == 8)
++		ctrl |= (SFC_CTRL_DTR_MODE | SFC_CTRL_DTR_MODE_BY_DEVICE);
++
++	/* Workaround, cmd/addr 8bits is valid only when data is 8bits setting */
++	if (op->cmd.buswidth == 8 || op->addr.buswidth == 8)
++		ctrl |= (3 << SFC_CTRL_DATA_BITS_SHIFT);
++
++	cmd |= cs << SFC_CMD_CS_SHIFT;
++
++	dev_dbg(sfc->dev, "sfc cmd.nbytes=%x(x%d) addr.nbytes=%x(x%d) dummy.nbytes=%x(x%d)\n",
++		op->cmd.nbytes, op->cmd.buswidth,
+ 		op->addr.nbytes, op->addr.buswidth,
+ 		op->dummy.nbytes, op->dummy.buswidth);
+-	dev_dbg(sfc->dev, "sfc ctrl=%x cmd=%x addr=%llx len=%x\n",
+-		ctrl, cmd, op->addr.val, len);
++	dev_dbg(sfc->dev, "sfc ctrl=%x cmd=%x cmd_ext=%x addr=%llx dummy_ext=%x len=%x cs=%d\n",
++		ctrl, cmd, cmd_ext, op->addr.val, dummy_ext, len, cs);
++
++	if (sfc->data && sfc->data->powergood.valid) {
++		if (regmap_read_poll_timeout(sfc->grf, sfc->data->powergood.grf_offset,
++					     voltage, voltage & sfc->data->powergood.bits_mask,
++					     1000, jiffies_to_usecs(HZ))) {
++			dev_err(sfc->dev, "wait for powergood failed\n");
++			return -EIO;
++		}
++	}
+ 
+-	writel(ctrl, sfc->regbase + SFC_CTRL);
++	if (cmd_ext)
++		writel(cmd_ext, sfc->regbase + SFC_CMD_EXT);
++	if (sfc->version >= SFC_VER_8)
++		writel(dummy_ext, sfc->regbase + SFC_DUMM_CTRL);
++	writel(ctrl, sfc->regbase + cs * SFC_CS1_REG_OFFSET + SFC_CTRL);
+ 	writel(cmd, sfc->regbase + SFC_CMD);
+ 	if (op->addr.nbytes)
+ 		writel(op->addr.val, sfc->regbase + SFC_ADDR);
+@@ -449,20 +642,46 @@ static int rockchip_sfc_xfer_data_dma(struct rockchip_sfc *sfc,
+ 				      const struct spi_mem_op *op, u32 len)
+ {
+ 	int ret;
++#ifdef ROCKCHIP_SFC_VERBOSE
++	ktime_t start_time;
++	ktime_t end_time;
++	unsigned long us = 0;
++#endif
+ 
+ 	dev_dbg(sfc->dev, "sfc xfer_dma len=%x\n", len);
+ 
+-	if (op->data.dir == SPI_MEM_DATA_OUT)
++	if (op->data.dir == SPI_MEM_DATA_OUT) {
+ 		memcpy(sfc->buffer, op->data.buf.out, len);
++		dma_sync_single_for_device(sfc->dev, sfc->dma_buffer, len, DMA_TO_DEVICE);
++	}
+ 
++#ifdef ROCKCHIP_SFC_VERBOSE
++	start_time = ktime_get();
++#endif
+ 	ret = rockchip_sfc_fifo_transfer_dma(sfc, sfc->dma_buffer, len);
+ 	if (!wait_for_completion_timeout(&sfc->cp, msecs_to_jiffies(2000))) {
+ 		dev_err(sfc->dev, "DMA wait for transfer finish timeout\n");
+ 		ret = -ETIMEDOUT;
+ 	}
++#ifdef ROCKCHIP_SFC_VERBOSE
++	end_time = ktime_get();
++	us = ktime_to_us(ktime_sub(end_time, start_time));
++	dev_err(sfc->dev, "io %dB %ldus %ldKB/S\n", len, us, len * 1000 / us);
++#endif
+ 	rockchip_sfc_irq_mask(sfc, SFC_IMR_DMA);
+-	if (op->data.dir == SPI_MEM_DATA_IN)
++
++#ifdef ROCKCHIP_SFC_VERBOSE
++	start_time = ktime_get();
++#endif
++	if (op->data.dir == SPI_MEM_DATA_IN) {
++		dma_sync_single_for_cpu(sfc->dev, sfc->dma_buffer, len, DMA_FROM_DEVICE);
+ 		memcpy(op->data.buf.in, sfc->buffer, len);
++	}
++#ifdef ROCKCHIP_SFC_VERBOSE
++	end_time = ktime_get();
++	us = ktime_to_us(ktime_sub(end_time, start_time));
++	dev_err(sfc->dev, "cp %dB %ldus %ldKB/S\n", len, us, len * 1000 / us);
++#endif
+ 
+ 	return ret;
+ }
+@@ -472,6 +691,16 @@ static int rockchip_sfc_xfer_done(struct rockchip_sfc *sfc, u32 timeout_us)
+ 	int ret = 0;
+ 	u32 status;
+ 
++	/*
++	 * There is very little data left in fifo, and the controller will
++	 * complete the transmission in a short period of time.
++	 */
++	ret = readl_poll_timeout(sfc->regbase + SFC_SR, status,
++				 !(status & SFC_SR_IS_BUSY),
++				 0, 10);
++	if (!ret)
++		return 0;
++
+ 	ret = readl_poll_timeout(sfc->regbase + SFC_SR, status,
+ 				 !(status & SFC_SR_IS_BUSY),
+ 				 20, timeout_us);
+@@ -485,25 +714,290 @@ static int rockchip_sfc_xfer_done(struct rockchip_sfc *sfc, u32 timeout_us)
+ 	return ret;
+ }
+ 
++static void rockchip_sfc_set_cs_gpio(struct rockchip_sfc *sfc, u8 cs, bool enable)
++{
++	if (sfc->cs_gpiods) {
++		if (has_acpi_companion(sfc->dev))
++			gpiod_set_value_cansleep(sfc->cs_gpiods[cs], !enable);
++		else
++			/* Polarity handled by GPIO library */
++			gpiod_set_value_cansleep(sfc->cs_gpiods[cs], enable);
++	}
++}
++
++static int rockchip_sfc_tuning_exec_op_bypass(struct rockchip_sfc *sfc, struct spi_mem *mem,
++					      const struct spi_mem_op *op)
++{
++	u32 len = min_t(u32, op->data.nbytes, sfc->max_iosize);
++	u8 cs = spi_get_chipselect(mem->spi, 0);
++	u32 ret;
++
++	rockchip_sfc_adjust_op_work((struct spi_mem_op *)op);
++	rockchip_sfc_set_cs_gpio(sfc, cs, true);
++	rockchip_sfc_xfer_setup(sfc, mem, op, len);
++	ret = rockchip_sfc_xfer_data_poll(sfc, op, len);
++	if (ret != len) {
++		dev_err(sfc->dev, "xfer data failed ret %d\n", ret);
++
++		return -EIO;
++	}
++
++	ret = rockchip_sfc_xfer_done(sfc, 100000);
++	rockchip_sfc_set_cs_gpio(sfc, cs, false);
++
++	return ret;
++}
++
++static int rockchip_sfc_tuning_read_id(struct rockchip_sfc *sfc, struct spi_mem *mem,
++				       u8 *buf, size_t len)
++{
++	struct spi_mem_op op = SPI_MEM_OP(SPI_MEM_OP_CMD(0x9F, 1),
++					  SPI_MEM_OP_NO_ADDR,
++					  SPI_MEM_OP_NO_DUMMY,
++					  SPI_MEM_OP_DATA_IN(len, buf, 1));
++	int ret;
++
++	ret = rockchip_sfc_tuning_exec_op_bypass(sfc, mem, &op);
++	if (ret)
++		return ret;
++	if (is_invalid_id(buf)) {
++		/* Some SPI Nands only support access via addr 0. */
++		op.addr.nbytes = 1;
++		op.addr.val = 0;
++		op.addr.buswidth = 1;
++		ret = rockchip_sfc_tuning_exec_op_bypass(sfc, mem, &op);
++		if (ret)
++			return ret;
++		if (is_invalid_id(buf))
++			return -ENODEV;
++	}
++
++	return 0;
++}
++
++static int rockchip_sfc_tuning_read_octal_data(struct rockchip_sfc *sfc, struct spi_mem *mem,
++					       u8 *buf, size_t len,
++					       const struct spi_mem_op *ref_op)
++{
++	struct spi_mem_op op;
++
++	memcpy(&op, ref_op, sizeof(struct spi_mem_op));
++	op.addr.val = SNOR_IDB_POS;
++	op.data.buf.in = buf;
++	op.data.nbytes = len;
++
++	return rockchip_sfc_tuning_exec_op_bypass(sfc, mem, &op);
++}
++
++static int rockchip_sfc_tuning_item(struct rockchip_sfc *sfc, struct spi_mem *mem,
++				    const struct spi_mem_op *op)
++{
++	u8 buf[SFC_TUNING_ITEM_SIZE] = { 0 };
++	int ret;
++
++	if (sfc->tuning_item == SFC_TUNING_CHECK_ID) {
++		ret = rockchip_sfc_tuning_read_id(sfc, mem, buf, SFC_TUNING_ITEM_SIZE);
++		if (ret)
++			return -EIO;
++
++		dev_dbg(sfc->dev, "tuning read id %02x %02x %02x\n", buf[0], buf[1], buf[2]);
++		if (memcmp(sfc->tune_pattern, buf, SFC_TUNING_ITEM_SIZE))
++			return -EINVAL;
++	} else if (sfc->tuning_item == SFC_TUNING_CHECK_OCTAL_DATA) {
++		ret = rockchip_sfc_tuning_read_octal_data(sfc, mem, buf, SFC_TUNING_ITEM_SIZE, op);
++		if (ret)
++			return -EIO;
++
++		dev_dbg(sfc->dev, "tuning read data %02x %02x %02x\n", buf[0], buf[1], buf[2]);
++		if (memcmp(buf, SNOR_IDB_TAG_NS, SFC_TUNING_ITEM_SIZE) &&
++		    memcmp(buf, SNOR_IDB_TAG_SS, SFC_TUNING_ITEM_SIZE))
++			return -EINVAL;
++	} else {
++		return -EINVAL;
++	}
++
++	return 0;
++}
++
++static int rockchip_sfc_tuning_prepared(struct rockchip_sfc *sfc, struct spi_mem *mem,
++					const struct spi_mem_op *ref_op)
++{
++	u8 cs = spi_get_chipselect(mem->spi, 0);
++
++	if (ref_op->cmd.dtr) {
++		/* skip some invalid ref_op */
++		if (ref_op->dummy.nbytes < 0xa) {
++			rockchip_sfc_clk_set_rate(sfc, SFC_DLL_THRESHOLD_RATE);
++			return -EINVAL;
++		}
++		sfc->tuning_stage[cs] = SFC_TUNING_STAGE_DTR_HS;
++		sfc->tuning_item = SFC_TUNING_CHECK_OCTAL_DATA;
++	} else {
++		if (sfc->tuning_stage[cs] == SFC_TUNING_STAGE_SDR_HS)
++			return -EINVAL;
++
++		sfc->shift_phase = true;
++		rockchip_sfc_set_delay_lines(sfc, 0, cs);
++		rockchip_sfc_clk_set_rate(sfc, SFC_DLL_THRESHOLD_RATE);
++		if (rockchip_sfc_tuning_read_id(sfc, mem, sfc->tune_pattern,
++						SFC_TUNING_ITEM_SIZE)) {
++			mem->spi->max_speed_hz = SFC_DLL_THRESHOLD_RATE;
++			sfc->speed[cs] = mem->spi->max_speed_hz;
++			return -EINVAL;
++		}
++		sfc->tuning_stage[cs] = SFC_TUNING_STAGE_SDR_HS;
++		sfc->tuning_item = SFC_TUNING_CHECK_ID;
++	}
++
++	return 0;
++}
++
++static void rockchip_sfc_tuning(struct rockchip_sfc *sfc, struct spi_mem *mem,
++				const struct spi_mem_op *ref_op)
++{
++	u16 cell_max = (u16)rockchip_sfc_get_max_dll_cells(sfc);
++	u16 right, left;
++	u16 step = SFC_DLL_TRANING_STEP;
++	bool dll_valid = false;
++	u8 cs = spi_get_chipselect(mem->spi, 0);
++	u8 attempt;
++
++	if (rockchip_sfc_tuning_prepared(sfc, mem, ref_op))
++		return;
++
++	sfc->dll_cells[cs] = 0;
++	rockchip_sfc_clk_set_rate(sfc, mem->spi->max_speed_hz);
++
++	for (attempt = 0; attempt < 2; attempt++) {
++		if (attempt == 0)
++			sfc->shift_phase = true;
++		else
++			sfc->shift_phase = false;
++
++		left = 0;
++		dll_valid = false;
++		for (right = 0; right <= cell_max; right += step) {
++			int ret;
++
++			rockchip_sfc_set_delay_lines(sfc, right, cs);
++			ret = rockchip_sfc_tuning_item(sfc, mem, ref_op);
++			if (dll_valid && ret) {
++				right -= step;
++
++				break;
++			}
++			if (!dll_valid && !ret)
++				left = right;
++
++			if (!ret)
++				dll_valid = true;
++
++			/* Add cell_max to loop */
++			if (right == cell_max)
++				break;
++			if (right + step > cell_max)
++				right = cell_max - step;
++		}
++
++		if (dll_valid && (right - left) >= SFC_DLL_TRANING_VALID_WINDOW) {
++			if (left == 0 && right < cell_max)
++				sfc->dll_cells[cs] = left + (right - left) * 2 / 5;
++			else
++				sfc->dll_cells[cs] = left + (right - left) / 2;
++			break;
++		}
++	}
++
++	if (!sfc->dll_cells[cs]) {
++		rockchip_sfc_clk_set_rate(sfc, SFC_DLL_THRESHOLD_RATE);
++		mem->spi->max_speed_hz = SFC_DLL_THRESHOLD_RATE;
++	}
++
++	rockchip_sfc_set_delay_lines(sfc, (u16)sfc->dll_cells[cs], cs);
++	sfc->speed[cs] = mem->spi->max_speed_hz;
++
++	dev_info(sfc->dev, "tuning %s in %luMHz, {%d,%d,%d} s=%d cmd=%02x\n",
++		 sfc->dll_cells[cs] ? "succeed" : "fail",
++		 rockchip_sfc_clk_get_rate(sfc) / 1000000,
++		 left, sfc->dll_cells[cs], right,
++		 sfc->shift_phase, ref_op->cmd.opcode);
++}
++
++static bool rockchip_sfc_tuning_required(struct rockchip_sfc *sfc, struct spi_mem *mem, u8 cs)
++{
++	bool ret = false;
++
++	if (has_acpi_companion(sfc->dev))
++		return false;
++
++	if (sfc->version < SFC_VER_4)
++		return false;
++
++	if (mem->spi->max_speed_hz <= SFC_DLL_THRESHOLD_RATE)
++		return false;
++
++	if (mem->spi->max_speed_hz != sfc->speed[cs])
++		return true;
++
++	if ((mem->spi->mode & SPI_RX_OCTAL) && sfc->tuning_stage[cs] < SFC_TUNING_STAGE_DTR_HS)
++		return true;
++
++	return ret;
++}
++
+ static int rockchip_sfc_exec_mem_op(struct spi_mem *mem, const struct spi_mem_op *op)
+ {
+ 	struct rockchip_sfc *sfc = spi_controller_get_devdata(mem->spi->controller);
+ 	u32 len = op->data.nbytes;
+ 	int ret;
++	u8 cs = spi_get_chipselect(mem->spi, 0);
+ 
+-	if (unlikely(mem->spi->max_speed_hz != sfc->frequency)) {
+-		ret = clk_set_rate(sfc->clk, mem->spi->max_speed_hz);
+-		if (ret)
+-			return ret;
+-		sfc->frequency = mem->spi->max_speed_hz;
+-		dev_dbg(sfc->dev, "set_freq=%dHz real_freq=%ldHz\n",
+-			sfc->frequency, clk_get_rate(sfc->clk));
++	ret = pm_runtime_get_sync(sfc->dev);
++	if (ret < 0) {
++		pm_runtime_put_noidle(sfc->dev);
++		return ret;
++	}
++
++	if (rockchip_sfc_tuning_required(sfc, mem, cs)) {
++		rockchip_sfc_tuning(sfc, mem, op);
++	} else if (mem->spi->max_speed_hz != sfc->speed[cs]) {
++		if (rockchip_sfc_clk_set_rate(sfc, mem->spi->max_speed_hz))
++			goto out;
++		sfc->speed[cs] = mem->spi->max_speed_hz;
++	}
++
++	/*
++	 * Production write-reliability gate: never program a new op into an SFC
++	 * that isn't demonstrably idle + error-clear. A controller left BUSY
++	 * (a prior op timed out / errored / its FIFO not drained) rejects the
++	 * next posted SFC_CMD/SFC_CTRL write; the interconnect delivers that
++	 * rejection as an async SLVERR → imprecise external abort (0xc06) on a
++	 * later CPU store, and the half-programmed NAND page then reads back
++	 * ECC-uncorrectable — the root cause of the RW bit-flip / 0xFF-fill
++	 * saga. Vendor's private rkflash/sfc.c gates every op this way
++	 * (sfc_request() → sfc_reset() when !TXEMPTY || !RXEMPTY || BUSY);
++	 * mainline omits it. Clear sticky error status first, then reset if the
++	 * controller/FIFO isn't clean.
++	 */
++	writel_relaxed(0xFFFFFFFF, sfc->regbase + SFC_ICLR);
++	{
++		u32 fsr = readl_relaxed(sfc->regbase + SFC_FSR);
++		u32 sr = readl_relaxed(sfc->regbase + SFC_SR);
++
++		if (!(fsr & SFC_FSR_TX_IS_EMPTY) || !(fsr & SFC_FSR_RX_IS_EMPTY) ||
++		    (sr & SFC_SR_IS_BUSY)) {
++			dev_warn_ratelimited(sfc->dev,
++				"sfc not idle before op (fsr=%08x sr=%08x) — resetting\n",
++				fsr, sr);
++			rockchip_sfc_reset(sfc);
++		}
+ 	}
+ 
+ 	rockchip_sfc_adjust_op_work((struct spi_mem_op *)op);
++	rockchip_sfc_set_cs_gpio(sfc, cs, true);
+ 	rockchip_sfc_xfer_setup(sfc, mem, op, len);
+ 	if (len) {
+-		if (likely(sfc->use_dma) && len >= SFC_DMA_TRANS_THRETHOLD) {
++		if (likely(sfc->use_dma) && len >= SFC_DMA_TRANS_THRETHOLD && !(len & 0x3)) {
+ 			init_completion(&sfc->cp);
+ 			rockchip_sfc_irq_unmask(sfc, SFC_IMR_DMA);
+ 			ret = rockchip_sfc_xfer_data_dma(sfc, op, len);
+@@ -513,12 +1007,19 @@ static int rockchip_sfc_exec_mem_op(struct spi_mem *mem, const struct spi_mem_op
+ 
+ 		if (ret != len) {
+ 			dev_err(sfc->dev, "xfer data failed ret %d dir %d\n", ret, op->data.dir);
+-
+-			return -EIO;
++			rockchip_sfc_reset(sfc);
++			ret = -EIO;
++			goto out;
+ 		}
+ 	}
+ 
+-	return rockchip_sfc_xfer_done(sfc, 100000);
++	ret = rockchip_sfc_xfer_done(sfc, 100000);
++out:
++	rockchip_sfc_set_cs_gpio(sfc, cs, false);
++	pm_runtime_mark_last_busy(sfc->dev);
++	pm_runtime_put_autosuspend(sfc->dev);
++
++	return ret;
+ }
+ 
+ static int rockchip_sfc_adjust_op_size(struct spi_mem *mem, struct spi_mem_op *op)
+@@ -530,9 +1031,25 @@ static int rockchip_sfc_adjust_op_size(struct spi_mem *mem, struct spi_mem_op *o
+ 	return 0;
+ }
+ 
++static bool rockchip_sfc_supports_op(struct spi_mem *mem, const struct spi_mem_op *op)
++{
++	/*
++	 * The number of address bytes should be equal to or less than 4 bytes.
++	 */
++	if (op->addr.nbytes > 4)
++		return false;
++
++	return spi_mem_default_supports_op(mem, op);
++}
++
+ static const struct spi_controller_mem_ops rockchip_sfc_mem_ops = {
+ 	.exec_op = rockchip_sfc_exec_mem_op,
+ 	.adjust_op_size = rockchip_sfc_adjust_op_size,
++	.supports_op = rockchip_sfc_supports_op,
++};
++
++static const struct spi_controller_mem_caps rockchip_sfc_spi_mem_octa_caps = {
++	.dtr = true,
+ };
+ 
+ static irqreturn_t rockchip_sfc_irq_handler(int irq, void *dev_id)
+@@ -554,12 +1071,105 @@ static irqreturn_t rockchip_sfc_irq_handler(int irq, void *dev_id)
+ 	return IRQ_NONE;
+ }
+ 
++static int rockchip_sfc_get_gpio_descs(struct spi_controller *ctlr, struct rockchip_sfc *sfc)
++{
++	int nb, i;
++	struct gpio_desc **cs;
++	struct device *dev = &ctlr->dev;
++	unsigned int num_cs_gpios = 0;
++
++	nb = gpiod_count(dev, "sfc-cs");
++	ctlr->num_chipselect = max_t(int, nb, ctlr->num_chipselect);
++
++	if (nb == 0 || nb == -ENOENT)
++		return 0;
++	else if (nb < 0)
++		return nb;
++
++	cs = devm_kcalloc(dev, ctlr->num_chipselect, sizeof(*cs),
++			  GFP_KERNEL);
++	if (!cs)
++		return -ENOMEM;
++	sfc->cs_gpiods = cs;
++
++	for (i = 0; i < nb; i++) {
++		cs[i] = devm_gpiod_get_index_optional(dev, "sfc-cs", i,
++						      GPIOD_OUT_LOW);
++		if (IS_ERR(cs[i]))
++			return PTR_ERR(cs[i]);
++
++		if (cs[i]) {
++			/*
++			 * If we find a CS GPIO, name it after the device and
++			 * chip select line.
++			 */
++			char *gpioname;
++
++			gpioname = devm_kasprintf(dev, GFP_KERNEL, "%s CS%d",
++						  dev_name(dev), i);
++			if (!gpioname)
++				return -ENOMEM;
++			gpiod_set_consumer_name(cs[i], gpioname);
++			num_cs_gpios++;
++			continue;
++		}
++	}
++
++	return 0;
++}
++
++static const struct rockchip_sfc_data rk3506_fspi_data = {
++	.powergood = {
++		.valid = true,
++		.grf_offset = 0x100,
++		.bits_mask = BIT(0),
++	},
++};
++
++static const struct rockchip_sfc_data rk3538_fspi_data = {
++	.powergood = {
++		.valid = true,
++		.grf_offset = 0x170,
++		.bits_mask = BIT(0),
++	},
++	.dma_incr16_invalid = true,
++};
++
++static const struct rockchip_sfc_data rv1103b_fspi_data = {
++	.powergood = {
++		.valid = true,
++		.grf_offset = 0x60030,
++		.bits_mask = BIT(3),
++	},
++	.dma_incr16_invalid = true,
++};
++
++static const struct rockchip_sfc_data rv1126b_fspi_data = {
++	.powergood = {
++		.valid = true,
++		.grf_offset = 0x30170,
++		.bits_mask = BIT(0),
++	},
++};
++
++static const struct of_device_id rockchip_sfc_dt_ids[] = {
++	{ .compatible = "rockchip,fspi",},
++	{ .compatible = "rockchip,rk3506-fspi", .data = &rk3506_fspi_data},
++	{ .compatible = "rockchip,rk3538-fspi", .data = &rk3538_fspi_data},
++	{ .compatible = "rockchip,rv1103b-fspi", .data = &rv1103b_fspi_data},
++	{ .compatible = "rockchip,rv1126b-fspi", .data = &rv1126b_fspi_data},
++	{ .compatible = "rockchip,sfc"},
++	{ /* sentinel */ }
++};
++MODULE_DEVICE_TABLE(of, rockchip_sfc_dt_ids);
++
+ static int rockchip_sfc_probe(struct platform_device *pdev)
+ {
+ 	struct device *dev = &pdev->dev;
+ 	struct spi_controller *host;
+ 	struct rockchip_sfc *sfc;
+ 	int ret;
++	u32 i, val;
+ 
+ 	host = devm_spi_alloc_host(&pdev->dev, sizeof(*sfc));
+ 	if (!host)
+@@ -568,46 +1178,50 @@ static int rockchip_sfc_probe(struct platform_device *pdev)
+ 	host->flags = SPI_CONTROLLER_HALF_DUPLEX;
+ 	host->mem_ops = &rockchip_sfc_mem_ops;
+ 	host->dev.of_node = pdev->dev.of_node;
+-	host->mode_bits = SPI_TX_QUAD | SPI_TX_DUAL | SPI_RX_QUAD | SPI_RX_DUAL;
+ 	host->max_speed_hz = SFC_MAX_SPEED;
+ 	host->num_chipselect = SFC_MAX_CHIPSELECT_NUM;
+ 
+ 	sfc = spi_controller_get_devdata(host);
+ 	sfc->dev = dev;
++	sfc->host = host;
+ 
+ 	sfc->regbase = devm_platform_ioremap_resource(pdev, 0);
+ 	if (IS_ERR(sfc->regbase))
+ 		return PTR_ERR(sfc->regbase);
+ 
+-	sfc->clk = devm_clk_get(&pdev->dev, "clk_sfc");
++	if (!has_acpi_companion(&pdev->dev))
++		sfc->clk = devm_clk_get(&pdev->dev, "clk_sfc");
+ 	if (IS_ERR(sfc->clk)) {
+ 		dev_err(&pdev->dev, "Failed to get sfc interface clk\n");
+ 		return PTR_ERR(sfc->clk);
+ 	}
+ 
+-	sfc->hclk = devm_clk_get(&pdev->dev, "hclk_sfc");
++	if (!has_acpi_companion(&pdev->dev))
++		sfc->hclk = devm_clk_get(&pdev->dev, "hclk_sfc");
+ 	if (IS_ERR(sfc->hclk)) {
+ 		dev_err(&pdev->dev, "Failed to get sfc ahb clk\n");
+ 		return PTR_ERR(sfc->hclk);
+ 	}
+ 
+-	sfc->use_dma = !of_property_read_bool(sfc->dev->of_node,
+-					      "rockchip,sfc-no-dma");
+-
+-	if (sfc->use_dma) {
+-		ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(32));
++	if (has_acpi_companion(&pdev->dev)) {
++		ret = device_property_read_u32(&pdev->dev, "clock-frequency", &val);
+ 		if (ret) {
+-			dev_warn(dev, "Unable to set dma mask\n");
++			dev_err(&pdev->dev, "Failed to find clock-frequency in ACPI\n");
+ 			return ret;
+ 		}
+-
+-		sfc->buffer = dmam_alloc_coherent(dev, SFC_MAX_IOSIZE_VER3,
+-						  &sfc->dma_buffer,
+-						  GFP_KERNEL);
+-		if (!sfc->buffer)
+-			return -ENOMEM;
++		for (i = 0; i < SFC_MAX_CHIPSELECT_NUM; i++)
++			sfc->speed[i] = val;
+ 	}
+ 
++	sfc->use_dma = !of_property_read_bool(sfc->dev->of_node,
++					      "rockchip,sfc-no-dma");
++	sfc->sclk_x2_bypass = of_property_read_bool(sfc->dev->of_node,
++						    "rockchip,sclk-x2-bypass");
++
++	device_property_read_u32(&pdev->dev, "rockchip,max-dll", &sfc->max_dll_cells);
++	if (sfc->max_dll_cells > SFC_DLL_CTRL0_DLL_MAX_VER5)
++		sfc->max_dll_cells = SFC_DLL_CTRL0_DLL_MAX_VER5;
++
+ 	ret = clk_prepare_enable(sfc->hclk);
+ 	if (ret) {
+ 		dev_err(&pdev->dev, "Failed to enable ahb clk\n");
+@@ -633,19 +1247,87 @@ static int rockchip_sfc_probe(struct platform_device *pdev)
+ 		goto err_irq;
+ 	}
+ 
++	sfc->data = (struct rockchip_sfc_data *)device_get_match_data(&pdev->dev);
++	if (sfc->data) {
++		sfc->grf = syscon_regmap_lookup_by_phandle_optional(dev->of_node, "rockchip,grf");
++		if (IS_ERR_OR_NULL(sfc->grf)) {
++			ret = -EINVAL;
++			dev_err(dev, "Failed to find grf\n");
++
++			goto err_irq;
++		}
++	}
++
++	platform_set_drvdata(pdev, sfc);
++
++	ret = rockchip_sfc_get_gpio_descs(host, sfc);
++	if (ret) {
++		dev_err(&pdev->dev, "Failed to get gpio_descs\n");
++		goto err_irq;
++	}
++
+ 	ret = rockchip_sfc_init(sfc);
+ 	if (ret)
+ 		goto err_irq;
+ 
+-	sfc->max_iosize = rockchip_sfc_get_max_iosize(sfc);
+ 	sfc->version = rockchip_sfc_get_version(sfc);
++	if (sfc->version == SFC_VER_9)
++		sfc->version = SFC_VER_6;
++	sfc->max_iosize = rockchip_sfc_get_max_iosize(sfc);
++
++	host->mode_bits = SPI_TX_QUAD | SPI_TX_DUAL | SPI_RX_QUAD | SPI_RX_DUAL;
++	if (sfc->support_octa) {
++		host->mem_caps = &rockchip_sfc_spi_mem_octa_caps;
++		host->mode_bits |= SPI_TX_OCTAL | SPI_RX_OCTAL;
++	}
++
++	pm_runtime_set_autosuspend_delay(dev, ROCKCHIP_AUTOSUSPEND_DELAY);
++	pm_runtime_use_autosuspend(dev);
++	pm_runtime_set_active(dev);
++	pm_runtime_enable(dev);
++	pm_runtime_get_noresume(dev);
++
++	if (sfc->use_dma) {
++		sfc->buffer = (u8 *)__get_free_pages(GFP_KERNEL | GFP_DMA32, get_order(sfc->max_iosize));
++		if (!sfc->buffer) {
++			ret = -ENOMEM;
++			goto err_dma;
++		}
++		sfc->dma_buffer = virt_to_phys(sfc->buffer);
++	}
++
++	sfc->rst_gpio = devm_gpiod_get_optional(&pdev->dev, "reset", GPIOD_OUT_LOW);
++	if (IS_ERR(sfc->rst_gpio)) {
++		dev_err(&pdev->dev, "invalid reset-gpios property in node\n");
++		ret = PTR_ERR(sfc->rst_gpio);
++		goto err_dma;
++	} else if (sfc->rst_gpio) {
++		dev_info(&pdev->dev, "reset OCTA Flash at first\n");
++		gpiod_set_value_cansleep(sfc->rst_gpio, 1);
++		mdelay(1);
++		gpiod_set_value_cansleep(sfc->rst_gpio, 0);
++		mdelay(1);
++	} else if (sfc->support_octa) {
++		writel(0x0, sfc->regbase + SFC_DEV_RSTN);
++		mdelay(1);
++		writel(0xf, sfc->regbase + SFC_DEV_RSTN);
++	}
+ 
+ 	ret = spi_register_controller(host);
+ 	if (ret)
+-		goto err_irq;
++		goto err_register;
++
++	pm_runtime_mark_last_busy(dev);
++	pm_runtime_put_autosuspend(dev);
+ 
+ 	return 0;
+ 
++err_register:
++	free_pages((unsigned long)sfc->buffer, get_order(sfc->max_iosize));
++err_dma:
++	pm_runtime_disable(sfc->dev);
++	pm_runtime_set_suspended(sfc->dev);
++	pm_runtime_dont_use_autosuspend(sfc->dev);
+ err_irq:
+ 	clk_disable_unprepare(sfc->clk);
+ err_clk:
+@@ -656,25 +1338,86 @@ static int rockchip_sfc_probe(struct platform_device *pdev)
+ 
+ static void rockchip_sfc_remove(struct platform_device *pdev)
+ {
+-	struct spi_controller *host = platform_get_drvdata(pdev);
+ 	struct rockchip_sfc *sfc = platform_get_drvdata(pdev);
++	struct spi_controller *host = sfc->host;
+ 
++	free_pages((unsigned long)sfc->buffer, get_order(sfc->max_iosize));
+ 	spi_unregister_controller(host);
+ 
+ 	clk_disable_unprepare(sfc->clk);
+ 	clk_disable_unprepare(sfc->hclk);
+ }
+ 
+-static const struct of_device_id rockchip_sfc_dt_ids[] = {
+-	{ .compatible = "rockchip,sfc"},
+-	{ /* sentinel */ }
++static int __maybe_unused rockchip_sfc_runtime_suspend(struct device *dev)
++{
++	struct rockchip_sfc *sfc = dev_get_drvdata(dev);
++
++	clk_disable_unprepare(sfc->clk);
++	clk_disable_unprepare(sfc->hclk);
++
++	return 0;
++}
++
++static int __maybe_unused rockchip_sfc_runtime_resume(struct device *dev)
++{
++	struct rockchip_sfc *sfc = dev_get_drvdata(dev);
++	int ret;
++
++	ret = clk_prepare_enable(sfc->hclk);
++	if (ret < 0)
++		return ret;
++
++	ret = clk_prepare_enable(sfc->clk);
++	if (ret < 0) {
++		clk_disable_unprepare(sfc->hclk);
++		return ret;
++	}
++
++	rockchip_sfc_init(sfc);
++
++	return 0;
++}
++
++static int __maybe_unused rockchip_sfc_suspend(struct device *dev)
++{
++	pinctrl_pm_select_sleep_state(dev);
++
++	return pm_runtime_force_suspend(dev);
++}
++
++static int __maybe_unused rockchip_sfc_resume(struct device *dev)
++{
++	int ret;
++
++	ret = pm_runtime_force_resume(dev);
++	if (ret < 0)
++		return ret;
++
++	pinctrl_pm_select_default_state(dev);
++
++	ret = pm_runtime_get_sync(dev);
++	if (ret < 0) {
++		pm_runtime_put_noidle(dev);
++		return ret;
++	}
++
++	pm_runtime_mark_last_busy(dev);
++	pm_runtime_put_autosuspend(dev);
++
++	return 0;
++}
++
++static const struct dev_pm_ops rockchip_sfc_pm_ops = {
++	SET_RUNTIME_PM_OPS(rockchip_sfc_runtime_suspend,
++			   rockchip_sfc_runtime_resume, NULL)
++	SET_SYSTEM_SLEEP_PM_OPS(rockchip_sfc_suspend, rockchip_sfc_resume)
+ };
+-MODULE_DEVICE_TABLE(of, rockchip_sfc_dt_ids);
+ 
+ static struct platform_driver rockchip_sfc_driver = {
+ 	.driver = {
+ 		.name	= "rockchip-sfc",
+ 		.of_match_table = rockchip_sfc_dt_ids,
++		.pm = &rockchip_sfc_pm_ops,
+ 	},
+ 	.probe	= rockchip_sfc_probe,
+ 	.remove_new = rockchip_sfc_remove,

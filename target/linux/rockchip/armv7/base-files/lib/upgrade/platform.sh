@@ -23,9 +23,9 @@ platform_check_image() {
 	local diskdev partdev diff
 
 	case "$(board_name)" in
-		"vanxoak,vx-hd-rk3506-iot-spinand" |\
-		"kooiot,tlink-rk3506-iot" |\
-		"kooiot,tlink-rk3506-iot-spinand")
+		"vanxoak,vx-hd-rk3506g-iot-spinand" |\
+		"kooiot,tlink-rk3506g-iot" |\
+		"kooiot,tlink-rk3506g-iot-spinand")
 			nand_do_platform_check "$(board_name)" "$1"
 			return $?
 			;;
@@ -56,8 +56,8 @@ platform_check_image() {
 	fi
 
 	case "$(board_name)" in
-		"vanxoak,vx-hd-rk3506-iot" |\
-		"kooiot,tlink-rk3506-iot")
+		"vanxoak,vx-hd-rk3506g-iot" |\
+		"kooiot,tlink-rk3506g-iot")
 			tlink_check_image "$1" && return 0
 			return 1
 			;;
@@ -96,8 +96,8 @@ platform_do_upgrade() {
 	local diskdev partdev diff
 
 	case "$(board_name)" in
-		"vanxoak,vx-hd-rk3506-iot-spinand"|\
-		"kooiot,tlink-rk3506-iot-spinand")
+		"vanxoak,vx-hd-rk3506g-iot-spinand"|\
+		"kooiot,tlink-rk3506g-iot-spinand")
 			echo "Do SPI-NAND sysupgrade!!!"
 			CI_KERNPART="kernel"
 			CI_UBIPART="ubi"

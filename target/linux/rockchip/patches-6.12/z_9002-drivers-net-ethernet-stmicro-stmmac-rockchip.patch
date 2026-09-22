@@ -1,6 +1,111 @@
+--- a/drivers/net/ethernet/stmicro/stmmac/Makefile
++++ b/drivers/net/ethernet/stmicro/stmmac/Makefile
+@@ -20,7 +20,9 @@ obj-$(CONFIG_DWMAC_LPC18XX)	+= dwmac-lpc18xx.o
+ obj-$(CONFIG_DWMAC_MEDIATEK)	+= dwmac-mediatek.o
+ obj-$(CONFIG_DWMAC_MESON)	+= dwmac-meson.o dwmac-meson8b.o
+ obj-$(CONFIG_DWMAC_QCOM_ETHQOS)	+= dwmac-qcom-ethqos.o
+-obj-$(CONFIG_DWMAC_ROCKCHIP)	+= dwmac-rk.o
++obj-$(CONFIG_DWMAC_ROCKCHIP)	+= dwmac-rockchip.o
++dwmac-rockchip-objs := dwmac-rk.o
++dwmac-rockchip-$(CONFIG_DWMAC_ROCKCHIP_TOOL) += dwmac-rk-tool.o
+ obj-$(CONFIG_DWMAC_RZN1)	+= dwmac-rzn1.o
+ obj-$(CONFIG_DWMAC_SOCFPGA)	+= dwmac-altr-socfpga.o
+ obj-$(CONFIG_DWMAC_STARFIVE)	+= dwmac-starfive.o
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
+@@ -23,6 +23,7 @@
+ #include <linux/pm_runtime.h>
+
+ #include "stmmac_platform.h"
++#include "dwmac-rk-tool.h"
+
+ struct rk_priv_data;
+ struct rk_gmac_ops {
+@@ -1762,8 +1763,11 @@ static int rk_gmac_clk_init(struct plat_
+ 		bsp_priv->clks[i].id = rk_clocks[i];
+
+ 	if (phy_iface == PHY_INTERFACE_MODE_RMII) {
+-		for (j = 0; j < ARRAY_SIZE(rk_rmii_clocks); j++)
++		for (j = 0; j < ARRAY_SIZE(rk_rmii_clocks); j++) {
++			if(bsp_priv->clock_input && !strcmp(rk_rmii_clocks[j], "clk_mac_refout"))
++				continue;
+ 			bsp_priv->clks[i++].id = rk_rmii_clocks[j];
++		}
+ 	}
+
+ 	ret = devm_clk_bulk_get_optional(dev, bsp_priv->num_clks,
+@@ -2099,6 +2103,40 @@ static void rk_fix_speed(void *priv, uns
+ 	}
+ }
+
++void dwmac_rk_set_rgmii_delayline(struct stmmac_priv *priv,
++				  int tx_delay, int rx_delay)
++{
++	struct rk_priv_data *bsp_priv = priv->plat->bsp_priv;
++
++	if (bsp_priv->ops->set_to_rgmii) {
++		bsp_priv->ops->set_to_rgmii(bsp_priv, tx_delay, rx_delay);
++		bsp_priv->tx_delay = tx_delay;
++		bsp_priv->rx_delay = rx_delay;
++	}
++}
++EXPORT_SYMBOL(dwmac_rk_set_rgmii_delayline);
++
++void dwmac_rk_get_rgmii_delayline(struct stmmac_priv *priv,
++				  int *tx_delay, int *rx_delay)
++{
++	struct rk_priv_data *bsp_priv = priv->plat->bsp_priv;
++
++	if (!bsp_priv->ops->set_to_rgmii)
++		return;
++
++	*tx_delay = bsp_priv->tx_delay;
++	*rx_delay = bsp_priv->rx_delay;
++}
++EXPORT_SYMBOL(dwmac_rk_get_rgmii_delayline);
++
++int dwmac_rk_get_phy_interface(struct stmmac_priv *priv)
++{
++	struct rk_priv_data *bsp_priv = priv->plat->bsp_priv;
++
++	return bsp_priv->phy_iface;
++}
++EXPORT_SYMBOL(dwmac_rk_get_phy_interface);
++
+ static int rk_gmac_probe(struct platform_device *pdev)
+ {
+ 	struct plat_stmmacenet_data *plat_dat;
+@@ -2125,6 +2163,7 @@ static int rk_gmac_probe(struct platform
+ 	 */
+ 	if (!plat_dat->has_gmac4)
+ 		plat_dat->has_gmac = true;
++	plat_dat->flags |= STMMAC_FLAG_SPH_DISABLE;
+ 	plat_dat->fix_mac_speed = rk_fix_speed;
+
+ 	plat_dat->bsp_priv = rk_gmac_setup(pdev, plat_dat, data);
+@@ -2143,6 +2182,10 @@ static int rk_gmac_probe(struct platform
+ 	if (ret)
+ 		goto err_gmac_powerdown;
+
++	ret = dwmac_rk_create_loopback_sysfs(&pdev->dev);
++	if (ret)
++		goto err_gmac_powerdown;
++
+ 	return 0;
+
+ err_gmac_powerdown:
+@@ -2158,6 +2201,8 @@ static void rk_gmac_remove(struct platfo
+ 	stmmac_dvr_remove(&pdev->dev);
+
+ 	rk_gmac_powerdown(bsp_priv);
++
++	dwmac_rk_remove_loopback_sysfs(&pdev->dev);
+ }
+
+ #ifdef CONFIG_PM_SLEEP
 --- /dev/null
 +++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk-tool.c
-@@ -0,0 +1,1609 @@
+@@ -0,0 +1,1547 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (c) 2020 Fuzhou Rockchip Electronics Co., Ltd
@@ -12,7 +117,6 @@
 +#include <linux/if_ether.h>
 +#include <linux/if.h>
 +#include <linux/dma-mapping.h>
-+#include <linux/of_device.h>
 +#include <linux/of.h>
 +#include <linux/slab.h>
 +#include <linux/prefetch.h>
@@ -23,6 +127,7 @@
 +#include <net/pkt_cls.h>
 +#include <net/tcp.h>
 +#include <net/udp.h>
++#include <linux/soc/rockchip/rk_vendor_storage.h>
 +#include "stmmac.h"
 +#include "dwmac1000.h"
 +#include "dwmac_dma.h"
@@ -94,13 +199,13 @@
 +
 +#define DMA_CONTROL_OSP		BIT(4)
 +#define DMA_CHAN_BASE_ADDR	0x00001100
-+#define _DMA_CHAN_BASE_OFFSET	0x80
-+#define _DMA_CHANX_BASE_ADDR(x)	(DMA_CHAN_BASE_ADDR + \
-+				((x) * _DMA_CHAN_BASE_OFFSET))
-+#define DMA_CHAN_TX_CONTROL(x)	(_DMA_CHANX_BASE_ADDR(x) + 0x4)
-+#define _DMA_CHAN_STATUS(x)	(_DMA_CHANX_BASE_ADDR(x) + 0x60)
-+#define DMA_CHAN_STATUS_ERI	BIT(11)
++#define DMA_CHANX_BASE_ADDR(x)	(DMA_CHAN_BASE_ADDR + \
++				((x) * DMA_CHAN_BASE_OFFSET))
++#define DMA_CHAN_TX_CONTROL(x)	(DMA_CHANX_BASE_ADDR(x) + 0x4)
++#define DMA_CHAN0_STATUS	0x1160
++#define DMA_CHAN_STATUS_RI	BIT(6)
 +#define DMA_CHAN_STATUS_ETI	BIT(10)
++#define DMA_CHAN_STATUS_ERI	BIT(11)
 +
 +#define	STMMAC_ALIGN(x) __ALIGN_KERNEL(x, SMP_CACHE_BYTES)
 +#define MAX_DELAYLINE 0x7f
@@ -177,7 +282,7 @@
 +	}
 +
 +	if (likely(priv->plat->fix_mac_speed))
-+		priv->plat->fix_mac_speed(priv->plat->bsp_priv, speed, priv->mode);
++		priv->plat->fix_mac_speed(priv->plat->bsp_priv, speed, PHY_INTERFACE_MODE_RGMII);
 +
 +	return 0;
 +}
@@ -261,7 +366,7 @@
 +	}
 +
 +	if (likely(priv->plat->fix_mac_speed))
-+		priv->plat->fix_mac_speed(priv->plat->bsp_priv, speed, priv->mode);
++		priv->plat->fix_mac_speed(priv->plat->bsp_priv, speed, PHY_INTERFACE_MODE_RGMII);
 +
 +	return 0;
 +}
@@ -468,66 +573,6 @@
 +	return skb;
 +}
 +
-+static int dwmac_rk_loopback_validate(struct stmmac_priv *priv,
-+				      struct dwmac_rk_lb_priv *lb_priv,
-+				      struct sk_buff *skb)
-+{
-+	struct dwmac_rk_hdr *shdr;
-+	struct ethhdr *ehdr;
-+	struct udphdr *uhdr;
-+	struct tcphdr *thdr;
-+	struct iphdr *ihdr;
-+	int ret = -EAGAIN;
-+
-+	if (skb->len >= DWMAC_RK_TEST_PKT_MAX_SIZE)
-+		goto out;
-+
-+	if (lb_priv->actual_size != skb->len)
-+		goto out;
-+
-+	ehdr = (struct ethhdr *)(skb->data);
-+	if (!ether_addr_equal(ehdr->h_dest, lb_priv->packet->dst))
-+		goto out;
-+
-+	if (!ether_addr_equal(ehdr->h_source, priv->dev->dev_addr))
-+		goto out;
-+
-+	ihdr = (struct iphdr *)(skb->data + ETH_HLEN);
-+
-+	if (lb_priv->packet->tcp) {
-+		if (ihdr->protocol != IPPROTO_TCP)
-+			goto out;
-+
-+		thdr = (struct tcphdr *)((u8 *)ihdr + 4 * ihdr->ihl);
-+		if (thdr->dest != htons(lb_priv->packet->dport))
-+			goto out;
-+
-+		shdr = (struct dwmac_rk_hdr *)((u8 *)thdr + sizeof(*thdr));
-+	} else {
-+		if (ihdr->protocol != IPPROTO_UDP)
-+			goto out;
-+
-+		uhdr = (struct udphdr *)((u8 *)ihdr + 4 * ihdr->ihl);
-+		if (uhdr->dest != htons(lb_priv->packet->dport))
-+			goto out;
-+
-+		shdr = (struct dwmac_rk_hdr *)((u8 *)uhdr + sizeof(*uhdr));
-+	}
-+
-+	if (shdr->magic != cpu_to_be64(DWMAC_RK_TEST_PKT_MAGIC))
-+		goto out;
-+
-+	if (lb_priv->id != shdr->id)
-+		goto out;
-+
-+	if (lb_priv->tx != shdr->tx || lb_priv->rx != shdr->rx)
-+		goto out;
-+
-+	ret = 0;
-+out:
-+	return ret;
-+}
-+
 +static inline int dwmac_rk_rx_fill(struct stmmac_priv *priv,
 +				   struct dwmac_rk_lb_priv *lb_priv)
 +{
@@ -607,6 +652,11 @@
 +	}
 +
 +	frame_len = priv->hw->desc->get_rx_frame_len(p, coe);
++	dma_unmap_single(priv->device,
++			 lb_priv->rx_skbuff_dma,
++			 lb_priv->dma_buf_sz,
++			 DMA_FROM_DEVICE);
++
 +	/*  check if frame_len fits the preallocated memory */
 +	if (frame_len > lb_priv->dma_buf_sz) {
 +		pr_err("%s: frame_len long: %d\n", __func__, frame_len);
@@ -614,14 +664,10 @@
 +	}
 +
 +	frame_len -= ETH_FCS_LEN;
-+	prefetch(skb->data - NET_IP_ALIGN);
-+	skb_put(skb, frame_len);
-+	dma_unmap_single(priv->device,
-+			 lb_priv->rx_skbuff_dma,
-+			 lb_priv->dma_buf_sz,
-+			 DMA_FROM_DEVICE);
++	if (lb_priv->actual_size != frame_len)
++		return -EAGAIN;
 +
-+	return dwmac_rk_loopback_validate(priv, lb_priv, skb);
++	return 0;
 +}
 +
 +static int dwmac_rk_get_desc_status(struct stmmac_priv *priv,
@@ -631,21 +677,19 @@
 +	int tx_status, rx_status;
 +
 +	txp = lb_priv->dma_tx;
-+	tx_status = priv->hw->desc->tx_status(
-+					      &priv->xstats, txp,
-+					      priv->ioaddr);
++	tx_status = stmmac_tx_status(priv, &priv->xstats, txp, priv->ioaddr);
 +	/* Check if the descriptor is owned by the DMA */
 +	if (unlikely(tx_status & tx_dma_own))
 +		return -EBUSY;
 +
 +	rxp = lb_priv->dma_rx;
 +	/* read the status of the incoming frame */
-+	rx_status = priv->hw->desc->rx_status(
-+					      &priv->xstats, rxp);
++	rx_status = stmmac_rx_status(priv, &priv->xstats, rxp);
 +	if (unlikely(rx_status & dma_own))
 +		return -EBUSY;
 +
-+	usleep_range(100, 150);
++	if (rx_status != good_frame)
++		return -EINVAL;
 +
 +	return 0;
 +}
@@ -679,10 +723,9 @@
 +{
 +	struct stmmac_priv *priv = netdev_priv(dev);
 +	unsigned int nopaged_len = skb_headlen(skb);
-+	u32 queue = skb_get_queue_mapping(skb);
 +	int csum_insertion = 0;
 +	struct dma_desc *desc;
-+	unsigned int des;
++	dma_addr_t des;
 +
 +	priv->hw->mac->reset_eee_mode(priv->hw);
 +
@@ -704,7 +747,7 @@
 +	stmmac_prepare_tx_desc(priv, desc, 1, nopaged_len,
 +			       csum_insertion, priv->mode, 1, 1,
 +			       skb->len);
-+	stmmac_enable_dma_transmission(priv, priv->ioaddr, queue);
++	stmmac_enable_dma_transmission(priv, priv->ioaddr, 0);
 +
 +	lb_priv->tx_tail_addr = lb_priv->dma_tx_phy + sizeof(*desc);
 +	stmmac_set_tx_tail_ptr(priv, priv->ioaddr, lb_priv->tx_tail_addr, 0);
@@ -763,11 +806,11 @@
 +		usleep_range(100, 150);
 +		delay--;
 +		if (priv->plat->has_gmac4) {
-+			status = readl(priv->ioaddr + _DMA_CHAN_STATUS(0));
-+			finish = (status & DMA_CHAN_STATUS_ERI) && (status & DMA_CHAN_STATUS_ETI);
++			status = readl(priv->ioaddr + DMA_CHAN0_STATUS);
++			finish = status & (DMA_CHAN_STATUS_ERI | DMA_CHAN_STATUS_RI);
 +		} else {
 +			status = readl(priv->ioaddr + DMA_STATUS);
-+			finish = (status & DMA_STATUS_ERI) && (status & DMA_STATUS_ETI);
++			finish = status & (DMA_STATUS_ERI | DMA_STATUS_RI);
 +		}
 +
 +		if (finish) {
@@ -776,7 +819,7 @@
 +				break;
 +			}
 +		}
-+	} while (delay <= 0);
++	} while (delay > 0);
 +	writel((status & 0x1ffff), priv->ioaddr + DMA_STATUS);
 +
 +stop:
@@ -1021,7 +1064,7 @@
 +
 +	lb_priv->rx_skbuff = NULL;
 +	stmmac_init_rx_desc(priv, lb_priv->dma_rx,
-+				     priv->use_riwt, priv->mode,
++				     false, priv->mode,
 +				     true, lb_priv->dma_buf_sz);
 +
 +	stmmac_init_tx_desc(priv, lb_priv->dma_tx,
@@ -1080,7 +1123,7 @@
 +	u32 chan = 0;
 +	int ret = 0;
 +
-+	ret = stmmac_reset(priv, priv->ioaddr);
++	ret = stmmac_do_callback(priv, dma, reset, priv->ioaddr);
 +	if (ret) {
 +		dev_err(priv->device, "Failed to reset the dma\n");
 +		return ret;
@@ -1612,7 +1655,7 @@
 +}
 --- /dev/null
 +++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk-tool.h
-@@ -0,0 +1,20 @@
+@@ -0,0 +1,37 @@
 +/* SPDX-License-Identifier: (GPL-2.0+ OR MIT) */
 +/*
 + * Copyright (c) 2020 Fuzhou Rockchip Electronics Co., Ltd
@@ -1628,111 +1671,25 @@
 +void dwmac_rk_get_rgmii_delayline(struct stmmac_priv *priv, int *tx_delay, int *rx_delay);
 +int dwmac_rk_get_phy_interface(struct stmmac_priv *priv);
 +
++#ifdef CONFIG_DWMAC_ROCKCHIP_TOOL
 +int dwmac_rk_create_loopback_sysfs(struct device *dev);
 +int dwmac_rk_remove_loopback_sysfs(struct device *device);
++#else
++static inline int dwmac_rk_create_loopback_sysfs(struct device *dev)
++{
++	return 0;
++}
++
++static inline int dwmac_rk_remove_loopback_sysfs(struct device *device)
++{
++	return 0;
++}
++#endif
++
++#ifdef CONFIG_DWMAC_RK_AUTO_DELAYLINE
++int dwmac_rk_get_rgmii_delayline_from_vendor(struct stmmac_priv *priv);
++int dwmac_rk_search_rgmii_delayline(struct stmmac_priv *priv);
++#endif
 +
 +#endif /* __DWMAC_RK_TOOL_H__ */
 +
---- a/drivers/net/ethernet/stmicro/stmmac/Makefile
-+++ b/drivers/net/ethernet/stmicro/stmmac/Makefile
-@@ -20,7 +20,7 @@ obj-$(CONFIG_DWMAC_LPC18XX)	+= dwmac-lpc
- obj-$(CONFIG_DWMAC_MEDIATEK)	+= dwmac-mediatek.o
- obj-$(CONFIG_DWMAC_MESON)	+= dwmac-meson.o dwmac-meson8b.o
- obj-$(CONFIG_DWMAC_QCOM_ETHQOS)	+= dwmac-qcom-ethqos.o
--obj-$(CONFIG_DWMAC_ROCKCHIP)	+= dwmac-rk.o
-+obj-$(CONFIG_DWMAC_ROCKCHIP)	+= dwmac-rk.o dwmac-rk-tool.o
- obj-$(CONFIG_DWMAC_RZN1)	+= dwmac-rzn1.o
- obj-$(CONFIG_DWMAC_SOCFPGA)	+= dwmac-altr-socfpga.o
- obj-$(CONFIG_DWMAC_STARFIVE)	+= dwmac-starfive.o
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
-@@ -23,6 +23,7 @@
- #include <linux/pm_runtime.h>
-
- #include "stmmac_platform.h"
-+#include "dwmac-rk-tool.h"
-
- struct rk_priv_data;
- struct rk_gmac_ops {
-@@ -1762,8 +1763,11 @@ static int rk_gmac_clk_init(struct plat_
- 		bsp_priv->clks[i].id = rk_clocks[i];
-
- 	if (phy_iface == PHY_INTERFACE_MODE_RMII) {
--		for (j = 0; j < ARRAY_SIZE(rk_rmii_clocks); j++)
-+		for (j = 0; j < ARRAY_SIZE(rk_rmii_clocks); j++) {
-+			if(bsp_priv->clock_input && !strcmp(rk_rmii_clocks[j], "clk_mac_refout"))
-+				continue;
- 			bsp_priv->clks[i++].id = rk_rmii_clocks[j];
-+		}
- 	}
-
- 	ret = devm_clk_bulk_get_optional(dev, bsp_priv->num_clks,
-@@ -2099,6 +2103,40 @@ static void rk_fix_speed(void *priv, uns
- 	}
- }
-
-+void dwmac_rk_set_rgmii_delayline(struct stmmac_priv *priv,
-+				  int tx_delay, int rx_delay)
-+{
-+	struct rk_priv_data *bsp_priv = priv->plat->bsp_priv;
-+
-+	if (bsp_priv->ops->set_to_rgmii) {
-+		bsp_priv->ops->set_to_rgmii(bsp_priv, tx_delay, rx_delay);
-+		bsp_priv->tx_delay = tx_delay;
-+		bsp_priv->rx_delay = rx_delay;
-+	}
-+}
-+EXPORT_SYMBOL(dwmac_rk_set_rgmii_delayline);
-+
-+void dwmac_rk_get_rgmii_delayline(struct stmmac_priv *priv,
-+				  int *tx_delay, int *rx_delay)
-+{
-+	struct rk_priv_data *bsp_priv = priv->plat->bsp_priv;
-+
-+	if (!bsp_priv->ops->set_to_rgmii)
-+		return;
-+
-+	*tx_delay = bsp_priv->tx_delay;
-+	*rx_delay = bsp_priv->rx_delay;
-+}
-+EXPORT_SYMBOL(dwmac_rk_get_rgmii_delayline);
-+
-+int dwmac_rk_get_phy_interface(struct stmmac_priv *priv)
-+{
-+	struct rk_priv_data *bsp_priv = priv->plat->bsp_priv;
-+
-+	return bsp_priv->phy_iface;
-+}
-+EXPORT_SYMBOL(dwmac_rk_get_phy_interface);
-+
- static int rk_gmac_probe(struct platform_device *pdev)
- {
- 	struct plat_stmmacenet_data *plat_dat;
-@@ -2125,6 +2163,7 @@ static int rk_gmac_probe(struct platform
- 	 */
- 	if (!plat_dat->has_gmac4)
- 		plat_dat->has_gmac = true;
-+	plat_dat->flags |= STMMAC_FLAG_SPH_DISABLE;
- 	plat_dat->fix_mac_speed = rk_fix_speed;
-
- 	plat_dat->bsp_priv = rk_gmac_setup(pdev, plat_dat, data);
-@@ -2143,6 +2182,10 @@ static int rk_gmac_probe(struct platform
- 	if (ret)
- 		goto err_gmac_powerdown;
-
-+	ret = dwmac_rk_create_loopback_sysfs(&pdev->dev);
-+	if (ret)
-+		goto err_gmac_powerdown;
-+
- 	return 0;
-
- err_gmac_powerdown:
-@@ -2158,6 +2201,8 @@ static void rk_gmac_remove(struct platfo
- 	stmmac_dvr_remove(&pdev->dev);
-
- 	rk_gmac_powerdown(bsp_priv);
-+
-+	dwmac_rk_remove_loopback_sysfs(&pdev->dev);
- }
-
- #ifdef CONFIG_PM_SLEEP
