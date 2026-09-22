@@ -229,8 +229,8 @@
 	snps,reset-active-low;
 	snps,reset-delays-us = <0 20000 100000>;
 
-	assigned-clocks = <&cru CLK_MAC0_PTP>;
-	assigned-clock-parents = <&ext_gmac0>;
+	// assigned-clocks = <&cru CLK_MAC0_PTP>;
+	// assigned-clock-parents = <&ext_gmac0>;
 
 	pinctrl-names = "default";
 	pinctrl-0 = <&eth_rmii0_miim_pins
@@ -244,7 +244,7 @@
 };
 
 &mdio0 {
-	rmii_phy0: phy@1 {
+	rmii_phy0: phy@0 {
 		compatible = "ethernet-phy-ieee802.3-c22";
 		motorcomm,led0 = <0x30>;
 		motorcomm,led1 = <0x331>;
@@ -260,8 +260,8 @@
 	snps,reset-active-low;
 	snps,reset-delays-us = <0 20000 100000>;
 
-	assigned-clocks = <&cru CLK_MAC1_PTP>;
-	assigned-clock-parents = <&ext_gmac1>;
+	// assigned-clocks = <&cru CLK_MAC1_PTP>;
+	// assigned-clock-parents = <&ext_gmac1>;
 
 	pinctrl-names = "default";
 	pinctrl-0 = <&eth_rmii1_miim_pins
