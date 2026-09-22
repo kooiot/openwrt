@@ -4,13 +4,13 @@ Date: Mon, 14 Sep 2026 09:57:31 +0800
 Subject: [PATCH 9039/9039] rockchip: correct mmc boot spl offset
 
 ---
- configs/vx-hd-rk3506-iot_defconfig | 25 +++++--------------------
+ configs/vx-hd-rk3506g-iot_defconfig | 25 +++++--------------------
  1 file changed, 5 insertions(+), 20 deletions(-)
 
-diff --git a/configs/vx-hd-rk3506-iot_defconfig b/configs/vx-hd-rk3506-iot_defconfig
+diff --git a/configs/vx-hd-rk3506g-iot_defconfig b/configs/vx-hd-rk3506g-iot_defconfig
 index 61c394538ed..14092b18827 100644
---- a/configs/vx-hd-rk3506-iot_defconfig
-+++ b/configs/vx-hd-rk3506-iot_defconfig
+--- a/configs/vx-hd-rk3506g-iot_defconfig
++++ b/configs/vx-hd-rk3506g-iot_defconfig
 @@ -2,7 +2,7 @@ CONFIG_ARM=y
  CONFIG_SKIP_LOWLEVEL_INIT=y
  CONFIG_COUNTER_FREQUENCY=24000000
@@ -19,7 +19,7 @@ index 61c394538ed..14092b18827 100644
 +CONFIG_SYS_MALLOC_LEN=0x100000
  CONFIG_SF_DEFAULT_SPEED=50000000
  CONFIG_SF_DEFAULT_MODE=0x1
- CONFIG_DEFAULT_DEVICE_TREE="rk3506-vx-hd-rk3506-iot"
+ CONFIG_DEFAULT_DEVICE_TREE="rk3506-vx-hd-rk3506g-iot"
 @@ -17,6 +17,7 @@ CONFIG_SYS_BOOTM_LEN=0x2000000
  CONFIG_USE_BOOTARGS=y
  # CONFIG_DISPLAY_CPUINFO is not set

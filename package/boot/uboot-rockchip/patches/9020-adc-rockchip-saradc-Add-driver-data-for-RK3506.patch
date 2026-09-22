@@ -17,12 +17,10 @@ Signed-off-by: Austin Lane <vidplace7@gmail.com>
  drivers/adc/rockchip-saradc.c | 10 ++++++++++
  1 file changed, 10 insertions(+)
 
-diff --git a/drivers/adc/rockchip-saradc.c b/drivers/adc/rockchip-saradc.c
-index f6832ab3073..939de1c3348 100644
 --- a/drivers/adc/rockchip-saradc.c
 +++ b/drivers/adc/rockchip-saradc.c
-@@ -336,6 +336,14 @@ static const struct rockchip_saradc_data rk3399_saradc_data = {
- 	.stop = rockchip_saradc_stop_v1,
+@@ -347,6 +347,14 @@ static const struct rockchip_saradc_data
+ 	.start_channel = rockchip_saradc_start_channel_v2,
  };
  
 +static const struct rockchip_saradc_data rk3506_saradc_data = {
@@ -36,15 +34,12 @@ index f6832ab3073..939de1c3348 100644
  static const struct rockchip_saradc_data rk3588_saradc_data = {
  	.num_bits = 12,
  	.num_channels = 8,
-@@ -351,6 +359,8 @@ static const struct udevice_id rockchip_saradc_ids[] = {
+@@ -362,6 +370,8 @@ static const struct udevice_id rockchip_
  	  .data = (ulong)&rk3066_tsadc_data },
  	{ .compatible = "rockchip,rk3399-saradc",
  	  .data = (ulong)&rk3399_saradc_data },
 +	{ .compatible = "rockchip,rk3506-saradc",
 +	  .data = (ulong)&rk3506_saradc_data },
+ 	{ .compatible = "rockchip,rk3528-saradc",
+ 	  .data = (ulong)&rk3528_saradc_data },
  	{ .compatible = "rockchip,rk3588-saradc",
- 	  .data = (ulong)&rk3588_saradc_data },
- 	{ }
--- 
-2.55.0
-

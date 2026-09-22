@@ -7,11 +7,9 @@ Subject: [PATCH] mtd: nand: xtx spi nand supports more chips
  drivers/mtd/nand/spi/xtx.c | 218 +++++++++++++++++++++++++++++++++++++
  1 file changed, 218 insertions(+)
 
-diff --git a/drivers/mtd/nand/spi/xtx.c b/drivers/mtd/nand/spi/xtx.c
-index aee1849a71f..2859610f503 100644
 --- a/drivers/mtd/nand/spi/xtx.c
 +++ b/drivers/mtd/nand/spi/xtx.c
-@@ -69,6 +69,98 @@ static const struct mtd_ooblayout_ops xt26g0xa_ooblayout = {
+@@ -69,6 +69,98 @@ static const struct mtd_ooblayout_ops xt
  	.rfree = xt26g0xa_ooblayout_free,
  };
  
@@ -110,7 +108,7 @@ index aee1849a71f..2859610f503 100644
  static int xt26g0xa_ecc_get_status(struct spinand_device *spinand,
  				   u8 status)
  {
-@@ -93,6 +185,72 @@ static int xt26g0xa_ecc_get_status(struct spinand_device *spinand,
+@@ -93,6 +185,72 @@ static int xt26g0xa_ecc_get_status(struc
  	return status >> 2;
  }
  
@@ -183,7 +181,7 @@ index aee1849a71f..2859610f503 100644
  static int xt26xxxd_ooblayout_ecc(struct mtd_info *mtd, int section,
  				  struct mtd_oob_region *region)
  {
-@@ -172,6 +330,66 @@ static const struct spinand_info xtx_spinand_table[] = {
+@@ -172,6 +330,66 @@ static const struct spinand_info xtx_spi
  		     SPINAND_HAS_QE_BIT,
  		     SPINAND_ECCINFO(&xt26g0xa_ooblayout,
  				     xt26g0xa_ecc_get_status)),
@@ -250,6 +248,3 @@ index aee1849a71f..2859610f503 100644
  	SPINAND_INFO("XT26G01D",
  		     SPINAND_ID(SPINAND_READID_METHOD_OPCODE_ADDR, 0x31),
  		     NAND_MEMORG(1, 2048, 128, 64, 1024, 20, 1, 1, 1),
--- 
-2.55.0
-

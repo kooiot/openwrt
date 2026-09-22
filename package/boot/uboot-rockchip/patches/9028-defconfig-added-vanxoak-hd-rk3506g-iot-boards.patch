@@ -1,20 +1,20 @@
 From 7649215c51a62d59e5fa726fd75feb59cb5c425b Mon Sep 17 00:00:00 2001
 From: Dirk Chang <dirk@kooiot.com>
 Date: Thu, 3 Sep 2026 17:54:22 +0800
-Subject: [PATCH] defconfig: added vanxoak hd-rk3506-iot boards
+Subject: [PATCH] defconfig: added vanxoak hd-rk3506g-iot boards
 
 ---
- configs/vx-hd-rk3506-iot-spinand_defconfig | 92 ++++++++++++++++++++++
- configs/vx-hd-rk3506-iot_defconfig         | 86 ++++++++++++++++++++
+ configs/vx-hd-rk3506g-iot-spinand_defconfig | 92 ++++++++++++++++++++++
+ configs/vx-hd-rk3506g-iot_defconfig         | 86 ++++++++++++++++++++
  2 files changed, 178 insertions(+)
- create mode 100644 configs/vx-hd-rk3506-iot-spinand_defconfig
- create mode 100644 configs/vx-hd-rk3506-iot_defconfig
+ create mode 100644 configs/vx-hd-rk3506g-iot-spinand_defconfig
+ create mode 100644 configs/vx-hd-rk3506g-iot_defconfig
 
-diff --git a/configs/vx-hd-rk3506-iot-spinand_defconfig b/configs/vx-hd-rk3506-iot-spinand_defconfig
+diff --git a/configs/vx-hd-rk3506g-iot-spinand_defconfig b/configs/vx-hd-rk3506g-iot-spinand_defconfig
 new file mode 100644
 index 00000000000..3b67029cb20
 --- /dev/null
-+++ b/configs/vx-hd-rk3506-iot-spinand_defconfig
++++ b/configs/vx-hd-rk3506g-iot-spinand_defconfig
 @@ -0,0 +1,92 @@
 +CONFIG_ARM=y
 +CONFIG_SKIP_LOWLEVEL_INIT=y
@@ -23,7 +23,7 @@ index 00000000000..3b67029cb20
 +CONFIG_SYS_MALLOC_LEN=0x200000
 +CONFIG_SF_DEFAULT_SPEED=50000000
 +CONFIG_SF_DEFAULT_MODE=0x1
-+CONFIG_DEFAULT_DEVICE_TREE="rk3506-vx-hd-rk3506-iot-spinand"
++CONFIG_DEFAULT_DEVICE_TREE="rk3506-vx-hd-rk3506g-iot-spinand"
 +CONFIG_ROCKCHIP_RK3506=y
 +CONFIG_DEBUG_UART_BASE=0xFF0A0000
 +CONFIG_DEBUG_UART_CLOCK=24000000
@@ -62,8 +62,8 @@ index 00000000000..3b67029cb20
 +CONFIG_ENV_UBI_PART="ubi"
 +CONFIG_ENV_UBI_VOLUME="ubootenv"
 +CONFIG_ENV_UBI_VOLUME_REDUND="ubootenv2"
-+CONFIG_USE_DEFAULT_ENV_FILE=y
-+CONFIG_DEFAULT_ENV_FILE=".default_env"
++CONFIG_ENV_USE_DEFAULT_ENV_TEXT_FILE=y
++CONFIG_ENV_DEFAULT_ENV_TEXT_FILE=".default_env"
 +CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG=y
 +CONFIG_BUTTON=y
 +CONFIG_BUTTON_ADC=y
@@ -108,11 +108,11 @@ index 00000000000..3b67029cb20
 +CONFIG_SPL_GZIP=y
 +CONFIG_ERRNO_STR=y
 +CONFIG_OPTEE_IMAGE=y
-diff --git a/configs/vx-hd-rk3506-iot_defconfig b/configs/vx-hd-rk3506-iot_defconfig
+diff --git a/configs/vx-hd-rk3506g-iot_defconfig b/configs/vx-hd-rk3506g-iot_defconfig
 new file mode 100644
 index 00000000000..2b99db3dda9
 --- /dev/null
-+++ b/configs/vx-hd-rk3506-iot_defconfig
++++ b/configs/vx-hd-rk3506g-iot_defconfig
 @@ -0,0 +1,86 @@
 +CONFIG_ARM=y
 +CONFIG_SKIP_LOWLEVEL_INIT=y
@@ -121,7 +121,7 @@ index 00000000000..2b99db3dda9
 +CONFIG_SYS_MALLOC_LEN=0x200000
 +CONFIG_SF_DEFAULT_SPEED=50000000
 +CONFIG_SF_DEFAULT_MODE=0x1
-+CONFIG_DEFAULT_DEVICE_TREE="rk3506-vx-hd-rk3506-iot"
++CONFIG_DEFAULT_DEVICE_TREE="rk3506-vx-hd-rk3506g-iot"
 +CONFIG_ROCKCHIP_RK3506=y
 +CONFIG_DEBUG_UART_BASE=0xFF0A0000
 +CONFIG_DEBUG_UART_CLOCK=24000000

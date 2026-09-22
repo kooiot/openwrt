@@ -126,7 +126,7 @@ index 6a9ec1f04ea..a7d52b1009d 100644
  {
 +	u32 reg;
 +
-+#if defined(CONFIG_SPL_BUILD)
++#if defined(CONFIG_XPL_BUILD)
 +	printf("sfc cmd=%02xH(6BH-x4)\n", readl(sfc->regbase + SFC_CMD) & 0xFF);
 +#endif
  	writel(0, sfc->regbase + SFC_CTRL);
@@ -141,7 +141,7 @@ index 6a9ec1f04ea..a7d52b1009d 100644
  	return 0;
  }
 @@ -281,6 +318,8 @@ static int rockchip_sfc_ofdata_to_platdata(struct udevice *bus)
- 	if (IS_ENABLED(CONFIG_SPL_BUILD) && sfc->use_dma)
+ 	if (IS_ENABLED(CONFIG_XPL_BUILD) && sfc->use_dma)
  		sfc->use_dma = !dev_read_bool(bus, "u-boot,spl-sfc-no-dma");
  
 +	sfc->sclk_x2_bypass = ofnode_read_bool(dev_ofnode(bus), "rockchip,sclk-x2-bypass");
@@ -172,7 +172,7 @@ index 6a9ec1f04ea..a7d52b1009d 100644
  		} else {
  			cmd |= SFC_CMD_ADDR_XBITS << SFC_CMD_ADDR_SHIFT;
 -			writel(op->addr.nbytes * 8 - 1, sfc->regbase + SFC_ABIT);
-+			writel(op->addr.nbytes * 8 - 1, sfc->regbase + plat->cs * SFC_CS1_REG_OFFSET + SFC_ABIT);
++			writel(op->addr.nbytes * 8 - 1, sfc->regbase + plat->cs[0] * SFC_CS1_REG_OFFSET + SFC_ABIT);
  		}
  
  		ctrl |= ((op->addr.buswidth >> 1) << SFC_CTRL_ADDR_BITS_SHIFT);
@@ -183,10 +183,10 @@ index 6a9ec1f04ea..a7d52b1009d 100644
 -	dev_dbg(sfc->dev, "sfc ctrl=%x cmd=%x addr=%llx len=%x\n",
 -		ctrl, cmd, op->addr.val, len);
 +	dev_dbg(sfc->dev, "sfc ctrl=%x cmd=%x addr=%llx len=%x cs=%x\n",
-+		ctrl, cmd, op->addr.val, len, plat->cs);
++		ctrl, cmd, op->addr.val, len, plat->cs[0]);
  
 -	writel(ctrl, sfc->regbase + SFC_CTRL);
-+	writel(ctrl, sfc->regbase + plat->cs * SFC_CS1_REG_OFFSET + SFC_CTRL);
++	writel(ctrl, sfc->regbase + plat->cs[0] * SFC_CS1_REG_OFFSET + SFC_CTRL);
  	writel(cmd, sfc->regbase + SFC_CMD);
  	if (op->addr.nbytes)
  		writel(op->addr.val, sfc->regbase + SFC_ADDR);
@@ -200,7 +200,7 @@ index 6a9ec1f04ea..a7d52b1009d 100644
   * tuning logic (so delay-line training can issue its own JEDEC-ID reads without
 @@ -662,6 +703,7 @@ static void rockchip_sfc_delay_lines_tuning(struct rockchip_sfc *sfc, struct spi
  	bool in_window = false;
- 	u8 cs = plat->cs;
+ 	u8 cs = plat->cs[0];
  
 +	rockchip_sfc_set_delay_lines(sfc, 0, cs);
  	rockchip_sfc_clk_set_rate(sfc, SFC_DLL_THRESHOLD_RATE);
