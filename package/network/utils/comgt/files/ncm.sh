@@ -29,7 +29,7 @@ proto_ncm_init_config() {
 proto_ncm_setup() {
 	local interface="$1"
 
-	local connect context_type devname devpath finalize ifpath initialize manufacturer setmode
+	local connect context_type devname devpath finalize ifpath initialize manufacturer product setmode
 
 	local delegate ip4table ip6table mtu sourcefilter $PROTO_DEFAULT_OPTIONS
 	json_get_vars delegate ip4table ip6table mtu sourcefilter $PROTO_DEFAULT_OPTIONS
@@ -114,9 +114,10 @@ proto_ncm_setup() {
 		return 1
 	}
 
+	product=$(gcom -d "$device" -s /etc/gcom/getproductid.gcom | awk -v RS='\r?\n' 'NF && $0 !~ /AT\+CGMM/ { sub(/\+CGMM: /,""); print tolower($1); exit; }')
+
 	json_load "$(cat /etc/gcom/ncm.json)"
-	json_select "$manufacturer"
-	[ $? -ne 0 ] && {
+	json_select "${manufacturer}_${product}" || json_select "$manufacturer" || {
 		echo "Unsupported modem"
 		proto_notify_error "$interface" UNSUPPORTED_MODEM
 		# proto_set_available "$interface" 0 // May retry to get manufacturer later
@@ -197,6 +198,7 @@ proto_ncm_setup() {
 	proto_set_keep 1
 	proto_add_data
 	json_add_string "manufacturer" "$manufacturer"
+	json_add_string "product" "$product"
 	proto_close_data
 	proto_send_update "$interface"
 
@@ -249,7 +251,7 @@ proto_ncm_setup() {
 proto_ncm_teardown() {
 	local interface="$1"
 
-	local manufacturer disconnect
+	local manufacturer product disconnect
 
 	local device profile
 	json_get_vars device profile
@@ -288,8 +290,21 @@ proto_ncm_teardown() {
 		json_add_string "manufacturer" "$manufacturer"
 	}
 
+	json_get_vars product
+	[ $? -ne 0 -o -z "$product" ] && {
+		# Fallback to direct detect, for proper handle device replug.
+		product=$(gcom -d "$device" -s /etc/gcom/getproductid.gcom | awk -v RS='\r?\n' 'NF && $0 !~ /AT\+CGMM/ { sub(/\+CGMM: /,""); print tolower($1); exit; }')
+		[ $? -ne 0 -o -z "$product" ] && {
+			echo "Failed to get modem product information"
+			proto_notify_error "$interface" GETINFO_FAILED
+			return 1
+		}
+		json_add_string "product" "$product"
+	}
+
+
 	json_load "$(cat /etc/gcom/ncm.json)"
-	json_select "$manufacturer" || {
+	json_select "${manufacturer}_${product}" || json_select "$manufacturer" || {
 		echo "Unsupported modem"
 		proto_notify_error "$interface" UNSUPPORTED_MODEM
 		return 1

@@ -112,6 +112,18 @@
 		"connect": "AT^NDISDUP=${profile},1",
 		"disconnect": "AT^NDISDUP=${profile},0"
 	},
+	"fibocom_le370-cn": {
+		"initialize": [
+			"AT",
+			"ATE1",
+			"AT+GTIPPASS=1",
+			"AT+CGDCONT=${profile},\\\"${pdptype}\\\"${apn:+,\\\"$apn\\\"}",
+			"AT+CGACT=1,${profile}"
+		],
+		"queryip": "AT+CGPADDR=${profile}",
+		"connect": "AT+GTRNDIS=1,${profile}",
+		"disconnect": "AT+GTRNDIS=0,${profile}"
+	},
 	"fibocom": {
 		"initialize": [
 			"AT",
