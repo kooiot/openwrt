@@ -69,6 +69,38 @@ tlink_gen_mac_emmc_serial() {
 	return 0
 }
 
+tlink_gen_mac_cpuinfo() {
+	local offset="$1"
+	local mac_val oem nv1 mac_base
+	local serial="$(sed -ne 's/^Serial[ \t]*: //p' /proc/cpuinfo)"
+
+	[ -z "$offset" ] && return -1
+
+	chip8="${serial: -8}"
+	chip0=$((0x${chip8}))
+
+	if [ $chip0 -eq 0 ]; then
+		chip0=$((0x800000))
+	fi
+
+	mac1="B0C9"
+	mac2=$(printf '%08x' ${chip0})
+	mac_val="${mac1:0:2}:${mac1:2:2}:${mac2:0:2}:${mac2:2:2}:${mac2:4:2}:${mac2:6:2}"
+
+	echo "${mac_val}"
+	return 0
+}
+
+tlink_mac_mask() {
+	local mac="$1"
+	local mac_base="b0c9"
+
+	mac_val="${mac_base:0:2}:${mac_base:2:2}:${mac:6:11}"
+
+	echo "${mac_val}"
+	return 0
+}
+
 gpio_out() {
 	local gpio_pin
 	local value
@@ -103,6 +135,27 @@ gpio_in() {
 	}
 	# read the "value" field
 	return $(cat $gpio_path/value)
+}
+
+tlink_do_export_product_sn_from_ubootenv() {
+	# Check aobut fw_env.config
+	if [ ! -f /etc/fw_env.config ]; then
+		if [ -f /etc/config/ubootenv ]; then
+			echo "U-Boot env settings is not ready!!!!" > /dev/kmsg
+		else
+			echo "U-Boot env settings missing (please correct uboot-envtools package)!!!!" > /dev/kmsg
+		fi
+		return 1
+	fi
+	val=$(fw_printenv | grep sn=)
+	# Set the default SN to UNKNOWN if ubootenv has no SN string
+	[ -z "$val" ] && val="sn=UNKNOWN"
+	# Get product SN
+	product_sn="${val:3:16}"
+	mkdir -p /tmp/sysinfo
+
+	[ -e /tmp/sysinfo/product_sn ] || echo ${product_sn} > /tmp/sysinfo/product_sn
+	return 0
 }
 
 product_sn() {

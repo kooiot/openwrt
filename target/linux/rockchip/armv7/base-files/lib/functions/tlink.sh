@@ -110,6 +110,27 @@ gpio_in() {
 	return $(cat $gpio_path/value)
 }
 
+tlink_do_export_product_sn_from_ubootenv() {
+	# Check aobut fw_env.config
+	if [ ! -f /etc/fw_env.config ]; then
+		if [ -f /etc/config/ubootenv ]; then
+			echo "U-Boot env settings is not ready!!!!" > /dev/kmsg
+		else
+			echo "U-Boot env settings missing (please correct uboot-envtools package)!!!!" > /dev/kmsg
+		fi
+		return 1
+	fi
+	val=$(fw_printenv | grep sn=)
+	# Set the default SN to UNKNOWN if ubootenv has no SN string
+	[ -z "$val" ] && val="sn=UNKNOWN"
+	# Get product SN
+	product_sn="${val:3:16}"
+	mkdir -p /tmp/sysinfo
+
+	[ -e /tmp/sysinfo/product_sn ] || echo ${product_sn} > /tmp/sysinfo/product_sn
+	return 0
+}
+
 product_sn() {
 	[ -e /tmp/sysinfo/product_sn ] && cat /tmp/sysinfo/product_sn || echo "UNKNOWN_DEVICE_SN"
 }

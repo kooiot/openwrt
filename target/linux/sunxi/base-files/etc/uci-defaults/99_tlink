@@ -417,9 +417,13 @@ case "$(board_name)" in
 "kooiot,tlink-m408"|\
 "kooiot,tlink-m416"|\
 "kooiot,tlink-dly-e102"|\
-"kooiot,tlink-dly-e102-spinand"|\
 "kooiot,tlink-dly-e204"|\
 "kooiot,tlink-r1")
 	tlink_default
+	;;
+"kooiot,tlink-dly-e102-spinand")
+	tlink_default
+	# Do export product sn here, as fw_env.config is ready now.
+	tlink_do_export_product_sn_from_ubootenv
 	;;
 esac

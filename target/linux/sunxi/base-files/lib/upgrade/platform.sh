@@ -1,3 +1,8 @@
+REQUIRE_IMAGE_METADATA=1
+
+RAMFS_COPY_BIN='fw_printenv fw_setenv'
+RAMFS_COPY_DATA='/etc/fw_env.config /var/lock/fw_printenv.lock'
+
 tlink_get_type_magic() {
 	local skip_base=8236
 	local skip_offset=$(($1+$skip_base+1))
