@@ -20,6 +20,7 @@
 		serial1 = &uart1;
 		serial2 = &uart2;
 		serial3 = &uart3;
+		serial4 = &uart5;
 		ethernet0 = &gmac0;
 		ethernet1 = &gmac1;
 		i2c0 = &i2c0;
@@ -134,15 +135,13 @@
 		compatible = "gpio-export";
 		#size-cells = <0>;
 
-		/*
 		hub_reset {
 			gpio-export,name = "hub_reset";
 			gpio-export,output=<1>;
-			gpios = <&gpio0 RK_PB1 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio1 RK_PD1 GPIO_ACTIVE_LOW>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&hub_reset_pin>;
 		};
-		*/
 	};
 
 	/* 默认开启，并可以控制 */
@@ -190,6 +189,12 @@
 &uart3 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&rm_io15_uart3_rx &rm_io14_uart3_tx>;
+	status = "okay";
+};
+
+&uart5 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart5m1_xfer_pins>;
 	status = "okay";
 };
 
@@ -382,7 +387,7 @@
 			rockchip,pins = <1 RK_PA1 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 		hub_reset_pin: hub-reset-pin {
-			rockchip,pins = <0 RK_PB1 RK_FUNC_GPIO &pcfg_pull_none>;
+			rockchip,pins = <1 RK_PD1 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
 	i2c0 {
@@ -433,6 +438,16 @@
 		rm_io14_uart3_tx: rm-io14-uart3-tx {
 			rockchip,pins =
 				<0 RK_PB6 20 &pcfg_pull_none>;
+		};
+	};
+	uart5{
+		/omit-if-no-ref/
+		uart5m1_xfer_pins: uart5m1-xfer-pins {
+			rockchip,pins =
+				/* uart5_rx_m1 */
+				<1 RK_PD3 6 &pcfg_pull_up>,
+				/* uart5_tx_m1 */
+				<1 RK_PD2 6 &pcfg_pull_up>;
 		};
 	};
 	can0 {
