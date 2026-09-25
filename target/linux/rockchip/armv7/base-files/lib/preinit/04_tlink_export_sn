@@ -3,7 +3,7 @@ do_product_sn_kooiot_nvmem() {
 	local slave=$2
 	NVMEM_PATH="/sys/bus/i2c/devices/${bus}-${slave}/eeprom"
 	if [ -b "${NVMEM_PATH}" -o -f "${NVMEM_PATH}" ]; then
-		echo "old eeprom path"
+		echo "using eeprom path for sn reading" > /dev/kmsg
 	else
 		NVMEM_PATH="/sys/bus/nvmem/devices/${bus}-${slave}1/nvmem"
 	fi
