@@ -68,3 +68,18 @@ define KernelPackage/saradc-rockchip/description
 endef
 
 $(eval $(call KernelPackage,saradc-rockchip))
+
+
+define KernelPackage/can-rockchip-rk3576
+  TITLE:=Rockchip RK3576 CAN
+  KCONFIG:=CONFIG_CAN_RK3576
+  FILES:=$(LINUX_DIR)/drivers/net/can/rockchip/rk3576_can.ko
+  AUTOLOAD:=$(call AutoProbe,rk3576_can)
+  $(call AddDepends/can,@TARGET_rockchip)
+endef
+
+define KernelPackage/can-rockchip-rk3576/description
+ Rockchip RK3576 CAN driver. This driver supports Rockchip chips
+endef
+
+$(eval $(call KernelPackage,can-rockchip-rk3576))
