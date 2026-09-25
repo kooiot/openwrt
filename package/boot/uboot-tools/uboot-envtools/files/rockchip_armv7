@@ -11,7 +11,9 @@ touch /etc/config/ubootenv
 board=$(board_name)
 
 case "$board" in
-kooiot,tlink-dly-e102-spinand)
+vanxoak,vx-hd-rk3506g-iot-spinand |\
+vanxoak,vx-hd-rk3506g-m-iot-spinand |\
+kooiot,tlink-rk3506g-spinand)
 	ubootenv_add_ubi_default
 	;;
 esac
