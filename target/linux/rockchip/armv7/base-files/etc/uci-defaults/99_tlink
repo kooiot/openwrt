@@ -200,9 +200,13 @@ tlink_default() {
 case "$(board_name)" in
 "kooiot,tlink-rk3506g-iot"|\
 "vanxoak,vx-hd-rk3506g-iot"|\
+"vanxoak,vx-hd-rk3506g-m-iot")
+	tlink_default
+	;;
 "vanxoak,vx-hd-rk3506g-iot-spinand"|\
-"vanxoak,vx-hd-rk3506g-m-iot"|\
 "vanxoak,vx-hd-rk3506g-m-iot-spinand")
 	tlink_default
+	# Do export product sn here, as fw_env.config is ready now.
+	tlink_do_export_product_sn_from_ubootenv
 	;;
 esac

@@ -1,30 +1,13 @@
-do_product_sn_kooiot_nand() {
-	if [ ! -f /etc/fw_env.config ]; then
-		if [ ! -f /etc/config/ubootenv ]; then
-			echo "U-Boot env settings missing!!!!" > /dev/kmsg
-			return 1
-		fi
-		. /lib/uboot-envtools.sh
-		. /lib/functions.sh
-		ubootenv_add_app_config
-	fi
-	val=$(fw_printenv | grep sn=)	
-	[ -z "$val" ] && val="sn=UNKNOWN"
-	product_sn="${val:3:16}"
-	mkdir -p /tmp/sysinfo
-
-	[ -e /tmp/sysinfo/product_sn ] || echo ${product_sn} > /tmp/sysinfo/product_sn
-}
-
 do_kooiot_tlink_spinnand() {
 	. /lib/functions.sh
+	. /lib/functions/tlink.sh
 
 	case "$(board_name)" in
-	"kooiot,tlink-dly-e102-spinand")
-		do_product_sn_kooiot_nand
+	"vanxoak,vx-hd-rk3506g-iot-spinand" |\
+	"vanxoak,vx-hd-rk3506g-m-iot-spinand" )
+		do_export_product_sn_from_ubootenv
 		;;
 	esac
-
 }
 
 boot_hook_add preinit_mount_root do_kooiot_tlink_spinnand
