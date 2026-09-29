@@ -131,30 +131,6 @@
 		"connect": "AT^NDISDUP=${profile},1",
 		"disconnect": "AT^NDISDUP=${profile},0"
 	},
-	"fibocom-le370": {
-		"initialize": [
-			"AT",
-			"ATE1",
-			"AT+GTIPPASS=1",
-			"AT+CGDCONT=${profile},\\\"${pdptype}\\\"${apn:+,\\\"$apn\\\"}",
-			"AT+CGACT=1,${profile}"
-		],
-		"queryip": "AT+CGPADDR=${profile}",
-		"connect": "AT+GTRNDIS=1,${profile}",
-		"disconnect": "AT+GTRNDIS=0,${profile}"
-	},
-	"fibocom": {
-		"initialize": [
-			"AT",
-			"ATE1",
-			"AT+GTIPPASS=0",
-			"AT+CAVIMS=0",
-			"AT+CGDCONT=${profile},\\\"${pdptype}\\\"${apn:+,\\\"$apn\\\"}"
-		],
-		"queryip": "AT+CGPADDR=${profile}",
-		"connect": "AT+GTRNDIS=1,${profile}",
-		"disconnect": "AT+GTRNDIS=0,${profile}"
-	},
 	"unicom": {
 		"initialize": [
 			"AT",
@@ -212,5 +188,44 @@
 		],
 		"connect": "AT+SPTZCMD=\\\"Y29ubm1hbmN0bCBuZGlzZGlhbCBBVF5ORElTRFVOPSJ1c2IwIiwxLDE=\\\"",
 		"disconnect": "AT+SPTZCMD=\\\"Y29ubm1hbmN0bCBuZGlzZGlhbCBBVF5ORElTRFVOPSJ1c2IwIiwwLDE=\\\""
+	},
+	"fibocom-fg621": {
+		"initialize": [
+			"AT+CFUN=1"
+		],
+		"configure": [
+			"AT+CGDCONT=${profile},\\\"${pdptype}\\\"${apn:+,\\\"$apn\\\"}"
+		],
+		"modes": {
+			"lte": "AT+GTRAT=3",
+			"umts": "AT+GTRAT=2",
+			"auto": "AT+GTRAT=10"
+		},
+		"connect": "AT+GTRNDIS=1,${profile}",
+		"disconnect": "AT+CFUN=4"
+	},
+	"fibocom-le370": {
+		"initialize": [
+			"AT",
+			"ATE1",
+			"AT+GTIPPASS=1",
+			"AT+CGDCONT=${profile},\\\"${pdptype}\\\"${apn:+,\\\"$apn\\\"}",
+			"AT+CGACT=1,${profile}"
+		],
+		"queryip": "AT+CGPADDR=${profile}",
+		"connect": "AT+GTRNDIS=1,${profile}",
+		"disconnect": "AT+GTRNDIS=0,${profile}"
+	},
+	"fibocom": {
+		"initialize": [
+			"AT",
+			"ATE1",
+			"AT+GTIPPASS=0",
+			"AT+CAVIMS=0",
+			"AT+CGDCONT=${profile},\\\"${pdptype}\\\"${apn:+,\\\"$apn\\\"}"
+		],
+		"queryip": "AT+CGPADDR=${profile}",
+		"connect": "AT+GTRNDIS=1,${profile}",
+		"disconnect": "AT+GTRNDIS=0,${profile}"
 	}
 }

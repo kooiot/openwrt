@@ -313,19 +313,6 @@ proto_ncm_teardown() {
 		json_add_string "model" "$model"
 	}
 
-	json_get_vars product
-	[ $? -ne 0 -o -z "$product" ] && {
-		# Fallback to direct detect, for proper handle device replug.
-		product=$(gcom -d "$device" -s /etc/gcom/getproductid.gcom | awk 'NF && $0 !~ /AT\+CGMM/ { sub(/\+CGMM: /,""); print tolower($1); exit; }')
-		[ $? -ne 0 -o -z "$product" ] && {
-			echo "Failed to get modem product information"
-			proto_notify_error "$interface" GETINFO_FAILED
-			return 1
-		}
-		json_add_string "product" "$product"
-	}
-
-
 	json_load "$(cat /etc/gcom/ncm.json)"
 	ncm_select_modem "$manufacturer" "$model" || {
 		echo "Unsupported modem"
