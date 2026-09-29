@@ -99,6 +99,21 @@ endef
 $(eval $(call KernelPackage,industrialio-buffer-cb))
 
 
+define KernelPackage/industrialio-buffer-dmaengine
+  TITLE:=Provides buffer dma engine used for push in-kernel interfaces
+  KCONFIG:=CONFIG_IIO_BUFFER_DMAENGINE
+  FILES:=$(LINUX_DIR)/drivers/iio/buffer/industrialio-buffer-dmaengine.ko
+  AUTOLOAD:=$(call AutoLoad,55,industrialio-triggered-buffer-dmaengine)
+  $(call AddDepends/iio)
+endef
+
+define KernelPackage/industrialio-buffer-dmaengine/description
+ Should be selected by any drivers that do in-kernel push usage.
+endef
+
+$(eval $(call KernelPackage,industrialio-buffer-dmaengine))
+
+
 define KernelPackage/industrialio-triggered-buffer
   TITLE:=Provides helper functions for setting up triggered buffers.
   DEPENDS:=+kmod-iio-kfifo-buf
@@ -117,7 +132,8 @@ $(eval $(call KernelPackage,industrialio-triggered-buffer))
 
 define KernelPackage/iio-ad7192
   TITLE:=Analog Devices AD7190 AD7192 AD7193 AD7195 ADC driver
-  DEPENDS:=+kmod-industrialio-triggered-buffer
+  DEPENDS:=+kmod-industrialio-triggered-buffer \
+		   +kmod-industrialio-buffer-dmaengine
   KCONFIG:= \
 	CONFIG_AD7192
   FILES:=$(LINUX_DIR)/drivers/iio/adc/ad7192.ko
