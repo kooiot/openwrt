@@ -1,5 +1,6 @@
 {
 	"desc": "Quectel EC200N/EC800M",
+	"type": "ncm",
 	"control": 1,
 	"data": 2
 }
