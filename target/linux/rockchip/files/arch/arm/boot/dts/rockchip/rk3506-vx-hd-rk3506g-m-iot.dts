@@ -152,7 +152,12 @@
 		startup-delay-us = <1000000>;       /* 1s */
 		enable-active-high;
 		regulator-boot-on;
-		regulator-always-on;
+	};
+
+	/* 用户空间控制：提供可写的 state 文件 */
+	modem_power_output: modem-power-output {
+		compatible = "regulator-output";
+		vout-supply = <&usb_modem_power>;  /* 引用上面的稳压器 */
 	};
 
 	watchdog: watchdog {
