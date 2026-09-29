@@ -71,6 +71,7 @@ $(eval $(call KernelPackage,saradc-rockchip))
 
 
 define KernelPackage/can-rockchip-rk3576
+  SUBMENU:=$(CAN_MENU)
   TITLE:=Rockchip RK3576 CAN
   KCONFIG:=CONFIG_CAN_RK3576
   FILES:=$(LINUX_DIR)/drivers/net/can/rockchip/rk3576_can.ko
@@ -83,3 +84,5 @@ define KernelPackage/can-rockchip-rk3576/description
 endef
 
 $(eval $(call KernelPackage,can-rockchip-rk3576))
+
+
