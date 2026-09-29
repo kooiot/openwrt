@@ -72,10 +72,11 @@
 			"AT+CGDCONT=${profile},\\\"${pdptype}\\\",\\\"${apn}\\\",0,0"
 		],
 		"connect": "AT+CGACT=1,${profile}",
+		"linkatfinalize": "1",
 		"finalize": "AT+CGDATA=\\\"M-MBIM\\\",${profile},1",
 		"disconnect": "AT+CGACT=0,${profile}"
 	},
-	"quectel_rm500u_cn": {
+	"quectel-rm500u": {
 		"initialize": [
 			"AT",
 			"AT+QCFG=\\\"usbnet\\\",5",
@@ -87,6 +88,22 @@
 		],
 		"connect": "AT+QNETDEVCTL=${profile},1,1",
 		"disconnect": "AT+QNETDEVCTL=${profile},0,0"
+	},
+	"quectel-eg060w": {
+		"initialize": [
+			"AT+CFUN=1"
+		],
+		"configure": [
+			"AT+CGDCONT=${profile},\\\"${pdptype}\\\",\\\"${apn}\\\""
+		],
+		"modes": {
+			"lte": "AT+QCFG=\\\"nwscanmode\\\",3",
+			"umts": "AT+QCFG=\\\"nwscanmode\\\",2",
+			"gsm": "AT+QCFG=\\\"nwscanmode\\\",1",
+			"auto": "AT+QCFG=\\\"nwscanmode\\\",0"
+		},
+		"connect": "AT+qnetdevctl=1,${profile},1",
+		"disconnect": "AT+qnetdevctl=0,${profile},0"
 	},
 	"quectel": {
 		"initialize": [
@@ -112,30 +129,6 @@
 		"connect": "AT^NDISDUP=${profile},1",
 		"disconnect": "AT^NDISDUP=${profile},0"
 	},
-	"fibocom_le370-cn": {
-		"initialize": [
-			"AT",
-			"ATE1",
-			"AT+GTIPPASS=1",
-			"AT+CGDCONT=${profile},\\\"${pdptype}\\\"${apn:+,\\\"$apn\\\"}",
-			"AT+CGACT=1,${profile}"
-		],
-		"queryip": "AT+CGPADDR=${profile}",
-		"connect": "AT+GTRNDIS=1,${profile}",
-		"disconnect": "AT+GTRNDIS=0,${profile}"
-	},
-	"fibocom": {
-		"initialize": [
-			"AT",
-			"ATE1",
-			"AT+GTIPPASS=0",
-			"AT+CAVIMS=0",
-			"AT+CGDCONT=${profile},\\\"${pdptype}\\\"${apn:+,\\\"$apn\\\"}"
-		],
-		"queryip": "AT+CGPADDR=${profile}",
-		"connect": "AT+GTRNDIS=1,${profile}",
-		"disconnect": "AT+GTRNDIS=0,${profile}"
-	},
 	"unicom": {
 		"initialize": [
 			"AT",
@@ -147,22 +140,6 @@
 		"queryip": "AT+CGPADDR=${profile}",
 		"connect": "AT+GTRNDIS=1,${profile}",
 		"disconnect": "AT+GTRNDIS=0,${profile}"
-	},
-	"quectel_master_branch": {
-		"initialize": [
-			"AT+CFUN=1"
-		],
-		"configure": [
-			"at+qicsgp=${profile},${context_type},\\\"${apn}\\\",\\\"${username}\\\",\\\"${password}\\\",0"
-		],
-		"modes": {
-			"lte": "AT+QCFG=\\\"nwscanmode\\\",3",
-			"umts": "AT+QCFG=\\\"nwscanmode\\\",2",
-			"gsm": "AT+QCFG=\\\"nwscanmode\\\",1",
-			"auto": "AT+QCFG=\\\"nwscanmode\\\",0"
-		},
-		"connect": "AT+qnetdevctl=1,${profile},1",
-		"disconnect": "AT+qnetdevctl=0,${profile},0"
 	},
 	"\"zte": {
 		"initialize": [
@@ -209,5 +186,44 @@
 		],
 		"connect": "AT+SPTZCMD=\\\"Y29ubm1hbmN0bCBuZGlzZGlhbCBBVF5ORElTRFVOPSJ1c2IwIiwxLDE=\\\"",
 		"disconnect": "AT+SPTZCMD=\\\"Y29ubm1hbmN0bCBuZGlzZGlhbCBBVF5ORElTRFVOPSJ1c2IwIiwwLDE=\\\""
+	},
+	"fibocom-le370": {
+		"initialize": [
+			"AT",
+			"ATE1",
+			"AT+GTIPPASS=1",
+			"AT+CGDCONT=${profile},\\\"${pdptype}\\\"${apn:+,\\\"$apn\\\"}",
+			"AT+CGACT=1,${profile}"
+		],
+		"queryip": "AT+CGPADDR=${profile}",
+		"connect": "AT+GTRNDIS=1,${profile}",
+		"disconnect": "AT+GTRNDIS=0,${profile}"
+	},
+	"fibocom": {
+		"initialize": [
+			"AT",
+			"ATE1",
+			"AT+GTIPPASS=0",
+			"AT+CAVIMS=0",
+			"AT+CGDCONT=${profile},\\\"${pdptype}\\\"${apn:+,\\\"$apn\\\"}"
+		],
+		"queryip": "AT+CGPADDR=${profile}",
+		"connect": "AT+GTRNDIS=1,${profile}",
+		"disconnect": "AT+GTRNDIS=0,${profile}"
+	},
+	"fibocom-fg621": {
+		"initialize": [
+			"AT+CFUN=1"
+		],
+		"configure": [
+			"AT+CGDCONT=${profile},\\\"${pdptype}\\\"${apn:+,\\\"$apn\\\"}"
+		],
+		"modes": {
+			"lte": "AT+GTRAT=3",
+			"umts": "AT+GTRAT=2",
+			"auto": "AT+GTRAT=10"
+		},
+		"connect": "AT+GTRNDIS=1,${profile}",
+		"disconnect": "AT+CFUN=4"
 	}
 }

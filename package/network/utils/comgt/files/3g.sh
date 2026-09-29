@@ -85,13 +85,13 @@ proto_3g_setup() {
 				[ -n "$username" ] && {
 					chat="/etc/chatscripts/3g_auth.chat"
 					# EC20's chat support username/password
-					# modelid=$(gcom -d "$device" -s /etc/gcom/getproductid.gcom)
+					# model=$(gcom -d "$device" -s /etc/gcom/getmodel.gcom | awk -v RS='\r?\n' 'NF && $0 !~ /AT\+CGMM/ { sub(/\+CGMM: /,""); print tolower($1); exit; }')
 					# if echo "$modelid" | grep -q "EC20"; then
 					#	chat="/etc/chatscripts/3g_ec20.chat"
 					# fi
 				}
 			elif echo "$cardinfo" | grep -q "Fibocom"; then
-				modelid=$(gcom -d "$device" -s /etc/gcom/getproductid.gcom)
+				model=$(gcom -d "$device" -s /etc/gcom/getmodel.gcom | awk -v RS='\r?\n' 'NF && $0 !~ /AT\+CGMM/ { sub(/\+CGMM: /,""); print tolower($1); exit; }')
 				# Fibcom FM661/MC661 has no AT&F
 				if echo "$modelid" | grep -q "661"; then
 					chat="/etc/chatscripts/3g_fibocom.chat"
