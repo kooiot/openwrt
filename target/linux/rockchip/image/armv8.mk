@@ -532,7 +532,7 @@ define Device/firefly_firefly-roc-pc
 	kmod-usb-net-cdc-eem kmod-usb-net-cdc-ether \
 	kmod-usb-net-cdc-mbim kmod-usb-net-rndis \
 	kmod-i2c-fusb30x \
-	kmod-can kmod-can-rockchip-canfd \
+	kmod-can kmod-can-rockchip-can-fd \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g luci-proto-wwan \
 	kmod-mmc kmod-brcmfmac \
   	kmod-ikconfig kmod-ata-ahci-platform \
@@ -563,7 +563,7 @@ define Device/kooiot_tlink-r4x
 	kmod-i2c-fusb30x \
 	kmod-phy-realtek kmod-r8168 \
 	kmod-mmc kmod-brcmfmac \
-	kmod-can kmod-can-rockchip-canfd \
+	kmod-can kmod-can-rockchip-can-fd \
 	kmod-ata-ahci kmod-ata-ahci-dwc \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g luci-proto-wwan \
     tlink-r4x-firmware wpad-basic-mbedtls \
@@ -592,7 +592,7 @@ define Device/kooiot_tlink-r7
 	kmod-i2c-fusb30x \
 	kmod-phy-realtek kmod-r8168 \
 	kmod-mmc kmod-brcmfmac \
-	kmod-can kmod-can-rockchip-canfd \
+	kmod-can kmod-can-rockchip-can-fd \
 	kmod-ata-ahci kmod-ata-ahci-dwc \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g luci-proto-wwan \
     tlink-r7-firmware wpad-basic-mbedtls \

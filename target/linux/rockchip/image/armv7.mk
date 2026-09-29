@@ -70,7 +70,7 @@ define Device/vanxoak_vx-hd-rk3506g-iot
     kmod-usb-net-cdc-mbim kmod-usb-net-rndis \
     kmod-usb-xhci-pci kmod-i2c-fusb30x \
     kmod-phy-motorcomm kmod-mmc \
-    kmod-can kmod-can-rockchip-canfd \
+    kmod-can kmod-can-rockchip-rk3576 \
     kmod-ata-ahci kmod-ata-ahci-dwc \
     luci-app-freeioe luci-proto-qmi \
     luci-proto-3g luci-proto-wwan \
@@ -97,7 +97,7 @@ define Device/vanxoak_vx-hd-rk3506g-iot-spinand
     kmod-usb-net-cdc-mbim kmod-usb-net-rndis \
     kmod-usb-xhci-pci kmod-i2c-fusb30x \
     kmod-phy-motorcomm kmod-mmc \
-    kmod-can kmod-can-rockchip-canfd \
+    kmod-can kmod-can-rockchip-rk3576 \
     kmod-ata-ahci kmod-ata-ahci-dwc \
     luci-app-freeioe luci-proto-qmi \
     luci-proto-3g luci-proto-wwan \
@@ -124,9 +124,8 @@ define Device/vanxoak_vx-hd-rk3506g-m-iot
     kmod-usb-net-cdc-mbim kmod-usb-net-rndis \
     kmod-usb-xhci-pci kmod-i2c-fusb30x \
     kmod-phy-motorcomm kmod-mmc \
-    kmod-can kmod-can-rockchip-canfd \
+    kmod-can kmod-can-rockchip-rk3576 \
     kmod-ata-ahci kmod-ata-ahci-dwc \
-    kmod-can-rockchip-rk3576 \
     luci-app-freeioe luci-proto-qmi \
     luci-proto-3g luci-proto-wwan \
     tlink-r7-firmware wpad-basic-mbedtls \
@@ -151,9 +150,8 @@ define Device/vanxoak_vx-hd-rk3506g-m-iot-spinand
     kmod-usb-net-cdc-mbim kmod-usb-net-rndis \
     kmod-usb-xhci-pci kmod-i2c-fusb30x \
     kmod-phy-motorcomm kmod-mmc \
-    kmod-can kmod-can-rockchip-canfd \
+    kmod-can kmod-can-rockchip-rk3576 \
     kmod-ata-ahci kmod-ata-ahci-dwc \
-    kmod-can-rockchip-rk3576 \
     luci-app-freeioe luci-proto-qmi \
     luci-proto-3g luci-proto-wwan \
     tlink-r7-firmware wpad-basic-mbedtls \
