@@ -26,10 +26,24 @@ proto_ncm_init_config() {
 	proto_config_add_defaults
 }
 
+# Pick the ncm.json entry: "<manufacturer>-<model>" wins over the plain
+# manufacturer one. json_is_a() avoids a warning when there is no such entry.
+ncm_select_modem() {
+	local manufacturer="$1" model="$2"
+
+	[ -n "$model" ] && json_is_a "$manufacturer-$model" object && {
+		json_select "$manufacturer-$model"
+		return 0
+	}
+
+	json_is_a "$manufacturer" object || return 1
+	json_select "$manufacturer"
+}
+
 proto_ncm_setup() {
 	local interface="$1"
 
-	local connect context_type devname devpath finalize ifpath initialize manufacturer product setmode
+	local connect context_type devname devpath finalize ifpath initialize manufacturer model setmode
 
 	local delegate ip4table ip6table mtu sourcefilter $PROTO_DEFAULT_OPTIONS
 	json_get_vars delegate ip4table ip6table mtu sourcefilter $PROTO_DEFAULT_OPTIONS
@@ -92,7 +106,7 @@ proto_ncm_setup() {
 
 	start=$(date +%s)
 	while true; do
-		manufacturer=$(gcom -d "$device" -s /etc/gcom/getcardinfo.gcom | awk -v RS='\r?\n' 'NF && $0 !~ /AT\+CGMI/ { sub(/\+CGMI: /,""); print tolower($1); exit; }')
+		manufacturer=$(gcom -d "$device" -s /etc/gcom/getcardinfo.gcom | awk 'NF && $0 !~ /AT\+CGMI/ { sub(/\+CGMI: /,""); print tolower($1); exit; }')
 		[ "$manufacturer" = "error" ] && {
 			manufacturer=""
 		}
@@ -114,10 +128,13 @@ proto_ncm_setup() {
 		return 1
 	}
 
-	product=$(gcom -d "$device" -s /etc/gcom/getproductid.gcom | awk -v RS='\r?\n' 'NF && $0 !~ /AT\+CGMM/ { sub(/\+CGMM: /,""); print tolower($1); exit; }')
+	model=$(gcom -d "$device" -s /etc/gcom/getmodel.gcom | awk 'NF && $0 !~ /AT\+CGMM/ { sub(/\+CGMM: /,""); print tolower($1); exit; }')
+	[ "$model" = "error" ] && model=""
+	# drop the region/SKU suffix: EG060W-EAAA -> eg060w
+	model=${model%%-*}
 
 	json_load "$(cat /etc/gcom/ncm.json)"
-	json_select "${manufacturer}_${product}" || json_select "$manufacturer" || {
+	ncm_select_modem "$manufacturer" "$model" || {
 		echo "Unsupported modem"
 		proto_notify_error "$interface" UNSUPPORTED_MODEM
 		# proto_set_available "$interface" 0 // May retry to get manufacturer later
@@ -198,7 +215,7 @@ proto_ncm_setup() {
 	proto_set_keep 1
 	proto_add_data
 	json_add_string "manufacturer" "$manufacturer"
-	json_add_string "product" "$product"
+	json_add_string "model" "$model"
 	proto_close_data
 	proto_send_update "$interface"
 
@@ -251,7 +268,7 @@ proto_ncm_setup() {
 proto_ncm_teardown() {
 	local interface="$1"
 
-	local manufacturer product disconnect
+	local manufacturer model disconnect
 
 	local device profile
 	json_get_vars device profile
@@ -278,7 +295,7 @@ proto_ncm_teardown() {
 
 	json_load "$(ubus call network.interface.$interface status)"
 	json_select data
-	json_get_vars manufacturer
+	json_get_vars manufacturer model
 	[ $? -ne 0 -o -z "$manufacturer" ] && {
 		# Fallback to direct detect, for proper handle device replug.
 		manufacturer=$(gcom -d "$device" -s /etc/gcom/getcardinfo.gcom | awk 'NF && $0 !~ /AT\+CGMI/ { sub(/\+CGMI: /,""); print tolower($1); exit; }')
@@ -287,13 +304,19 @@ proto_ncm_teardown() {
 			proto_notify_error "$interface" GETINFO_FAILED
 			return 1
 		}
+		# model too, or we fall back to the vendor entry on this path
+		model=$(gcom -d "$device" -s /etc/gcom/getmodel.gcom | awk 'NF && $0 !~ /AT\+CGMM/ { sub(/\+CGMM: /,""); print tolower($1); exit; }')
+		[ "$model" = "error" ] && model=""
+		model=${model%%-*}
+
 		json_add_string "manufacturer" "$manufacturer"
+		json_add_string "model" "$model"
 	}
 
 	json_get_vars product
 	[ $? -ne 0 -o -z "$product" ] && {
 		# Fallback to direct detect, for proper handle device replug.
-		product=$(gcom -d "$device" -s /etc/gcom/getproductid.gcom | awk -v RS='\r?\n' 'NF && $0 !~ /AT\+CGMM/ { sub(/\+CGMM: /,""); print tolower($1); exit; }')
+		product=$(gcom -d "$device" -s /etc/gcom/getproductid.gcom | awk 'NF && $0 !~ /AT\+CGMM/ { sub(/\+CGMM: /,""); print tolower($1); exit; }')
 		[ $? -ne 0 -o -z "$product" ] && {
 			echo "Failed to get modem product information"
 			proto_notify_error "$interface" GETINFO_FAILED
@@ -304,7 +327,7 @@ proto_ncm_teardown() {
 
 
 	json_load "$(cat /etc/gcom/ncm.json)"
-	json_select "${manufacturer}_${product}" || json_select "$manufacturer" || {
+	ncm_select_modem "$manufacturer" "$model" || {
 		echo "Unsupported modem"
 		proto_notify_error "$interface" UNSUPPORTED_MODEM
 		return 1
