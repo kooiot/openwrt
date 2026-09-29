@@ -9,14 +9,14 @@
  	sun8i-t113s-netcube-nagami-basic-carrier.dtb \
  	sun8i-t113s-netcube-nagami-keypad-carrier.dtb \
 --- /dev/null
-+++ b/arch/arm/boot/dts/allwinner/sun8i-t113-tlink-ex-spinand.dts
++++ b/arch/arm/boot/dts/allwinner/sun8i-t113s-tlink-ex-spinand.dts
 @@ -0,0 +1,41 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2026 Dirk Chang <dirk@kooiot.com>
 +
 +/dts-v1/;
 +
-+#include "sun8i-t113-tlink-ex.dts"
++#include "sun8i-t113s-tlink-ex.dts"
 +
 +/ {
 +	model = "ThingsLink EX (SPI-NAND)";
