@@ -1226,24 +1226,7 @@
  	case RK3528:
  	case RK3562:
  	case RK3568:
-@@ -3675,6 +4118,16 @@ static struct rockchip_pin_ctrl *rockchi
- 	pmu_offs = ctrl->pmu_mux_offset;
- 	drv_pmu_offs = ctrl->pmu_drv_offset;
- 	drv_grf_offs = ctrl->grf_drv_offset;
-+
-+	/*
-+	 * This function mutates the static per-SoC data. Most of it is
-+	 * idempotent: recalculated iomux and drv offsets anchor at the
-+	 * values calculated by a previous run. The pin count is not, so
-+	 * reset it here; otherwise it accumulates when the probe runs
-+	 * again after a probe deferral, shifting every bank's pin_base.
-+	 */
-+	ctrl->nr_pins = 0;
-+
- 	bank = ctrl->pin_banks;
- 	for (i = 0; i < ctrl->nr_banks; ++i, ++bank) {
- 		int bank_pins = 0;
-@@ -3749,7 +4202,18 @@ static struct rockchip_pin_ctrl *rockchi
+@@ -3749,7 +4192,18 @@ static struct rockchip_pin_ctrl *rockchi
  
  			bank_pins += 8;
  		}
@@ -1262,7 +1245,7 @@
  		/* calculate the per-bank recalced_mask */
  		for (j = 0; j < ctrl->niomux_recalced; j++) {
  			int pin = 0;
-@@ -3770,8 +4234,6 @@ static struct rockchip_pin_ctrl *rockchi
+@@ -3770,8 +4224,6 @@ static struct rockchip_pin_ctrl *rockchi
  			}
  		}
  	}
@@ -1271,7 +1254,7 @@
  }
  
  #define RK3288_GRF_GPIO6C_IOMUX		0x64
-@@ -3831,6 +4293,7 @@ static int rockchip_pinctrl_probe(struct
+@@ -3831,6 +4283,7 @@ static int rockchip_pinctrl_probe(struct
  	struct resource *res;
  	void __iomem *base;
  	int ret;
@@ -1279,7 +1262,7 @@
  
  	if (!dev->of_node)
  		return dev_err_probe(dev, -ENODEV, "device tree node not found\n");
-@@ -3879,12 +4342,52 @@ static int rockchip_pinctrl_probe(struct
+@@ -3879,12 +4332,52 @@ static int rockchip_pinctrl_probe(struct
  	}
  
  	/* try to find the optional reference to the pmu syscon */
@@ -1338,7 +1321,7 @@
  	}
  
  	ret = rockchip_pinctrl_register(pdev, info);
-@@ -4349,6 +4852,71 @@ static struct rockchip_pin_ctrl rk3399_p
+@@ -4349,6 +4842,71 @@ static struct rockchip_pin_ctrl rk3399_p
  		.drv_calc_reg		= rk3399_calc_drv_reg_and_bit,
  };
  
@@ -1410,7 +1393,7 @@
  static struct rockchip_pin_bank rk3528_pin_banks[] = {
  	PIN_BANK_IOMUX_FLAGS_OFFSET(0, 32, "gpio0",
  				    IOMUX_WIDTH_4BIT,
-@@ -4559,6 +5127,8 @@ static const struct of_device_id rockchi
+@@ -4559,6 +5117,8 @@ static const struct of_device_id rockchi
  		.data = &rk3368_pin_ctrl },
  	{ .compatible = "rockchip,rk3399-pinctrl",
  		.data = &rk3399_pin_ctrl },
