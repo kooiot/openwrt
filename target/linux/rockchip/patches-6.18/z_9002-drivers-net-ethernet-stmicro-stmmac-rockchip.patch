@@ -1,27 +1,27 @@
 --- a/drivers/net/ethernet/stmicro/stmmac/Makefile
 +++ b/drivers/net/ethernet/stmicro/stmmac/Makefile
-@@ -20,7 +20,9 @@ obj-$(CONFIG_DWMAC_LPC18XX)	+= dwmac-lpc18xx.o
- obj-$(CONFIG_DWMAC_MEDIATEK)	+= dwmac-mediatek.o
+@@ -21,7 +21,9 @@ obj-$(CONFIG_DWMAC_MEDIATEK)	+= dwmac-me
  obj-$(CONFIG_DWMAC_MESON)	+= dwmac-meson.o dwmac-meson8b.o
  obj-$(CONFIG_DWMAC_QCOM_ETHQOS)	+= dwmac-qcom-ethqos.o
+ obj-$(CONFIG_DWMAC_RENESAS_GBETH) += dwmac-renesas-gbeth.o
 -obj-$(CONFIG_DWMAC_ROCKCHIP)	+= dwmac-rk.o
 +obj-$(CONFIG_DWMAC_ROCKCHIP)	+= dwmac-rockchip.o
 +dwmac-rockchip-objs := dwmac-rk.o
 +dwmac-rockchip-$(CONFIG_DWMAC_ROCKCHIP_TOOL) += dwmac-rk-tool.o
  obj-$(CONFIG_DWMAC_RZN1)	+= dwmac-rzn1.o
+ obj-$(CONFIG_DWMAC_S32)		+= dwmac-s32.o
  obj-$(CONFIG_DWMAC_SOCFPGA)	+= dwmac-altr-socfpga.o
- obj-$(CONFIG_DWMAC_STARFIVE)	+= dwmac-starfive.o
 --- a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
 +++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
-@@ -23,6 +23,7 @@
+@@ -24,6 +24,7 @@
  #include <linux/pm_runtime.h>
 
  #include "stmmac_platform.h"
 +#include "dwmac-rk-tool.h"
 
  struct rk_priv_data;
- struct rk_gmac_ops {
-@@ -1762,8 +1763,11 @@ static int rk_gmac_clk_init(struct plat_
+
+@@ -1566,8 +1567,11 @@ static int rk_gmac_clk_init(struct plat_
  		bsp_priv->clks[i].id = rk_clocks[i];
 
  	if (phy_iface == PHY_INTERFACE_MODE_RMII) {
@@ -34,8 +34,8 @@
  	}
 
  	ret = devm_clk_bulk_get_optional(dev, bsp_priv->num_clks,
-@@ -2099,6 +2103,40 @@ static void rk_fix_speed(void *priv, uns
- 	}
+@@ -1921,6 +1925,40 @@ static int rk_gmac_resume(struct device
+ 	return 0;
  }
 
 +void dwmac_rk_set_rgmii_delayline(struct stmmac_priv *priv,
@@ -75,15 +75,15 @@
  static int rk_gmac_probe(struct platform_device *pdev)
  {
  	struct plat_stmmacenet_data *plat_dat;
-@@ -2125,6 +2163,7 @@ static int rk_gmac_probe(struct platform
- 	 */
- 	if (!plat_dat->has_gmac4)
- 		plat_dat->has_gmac = true;
+@@ -1955,6 +1993,7 @@ static int rk_gmac_probe(struct platform
+ 	plat_dat->set_clk_tx_rate = rk_set_clk_tx_rate;
+ 	plat_dat->suspend = rk_gmac_suspend;
+ 	plat_dat->resume = rk_gmac_resume;
 +	plat_dat->flags |= STMMAC_FLAG_SPH_DISABLE;
- 	plat_dat->fix_mac_speed = rk_fix_speed;
 
  	plat_dat->bsp_priv = rk_gmac_setup(pdev, plat_dat, data);
-@@ -2143,6 +2182,10 @@ static int rk_gmac_probe(struct platform
+ 	if (IS_ERR(plat_dat->bsp_priv))
+@@ -1972,6 +2011,10 @@ static int rk_gmac_probe(struct platform
  	if (ret)
  		goto err_gmac_powerdown;
 
@@ -94,22 +94,17 @@
  	return 0;
 
  err_gmac_powerdown:
-@@ -2158,6 +2201,8 @@ static void rk_gmac_remove(struct platfo
+@@ -1988,6 +2031,7 @@ static void rk_gmac_remove(struct platfo
  	stmmac_dvr_remove(&pdev->dev);
 
  	rk_gmac_powerdown(bsp_priv);
-+
 +	dwmac_rk_remove_loopback_sysfs(&pdev->dev);
- }
 
- #ifdef CONFIG_PM_SLEEP
+ 	if (priv->plat->phy_node && bsp_priv->integrated_phy)
+ 		clk_put(bsp_priv->clk_phy);
 --- /dev/null
 +++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk-tool.c
-<<<<<<< HEAD:target/linux/rockchip/patches-6.18/z_9002-drivers-net-ethernet-stmicro-stmmac-rockchip.patch
-@@ -0,0 +1,1610 @@
-=======
 @@ -0,0 +1,1547 @@
->>>>>>> bcd271d032 (rockchip: rework RK3506 support on 6.12):target/linux/rockchip/patches-6.12/z_9002-drivers-net-ethernet-stmicro-stmmac-rockchip.patch
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (c) 2020 Fuzhou Rockchip Electronics Co., Ltd
@@ -810,7 +805,6 @@
 +	do {
 +		usleep_range(100, 150);
 +		delay--;
-<<<<<<< HEAD:target/linux/rockchip/patches-6.18/z_9002-drivers-net-ethernet-stmicro-stmmac-rockchip.patch
 +		//if (priv->plat->has_gmac4) {
 +			status = readl(priv->ioaddr + _DMA_CHAN_STATUS(0));
 +			finish = (status & DMA_CHAN_STATUS_ERI) && (status & DMA_CHAN_STATUS_ETI);
@@ -818,15 +812,6 @@
 +		//	status = readl(priv->ioaddr + DMA_STATUS);
 +		//	finish = (status & DMA_STATUS_ERI) && (status & DMA_STATUS_ETI);
 +		//}
-=======
-+		if (priv->plat->has_gmac4) {
-+			status = readl(priv->ioaddr + DMA_CHAN0_STATUS);
-+			finish = status & (DMA_CHAN_STATUS_ERI | DMA_CHAN_STATUS_RI);
-+		} else {
-+			status = readl(priv->ioaddr + DMA_STATUS);
-+			finish = status & (DMA_STATUS_ERI | DMA_STATUS_RI);
-+		}
->>>>>>> bcd271d032 (rockchip: rework RK3506 support on 6.12):target/linux/rockchip/patches-6.12/z_9002-drivers-net-ethernet-stmicro-stmmac-rockchip.patch
 +
 +		if (finish) {
 +			if (!dwmac_rk_get_desc_status(priv, lb_priv)) {
@@ -1708,108 +1693,3 @@
 +
 +#endif /* __DWMAC_RK_TOOL_H__ */
 +
-<<<<<<< HEAD:target/linux/rockchip/patches-6.18/z_9002-drivers-net-ethernet-stmicro-stmmac-rockchip.patch
---- a/drivers/net/ethernet/stmicro/stmmac/Makefile
-+++ b/drivers/net/ethernet/stmicro/stmmac/Makefile
-@@ -21,7 +21,7 @@ obj-$(CONFIG_DWMAC_MEDIATEK)	+= dwmac-me
- obj-$(CONFIG_DWMAC_MESON)	+= dwmac-meson.o dwmac-meson8b.o
- obj-$(CONFIG_DWMAC_QCOM_ETHQOS)	+= dwmac-qcom-ethqos.o
- obj-$(CONFIG_DWMAC_RENESAS_GBETH) += dwmac-renesas-gbeth.o
--obj-$(CONFIG_DWMAC_ROCKCHIP)	+= dwmac-rk.o
-+obj-$(CONFIG_DWMAC_ROCKCHIP)	+= dwmac-rk.o dwmac-rk-tool.o
- obj-$(CONFIG_DWMAC_RZN1)	+= dwmac-rzn1.o
- obj-$(CONFIG_DWMAC_S32)		+= dwmac-s32.o
- obj-$(CONFIG_DWMAC_SOCFPGA)	+= dwmac-altr-socfpga.o
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
-@@ -24,6 +24,7 @@
- #include <linux/pm_runtime.h>
- 
- #include "stmmac_platform.h"
-+#include "dwmac-rk-tool.h"
- 
- struct rk_priv_data;
- 
-@@ -1566,8 +1567,11 @@ static int rk_gmac_clk_init(struct plat_
- 		bsp_priv->clks[i].id = rk_clocks[i];
- 
- 	if (phy_iface == PHY_INTERFACE_MODE_RMII) {
--		for (j = 0; j < ARRAY_SIZE(rk_rmii_clocks); j++)
-+		for (j = 0; j < ARRAY_SIZE(rk_rmii_clocks); j++) {
-+			if(bsp_priv->clock_input && !strcmp(rk_rmii_clocks[j], "clk_mac_refout"))
-+				continue;
- 			bsp_priv->clks[i++].id = rk_rmii_clocks[j];
-+		}
- 	}
- 
- 	ret = devm_clk_bulk_get_optional(dev, bsp_priv->num_clks,
-@@ -1921,6 +1925,40 @@ static int rk_gmac_resume(struct device
- 	return 0;
- }
- 
-+void dwmac_rk_set_rgmii_delayline(struct stmmac_priv *priv,
-+				  int tx_delay, int rx_delay)
-+{
-+	struct rk_priv_data *bsp_priv = priv->plat->bsp_priv;
-+
-+	if (bsp_priv->ops->set_to_rgmii) {
-+		bsp_priv->ops->set_to_rgmii(bsp_priv, tx_delay, rx_delay);
-+		bsp_priv->tx_delay = tx_delay;
-+		bsp_priv->rx_delay = rx_delay;
-+	}
-+}
-+EXPORT_SYMBOL(dwmac_rk_set_rgmii_delayline);
-+
-+void dwmac_rk_get_rgmii_delayline(struct stmmac_priv *priv,
-+				  int *tx_delay, int *rx_delay)
-+{
-+	struct rk_priv_data *bsp_priv = priv->plat->bsp_priv;
-+
-+	if (!bsp_priv->ops->set_to_rgmii)
-+		return;
-+
-+	*tx_delay = bsp_priv->tx_delay;
-+	*rx_delay = bsp_priv->rx_delay;
-+}
-+EXPORT_SYMBOL(dwmac_rk_get_rgmii_delayline);
-+
-+int dwmac_rk_get_phy_interface(struct stmmac_priv *priv)
-+{
-+	struct rk_priv_data *bsp_priv = priv->plat->bsp_priv;
-+
-+	return bsp_priv->phy_iface;
-+}
-+EXPORT_SYMBOL(dwmac_rk_get_phy_interface);
-+
- static int rk_gmac_probe(struct platform_device *pdev)
- {
- 	struct plat_stmmacenet_data *plat_dat;
-@@ -1955,6 +1993,7 @@ static int rk_gmac_probe(struct platform
- 	plat_dat->set_clk_tx_rate = rk_set_clk_tx_rate;
- 	plat_dat->suspend = rk_gmac_suspend;
- 	plat_dat->resume = rk_gmac_resume;
-+	plat_dat->flags |= STMMAC_FLAG_SPH_DISABLE;
- 
- 	plat_dat->bsp_priv = rk_gmac_setup(pdev, plat_dat, data);
- 	if (IS_ERR(plat_dat->bsp_priv))
-@@ -1972,6 +2011,10 @@ static int rk_gmac_probe(struct platform
- 	if (ret)
- 		goto err_gmac_powerdown;
- 
-+	ret = dwmac_rk_create_loopback_sysfs(&pdev->dev);
-+	if (ret)
-+		goto err_gmac_powerdown;
-+
- 	return 0;
- 
- err_gmac_powerdown:
-@@ -1988,6 +2031,7 @@ static void rk_gmac_remove(struct platfo
- 	stmmac_dvr_remove(&pdev->dev);
- 
- 	rk_gmac_powerdown(bsp_priv);
-+	dwmac_rk_remove_loopback_sysfs(&pdev->dev);
- 
- 	if (priv->plat->phy_node && bsp_priv->integrated_phy)
- 		clk_put(bsp_priv->clk_phy);
-=======
->>>>>>> bcd271d032 (rockchip: rework RK3506 support on 6.12):target/linux/rockchip/patches-6.12/z_9002-drivers-net-ethernet-stmicro-stmmac-rockchip.patch
