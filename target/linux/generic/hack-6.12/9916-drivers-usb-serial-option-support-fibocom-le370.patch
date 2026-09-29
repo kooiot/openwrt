@@ -8,3 +8,26 @@
  	{ USB_DEVICE_AND_INTERFACE_INFO(0x2dee, 0x4d41, 0xff, 0, 0) },		/* MeiG Smart SLM320 */
  	{ USB_DEVICE_AND_INTERFACE_INFO(0x2dee, 0x4d42, 0xff, 0, 0) },		/* MeiG Smart SLM332 */
  	{ USB_DEVICE_AND_INTERFACE_INFO(0x2dee, 0x4d57, 0xff, 0, 0) },		/* MeiG Smart SLM770A *
+--- a/drivers/net/usb/cdc_ether.c
++++ b/drivers/net/usb/cdc_ether.c
+@@ -568,6 +568,7 @@ static const struct driver_info wwan_inf
+ #define MICROSOFT_VENDOR_ID	0x045e
+ #define UBLOX_VENDOR_ID		0x1546
+ #define TPLINK_VENDOR_ID	0x2357
++#define FIBOCOM_VENDOR_ID	0x2cb7
+ #define AQUANTIA_VENDOR_ID	0x2eca
+ #define ASIX_VENDOR_ID		0x0b95
+ 
+@@ -940,6 +941,12 @@ static const struct usb_device_id	produc
+ 				      USB_CDC_SUBCLASS_ETHERNET,
+ 				      USB_CDC_PROTO_NONE),
+ 	.driver_info = (unsigned long)&wwan_info,
++}, {
++	/* Fibocom LE370 modem */
++	USB_DEVICE_AND_INTERFACE_INFO(FIBOCOM_VENDOR_ID, 0x0d01, USB_CLASS_COMM,
++				      USB_CDC_SUBCLASS_ETHERNET,
++				      USB_CDC_PROTO_NONE),
++	.driver_info = (unsigned long)&wwan_info,
+ }, {
+ 	USB_INTERFACE_INFO(USB_CLASS_COMM, USB_CDC_SUBCLASS_ETHERNET,
+ 			USB_CDC_PROTO_NONE),
