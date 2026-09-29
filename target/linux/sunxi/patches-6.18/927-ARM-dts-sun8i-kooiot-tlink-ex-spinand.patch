@@ -1,15 +1,13 @@
 --- a/arch/arm/boot/dts/allwinner/Makefile
 +++ b/arch/arm/boot/dts/allwinner/Makefile
-@@ -287,7 +287,8 @@ dtb-$(CONFIG_MACH_SUN8I) += \
-	sun8i-t113-tlink-e1.dtb \
- 	sun8i-t113-tlink-e2.dtb \
- 	sun8i-t113-tlink-e2-spinand.dtb \
--	sun8i-t113-tlink-ex.dtb
-+	sun8i-t113-tlink-ex.dtb \
-+	sun8i-t113-tlink-ex-spinand.dtb
- dtb-$(CONFIG_MACH_SUN9I) += \
- 	sun9i-a80-optimus.dtb \
- 	sun9i-a80-cubieboard4.dtb
+@@ -290,6 +290,7 @@ dtb-$(CONFIG_MACH_SUN8I) += \
+ 	sun8i-t113s-tlink-e2.dtb \
+ 	sun8i-t113s-tlink-e2-spinand.dtb \
+ 	sun8i-t113s-tlink-ex.dtb \
++	sun8i-t113s-tlink-ex-spinand.dtb \
+ 	sun8i-t113s-lctechpi-pc-t113.dtb \
+ 	sun8i-t113s-netcube-nagami-basic-carrier.dtb \
+ 	sun8i-t113s-netcube-nagami-keypad-carrier.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-t113-tlink-ex-spinand.dts
 @@ -0,0 +1,41 @@
