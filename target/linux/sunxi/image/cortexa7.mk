@@ -938,7 +938,7 @@ define Device/kooiot_tlink-ex
     tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage \
 	usb-otg-sunxi kmod-usb-gadget-serial
-  SOC := sun8i-t113
+  SOC := sun8i-t113s
 endef
 TARGET_DEVICES += kooiot_tlink-ex
 
@@ -962,7 +962,7 @@ define Device/kooiot_tlink-ex-spinand
     tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage \
 	usb-otg-sunxi kmod-usb-gadget-serial
-  SOC := sun8i-t113
+  SOC := sun8i-t113s
 endef
 TARGET_DEVICES += kooiot_tlink-ex-spinand
 
