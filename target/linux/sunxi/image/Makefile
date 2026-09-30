@@ -41,25 +41,21 @@ define Build/sunxi-sdcard
 	rm -rf $@.bootfs
 endef
 
-define Build/sunxi-spinandboot-v3s
-	./gen_sunxi_spinand_onlyboot_img.sh $@ \
-		$(STAGING_DIR_IMAGE)/$(DEVICE_NAME)-u-boot-with-spl.bin \
-		$(CONFIG_SUNXI_SPINAND_PAGESIZE) \
-		$(CONFIG_SUNXI_SPINAND_BLOCKSIZE) \
-		$(CONFIG_SUN8I_V3S_SPINAND_DUPLICATE_BOOT_SPL) \
-		$(CONFIG_SUN8I_V3S_SPINAND_DUPLICATE_BOOT_UBOOT)
-endef
-
 define Build/sunxi-spl-bin
 	rm -f $@
 	cp $(STAGING_DIR_IMAGE)/$(DEVICE_NAME)-u-boot-with-spl.bin $@
 endef
 
 define Build/sunxi-kernelubifs
-	./gen_sunxi_kernel_ubifs.sh $@ \
-		$(DTS_DIR)/$(SUNXI_DTS).dtb \
-		$(CONFIG_SUNXI_SPINAND_PAGESIZE) \
-		$(CONFIG_SUNXI_SPINAND_BLOCKSIZE)
+	mkdir -p $@.ubifs-kernel
+	# populate the kernel fs with the dtb and the kernel image
+	$(CP) $(DTS_DIR)/$(SUNXI_DTS).dtb $@.ubifs-kernel/dtb
+	$(CP) $@ $@.ubifs-kernel/uImage
+
+	# create ubifs
+	$(STAGING_DIR_HOST)/bin/mkfs.ubifs ${MKUBIFS_OPTS} -r $@.ubifs-kernel -o $@.new
+	rm -rf $@.ubifs-kernel
+	mv $@.new $@
 
 	$(Build/sunxi-backup-ubifs) 
 endef
@@ -69,9 +65,7 @@ define Build/sunxi-backup-ubifs
 	mkdir -p $@.backup
 
 	$(STAGING_DIR_HOST)/bin/mkfs.ubifs \
-		-r $@.backup -F -m $(CONFIG_SUNXI_SPINAND_PAGESIZE) \
-		-e $(shell echo $$(($(CONFIG_SUNXI_SPINAND_BLOCKSIZE) - (($(CONFIG_SUNXI_SPINAND_PAGESIZE)/1024)*2))))KiB \
-		-c 64 -U -v -o $@.backup.ubifs
+		-r $@.backup -F -m $(PAGESIZE) -e 124KiB -c 64 -U -v -o $@.backup.ubifs
 endef
 
 # why \x00\x00\x00\x00 for zImage-initramfs
@@ -85,25 +79,12 @@ define Device/Default
   SUNXI_DTS = $$(SUNXI_DTS_DIR)$$(SOC)-$(lastword $(subst _, ,$(1)))
 endef
 
-define Device/NAND_V3S
-  BLOCKSIZE := 128k
-  PAGESIZE := 2048
-  SUBPAGESIZE := 2048
-  VID_HDR_OFFSET := 2048
-  IMAGE_SIZE := 65536k
-  KERNEL_IN_UBI := 1
-  UBOOTENV_IN_UBI := 1
-  UBINIZE_OPTS := -vv
-  KERNEL := kernel-bin | lzma | uImage lzma | sunxi-kernelubifs
-  IMAGES := ubispinand.img.gz
-  UBIFS_OPTS := -F -m $(CONFIG_SUNXI_SPINAND_PAGESIZE) \
-				-e $(shell echo $$(($(CONFIG_SUNXI_SPINAND_BLOCKSIZE) - (($(CONFIG_SUNXI_SPINAND_PAGESIZE)/1024)*2))))KiB \
-				-c 880 -U
-  IMAGE/ubispinand.img.gz := \
-      sunxi-spinandboot-v3s | \
-      pad-to $$(CONFIG_SUN8I_V3S_OFFSET_UBI) | \
-      append-ubi | \
-      gzip
+define Device/FitImageLzma
+  KERNEL = kernel-bin | lzma | fit lzma $$(DTS_DIR)/$$(SUNXI_DTS).dtb
+endef
+
+define Device/FitImageGzip
+  KERNEL = kernel-bin | gzip | fit gzip $$(DTS_DIR)/$$(SUNXI_DTS).dtb
 endef
 
 define Device/NAND
@@ -116,6 +97,9 @@ define Device/NAND
   UBOOTENV_IN_UBI := 1
   UBINIZE_OPTS := -E 5
   UBINIZE_PARTS = backup=$$(KDIR_KERNEL_IMAGE).backup.ubifs=8
+  MKUBIFS_OPTS := \
+      --min-io-size=$$(PAGESIZE) --leb-size=124KiB --max-leb-cnt=96 \
+      --log-lebs=2 --space-fixup --squash-uids
   KERNEL := kernel-bin | lzma | uImage lzma | sunxi-kernelubifs
   IMAGES := factory.img factory.ubi sysupgrade.bin
   IMAGE/factory.img := \
@@ -125,14 +109,6 @@ define Device/NAND
   IMAGE/factory.ubi :=  append-ubi | check-size $$$$(IMAGE_SIZE)
   IMAGE/sysupgrade.bin := \
 	  sysupgrade-tar | append-metadata | check-size $$$$(IMAGE_SIZE)
-endef
-
-define Device/FitImageLzma
-  KERNEL = kernel-bin | lzma | fit lzma $$(DTS_DIR)/$$(SUNXI_DTS).dtb
-endef
-
-define Device/FitImageGzip
-  KERNEL = kernel-bin | gzip | fit gzip $$(DTS_DIR)/$$(SUNXI_DTS).dtb
 endef
 
 include $(SUBTARGET).mk

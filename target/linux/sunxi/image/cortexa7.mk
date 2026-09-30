@@ -321,7 +321,7 @@ define Device/xunlong_orangepi-2
   DEVICE_MODEL := Orange Pi 2
   DEVICE_PACKAGES:=kmod-rtc-sunxi
   SOC := sun8i-h3
- endef
+endef
 TARGET_DEVICES += xunlong_orangepi-2
 
 define Device/widora_mangopi-mqdual-t113
@@ -873,6 +873,7 @@ endef
 TARGET_DEVICES += kooiot_tlink-e1
 
 define Device/kooiot_tlink-e2
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink E2
   DEVICE_PACKAGES:=kmod-rtc-sunxi \
@@ -920,6 +921,7 @@ endef
 TARGET_DEVICES += kooiot_tlink-e2-spinand
 
 define Device/kooiot_tlink-ex
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink EX
   DEVICE_PACKAGES:=kmod-rtc-sunxi \
@@ -991,7 +993,6 @@ endef
 TARGET_DEVICES += kooiot_tlink-dly-e102
 
 define Device/kooiot_tlink-dly-e102-spinand
-  $(call Device/FitImageGzip)
   $(Device/NAND)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink DLY-E102 (SPI NAND)
@@ -1015,6 +1016,7 @@ endef
 TARGET_DEVICES += kooiot_tlink-dly-e102-spinand
 
 define Device/kooiot_tlink-dly-e204
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink DLY-E204
   DEVICE_PACKAGES:=kmod-rtc-sunxi \
