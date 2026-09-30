@@ -49,7 +49,7 @@
 #include <linux/bitrev.h>
 #include <linux/mutex.h>
 #include <linux/spinlock.h>
-#include <asm/unaligned.h>
+#include <linux/unaligned.h>
 
 #define DRIVER_AUTHOR "WCH"
 #define DRIVER_DESC "USB ethernet driver for ch397, etc."
