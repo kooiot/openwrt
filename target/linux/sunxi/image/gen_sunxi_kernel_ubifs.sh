@@ -8,16 +8,17 @@
 #
 
 set -ex
-[ $# -eq 4 ] || {
-    echo "SYNTAX: $0 <kernel> <dtb image> <page size> <block size>"
+[ $# -eq 5 ] || {
+    echo "SYNTAX: $0 <kernel> <dtb image> <boot scr> <page size> <block size>"
     echo "Given: $@"
     exit 1
 }
 
 KERNEL="$1"
 DTB="$2"
-PAGESIZE="$3"
-BLOCKSIZE="$4"
+BOOTSCR="$3"
+PAGESIZE="$4"
+BLOCKSIZE="$5"
 
 LEBSIZE=$(($BLOCKSIZE - (($PAGESIZE / 1024) * 2)))
 KERNSIZE=$(stat -c %s "$KERNEL")
@@ -30,6 +31,7 @@ WORKDIR=$(mktemp -d)
 
 cp "$KERNEL" "$WORKDIR/uImage"
 cp "$DTB" "$WORKDIR/dtb"
+cp "$BOOTSCR" "$WORKDIR/boot.scr"
 
 mkfs.ubifs -o "$KERNEL.new" -F -m $PAGESIZE -e ${LEBSIZE}KiB -c $LEBS  -U -v -r $WORKDIR
 

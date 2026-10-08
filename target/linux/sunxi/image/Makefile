@@ -58,6 +58,7 @@ endef
 define Build/sunxi-kernelubifs
 	./gen_sunxi_kernel_ubifs.sh $@ \
 		$(DTS_DIR)/$(SUNXI_DTS).dtb \
+		$(STAGING_DIR_IMAGE)/$(DEVICE_NAME)-boot.scr \
 		$(CONFIG_SUNXI_SPINAND_PAGESIZE) \
 		$(CONFIG_SUNXI_SPINAND_BLOCKSIZE)
 
