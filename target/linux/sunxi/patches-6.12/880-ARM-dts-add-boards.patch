@@ -1,0 +1,19 @@
+--- a/arch/arm/boot/dts/allwinner/Makefile
++++ b/arch/arm/boot/dts/allwinner/Makefile
+@@ -270,6 +270,16 @@ dtb-$(CONFIG_MACH_SUN8I) += \
+ 	sun8i-s3-lichee-zero-plus.dtb \
+ 	sun8i-s3-pinecube.dtb \
+ 	sun8i-t113s-mangopi-mq-r-t113.dtb \
++	sun8i-t113s-tlink-rp-t113.dtb \
++	sun8i-t113s-tlink-dly-e102.dtb \
++	sun8i-t113s-tlink-dly-e102-spinand.dtb \
++	sun8i-t113s-tlink-dly-e204.dtb \
++	sun8i-t113s-tlink-e1-v0.dtb \
++	sun8i-t113s-tlink-e1.dtb \
++	sun8i-t113s-tlink-e2.dtb \
++	sun8i-t113s-tlink-e2-spinand.dtb \
++	sun8i-t113s-tlink-ex.dtb \
++	sun8i-t113s-tlink-ex-spinand.dtb \
+ 	sun8i-t3-cqa3t-bv3.dtb \
+ 	sun8i-t3-tlink-m408.dtb \
+ 	sun8i-t3-tlink-m416.dtb \

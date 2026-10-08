@@ -766,7 +766,7 @@ define Device/kooiot_tlink-rp-t113
     tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage \
 	usb-otg-sunxi kmod-usb-gadget-serial
-  SOC := sun8i-t113
+  SOC := sun8i-t113s
 endef
 TARGET_DEVICES += kooiot_tlink-rp-t113
 
@@ -788,7 +788,7 @@ define Device/kooiot_tlink-e1-v0
     tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage \
 	usb-otg-sunxi kmod-usb-gadget-serial
-  SOC := sun8i-t113
+  SOC := sun8i-t113s
 endef
 TARGET_DEVICES += kooiot_tlink-e1-v0
 
@@ -811,11 +811,12 @@ define Device/kooiot_tlink-e1
     tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage \
 	usb-otg-sunxi kmod-usb-gadget-serial
-  SOC := sun8i-t113
+  SOC := sun8i-t113s
 endef
 TARGET_DEVICES += kooiot_tlink-e1
 
 define Device/kooiot_tlink-e2
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink E2
   DEVICE_PACKAGES:=kmod-rtc-sunxi \
@@ -834,7 +835,7 @@ define Device/kooiot_tlink-e2
     tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage \
 	usb-otg-sunxi kmod-usb-gadget-serial
-  SOC := sun8i-t113
+  SOC := sun8i-t113s
 endef
 TARGET_DEVICES += kooiot_tlink-e2
 
@@ -858,11 +859,12 @@ define Device/kooiot_tlink-e2-spinand
     tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage \
 	usb-otg-sunxi kmod-usb-gadget-serial
-  SOC := sun8i-t113
+  SOC := sun8i-t113s
 endef
 TARGET_DEVICES += kooiot_tlink-e2-spinand
 
 define Device/kooiot_tlink-ex
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink EX
   DEVICE_PACKAGES:=kmod-rtc-sunxi \
@@ -881,7 +883,7 @@ define Device/kooiot_tlink-ex
     tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage \
 	usb-otg-sunxi kmod-usb-gadget-serial
-  SOC := sun8i-t113
+  SOC := sun8i-t113s
 endef
 TARGET_DEVICES += kooiot_tlink-ex
 
@@ -905,7 +907,7 @@ define Device/kooiot_tlink-ex-spinand
     tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage \
 	usb-otg-sunxi kmod-usb-gadget-serial
-  SOC := sun8i-t113
+  SOC := sun8i-t113s
 endef
 TARGET_DEVICES += kooiot_tlink-ex-spinand
 
@@ -928,13 +930,12 @@ define Device/kooiot_tlink-dly-e102
     tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage kmod-phy-motorcomm \
 	usb-otg-sunxi kmod-usb-gadget-serial
-  SOC := sun8i-t113
+  SOC := sun8i-t113s
   IMAGES := sdcard.img.gz
 endef
 TARGET_DEVICES += kooiot_tlink-dly-e102
 
 define Device/kooiot_tlink-dly-e102-spinand
-  $(call Device/FitImageGzip)
   $(Device/NAND)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink DLY-E102 (SPI NAND)
@@ -953,11 +954,12 @@ define Device/kooiot_tlink-dly-e102-spinand
     tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage kmod-phy-motorcomm \
 	usb-otg-sunxi kmod-usb-gadget-serial
-  SOC := sun8i-t113
+  SOC := sun8i-t113s
 endef
 TARGET_DEVICES += kooiot_tlink-dly-e102-spinand
 
 define Device/kooiot_tlink-dly-e204
+  $(call Device/FitImageGzip)
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink DLY-E204
   DEVICE_PACKAGES:=kmod-rtc-sunxi \
@@ -976,7 +978,7 @@ define Device/kooiot_tlink-dly-e204
     tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     blockd kmod-usb-storage kmod-phy-motorcomm \
 	usb-otg-sunxi kmod-usb-gadget-serial
-  SOC := sun8i-t113
+  SOC := sun8i-t113s
   IMAGES := sdcard.img.gz
 endef
 TARGET_DEVICES += kooiot_tlink-dly-e204
