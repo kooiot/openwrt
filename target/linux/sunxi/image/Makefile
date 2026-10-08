@@ -103,8 +103,7 @@ define Device/NAND
   KERNEL := kernel-bin | lzma | uImage lzma | sunxi-kernelubifs
   IMAGES := factory.img factory.ubi sysupgrade.bin
   IMAGE/factory.img := \
-	  sunxi-spl-bin | \
-      pad-to $$(CONFIG_SUN8I_V3S_OFFSET_UBI) | \
+	  sunxi-spl-bin | pad-to 1M | \
       append-ubi | check-size $$$$(IMAGE_SIZE)
   IMAGE/factory.ubi :=  append-ubi | check-size $$$$(IMAGE_SIZE)
   IMAGE/sysupgrade.bin := \

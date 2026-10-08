@@ -20,7 +20,7 @@
 +
 +/ {
 +	model = "ThingsLink DLY-E102 (SPI-NAND)";
-+	compatible = "kooiot,tlink-dly-e102-spinand", "allwinner,sun8i-t113";
++	compatible = "kooiot,tlink-dly-e102-spinand", "allwinner,sun8i-t113s";
 +
 +	chosen {
 +		bootargs = "root=/dev/fit0 rootwait";

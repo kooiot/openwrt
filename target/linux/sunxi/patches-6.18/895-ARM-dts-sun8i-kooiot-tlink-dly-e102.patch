@@ -26,7 +26,7 @@
 +
 +/ {
 +	model = "ThingsLink DLY-E102";
-+	compatible = "kooiot,tlink-dly-e102", "allwinner,sun8i-t113";
++	compatible = "kooiot,tlink-dly-e102", "allwinner,sun8i-t113s";
 +
 +	aliases {
 +		ethernet0 = &emac;

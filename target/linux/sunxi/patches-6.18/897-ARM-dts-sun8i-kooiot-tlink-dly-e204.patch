@@ -20,7 +20,7 @@
 +
 +/ {
 +	model = "ThingsLink DLY-E204";
-+	compatible = "kooiot,tlink-dly-e204", "allwinner,sun8i-t113";
++	compatible = "kooiot,tlink-dly-e204", "allwinner,sun8i-t113s";
 +
 +	chosen {
 +		bootargs = "root=/dev/fit0 rootwait";

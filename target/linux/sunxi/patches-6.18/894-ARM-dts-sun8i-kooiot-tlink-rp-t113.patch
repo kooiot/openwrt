@@ -25,7 +25,7 @@
 +
 +/ {
 +	model = "ThingsLink RP-T113";
-+	compatible = "kooiot,tlink-rp-t113", "allwinner,sun8i-t113";
++	compatible = "kooiot,tlink-rp-t113", "allwinner,sun8i-t113s";
 +
 +	aliases {
 +		serial0 = &uart3;
