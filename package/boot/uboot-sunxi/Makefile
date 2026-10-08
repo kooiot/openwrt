@@ -536,7 +536,7 @@ define U-Boot/tlink_e2_spinand
   BUILD_SUBTARGET:=cortexa7
   NAME:=ThingsLink E2 (SPI NAND)
   BUILD_DEVICES:=kooiot_tlink-e2-spinand kooiot_tlink-ex-spinand
-  UENV_NAND:=nand
+  UENV:=nand
 endef
 
 define U-Boot/tlink_dly_e102
@@ -549,7 +549,7 @@ define U-Boot/tlink_dly_e102_spinand
   BUILD_SUBTARGET:=cortexa7
   NAME:=ThingsLink DLY-E102 (SPI NAND)
   BUILD_DEVICES:=kooiot_tlink-dly-e102-spinand
-  UENV_NAND:=nand
+  UENV:=nand
 endef
 
 define U-Boot/tlink_dly_e204
@@ -688,12 +688,6 @@ define Build/InstallDev
 	$(foreach device,$(BUILD_DEVICES), \
 		mkimage -C none -A arm -T script -d uEnv-$(UENV).txt \
 			$(STAGING_DIR_IMAGE)/$(device)-boot.scr
-	)
-
-	$(if $(strip $(UENV_NAND)),
-		$(foreach device,$(BUILD_DEVICES), \
-			mkimage -C none -A arm -T script -d uEnv-$(UENV_NAND).txt \
-				$(STAGING_DIR_IMAGE)/$(device)-nand-boot.scr)
 	)
 endef
 

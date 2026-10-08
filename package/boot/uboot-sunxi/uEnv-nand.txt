@@ -1,6 +1,8 @@
 setenv mtdids spi-nand0=0
 setenv mtdparts mtdparts=0:1M(boot),-(ubi)
-setenv bootcmd ubifsmount ubi:kernel && ubifsload $kernel_addr_r uImage && ubifsload $fdt_addr_r dtb && ubifsumount
 setenv bootargs console=ttyS0,115200 earlyprintk panic=5 ubi.mtd=ubi
-setenv message This Is Not Used Actually As Env File specified in defconfig in a file
-run bootcmd
+setenv loadkernel ubifsload \$kernel_addr_r uImage
+setenv loaddtb ubifsload \$fdt_addr_r dtb
+setenv ubi_load_kernel ubifsmount ubi:kernel \&\& run loaddtb \&\& run loadkernel \&\& ubifsumount
+setenv uenvcmd run ubi_load_kernel \&\& bootm \$kernel_addr_r - \$fdt_addr_r
+run uenvcmd

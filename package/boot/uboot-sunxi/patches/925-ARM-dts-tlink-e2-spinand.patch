@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/configs/tlink_e2_spinand_defconfig
-@@ -0,0 +1,51 @@
+@@ -0,0 +1,49 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
 +CONFIG_DEFAULT_DEVICE_TREE="sun8i-t113s-tlink-e2-spinand"
@@ -40,11 +40,9 @@
 +CONFIG_ENV_UBI_PART="ubi"
 +CONFIG_ENV_UBI_VOLUME="ubootenv"
 +CONFIG_ENV_UBI_VOLUME_REDUND="ubootenv2"
-+CONFIG_USE_DEFAULT_ENV_FILE=y
-+CONFIG_DEFAULT_ENV_FILE="tlink-e2-spinand_env"
 +CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG=y
-+# CONFIG_MTDIDS_DEFAULT="spi-nand0=0"
-+# CONFIG_MTDPARTS_DEFAULT="mtdparts=0:1M(boot),-(ubi)"
++CONFIG_MTDIDS_DEFAULT="spi-nand0=0"
++CONFIG_MTDPARTS_DEFAULT="mtdparts=0:1M(boot),-(ubi)"
 +CONFIG_USE_BOOTARGS=y
 +# CONFIG_SPI_FLASH_USE_4K_SECTORS is not set
 +CONFIG_SPI=y
@@ -92,22 +90,3 @@
 +		};
 +	};
 +};
---- /dev/null
-+++ b/tlink-e2-spinand_env
-@@ -0,0 +1,16 @@
-+ipaddr=192.168.1.248
-+serverip=192.168.1.139
-+bootconf=config-1
-+mtdids=spi-nand0=0
-+mtdparts=mtdparts=0:1M(boot),-(ubi)
-+loadaddr=0x42000000
-+kernel_addr_r=0x41000000
-+fdt_addr_r=0x41800000
-+console=console=ttyS0
-+bootcmd=run boot_production
-+bootdelay=2
-+bootargs=console=ttyS0,115200 earlyprintk panic=5 ubi.mtd=ubi
-+bootfile=kooiot_tlink-e2-spinand-u-boot-with-spl.bin
-+boot_default=run bootcmd ; replacevol=1 ; run boot_tftp_forever
-+boot_production=run ubi_read_production && bootm $kernel_addr_r - $fdt_addr_r
-+ubi_read_production=ubifsmount ubi:kernel && ubifsload $kernel_addr_r uImage && ubifsload $fdt_addr_r dtb && ubifsumount
