@@ -50,6 +50,7 @@ define Build/sunxi-kernelubifs
 	mkdir -p $@.ubifs-kernel
 	# populate the kernel fs with the dtb and the kernel image
 	$(CP) $(DTS_DIR)/$(SUNXI_DTS).dtb $@.ubifs-kernel/dtb
+	$(CP) $(STAGING_DIR_IMAGE)/$(DEVICE_NAME)-boot.scr $@.ubifs-kernel/boot.scr
 	$(CP) $@ $@.ubifs-kernel/uImage
 
 	# create ubifs
