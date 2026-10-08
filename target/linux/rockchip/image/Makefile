@@ -64,64 +64,6 @@ define Device/Default
   UBOOT_DEVICE_NAME = $(lastword $(subst _, ,$(1)))-$$(SOC)
 endef
 
-define Device/arm32
-  KERNEL_NAME := zImage
-  KERNEL := kernel-bin | uImage none
-  UBOOT_DEVICE_NAME = $(lastword $(subst _, ,$(1)))
-endef
-
-define Build/rockchip-uboot-bin
-	rm -f $@
-	cp $(STAGING_DIR_IMAGE)/$(UBOOT_DEVICE_NAME)-u-boot-rockchip.bin $@
-endef
-
-define Build/armv7-kernelubifs
-	mkdir -p $@.ubifs-kernel
-	# populate the kernel fs with the dtb and the kernel image
-	$(CP) $(DTS_DIR)/$(DEVICE_DTS).dtb $@.ubifs-kernel/dtb
-	$(CP) $@ $@.ubifs-kernel/uImage
-
-	# create ubifs
-	$(STAGING_DIR_HOST)/bin/mkfs.ubifs ${MKUBIFS_OPTS} -r $@.ubifs-kernel -o $@.new
-	rm -rf $@.ubifs-kernel
-	mv $@.new $@
-
-	$(Build/armv7-backup-ubifs)
-endef
-
-define Build/armv7-backup-ubifs
-	rm -rf $@.backup
-	mkdir -p $@.backup
-
-	$(STAGING_DIR_HOST)/bin/mkfs.ubifs \
-		-r $@.backup -F -m $(PAGESIZE) -e 124KiB -c 64 -U -v -o $@.backup.ubifs
-
-	rm -rf $@.backup
-endef
-
-define Device/NAND
-  BLOCKSIZE := 128k
-  PAGESIZE := 2048
-  SUBPAGESIZE := 2048
-  VID_HDR_OFFSET := 2048
-  IMAGE_SIZE := 131072k
-  KERNEL_IN_UBI := 1
-  UBOOTENV_IN_UBI := 1
-  UBINIZE_OPTS := -E 5
-  UBINIZE_PARTS = backup=$$(KDIR_KERNEL_IMAGE).backup.ubifs=8
-  MKUBIFS_OPTS := \
-      --min-io-size=$$(PAGESIZE) --leb-size=124KiB --max-leb-cnt=96 \
-      --log-lebs=2 --space-fixup --squash-uids
-  KERNEL := kernel-bin | lzma | uImage lzma | armv7-kernelubifs
-  IMAGES := factory.img factory.ubi sysupgrade.bin
-  IMAGE/factory.img := \
-      rockchip-uboot-bin | pad-to 2M | \
-      append-ubi | check-size $$$$(IMAGE_SIZE)
-  IMAGE/factory.ubi =  append-ubi | check-size $$$$(IMAGE_SIZE)
-  IMAGE/sysupgrade.bin = \
-      sysupgrade-tar | append-metadata | check-size $$$$(IMAGE_SIZE)
-endef
-
 include $(SUBTARGET).mk
 
 $(eval $(call BuildImage))

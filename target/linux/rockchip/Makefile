@@ -5,7 +5,8 @@ include $(TOPDIR)/rules.mk
 BOARD:=rockchip
 BOARDNAME:=Rockchip
 FEATURES:=ext4 audio usb usbgadget display haveged gpio fpu pci pcie rootfs-part nand boot-part squashfs
-SUBTARGETS:=armv7 armv8
+#SUBTARGETS:=armv7 armv8  (Use 25.12 branch for RK3506)
+SUBTARGETS:=armv8
 
 KERNEL_PATCHVER:=6.6
 
