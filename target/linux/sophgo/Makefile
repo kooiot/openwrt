@@ -13,7 +13,7 @@ KERNELNAME:=Image dtbs
 SUBTARGETS:=generic
 #SUBTARGETS:=cv180x cv181x cv1813h
 
-KERNEL_PATCHVER:=6.6
+KERNEL_PATCHVER:=6.18
 
 include $(INCLUDE_DIR)/target.mk
 
