@@ -11,7 +11,7 @@ index 7a11fdb687cc..3d5181c75f78 100644
   * Author: Peter Geis <pgwipeout@gmail.com>
   * Author: Frank <Frank.Sae@motor-comm.com>
 @@ -14,6 +14,8 @@
- #include <linux/of.h>
+ #include <linux/property.h>
  
  #define PHY_ID_YT8511		0x0000010a
 +#define PHY_ID_YT8512		0x00000118
@@ -60,31 +60,26 @@ index 7a11fdb687cc..3d5181c75f78 100644
  /* Extended register is different from MMD Register and MII Register.
   * We can use ytphy_read_ext/ytphy_write_ext/ytphy_modify_ext function to
   * operate extended register.
-@@ -214,6 +250,13 @@
- #define YT8521_RC1R_RGMII_2_100_NS		14
- #define YT8521_RC1R_RGMII_2_250_NS		15
+@@ -228,6 +264,8 @@
+ #define YT8521_LED_100_ON_EN			BIT(5)
+ #define YT8521_LED_10_ON_EN			BIT(4)
  
-+#define YT8521_LED0_CONFIG_REG			0xA00C
-+#define YT8521_LED1_CONFIG_REG			0xA00D
-+#define YT8521_LED2_CONFIG_REG			0xA00E
-+#define YT8521_LED_COUNT			3
-+
 +// #define YT8521_DEBUG
 +
- #define YTPHY_MISC_CONFIG_REG			0xA006
- #define YTPHY_MCR_FIBER_SPEED_MASK		BIT(0)
- #define YTPHY_MCR_FIBER_1000BX			(0x1 << 0)
-@@ -734,6 +777,185 @@ static int yt8511_config_init(struct phy
+ #define YTPHY_MDIO_ADDRESS_CONTROL_REG		0xA005
+ #define YTPHY_MACR_EN_PHY_ADDR_0		BIT(6)
+ 
+@@ -751,6 +789,185 @@ err_restore_page:
  	return phy_restore_page(phydev, oldpage, ret);
  }
  
 +static int yt8512_clk_init(struct phy_device *phydev)
 +{
-+	struct device_node *node = phydev->mdio.dev.of_node;
++	struct device *dev = &phydev->mdio.dev;
 +	int ret, val;
 +	int max_cnt = 500; /* the max wait time of reset ~ 500 ms */
 +
-+	if (!of_property_read_bool(node, "motorcomm,clock-out")) {
++	if (!device_property_read_bool(dev, "motorcomm,clock-out")) {
 +		return 0;
 +	}
 +
@@ -128,7 +123,7 @@ index 7a11fdb687cc..3d5181c75f78 100644
 +
 +static int yt8512_led_init(struct phy_device *phydev)
 +{
-+	struct device_node *of_node = phydev->mdio.dev.of_node;
++	struct device *dev = &phydev->mdio.dev;
 +	int ret;
 +	int val;
 +	int mask;
@@ -140,7 +135,7 @@ index 7a11fdb687cc..3d5181c75f78 100644
 +	phydev_info(phydev, "read led0 config val: %x", val);
 +#endif
 +
-+	if (of_property_read_u32(of_node, "motorcomm,led0", &val)) {
++	if (device_property_read_u32(dev, "motorcomm,led0", &val)) {
 +#ifdef YT8512_DEBUG
 +		phydev_info(phydev, "no led0 config val");
 +#endif
@@ -171,7 +166,7 @@ index 7a11fdb687cc..3d5181c75f78 100644
 +	phydev_info(phydev, "read led1 config val: %x", val);
 +#endif
 +
-+	if (of_property_read_u32(of_node, "motorcomm,led1", &val)) {
++	if (device_property_read_u32(dev, "motorcomm,led1", &val)) {
 +#ifdef YT8512_DEBUG
 +		phydev_info(phydev, "no led1 config val");
 +#endif
@@ -260,26 +255,26 @@ index 7a11fdb687cc..3d5181c75f78 100644
  /**
   * yt8521_read_page() - read reg page
   * @phydev: a pointer to a &struct phy_device
-@@ -1640,6 +1862,31 @@ static int yt8521_resume(struct phy_devi
+@@ -1660,6 +1877,31 @@ static int yt8521_resume(struct phy_devi
  	return yt8521_modify_utp_fiber_bmcr(phydev, BMCR_PDOWN, 0);
  }
  
 +
 +static int yt8521_led_init(struct phy_device *phydev)
 +{
-+	struct device_node *of_node = phydev->mdio.dev.of_node;
++	struct device *dev = &phydev->mdio.dev;
 +	int ret;
 +	u32 i, val;
 +	char buf[64];
 +
-+	for (i = 0; i < YT8521_LED_COUNT; ++i) {
++	for (i = 0; i < YT8521_MAX_LEDS; ++i) {
 +		/* get led configuration */
 +		snprintf(buf, 64, "motorcomm,led%d", i);
-+		if (!of_property_read_u32(of_node, buf, &val) ) {
++		if (!device_property_read_u32(dev, buf, &val) ) {
 +#ifdef YT8521_DEBUG
 +			phydev_info(phydev, "led%d config val: %08x node:%pOF", i, val, of_node);
 +#endif
-+			ret = ytphy_write_ext(phydev, YT8521_LED0_CONFIG_REG + i, val);
++			ret = ytphy_write_ext(phydev, YT8521_LED0_CFG_REG + i, val);
 +			if (ret < 0) {
 +				break;
 +			}
@@ -292,7 +287,7 @@ index 7a11fdb687cc..3d5181c75f78 100644
  /**
   * yt8521_config_init() - called to initialize the PHY
   * @phydev: a pointer to a &struct phy_device
-@@ -1663,6 +1910,10 @@ static int yt8521_config_init(struct phy
+@@ -1683,6 +1925,10 @@ static int yt8521_config_init(struct phy
  			goto err_restore_page;
  	}
  
@@ -300,10 +295,10 @@ index 7a11fdb687cc..3d5181c75f78 100644
 +	if (ret < 0)
 +		goto err_restore_page;
 +
- 	if (of_property_read_bool(node, "motorcomm,auto-sleep-disabled")) {
+ 	if (device_property_read_bool(dev, "motorcomm,auto-sleep-disabled")) {
  		/* disable auto sleep */
  		ret = ytphy_modify_ext(phydev, YT8521_EXTREG_SLEEP_CONTROL1_REG,
-@@ -2906,6 +3157,22 @@ static struct phy_driver motorcomm_phy_d
+@@ -3043,6 +3289,22 @@ static struct phy_driver motorcomm_phy_d
  		.write_page	= yt8511_write_page,
  	},
  	{
@@ -326,7 +321,7 @@ index 7a11fdb687cc..3d5181c75f78 100644
  		PHY_ID_MATCH_EXACT(PHY_ID_YT8521),
  		.name		= "YT8521 Gigabit Ethernet",
  		.get_features	= yt8521_get_features,
-@@ -2971,13 +3238,15 @@ static struct phy_driver motorcomm_phy_d
+@@ -3111,13 +3373,15 @@ static struct phy_driver motorcomm_phy_d
  
  module_phy_driver(motorcomm_phy_drvs);
  

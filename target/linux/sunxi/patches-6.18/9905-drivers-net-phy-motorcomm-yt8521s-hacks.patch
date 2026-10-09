@@ -1,26 +1,26 @@
 --- a/drivers/net/phy/motorcomm.c
 +++ b/drivers/net/phy/motorcomm.c
-@@ -926,6 +926,7 @@ static int ytphy_rgmii_clk_delay_config(
+@@ -1139,6 +1139,7 @@ static int ytphy_rgmii_clk_delay_config(
  		return -EOPNOTSUPP;
  	}
-
+ 
 +	pr_info("%s: YT8521_CHIP_CONFIG_REG mask:%08x val:%08x\n", __func__, (int)YT8521_CCR_RXC_DLY_EN, (int)rxc_dly_en);
  	ret = ytphy_modify_ext(phydev, YT8521_CHIP_CONFIG_REG,
  			       YT8521_CCR_RXC_DLY_EN, rxc_dly_en);
  	if (ret < 0)
-@@ -933,6 +934,7 @@ static int ytphy_rgmii_clk_delay_config(
-
+@@ -1146,6 +1147,7 @@ static int ytphy_rgmii_clk_delay_config(
+ 
  	/* Generally, it is not necessary to adjust YT8521_RC1R_FE_TX_DELAY */
  	mask = YT8521_RC1R_RX_DELAY_MASK | YT8521_RC1R_GE_TX_DELAY_MASK;
 +	pr_info("%s: YT8521_RGMII_CONFIG1_REG mask:%08x val:%08x\n", __func__, mask, val);
  	return ytphy_modify_ext(phydev, YT8521_RGMII_CONFIG1_REG, mask, val);
  }
-
-@@ -1690,6 +1692,24 @@ static int yt8521_config_init(struct phy
+ 
+@@ -1925,6 +1927,24 @@ static int yt8521_config_init(struct phy
  			goto err_restore_page;
  	}
-
-+	if (of_property_read_bool(node, "tlink,yt8521s-hack")) {
+ 
++	if (device_property_read_bool(dev, "tlink,yt8521s-hack")) {
 +		phydev_err(phydev, "tlink,yt8521s-hack is set!!!\n");
 +		/* Begin YT8521s Hacks, set the correct tx delay for 1000M mode */
 +		ret = ytphy_write_ext(phydev, YT8521_RGMII_CONFIG1_REG, 0xff);
@@ -38,13 +38,13 @@
 +		usleep_range(10, 50);
 +	}
 +
- 	if (of_property_read_bool(node, "motorcomm,auto-sleep-disabled")) {
- 		/* disable auto sleep */
- 		ret = ytphy_modify_ext(phydev, YT8521_EXTREG_SLEEP_CONTROL1_REG,
-@@ -1907,6 +1927,7 @@ static void yt8531_link_change_notify(st
+ 	ret = yt8521_led_init(phydev);
+ 	if (ret < 0)
+ 		goto err_restore_page;
+@@ -2134,6 +2154,7 @@ static void yt8531_link_change_notify(st
  		return;
  	}
-
+ 
 +	// pr_info("%s: RGMII_CFG: %08x - %08x\n", __func__, (int)YT8521_RC1R_TX_CLK_SEL_INVERTED, (int)val);
  	ret = ytphy_modify_ext_with_lock(phydev, YT8521_RGMII_CONFIG1_REG,
  					 YT8521_RC1R_TX_CLK_SEL_INVERTED, val);
