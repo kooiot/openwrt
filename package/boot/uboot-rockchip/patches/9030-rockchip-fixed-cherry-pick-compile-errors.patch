@@ -146,27 +146,6 @@ index ca31ce79b77..c2419dff72d 100644
  #include <clk-uclass.h>
  #include <asm/arch-rockchip/clock.h>
  #include <asm/arch-rockchip/cru_rk3506.h>
-diff --git a/drivers/phy/rockchip/phy-rockchip-inno-usb2.c b/drivers/phy/rockchip/phy-rockchip-inno-usb2.c
-index ccadec1e801..5116bc55024 100644
---- a/drivers/phy/rockchip/phy-rockchip-inno-usb2.c
-+++ b/drivers/phy/rockchip/phy-rockchip-inno-usb2.c
-@@ -392,7 +392,7 @@ static const struct rockchip_usb2phy_cfg rk3399_usb2phy_cfgs[] = {
- static const struct rockchip_usb2phy_cfg rk3506_phy_cfgs[] = {
- 	{
- 		.reg		= 0xff2b0000,
--		.clkout_ctl_phy = { 0x041c, 7, 2, 0, 0x27 },
-+		.clkout_ctl = { 0x041c, 7, 2, 0, 0x27 },
- 		.port_cfgs	= {
- 			[USB2PHY_PORT_OTG] = {
- 				.phy_sus	= { 0x0060, 1, 0, 2, 1 },
-@@ -490,6 +490,7 @@ static const struct udevice_id rockchip_usb2phy_ids[] = {
- 		.compatible = "rockchip,rk3506-usb2phy",
- 		.data = (ulong)&rk3506_phy_cfgs,
- 	},
-+	{
- 		.compatible = "rockchip,rk3568-usb2phy",
- 		.data = (ulong)&rk3568_phy_cfgs,
- 	},
 diff --git a/drivers/pinctrl/rockchip/pinctrl-rockchip-core.c b/drivers/pinctrl/rockchip/pinctrl-rockchip-core.c
 index 7266a1b48e8..2bdbcc75d1d 100644
 --- a/drivers/pinctrl/rockchip/pinctrl-rockchip-core.c
