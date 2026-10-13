@@ -126,6 +126,7 @@ define Device/vanxoak_vx-hd-rk3506g-m-iot
     kmod-phy-motorcomm kmod-mmc \
     kmod-can-rockchip-rk3576 kmod-can-raw ip-full \
     kmod-ata-ahci kmod-ata-ahci-dwc \
+	kmod-regulator-userspace-consumer \
     luci-app-freeioe luci-proto-qmi \
     luci-proto-3g luci-proto-wwan \
     tlink-r7-firmware wpad-basic-mbedtls \
