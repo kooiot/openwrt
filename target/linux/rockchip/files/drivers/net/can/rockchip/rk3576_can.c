@@ -4,6 +4,7 @@
  * Rk3576 CAN driver
  */
 
+#include <linux/version.h>
 #include <linux/delay.h>
 #include <linux/iopoll.h>
 #include <linux/pinctrl/consumer.h>
@@ -1208,11 +1209,19 @@ static int rk3576_can_probe(struct platform_device *pdev)
 	rcan->can.state = CAN_STATE_STOPPED;
 
 	rcan->can.bittiming_const = &rk3576_can_bittiming_const;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+	rcan->can.fd.data_bittiming_const = &rk3576_can_data_bittiming_const;
+#else
 	rcan->can.data_bittiming_const = &rk3576_can_data_bittiming_const;
+#endif
 	rcan->can.do_set_mode = rk3576_can_set_mode;
 	rcan->can.do_get_berr_counter = rk3576_can_get_berr_counter;
 	rcan->can.do_set_bittiming = rk3576_can_set_bittiming;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+	rcan->can.fd.do_set_data_bittiming = rk3576_can_set_bittiming;
+#else
 	rcan->can.do_set_data_bittiming = rk3576_can_set_bittiming;
+#endif
 	rcan->can.ctrlmode_supported = CAN_CTRLMODE_LOOPBACK |
 				       CAN_CTRLMODE_LISTENONLY;
 
