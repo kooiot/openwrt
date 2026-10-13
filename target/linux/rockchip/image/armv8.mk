@@ -572,8 +572,8 @@ define Device/firefly_firefly-roc-pc
   	kmod-ikconfig kmod-ata-ahci-platform \
 	firefly-roc-pc-firmware wpad-basic-mbedtls \
 	tinc-freeioe-tunnel iperf3 \
-    uqmi fdisk usbutils freeioe wwan-watch \
-    blockd kmod-eeprom-at24 fdisk
+    uqmi freeioe wwan-watch \
+    kmod-eeprom-at24
 endef
 
 TARGET_DEVICES += firefly_firefly-roc-pc
@@ -602,8 +602,8 @@ define Device/kooiot_tlink-r4x
 	luci-app-freeioe luci-proto-qmi luci-proto-3g luci-proto-wwan \
     tlink-r4x-firmware wpad-basic-mbedtls \
     tinc-freeioe-tunnel iperf3 \
-    uqmi fdisk usbutils freeioe wwan-watch \
-    blockd kmod-eeprom-at24 fdisk
+    uqmi freeioe wwan-watch \
+    kmod-eeprom-at24
 endef
 TARGET_DEVICES += kooiot_tlink-r4x
 
@@ -631,7 +631,7 @@ define Device/kooiot_tlink-r7
 	luci-app-freeioe luci-proto-qmi luci-proto-3g luci-proto-wwan \
     tlink-r7-firmware wpad-basic-mbedtls \
     tinc-freeioe-tunnel iperf3 \
-    uqmi fdisk usbutils freeioe wwan-watch \
-    blockd kmod-eeprom-at24 fdisk
+    uqmi freeioe wwan-watch \
+    kmod-eeprom-at24
 endef
 TARGET_DEVICES += kooiot_tlink-r7

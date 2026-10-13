@@ -15,7 +15,9 @@ endef
 
 include $(INCLUDE_DIR)/target.mk
 
-DEFAULT_PACKAGES += uboot-envtools partx-utils e2fsprogs mkf2fs kmod-gpio-button-hotplug \
-		    ethtool fdisk blockd usbutils wpad-basic-mbedtls
+DEFAULT_PACKAGES += uboot-envtools partx-utils e2fsprogs mkf2fs kmod-gpio-button-hotplug
+DEFAULT_PACKAGES += ethtool fdisk blockd 
+DEFAULT_PACKAGES += wpad-basic-mbedtls
+DEFAULT_PACKAGES += input-support usbutils 
 
 $(eval $(call BuildTarget))

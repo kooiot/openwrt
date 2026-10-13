@@ -78,8 +78,8 @@ define Device/vanxoak_vx-hd-rk3506g-iot
 	kmod-rtw88-8723du rtl8723bu-firmware \
 	kmod-bluetooth rtl8723bu-bt-firmware \
     tinc-freeioe-tunnel iperf3 \
-    uqmi fdisk usbutils freeioe wwan-watch \
-    blockd kmod-eeprom-at24 fdisk
+    uqmi freeioe wwan-watch \
+    kmod-eeprom-at24
 endef
 TARGET_DEVICES += vanxoak_vx-hd-rk3506g-iot
 
@@ -105,8 +105,8 @@ define Device/vanxoak_vx-hd-rk3506g-iot-spinand
 	kmod-rtw88-8723du rtl8723bu-firmware \
 	kmod-bluetooth rtl8723bu-bt-firmware \
     tinc-freeioe-tunnel iperf3 \
-    uqmi fdisk usbutils freeioe wwan-watch \
-    blockd kmod-eeprom-at24 fdisk
+    uqmi freeioe wwan-watch \
+    kmod-eeprom-at24
 endef
 TARGET_DEVICES += vanxoak_vx-hd-rk3506g-iot-spinand
 
@@ -131,8 +131,8 @@ define Device/vanxoak_vx-hd-rk3506g-m-iot
     tlink-r7-firmware wpad-basic-mbedtls \
 	kmod-rtw88-8723du rtl8723bu-firmware \
     tinc-freeioe-tunnel iperf3 \
-    uqmi fdisk usbutils freeioe wwan-watch \
-    blockd kmod-eeprom-at24 fdisk
+    uqmi freeioe wwan-watch \
+    kmod-eeprom-at24
 endef
 TARGET_DEVICES += vanxoak_vx-hd-rk3506g-m-iot
 
@@ -157,7 +157,7 @@ define Device/vanxoak_vx-hd-rk3506g-m-iot-spinand
     tlink-r7-firmware wpad-basic-mbedtls \
 	kmod-rtw88-8723du rtl8723bu-firmware \
     tinc-freeioe-tunnel iperf3 \
-    uqmi fdisk usbutils freeioe wwan-watch \
-    blockd kmod-eeprom-at24 fdisk
+    uqmi freeioe wwan-watch \
+    kmod-eeprom-at24
 endef
 TARGET_DEVICES += vanxoak_vx-hd-rk3506g-m-iot-spinand

@@ -1386,7 +1386,7 @@ define Device/widora_neo-32m
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-sdhci-mt7620 \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
-	uqmi fdisk usbutils freeioe wwanleds
+	uqmi freeioe wwanleds
   SUPPORTED_DEVICES += widora-neo-32m
 endef
 TARGET_DEVICES += widora_neo-32m
@@ -1402,7 +1402,7 @@ define Device/kooiot_tlink-c1-16m
 	kmod-usb-serial kmod-usb-serial-option \
 	kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
-	uqmi fdisk usbutils freeioe wwanleds strip-ioe
+	uqmi freeioe wwanleds strip-ioe
   SUPPORTED_DEVICES += tlink-c1-16m
 endef
 TARGET_DEVICES += kooiot_tlink-c1-16m
@@ -1419,7 +1419,7 @@ define Device/kooiot_tlink-c1-32m
 	kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-i2c-mt7628 kmod-rtc-rx8010 \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
-	uqmi fdisk usbutils freeioe wwanleds
+	uqmi freeioe wwanleds
   SUPPORTED_DEVICES += tlink-c1-32m
 endef
 TARGET_DEVICES += kooiot_tlink-c1-32m
@@ -1436,7 +1436,7 @@ define Device/kooiot_tlink-c2-16m
 	kmod-usb-serial-qualcomm \
 	kmod-usb-net-qmi-wwan kmod-usb-serial-cp210x \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
-	uqmi fdisk usbutils freeioe wwanleds strip-ioe
+	uqmi freeioe wwanleds strip-ioe
   SUPPORTED_DEVICES += tlink-c2-16m
 endef
 TARGET_DEVICES += kooiot_tlink-c2-16m
@@ -1453,7 +1453,7 @@ define Device/kooiot_tlink-c2-32m
 	kmod-usb-serial-qualcomm \
 	kmod-usb-net-qmi-wwan kmod-usb-serial-cp210x \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
-	uqmi fdisk usbutils freeioe wwanleds
+	uqmi freeioe wwanleds
   SUPPORTED_DEVICES += tlink-c2-32m
 endef
 TARGET_DEVICES += kooiot_tlink-c2-32m
@@ -1470,7 +1470,7 @@ define Device/kooiot_tlink-c2-v2
 	kmod-usb-serial-qualcomm \
 	kmod-usb-net-qmi-wwan kmod-usb-serial-cp210x \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
-	uqmi fdisk usbutils freeioe wwanleds
+	uqmi freeioe wwanleds
   SUPPORTED_DEVICES += tlink-c2-v2
 endef
 TARGET_DEVICES += kooiot_tlink-c2-v2
@@ -1487,7 +1487,7 @@ define Device/kooiot_tlink-c3-32m
 	kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-i2c-mt7628 kmod-rtc-pcf8563 \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
-	uqmi fdisk usbutils freeioe wwanleds
+	uqmi freeioe wwanleds
   SUPPORTED_DEVICES += tlink-c3-32m
 endef
 TARGET_DEVICES += kooiot_tlink-c3-32m
@@ -1504,7 +1504,7 @@ define Device/kooiot_tlink-c35-16m
 	kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-i2c-mt7628 kmod-rtc-pcf8563 \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
-	uqmi fdisk usbutils freeioe wwanleds strip-ioe
+	uqmi freeioe wwanleds strip-ioe
   SUPPORTED_DEVICES += tlink-c35-16m
 endef
 TARGET_DEVICES += kooiot_tlink-c35-16m
@@ -1521,7 +1521,7 @@ define Device/kooiot_tlink-c35-32m
 	kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-i2c-mt7628 kmod-rtc-pcf8563 \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
-	uqmi fdisk usbutils freeioe wwanleds
+	uqmi freeioe wwanleds
   SUPPORTED_DEVICES += tlink-c35-32m
 endef
 TARGET_DEVICES += kooiot_tlink-c35-32m
@@ -1539,7 +1539,7 @@ define Device/kooiot_tlink-c4-16m
 	kmod-usb-serial-qualcomm \
 	kmod-usb-net-qmi-wwan kmod-usb-serial-cp210x \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
-	uqmi fdisk usbutils freeioe wwanleds
+	uqmi freeioe wwanleds
 endef
 TARGET_DEVICES += kooiot_tlink-c4-16m
 
@@ -1556,7 +1556,7 @@ define Device/kooiot_tlink-c4-32m
 	kmod-usb-serial-qualcomm \
 	kmod-usb-net-qmi-wwan kmod-usb-serial-cp210x \
 	luci-app-freeioe luci-proto-qmi luci-proto-3g \
-	uqmi fdisk usbutils freeioe wwanleds
+	uqmi freeioe wwanleds
 endef
 TARGET_DEVICES += kooiot_tlink-c4-32m
 
