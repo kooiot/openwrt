@@ -17,9 +17,6 @@ Signed-off-by: Austin Lane <vidplace7@gmail.com>
  create mode 100644 arch/arm/dts/rk3506-u-boot.dtsi
  create mode 100644 arch/arm/dts/rk3506.dtsi
 
-diff --git a/arch/arm/dts/rk3506-pinctrl.dtsi b/arch/arm/dts/rk3506-pinctrl.dtsi
-new file mode 100644
-index 00000000000..81a3750a76f
 --- /dev/null
 +++ b/arch/arm/dts/rk3506-pinctrl.dtsi
 @@ -0,0 +1,275 @@
@@ -298,9 +295,6 @@ index 00000000000..81a3750a76f
 +		};
 +	};
 +};
-diff --git a/arch/arm/dts/rk3506-u-boot.dtsi b/arch/arm/dts/rk3506-u-boot.dtsi
-new file mode 100644
-index 00000000000..960da6b663a
 --- /dev/null
 +++ b/arch/arm/dts/rk3506-u-boot.dtsi
 @@ -0,0 +1,88 @@
@@ -392,9 +386,6 @@ index 00000000000..960da6b663a
 +	bootph-pre-sram;
 +	bootph-pre-ram;
 +};
-diff --git a/arch/arm/dts/rk3506.dtsi b/arch/arm/dts/rk3506.dtsi
-new file mode 100644
-index 00000000000..01810042ff5
 --- /dev/null
 +++ b/arch/arm/dts/rk3506.dtsi
 @@ -0,0 +1,581 @@
@@ -979,6 +970,3 @@ index 00000000000..01810042ff5
 +};
 +
 +#include "rk3506-pinctrl.dtsi"
--- 
-2.55.0
-

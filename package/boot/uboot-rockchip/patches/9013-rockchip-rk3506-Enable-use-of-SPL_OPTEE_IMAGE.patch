@@ -18,11 +18,9 @@ Signed-off-by: Austin Lane <vidplace7@gmail.com>
  include/configs/rk3506_common.h | 1 +
  3 files changed, 9 insertions(+), 1 deletion(-)
 
-diff --git a/arch/arm/mach-rockchip/Kconfig b/arch/arm/mach-rockchip/Kconfig
-index 05fe7ac05f3..4b26bbb1d8a 100644
 --- a/arch/arm/mach-rockchip/Kconfig
 +++ b/arch/arm/mach-rockchip/Kconfig
-@@ -322,6 +322,7 @@ config ROCKCHIP_RK3506
+@@ -332,6 +332,7 @@ config ROCKCHIP_RK3506
  	select BOARD_LATE_INIT
  	select DM_REGULATOR_FIXED
  	select DM_RESET
@@ -30,7 +28,7 @@ index 05fe7ac05f3..4b26bbb1d8a 100644
  	imply BOOTSTD_FULL
  	imply DM_RNG
  	imply ENV_RELOC_GD_ENV_ADDR
-@@ -342,6 +343,7 @@ config ROCKCHIP_RK3506
+@@ -352,6 +353,7 @@ config ROCKCHIP_RK3506
  	imply SPL_FIT_SIGNATURE
  	imply SPL_LOAD_FIT
  	imply SPL_OF_CONTROL
@@ -38,7 +36,7 @@ index 05fe7ac05f3..4b26bbb1d8a 100644
  	imply SPL_PINCTRL
  	imply SPL_RAM
  	imply SPL_REGMAP
-@@ -349,6 +351,7 @@ config ROCKCHIP_RK3506
+@@ -359,6 +361,7 @@ config ROCKCHIP_RK3506
  	imply SPL_SYSCON
  	imply SYS_ARCH_TIMER
  	imply SYSRESET
@@ -46,7 +44,7 @@ index 05fe7ac05f3..4b26bbb1d8a 100644
  	help
  	  The Rockchip RK3506 is a ARM-based SoC with a tri-core Cortex-A7.
  
-@@ -566,6 +569,7 @@ config ROCKCHIP_STIMER_BASE
+@@ -679,6 +682,7 @@ config ROCKCHIP_STIMER_BASE
  
  config ROCKCHIP_SPL_RESERVE_IRAM
  	hex "Size of IRAM reserved in SPL"
@@ -54,12 +52,10 @@ index 05fe7ac05f3..4b26bbb1d8a 100644
  	default 0x0
  	depends on SPL
  	help
-diff --git a/arch/arm/mach-rockchip/sdram.c b/arch/arm/mach-rockchip/sdram.c
-index 1fb01e1c4b1..0d5f66c1d35 100644
 --- a/arch/arm/mach-rockchip/sdram.c
 +++ b/arch/arm/mach-rockchip/sdram.c
-@@ -311,7 +311,7 @@ int dram_init_banksize(void)
- 		gd->bd->bi_dram[1].size = ram_top - gd->bd->bi_dram[1].start;
+@@ -330,7 +330,7 @@ int dram_init_banksize(void)
+ 		gd->dram[0].size = ram_top - gd->dram[0].start;
  	}
  #else
 -#ifdef CONFIG_SPL_OPTEE_IMAGE
@@ -67,18 +63,16 @@ index 1fb01e1c4b1..0d5f66c1d35 100644
  	struct tos_parameter_t *tos_parameter;
  
  	tos_parameter = (struct tos_parameter_t *)(CFG_SYS_SDRAM_BASE +
-@@ -334,6 +334,9 @@ int dram_init_banksize(void)
+@@ -353,6 +353,9 @@ int dram_init_banksize(void)
  	}
  #else
- 	gd->bd->bi_dram[0].start = CFG_SYS_SDRAM_BASE;
+ 	gd->dram[0].start = CFG_SYS_SDRAM_BASE;
 +#ifdef CFG_SYS_SDRAM_RESERVE
-+	gd->bd->bi_dram[0].start += CFG_SYS_SDRAM_RESERVE;
++	gd->dram[0].start += CFG_SYS_SDRAM_RESERVE;
 +#endif
- 	gd->bd->bi_dram[0].size = top - gd->bd->bi_dram[0].start;
+ 	gd->dram[0].size = top - gd->dram[0].start;
  #endif
  #endif
-diff --git a/include/configs/rk3506_common.h b/include/configs/rk3506_common.h
-index 5e4ef67289f..c008fee8211 100644
 --- a/include/configs/rk3506_common.h
 +++ b/include/configs/rk3506_common.h
 @@ -11,6 +11,7 @@
@@ -89,6 +83,3 @@ index 5e4ef67289f..c008fee8211 100644
  #define SDRAM_MAX_SIZE			0xc0000000
  
  #ifndef ROCKCHIP_DEVICE_SETTINGS
--- 
-2.55.0
-
