@@ -12,7 +12,7 @@
  	sun9i-a80-cubieboard4.dtb
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-t113-tlink-ex.dts
-@@ -0,0 +1,517 @@
+@@ -0,0 +1,534 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 +
@@ -227,6 +227,12 @@
 +		regulator-always-on;
 +	};
 +
++	/* 用户空间控制：提供可写的 state 文件 */
++	modem_power_output: modem-power-output {
++		compatible = "regulator-output";
++		vout-supply = <&usb_modem_power>;  /* 引用上面的稳压器 */
++	};
++
 +	/* WIFI USB 模组使能 */
 +	wifi_power: wifi-power {
 +		compatible = "regulator-fixed";
@@ -238,6 +244,11 @@
 +		regulator-always-on;
 +	};
 +
++	/* 用户空间控制：提供可写的 state 文件 */
++	wifi_power_output: wifi-power-output {
++		compatible = "regulator-output";
++		vout-supply = <&wifi_power>;  /* 引用上面的稳压器 */
++	};
 +
 +	/* 默认不开启 */
 +	bt_power: bt-power {
@@ -246,8 +257,14 @@
 +		gpio = <&pio 6 14 GPIO_ACTIVE_HIGH>; /* PG14 */
 +		startup-delay-us = <200000>;	/* 200ms */
 +		enable-active-high;
-+		regulator-boot-on;
-+		regulator-always-on;
++		// regulator-boot-on;
++		// regulator-always-on;
++	};
++
++	/* 用户空间控制：提供可写的 state 文件 */
++	bt_power_output: bt-power-output {
++		compatible = "regulator-output";
++		vout-supply = <&bt_power>;  /* 引用上面的稳压器 */
 +	};
 +
 +	clocks {
