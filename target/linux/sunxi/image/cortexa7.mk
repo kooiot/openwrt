@@ -829,6 +829,7 @@ define Device/kooiot_tlink-e2
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-can-bcm kmod-can-raw ip-full\
     kmod-phy-motorcomm \
+	kmod-regulator-userspace-consumer \
     uqmi fdisk usbutils freeioe wwan-watch \
     luci-app-freeioe \
 	luci-proto-qmi luci-proto-3g luci-proto-ncm luci-proto-wwan \
@@ -853,6 +854,7 @@ define Device/kooiot_tlink-e2-spinand
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-can-bcm kmod-can-raw ip-full\
     kmod-phy-motorcomm \
+	kmod-regulator-userspace-consumer \
     uqmi fdisk usbutils freeioe wwan-watch \
     luci-app-freeioe \
 	luci-proto-qmi luci-proto-3g luci-proto-ncm luci-proto-wwan \
@@ -877,6 +879,7 @@ define Device/kooiot_tlink-ex
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-can-bcm kmod-can-raw ip-full\
     kmod-phy-motorcomm \
+	kmod-regulator-userspace-consumer \
     uqmi fdisk usbutils freeioe wwan-watch \
     luci-app-freeioe \
 	luci-proto-qmi luci-proto-3g luci-proto-ncm luci-proto-wwan \
@@ -901,6 +904,7 @@ define Device/kooiot_tlink-ex-spinand
     kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
 	kmod-can-bcm kmod-can-raw ip-full\
     kmod-phy-motorcomm \
+	kmod-regulator-userspace-consumer \
     uqmi fdisk usbutils freeioe wwan-watch \
     luci-app-freeioe \
 	luci-proto-qmi luci-proto-3g luci-proto-ncm luci-proto-wwan \
