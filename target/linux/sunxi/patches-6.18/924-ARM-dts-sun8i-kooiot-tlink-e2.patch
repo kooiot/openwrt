@@ -10,7 +10,7 @@
  	sun8i-t113s-netcube-nagami-keypad-carrier.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-t113s-tlink-e2.dts
-@@ -0,0 +1,638 @@
+@@ -0,0 +1,674 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 +
@@ -290,6 +290,42 @@
 +		// pinctrl-names = "default";
 +
 +		// status = "disabled";
++	};
++
++	/* WIFI USB 模组使能 */
++	wifi_power: wifi-power {
++		compatible = "regulator-fixed";
++		regulator-name = "wifi-en";
++		gpio = <&pio 6 13 GPIO_ACTIVE_HIGH>; /* PG13 */
++		startup-delay-us = <1000000>;       /* 1s ( 700ms最少 )*/
++		enable-active-high;
++		regulator-boot-on;
++		regulator-always-on;
++		status = "disabled";
++	};
++
++	/* 用户空间控制：提供可写的 state 文件 */
++	wifi_power_output: wifi-power-output {
++		compatible = "regulator-output";
++		vout-supply = <&wifi_power>;  /* 引用上面的稳压器 */
++		status = "disabled";
++	};
++
++	/* 默认不开启 */
++	bt_power: bt-power {
++		compatible = "regulator-fixed";
++		regulator-name = "bt-en";
++		gpio = <&pio 6 14 GPIO_ACTIVE_HIGH>; /* PG14 */
++		startup-delay-us = <200000>;	/* 200ms */
++		enable-active-high;
++		// regulator-boot-on;
++		// regulator-always-on;
++	};
++
++	/* 用户空间控制：提供可写的 state 文件 */
++	bt_power_output: bt-power-output {
++		compatible = "regulator-output";
++		vout-supply = <&bt_power>;  /* 引用上面的稳压器 */
 +	};
 +
 +	clocks {
