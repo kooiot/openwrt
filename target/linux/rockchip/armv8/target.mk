@@ -1,6 +1,8 @@
 ARCH:=aarch64
 SUBTARGET:=armv8
 BOARDNAME:=RK33xx/RK35xx boards (64 bit)
+FEATURES+=pci pcie
+KERNELNAME:=Image dtbs
 
 KERNELNAME:=Image dtbs
 

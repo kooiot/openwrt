@@ -1,9 +1,9 @@
 ARCH:=arm
 SUBTARGET:=armv7
-BOARDNAME:=RK3506 boards (32 bit)
+BOARDNAME:=RV11xx/RK3506 boards (32 bit)
 CPU_TYPE:=cortex-a7
 CPU_SUBTYPE:=neon-vfpv4
-FEATURES+=fpu
+FEATURES+=emmc fpu
 
 # 32-bit ARM needs a self-decompressing, position-independent zImage. A raw
 # "Image" is not relocatable and cannot be entered at the high, non-16MiB
@@ -11,6 +11,6 @@ FEATURES+=fpu
 KERNELNAME:=zImage dtbs
 
 define Target/Description
-	Build firmware image for Rockchip RK3506 devices.
+	Build firmware image for Rockchip RV11xx/RK3506 devices.
 	This firmware features a 32 bit kernel.
 endef
