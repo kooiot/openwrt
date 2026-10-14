@@ -12,7 +12,7 @@
  	sun9i-a80-cubieboard4.dtb
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-t113-tlink-e2.dts
-@@ -0,0 +1,674 @@
+@@ -0,0 +1,654 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 +
@@ -266,32 +266,14 @@
 +		};
 +	};
 +
-+	// rfkill_wlan needed by RTL official driver
-+	rfkill_wlan {
-+		compatible = "rfkill-gpio";
-+		rfkill-name = "wlan";
-+		rfkill-type = <1>;
-+		reset-gpios = <&pio 6 13 GPIO_ACTIVE_HIGH>;//模组WiFi使能引脚，根据实际原理图配置
-+		// shutdown-gpios = <&pio 6 13 GPIO_ACTIVE_LOW>;//电源控制引脚，根据实际原理图配置
-+		//status = "okay";
-+		status = "disabled";
-+	};
-+
++	/* 如果使用SDIO则可以使用wifi_pwrseq */
 +	wifi_pwrseq: wifi-pwrseq {
 +		compatible = "mmc-pwrseq-simple";
 +		// pinctrl-names = "default";
 +		// pinctrl-0 = <&wifi_en_pin>;
 +		post-power-on-delay-ms = <50>;
 +		reset-gpios = <&pio 6 13 GPIO_ACTIVE_LOW>; /* PG13 */
-+
-+		// clocks = <&ccu CLK_FANOUT1>;
-+		// clock-names = "ext_clock";
-+		// assigned-clocks = <&ccu CLK_FANOUT1>;
-+		// assigned-clock-rates = <32768>;
-+		// pinctrl-0 = <&clk_pg11_pin>;
-+		// pinctrl-names = "default";
-+
-+		// status = "disabled";
++		status = "disabled";
 +	};
 +
 +	/* WIFI USB 模组使能 */
@@ -303,14 +285,12 @@
 +		enable-active-high;
 +		regulator-boot-on;
 +		regulator-always-on;
-+		status = "disabled";
 +	};
 +
 +	/* 用户空间控制：提供可写的 state 文件 */
 +	wifi_power_output: wifi-power-output {
 +		compatible = "regulator-output";
 +		vout-supply = <&wifi_power>;  /* 引用上面的稳压器 */
-+		status = "disabled";
 +	};
 +
 +	/* 默认不开启 */
@@ -535,7 +515,7 @@
 +	// sd-uhs-ddr50;
 +	keep-power-in-suspend;
 +	ignore-pm-notify;
-+	status = "okay";
++	status = "disabled";
 +
 +	aw869a: sdio_wifi@1 {
 +		reg = <1>;
