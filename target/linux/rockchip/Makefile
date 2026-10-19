@@ -4,8 +4,8 @@ include $(TOPDIR)/rules.mk
 
 BOARD:=rockchip
 BOARDNAME:=Rockchip
-# FEATURES:=ext4 usb usbgadget gpio fpu rootfs-part boot-part squashfs
-FEATURES:=ext4 usb usbgadget gpio fpu pci pcie rootfs-part nand boot-part squashfs
+# FEATURES:=ext4 usb usbgadget gpio fpu rootfs-part boot-part squashfs legacy-sdcard
+FEATURES:=ext4 usb usbgadget gpio fpu pci pcie rootfs-part nand boot-part squashfs legacy-sdcard
 SUBTARGETS:=armv8 armv7
 
 KERNEL_PATCHVER:=6.18
@@ -16,7 +16,7 @@ endef
 
 include $(INCLUDE_DIR)/target.mk
 
-DEFAULT_PACKAGES += uboot-envtools partx-utils e2fsprogs mkf2fs kmod-gpio-button-hotplug
+DEFAULT_PACKAGES += uboot-envtools e2fsprogs mkf2fs kmod-gpio-button-hotplug
 DEFAULT_PACKAGES += ethtool fdisk blockd 
 DEFAULT_PACKAGES += wpad-basic-mbedtls
 DEFAULT_PACKAGES += input-support usbutils 
