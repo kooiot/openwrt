@@ -183,6 +183,14 @@ tlink_k4x_ch_spi() {
 	esac
 }
 
+tlink_ex_ch343() {
+	case "$DEVICENAME" in
+		ttyCH343USB0)
+			rm /dev/ttyS31
+			ln -s /dev/$DEVICENAME /dev/ttyS31
+			;;
+	esac
+}
 
 case $board in
 kooiot,tlink-m408)
@@ -202,6 +210,10 @@ kooiot,tlink-k2x)
 kooiot,tlink-k4a|\
 kooiot,tlink-k4g)
 	tlink_k4x_ch_spi
+	;;
+kooiot,tlink-ex-spinand|\
+kooiot,tlink-ex)
+	tlink_ex_ch343
 	;;
 esac
 
