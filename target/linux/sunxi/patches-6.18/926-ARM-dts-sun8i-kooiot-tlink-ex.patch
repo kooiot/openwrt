@@ -10,7 +10,7 @@
  	sun8i-t113s-netcube-nagami-keypad-carrier.dtb \
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-t113s-tlink-ex.dts
-@@ -0,0 +1,534 @@
+@@ -0,0 +1,540 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +// Copyright (C) 2024 Dirk Chang <dirk@kooiot.com>
 +
@@ -211,6 +211,12 @@
 +			gpio-export,name = "pcie_power";
 +			gpio-export,output=<0>;
 +			gpios = <&pio 3 3 GPIO_ACTIVE_LOW>; /* PD3 */
++		};
++
++		modem_usb_vbus {
++			gpio-export,name = "modem_usb_vbus";
++			gpio-export,output=<1>;
++			gpios = <&pio 3 22 GPIO_ACTIVE_HIGH>; /* PD22 */
 +		};
 +	};
 +
