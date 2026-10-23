@@ -57,6 +57,7 @@
 
 #define RTL838X_SPCL_TRAP_EAPOL_CTRL		(0x6988)
 #define RTL838X_SPCL_TRAP_SWITCH_MAC_CTRL	(0x6998)
+#define RTL838X_VLAN_PORT_AFT			(0x3A00)
 
 /* Switch interrupts */
 #define RTL838X_IMR_GLB				(0x1100)
@@ -233,6 +234,7 @@ const struct rtldsa_config rtldsa_838x_cfg = {
 	.imr_glb = RTL838X_IMR_GLB,
 	.n_counters = 128,
 	.n_pie_blocks = 12,
+	.pie_cls_flower = true,
 	.port_ignore = 0x1f,
 	.vlan_tables_read = otto_vlan_838x_tables_read,
 	.vlan_set_tagged = otto_vlan_838x_set_tagged,
@@ -250,6 +252,7 @@ const struct rtldsa_config rtldsa_838x_cfg = {
 	.vlan_profile_get = otto_vlan_838x_profile_get,
 	.vlan_profile_dump = otto_vlan_838x_profile_dump,
 	.vlan_profile_setup = otto_vlan_838x_profile_setup,
+	.vlan_port_aft = RTL838X_VLAN_PORT_AFT,
 	.vlan_fwd_on_inner = otto_vlan_838x_port_forward_on_inner,
 	.set_vlan_igr_filter = rtl838x_set_igr_filter,
 	.set_vlan_egr_filter = rtl838x_set_egr_filter,
@@ -274,6 +277,7 @@ const struct rtldsa_config rtldsa_838x_cfg = {
 	.read_cam = otto_l2_838x_read_cam,
 	.write_cam = otto_l2_838x_write_cam,
 	.vlan_port_keep_tag_set = otto_vlan_838x_port_keep_tag_set,
+	.vlan_port_qinq_set = otto_vlan_838x_port_qinq_set,
 	.vlan_port_pvidmode_set = otto_vlan_838x_port_pvid_mode_set,
 	.vlan_port_pvid_set = otto_vlan_838x_port_pvid_set,
 	.fast_age = otto_l2_838x_fast_age,
@@ -295,9 +299,9 @@ const struct rtldsa_config rtldsa_838x_cfg = {
 	.packet_cntr_read = otto_stats_838x_packet_cntr_read,
 	.packet_cntr_clear = otto_stats_838x_packet_cntr_clear,
 	.set_receive_management_action = rtl838x_set_receive_management_action,
-	.get_egress_rate = rtldsa_838x_get_egress_rate,
-	.set_egress_rate = rtldsa_838x_set_egress_rate,
-	.qos_init = rtldsa_838x_qos_init,
+	.get_egress_rate = otto_qos_838x_get_egress_rate,
+	.set_egress_rate = otto_qos_838x_set_egress_rate,
+	.qos_init = otto_qos_838x_init,
 	.lag_set_distribution_algorithm = otto_lag_838x_set_distribution_algorithm,
 	.lag_set_port_members = otto_lag_838x_set_port_members,
 	.lag_setup_algomask = otto_lag_83xx_setup_algomask,

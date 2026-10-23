@@ -840,6 +840,9 @@ static int rtldsa_port_bridge_join(struct dsa_switch *ds, int port, struct dsa_b
 		priv->ports[port].qinq = true;
 	}
 
+	priv->ports[port].bridged = true;
+	otto_vlan_port_untagged_set(priv, port);
+
 	rtldsa_update_port_member(priv, port, bridge.dev, true);
 
 	if (priv->r->set_static_move_action)
@@ -867,6 +870,9 @@ static void rtldsa_port_bridge_leave(struct dsa_switch *ds, int port, struct dsa
 		priv->r->vlan_port_qinq_set(priv, port, false);
 		priv->ports[port].qinq = false;
 	}
+
+	priv->ports[port].bridged = false;
+	otto_vlan_port_untagged_set(priv, port);
 
 	if (priv->r->set_static_move_action)
 		priv->r->set_static_move_action(port, true);
@@ -1511,6 +1517,7 @@ const struct dsa_switch_ops rtldsa_93xx_switch_ops = {
 	.port_pre_bridge_flags	= rtldsa_port_pre_bridge_flags,
 	.port_bridge_flags	= rtldsa_port_bridge_flags,
 
+	.port_setup_tc		= otto_tc_port_setup_tc,
 	.cls_flower_add		= otto_tc_cls_flower_add,
 	.cls_flower_del		= otto_tc_cls_flower_del,
 	.cls_flower_stats	= otto_tc_cls_flower_stats,
