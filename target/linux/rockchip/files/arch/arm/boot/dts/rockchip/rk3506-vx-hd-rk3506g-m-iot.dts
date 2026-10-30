@@ -166,8 +166,8 @@
 		pinctrl-0 = <&wdi_gpio>;
 		gpios = <&gpio1 RK_PB3 GPIO_ACTIVE_LOW>;
 		hw_algo = "toggle";
-		always-running = "true";
-		hw_margin_ms = <1600>;
+		always-running;
+		hw_margin_ms = <300>;
 	};
 };
 
