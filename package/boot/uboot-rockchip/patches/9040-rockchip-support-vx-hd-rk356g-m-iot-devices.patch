@@ -1,14 +1,27 @@
 --- /dev/null
 +++ b/arch/arm/dts/rk3506-vx-hd-rk3506g-m-iot-u-boot.dtsi
-@@ -0,0 +1,19 @@
+@@ -0,0 +1,31 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +
 +#include "rk3506-u-boot.dtsi"
 +
 +/ {
-+       chosen {
-+               u-boot,spl-boot-order = "same-as-spl", &sdmmc, &flash;
-+       };
++	chosen {
++		u-boot,spl-boot-order = "same-as-spl", &sdmmc, &flash;
++	};
++
++	watchdog: watchdog {
++		compatible = "linux,wdt-gpio";
++		gpios = <&gpio1 RK_PB3 GPIO_ACTIVE_LOW>;
++		hw_algo = "toggle";
++		always-running;
++		hw_margin_ms = <300>;
++		bootph-all; // 确保看门狗节点在任意时间可见
++	};
++};
++
++&gpio1 {
++    bootph-pre-ram;  /* 确保该 GPIO 控制器在 SPL (pre-ram 阶段) 被初始化 */
 +};
 +
 +&flash {
@@ -22,7 +35,7 @@
 +};
 --- /dev/null
 +++ b/arch/arm/dts/rk3506-vx-hd-rk3506g-m-iot.dts
-@@ -0,0 +1,233 @@
+@@ -0,0 +1,241 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +
 +/dts-v1/;
@@ -109,6 +122,14 @@
 +			pinctrl-names = "default";
 +			pinctrl-0 = <&status_led_pin>;
 +		};
++	};
++
++	watchdog: watchdog {
++		compatible = "linux,wdt-gpio";
++		gpios = <&gpio1 RK_PB3 GPIO_ACTIVE_LOW>;
++		hw_algo = "toggle";
++		always-running;
++		hw_margin_ms = <300>;
 +	};
 +};
 +
@@ -258,7 +279,7 @@
 +
 --- /dev/null
 +++ b/configs/vx-hd-rk3506g-m-iot_defconfig
-@@ -0,0 +1,68 @@
+@@ -0,0 +1,77 @@
 +CONFIG_ARM=y
 +CONFIG_SKIP_LOWLEVEL_INIT=y
 +CONFIG_COUNTER_FREQUENCY=24000000
@@ -327,9 +348,18 @@
 +CONFIG_ROCKCHIP_SDRAM_COMMON=y
 +CONFIG_LZ4=y
 +CONFIG_LZMA=y
++CONFIG_DM_WDT=y
++CONFIG_WDT=y
++CONFIG_WDT_GPIO=y
++CONFIG_SPL_WATCHDOG=y
++CONFIG_SPL_WDT_GPIO=y
++CONFIG_SPL_WDT=y
++CONFIG_SPL_DM_GPIO=y
++CONFIG_SPL_GPIO=y
++CONFIG_SPL_OF_REAL=y
 --- /dev/null
 +++ b/arch/arm/dts/rk3506-vx-hd-rk3506g-m-iot-spinand-u-boot.dtsi
-@@ -0,0 +1,19 @@
+@@ -0,0 +1,32 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +
 +#include "rk3506-u-boot.dtsi"
@@ -338,6 +368,19 @@
 +	chosen {
 +		u-boot,spl-boot-order = "same-as-spl", &sdmmc, &flash;
 +	};
++
++	watchdog: watchdog {
++		compatible = "linux,wdt-gpio";
++		gpios = <&gpio1 RK_PB3 GPIO_ACTIVE_LOW>;
++		hw_algo = "toggle";
++		always-running;
++		hw_margin_ms = <300>;
++		bootph-all; // 确保看门狗节点在任意时间可见
++	};
++};
++
++&gpio1 {
++    bootph-pre-ram;  /* 确保该 GPIO 控制器在 SPL (pre-ram 阶段) 被初始化 */
 +};
 +
 +&flash {
@@ -387,7 +430,7 @@
 +};
 --- /dev/null
 +++ b/configs/vx-hd-rk3506g-m-iot-spinand_defconfig
-@@ -0,0 +1,95 @@
+@@ -0,0 +1,104 @@
 +CONFIG_ARM=y
 +CONFIG_SKIP_LOWLEVEL_INIT=y
 +CONFIG_COUNTER_FREQUENCY=24000000
@@ -483,3 +526,12 @@
 +CONFIG_ROCKCHIP_SDRAM_COMMON=y
 +CONFIG_LZ4=y
 +CONFIG_LZMA=y
++CONFIG_DM_WDT=y
++CONFIG_WDT=y
++CONFIG_WDT_GPIO=y
++CONFIG_SPL_WATCHDOG=y
++CONFIG_SPL_WDT_GPIO=y
++CONFIG_SPL_WDT=y
++CONFIG_SPL_DM_GPIO=y
++CONFIG_SPL_GPIO=y
++CONFIG_SPL_OF_REAL=y
