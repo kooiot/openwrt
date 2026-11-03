@@ -1,0 +1,61 @@
+--- a/arch/arm/kernel/setup.c
++++ b/arch/arm/kernel/setup.c
+@@ -523,6 +523,50 @@ static void __init elf_hwcap_fixup(void)
+ 		elf_hwcap &= ~HWCAP_SWP;
+ }
+ 
++#define GPIO1_BASE 0xFF870000
++#define GPIO_SWPORT_DR_OFFSET  0x0000
++#define GPIO_SWPORT_DDR_OFFSET 0x0008
++
++#define GPIO_BIT (1 << 11)  // GPIO1_B3 -> bit11 = 0x800
++
++void __iomem *gpio1_base;
++void __iomem *gpio1_dr;
++void __iomem *gpio1_ddr;
++
++static void __init gpio_wdt_toggle(void)
++{
++    u32 val;
++    u32 curr_val;
++
++    gpio1_base = ioremap(GPIO1_BASE, 0x100);
++    if (!gpio1_base) {
++        pr_err("ioremap failed\n");
++        return;
++    }
++    gpio1_dr = gpio1_base + GPIO_SWPORT_DR_OFFSET;
++    gpio1_ddr = gpio1_base + GPIO_SWPORT_DDR_OFFSET;
++
++    // 1. 设置GPIO1_B3为输出：DDR寄存器写掩码和数据都置bit11
++    val = (GPIO_BIT << 16) | GPIO_BIT;
++    iowrite32(val, gpio1_ddr);
++
++    // 2. 读取当前DR寄存器值（低16位有效）
++    curr_val = ioread32(gpio1_dr) & 0xFFFF;
++
++    // 3. 取反bit11
++    if (curr_val & GPIO_BIT)
++        curr_val &= ~GPIO_BIT;  // bit11 = 0
++    else
++        curr_val |= GPIO_BIT;   // bit11 = 1
++
++    // 4. 写回DR寄存器，写掩码bit11有效，数据是取反后值的bit11
++    val = (GPIO_BIT << 16) | (curr_val & GPIO_BIT);
++    iowrite32(val, gpio1_dr);
++
++    iounmap(gpio1_base);
++}
++
++
+ /*
+  * cpu_init - initialise one CPU.
+  *
+@@ -610,6 +654,7 @@ void __init smp_setup_processor_id(void)
+ 	 */
+ 	set_my_cpu_offset(0);
+ 
++	gpio_wdt_toggle();
+ 	pr_info("Booting Linux on physical CPU 0x%x\n", mpidr);
+ }
+ 
