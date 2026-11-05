@@ -153,8 +153,6 @@ case $(board_name) in
 	kooiot,tlink-e1|\
 	kooiot,tlink-e2|\
 	kooiot,tlink-e2-spinand|\
-	kooiot,tlink-ex|\
-	kooiot,tlink-ex-spinand|\
 	kooiot,tlink-m408|\
 	kooiot,tlink-m416)
 		tlink_csq_leds_mixed
@@ -162,6 +160,8 @@ case $(board_name) in
 	kooiot,tlink-dly-e102|\
 	kooiot,tlink-dly-e102-spinand|\
 	kooiot,tlink-dly-e204|\
+	kooiot,tlink-ex|\
+	kooiot,tlink-ex-spinand|\
 	kooiot,tlink-k2|\
 	kooiot,tlink-k2x|\
 	kooiot,tlink-k4a|\
