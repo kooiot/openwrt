@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/configs/tlink_k2x_defconfig
-@@ -0,0 +1,32 @@
+@@ -0,0 +1,34 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
 +CONFIG_SPL=y
@@ -23,7 +23,7 @@
 +CONFIG_SUN8I_EMAC=y
 +CONFIG_AXP_GPIO=y
 +CONFIG_AXP_DCDC3_VOLT=1200
-+CONFIG_AXP_DCDC5_VOLT=1200
++CONFIG_AXP_DCDC5_VOLT=1250
 +CONFIG_AXP_ALDO1_VOLT=3300
 +CONFIG_AXP_ALDO2_VOLT=1800
 +CONFIG_AXP_DLDO1_VOLT=3300
@@ -33,6 +33,8 @@
 +CONFIG_SCSI=y
 +CONFIG_USB_ECHI_HCD=y
 +CONFIG_USB_OCHI_HCD=y
++CONFIG_WDT=y
++CONFIG_WDT_SUNXI=y
 +++ a/arch/arm/dts/Makefile
 +++ b/arch/arm/dts/Makefile
 @@ -547,6 +547,7 @@
@@ -45,7 +47,7 @@
  dtb-$(CONFIG_MACH_SUN8I_V3S) += \
 --- /dev/null
 +++ b/arch/arm/dts/sun8i-r40-tlink-k2x.dts
-@@ -0,0 +1,286 @@
+@@ -0,0 +1,290 @@
 +/*
 + * Copyright (C) 2022 Dirk Chang <dirk@kooiot.com>
 + *
@@ -264,8 +266,8 @@
 +
 +&reg_dcdc5 {
 +	regulator-always-on;
-+	regulator-min-microvolt = <1200000>;
-+	regulator-max-microvolt = <1200000>;
++	regulator-min-microvolt = <1250000>;
++	regulator-max-microvolt = <1250000>;
 +	regulator-name = "vcc-dram";
 +};
 +
@@ -331,4 +333,8 @@
 +&usbphy {
 +	usb0_vbus-supply = <&reg_usb_vcc5v0>;
 +	status = "okay";
++};
++
++&wdt {
++	sunxi,start-on-init;
 +};
