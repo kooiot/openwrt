@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/configs/tlink_k4a_defconfig
-@@ -0,0 +1,37 @@
+@@ -0,0 +1,39 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
 +CONFIG_DEFAULT_DEVICE_TREE="sun8i-r40-tlink-k4a"
@@ -36,11 +36,13 @@
 +CONFIG_AXP_ELDO2_VOLT=1200
 +CONFIG_AXP_ELDO3_VOLT=2500
 +CONFIG_SCSI=y
-+CONFIG_USB_ECHI_HCD=y
-+CONFIG_USB_OCHI_HCD=y
++CONFIG_USB_EHCI_HCD=y
++CONFIG_USB_OHCI_HCD=y
++CONFIG_WDT=y
++CONFIG_WDT_SUNXI=y
 --- /dev/null
 +++ b/configs/tlink_k4g_defconfig
-@@ -0,0 +1,37 @@
+@@ -0,0 +1,39 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
 +CONFIG_DEFAULT_DEVICE_TREE="sun8i-r40-tlink-k4g"
@@ -76,8 +78,10 @@
 +CONFIG_AXP_ELDO2_VOLT=1200
 +CONFIG_AXP_ELDO3_VOLT=2500
 +CONFIG_SCSI=y
-+CONFIG_USB_ECHI_HCD=y
-+CONFIG_USB_OCHI_HCD=y
++CONFIG_USB_EHCI_HCD=y
++CONFIG_USB_OHCI_HCD=y
++CONFIG_WDT=y
++CONFIG_WDT_SUNXI=y
 --- /dev/null
 +++ b/arch/arm/dts/sun8i-r40-tlink-k4x.dtsi
 @@ -0,0 +1,220 @@
@@ -259,8 +263,8 @@
 +
 +&reg_dcdc5 {
 +	regulator-always-on;
-+	regulator-min-microvolt = <1200000>;
-+	regulator-max-microvolt = <1200000>;
++	regulator-min-microvolt = <1250000>;
++	regulator-max-microvolt = <1250000>;
 +	regulator-name = "vcc-dram";
 +};
 +
