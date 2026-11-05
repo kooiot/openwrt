@@ -133,31 +133,31 @@
 +
 +		status_led {
 +			linux,default-trigger = "heartbeat";
-+			label = "blue:status";
++			label = "kooiot:green:status";
 +			gpios = <&pio 4 11 GPIO_ACTIVE_LOW>; /* PE11 */
 +		};
 +
-+		modem {
-+			label = "kooiot:green:modem";
-+			gpios = <&pio 3 17 GPIO_ACTIVE_LOW>; /* PD17 */
-+			default-state = "off";
-+		};
-+
 +		bs {
-+			label = "kooiot:red:bs";
++			label = "kooiot:green:bs";
 +			gpios = <&pio 3 16 GPIO_ACTIVE_LOW>; /* PD16 */
 +			default-state = "off";
 +		};
 +
 +		gs {
 +			label = "kooiot:green:gs";
-+			gpios = <&pio 3 19 GPIO_ACTIVE_LOW>; /* PD19 */
++			gpios = <&pio 3 17 GPIO_ACTIVE_LOW>; /* PD17 */
++			default-state = "off";
++		};
++
++		modem {
++			label = "kooiot:green:modem";
++			gpios = <&pio 3 18 GPIO_ACTIVE_LOW>; /* PD18 */
 +			default-state = "off";
 +		};
 +
 +		cloud {
 +			label = "kooiot:green:cloud";
-+			gpios = <&pio 3 18 GPIO_ACTIVE_HIGH>; /* PD18 */
++			gpios = <&pio 3 19 GPIO_ACTIVE_LOW>; /* PD19 */
 +			default-state = "off";
 +		};
 +	};
