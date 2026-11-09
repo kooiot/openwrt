@@ -81,7 +81,9 @@ proto_qmi_setup() {
 
 	echo "Waiting for SIM initialization"
 	local uninitialized_timeout=0
-	while uqmi -s -d "$device" --get-pin-status | grep '"UIM uninitialized"' > /dev/null; do
+	# timeout 3s for first call to avoid hanging uqmi
+	uqmi -d "$device" -t 3000 --get-pin-status > /dev/null 2>&1
+	while uqmi -s -d "$device" -t 1000 --get-pin-status | grep '"UIM uninitialized"' > /dev/null; do
 		[ -e "$device" ] || return 1
 		if [ "$uninitialized_timeout" -lt "$timeout" -o "$timeout" = "0" ]; then
 			let uninitialized_timeout++
@@ -94,9 +96,9 @@ proto_qmi_setup() {
 		fi
 	done
 
-	if uqmi -s -d "$device" --get-pin-status | grep '"Not supported"\|"Invalid QMI command"' > /dev/null; then
+	if uqmi -s -d "$device" -t 1000 --get-pin-status | grep '"Not supported"\|"Invalid QMI command"' > /dev/null; then
 		[ -n "$pincode" ] && {
-			uqmi -s -d "$device" --verify-pin1 "$pincode" > /dev/null || uqmi -s -d "$device" --uim-verify-pin1 "$pincode" > /dev/null || {
+			uqmi -s -d "$device" -t 1000 --verify-pin1 "$pincode" > /dev/null || uqmi -s -d "$device" -t 1000 --uim-verify-pin1 "$pincode" > /dev/null || {
 				echo "Unable to verify PIN"
 				proto_notify_error "$interface" PIN_FAILED
 				proto_block_restart "$interface"
@@ -105,7 +107,7 @@ proto_qmi_setup() {
 		}
 	else
 		. /usr/share/libubox/jshn.sh
-		json_load "$(uqmi -s -d "$device" --get-pin-status)"
+		json_load "$(uqmi -s -d "$device" -t 1000 --get-pin-status)"
 		json_get_var pin1_status pin1_status
 		json_get_var pin1_verify_tries pin1_verify_tries
 
@@ -127,7 +129,7 @@ proto_qmi_setup() {
 					return 1
 				}
 				if [ -n "$pincode" ]; then
-					uqmi -s -d "$device" --verify-pin1 "$pincode" > /dev/null 2>&1 || uqmi -s -d "$device" --uim-verify-pin1 "$pincode" > /dev/null 2>&1 || {
+					uqmi -s -d "$device" -t 1000 --verify-pin1 "$pincode" > /dev/null 2>&1 || uqmi -s -d "$device" -t 1000 --uim-verify-pin1 "$pincode" > /dev/null 2>&1 || {
 						echo "Unable to verify PIN"
 						proto_notify_error "$interface" PIN_FAILED
 						proto_block_restart "$interface"
@@ -153,7 +155,7 @@ proto_qmi_setup() {
 	fi
 
 	if [ -n "$plmn" ]; then
-		json_load "$(uqmi -s -d "$device" --get-plmn)"
+		json_load "$(uqmi -s -d "$device" -t 1000 --get-plmn)"
 		json_get_var plmn_mode mode
 		json_get_vars mcc mnc || {
 			mcc=0
@@ -177,7 +179,7 @@ proto_qmi_setup() {
 	fi
 
 	if [ -n "$mcc" -a -n "$mnc" ]; then
-		uqmi -s -d "$device" --set-plmn --mcc "$mcc" --mnc "$mnc" > /dev/null 2>&1 || {
+		uqmi -s -d "$device" -t 1000 --set-plmn --mcc "$mcc" --mnc "$mnc" > /dev/null 2>&1 || {
 			echo "Unable to set PLMN"
 			proto_notify_error "$interface" PLMN_FAILED
 			proto_block_restart "$interface"
@@ -186,15 +188,15 @@ proto_qmi_setup() {
 	fi
 
 	# Cleanup current state if any
-	uqmi -s -d "$device" --stop-network 0xffffffff --autoconnect > /dev/null 2>&1
+	uqmi -s -d "$device" -t 1000 --stop-network 0xffffffff --autoconnect > /dev/null 2>&1
 
 	# Go online
-	uqmi -s -d "$device" --set-device-operating-mode online > /dev/null 2>&1
+	uqmi -s -d "$device" -t 1000 --set-device-operating-mode online > /dev/null 2>&1
 
 	# Set IP format
-	uqmi -s -d "$device" --set-data-format 802.3 > /dev/null 2>&1
-	uqmi -s -d "$device" --wda-set-data-format 802.3 > /dev/null 2>&1
-	dataformat="$(uqmi -s -d "$device" --wda-get-data-format)"
+	uqmi -s -d "$device" -t 1000 --set-data-format 802.3 > /dev/null 2>&1
+	uqmi -s -d "$device" -t 1000 --wda-set-data-format 802.3 > /dev/null 2>&1
+	dataformat="$(uqmi -s -d "$device" -t 1000 --wda-get-data-format)"
 
 	if [ "$dataformat" = '"raw-ip"' ]; then
 
@@ -207,16 +209,16 @@ proto_qmi_setup() {
 		echo "Y" > /sys/class/net/$ifname/qmi/raw_ip
 	fi
 
-	uqmi -s -d "$device" --sync > /dev/null 2>&1
+	uqmi -s -d "$device" -t 1000 --sync > /dev/null 2>&1
 
-	uqmi -s -d "$device" --network-register > /dev/null 2>&1
+	uqmi -s -d "$device" -t 20000 --network-register > /dev/null 2>&1
 
 	echo "Waiting for network registration"
 	sleep 1
 	local registration_timeout=0
 	local registration_state=""
 	while true; do
-		registration_state=$(uqmi -s -d "$device" --get-serving-system 2>/dev/null | jsonfilter -e "@.registration" 2>/dev/null)
+		registration_state=$(uqmi -s -d "$device" -t 1000 --get-serving-system 2>/dev/null | jsonfilter -e "@.registration" 2>/dev/null)
 
 		[ "$registration_state" = "registered" ] && break
 
@@ -224,7 +226,7 @@ proto_qmi_setup() {
 			if [ "$registration_timeout" -lt "$timeout" ] || [ "$timeout" = "0" ]; then
 				[ "$registration_state" = "searching" ] || {
 					echo "Device stopped network registration. Restart network registration"
-					uqmi -s -d "$device" --network-register > /dev/null 2>&1
+					uqmi -s -d "$device" -t 20000 --network-register > /dev/null 2>&1
 				}
 				let registration_timeout++
 				sleep 1
@@ -241,7 +243,7 @@ proto_qmi_setup() {
 		return 1
 	done
 
-	[ -n "$modes" ] && uqmi -s -d "$device" --set-network-modes "$modes" > /dev/null 2>&1
+	[ -n "$modes" ] && uqmi -s -d "$device" -t 1000 --set-network-modes "$modes" > /dev/null 2>&1
 
 	echo "Starting network $interface"
 
@@ -256,16 +258,16 @@ proto_qmi_setup() {
 	fi
 
 	[ "$pdptype" = "ip" -o "$pdptype" = "ipv4v6" ] && {
-		cid_4=$(uqmi -s -d "$device" --get-client-id wds)
+		cid_4=$(uqmi -s -d "$device" -t 1000 --get-client-id wds)
 		if ! [ "$cid_4" -eq "$cid_4" ] 2> /dev/null; then
 			echo "Unable to obtain client ID"
 			proto_notify_error "$interface" NO_CID
 			return 1
 		fi
 
-		uqmi -s -d "$device" --set-client-id wds,"$cid_4" --set-ip-family ipv4 > /dev/null 2>&1
+		uqmi -s -d "$device" -t 1000 --set-client-id wds,"$cid_4" --set-ip-family ipv4 > /dev/null 2>&1
 
-		pdh_4=$(uqmi -s -d "$device" --set-client-id wds,"$cid_4" \
+		pdh_4=$(uqmi -s -d "$device" -t 5000 --set-client-id wds,"$cid_4" \
 			--start-network \
 			${apn:+--apn $apn} \
 			${profile:+--profile $profile} \
@@ -277,32 +279,32 @@ proto_qmi_setup() {
 		# pdh_4 is a numeric value on success
 		if ! [ "$pdh_4" -eq "$pdh_4" ] 2> /dev/null; then
 			echo "Unable to connect IPv4"
-			uqmi -s -d "$device" --set-client-id wds,"$cid_4" --release-client-id wds > /dev/null 2>&1
+			uqmi -s -d "$device" -t 1000 --set-client-id wds,"$cid_4" --release-client-id wds > /dev/null 2>&1
 			proto_notify_error "$interface" CALL_FAILED
 			return 1
 		fi
 
 		# Check data connection state
-		connstat=$(uqmi -s -d "$device" --get-data-status)
+		connstat=$(uqmi -s -d "$device" -t 1000 --get-data-status)
 		[ "$connstat" == '"connected"' ] || {
 			echo "No data link!"
-			uqmi -s -d "$device" --set-client-id wds,"$cid_4" --release-client-id wds > /dev/null 2>&1
+			uqmi -s -d "$device" -t 1000 --set-client-id wds,"$cid_4" --release-client-id wds > /dev/null 2>&1
 			proto_notify_error "$interface" CALL_FAILED
 			return 1
 		}
 	}
 
 	[ "$pdptype" = "ipv6" -o "$pdptype" = "ipv4v6" ] && {
-		cid_6=$(uqmi -s -d "$device" --get-client-id wds)
+		cid_6=$(uqmi -s -d "$device" -t 1000 --get-client-id wds)
 		if ! [ "$cid_6" -eq "$cid_6" ] 2> /dev/null; then
 			echo "Unable to obtain client ID"
 			proto_notify_error "$interface" NO_CID
 			return 1
 		fi
 
-		uqmi -s -d "$device" --set-client-id wds,"$cid_6" --set-ip-family ipv6 > /dev/null 2>&1
+		uqmi -s -d "$device" -t 1000 --set-client-id wds,"$cid_6" --set-ip-family ipv6 > /dev/null 2>&1
 
-		pdh_6=$(uqmi -s -d "$device" --set-client-id wds,"$cid_6" \
+		pdh_6=$(uqmi -s -d "$device" -t 5000 --set-client-id wds,"$cid_6" \
 			--start-network \
 			${apn:+--apn $apn} \
 			${profile:+--profile $profile} \
@@ -314,16 +316,16 @@ proto_qmi_setup() {
 		# pdh_6 is a numeric value on success
 		if ! [ "$pdh_6" -eq "$pdh_6" ] 2> /dev/null; then
 			echo "Unable to connect IPv6"
-			uqmi -s -d "$device" --set-client-id wds,"$cid_6" --release-client-id wds > /dev/null 2>&1
+			uqmi -s -d "$device" -t 1000 --set-client-id wds,"$cid_6" --release-client-id wds > /dev/null 2>&1
 			proto_notify_error "$interface" CALL_FAILED
 			return 1
 		fi
 
 		# Check data connection state
-		connstat=$(uqmi -s -d "$device" --get-data-status)
+		connstat=$(uqmi -s -d "$device" -t 1000 --get-data-status)
 		[ "$connstat" == '"connected"' ] || {
 			echo "No data link!"
-			uqmi -s -d "$device" --set-client-id wds,"$cid_6" --release-client-id wds > /dev/null 2>&1
+			uqmi -s -d "$device" -t 1000 --set-client-id wds,"$cid_6" --release-client-id wds > /dev/null 2>&1
 			proto_notify_error "$interface" CALL_FAILED
 			return 1
 		}
@@ -348,7 +350,7 @@ proto_qmi_setup() {
 
 	[ -n "$pdh_6" ] && {
 		if [ -z "$dhcpv6" -o "$dhcpv6" = 0 ]; then
-			json_load "$(uqmi -s -d $device --set-client-id wds,$cid_6 --get-current-settings)"
+			json_load "$(uqmi -s -d $device -t 1000 --set-client-id wds,$cid_6 --get-current-settings)"
 			json_select ipv6
 			json_get_var ip_6 ip
 			json_get_var gateway_6 gateway
@@ -389,7 +391,7 @@ proto_qmi_setup() {
 
 	[ -n "$pdh_4" ] && {
 		if [ "$dhcp" = 0 ]; then
-			json_load "$(uqmi -s -d $device --set-client-id wds,$cid_4 --get-current-settings)"
+			json_load "$(uqmi -s -d $device -t 1000 --set-client-id wds,$cid_4 --get-current-settings)"
 			json_select ipv4
 			json_get_var ip_4 ip
 			json_get_var gateway_4 gateway
@@ -432,16 +434,16 @@ qmi_wds_stop() {
 
 	[ -n "$cid" ] || return
 
-	uqmi -s -d "$device" --set-client-id wds,"$cid" \
+	uqmi -s -d "$device" -t 1000 --set-client-id wds,"$cid" \
 		--stop-network 0xffffffff \
 		--autoconnect > /dev/null 2>&1
 
 	[ -n "$pdh" ] && {
-		uqmi -s -d "$device" --set-client-id wds,"$cid" \
+		uqmi -s -d "$device" -t 1000 --set-client-id wds,"$cid" \
 			--stop-network "$pdh" > /dev/null 2>&1
 	}
 
-	uqmi -s -d "$device" --set-client-id wds,"$cid" \
+	uqmi -s -d "$device" -t 1000 --set-client-id wds,"$cid" \
 		--release-client-id wds > /dev/null 2>&1
 }
 
