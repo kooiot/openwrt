@@ -41,7 +41,7 @@ proto_qmi_setup() {
 	json_get_vars pdptype profile dhcp dhcpv6 autoconnect plmn ip4table
 	json_get_vars ip6table timeout mtu $PROTO_DEFAULT_OPTIONS
 
-	[ "$timeout" = "" ] && timeout="10"
+	[ "$timeout" = "" ] && timeout="30"
 
 	[ "$metric" = "" ] && metric="0"
 
