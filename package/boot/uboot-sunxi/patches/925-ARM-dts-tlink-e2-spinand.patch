@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/configs/tlink_e2_spinand_defconfig
-@@ -0,0 +1,49 @@
+@@ -0,0 +1,52 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
 +CONFIG_DEFAULT_DEVICE_TREE="sun8i-t113s-tlink-e2-spinand"
@@ -50,6 +50,9 @@
 +# CONFIG_UBI_SILENCE_MSG is not set
 +# CONFIG_MTD_UBI_FASTMAP=y
 +# CONFIG_MTD_UBI_FASTMAP_AUTOCONVERT=1
++CONFIG_LED=y
++CONFIG_LED_GPIO=y
++CONFIG_LED_BLINK=y
 --- /dev/null
 +++ b/arch/arm/dts/sun8i-t113s-tlink-e2-spinand.dts
 @@ -0,0 +1,37 @@
