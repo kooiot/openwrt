@@ -101,93 +101,6 @@ tlink_add_wwan_interface() {
 	uci commit network
 }
 
-tlink_add_qmi_interface() {
-	uci set network.4g_wan='interface'
-	uci set network.4g_wan.proto='qmi'
-	uci set network.4g_wan.device='/dev/cdc-wdm0'
-	uci set network.4g_wan.metric='10'
-	uci set network.4g_wan.auth='none'
-	uci set network.4g_wan.pdptype='ipv4'
-	uci commit network
-
-	uci set 3ginfo.@3ginfo[0].device='/dev/ttyUSB2'
-	uci commit 3ginfo
-}
-
-tlink_add_4g_wan() {
-	local AT_PORT
-	local AT_PORT_INFO
-	local S_TYPE='umts'
-	case "$(board_name)" in
-		"kooiot,tlink-m408"|\
-		"kooiot,tlink-m416")
-		AT_PORT='/dev/ttyUSB0' # Fibocom MC615
-		AT_PORT_INFO='/dev/ttyUSB5'
-		;;
-		"kooiot,tlink-s1")
-		AT_PORT='/dev/ttyUSB2' # EC200A
-		AT_PORT_INFO='/dev/ttyUSB1'
-		;;
-		*)
-		AT_PORT='/dev/ttyUSB2' # EC200T or EC200A
-		AT_PORT_INFO='/dev/ttyUSB1'
-		;;
-	esac
-
-	# detect fibocom NL668
-	lsusb -d "1508:1001" > /dev/null
-	if [ $? -eq 0 ]
-	then
-		echo "Fibocom NL668-CN found!" > /dev/kmsg
-		AT_PORT='/dev/ttyUSB1'
-		AT_PORT_INFO='/dev/ttyUSB2'
-	fi
-	# detect Fibocom MC611-CN
-	lsusb -d "2cb7:0a0b" > /dev/null
-	if [ $? -eq 0 ]
-	then
-		echo "Fibocom FM661-CN found!" > /dev/kmsg
-		AT_PORT='/dev/ttyUSB0' # USB3-AT USB0-MODEM
-		AT_PORT_INFO='/dev/ttyUSB3'
-		S_TYPE='fibocom'
-	fi
-	# detect Fibocom MC611-CN (2)
-	lsusb -d "2cb7:0a0a" > /dev/null
-	if [ $? -eq 0 ]
-	then
-		echo "Fibocom FM661-CN(2) found!" > /dev/kmsg
-		AT_PORT='/dev/ttyUSB0' # USB3-AT USB0-MODEM
-		AT_PORT_INFO='/dev/ttyUSB3'
-		S_TYPE='fibocom'
-	fi
-
-	uci set network.4g_wan='interface'
-	uci set network.4g_wan.service=${S_TYPE}
-	uci set network.4g_wan.proto='3g'
-	uci set network.4g_wan.device=${AT_PORT}
-	uci set network.4g_wan.ipv6='auto'
-	uci set network.4g_wan.apn='3gnet'
-	uci set network.4g_wan.metric='10'
-	uci commit network
-
-	uci set 3ginfo.@3ginfo[0].device=${AT_PORT_INFO}
-	uci commit 3ginfo
-
-	uci set system.led_modem.dev='3g-4g_wan'
-	uci commit system
-}
-
-# WAN is eth1 which is usb-eth has not unique MAC
-tlink_set_wan_mac() {
-	local MACADDR=$(tlink_gen_mac_efuse 2)
-
-	uci set network.wan.macaddr=${MACADDR}
-	uci set network.wan6.macaddr=${MACADDR}
-	uci commit network
-
-	return
-}
-
 tlink_check_boot() {
 	mkdir -p /tmp/boot_p1
 	mount /dev/mmcblk0p1 /tmp/boot_p1
@@ -236,83 +149,17 @@ tlink_sd_default () {
 	fi
 }
 
-tlink_init_4g() {
-	[ -e /dev/cdc-wdm0 ] && {
-		# QMI interface
-		echo "QMI module found!!!" > /dev/kmsg
-		tlink_add_qmi_interface
-	} || {
-		echo "Initial 4G ppp configuration!!!" > /dev/kmsg
-		tlink_add_4g_wan
-	}
-}
+tlink_tty_alias() {
+	local item=$(uci add tty-alias serial)
+	uci batch <<EOF
+set tty-alias.$item.name='$1'
+set tty-alias.$item.id='$2'
+set tty-alias.$item.type='$3'
+set tty-alias.$item.locked='1'
+set tty-alias.$item.overwrite='1'
+EOF
+uci commit tty-alias
 
-tlink_add_5g_wan() {
-	# detect port by lsusb
-	# EC20 USB2-AT USB3-MODEM
-	local AT_PORT_INFO='/dev/ttyUSB2'
-	local AT_PORT='/dev/ttyUSB3'
-	lsusb -d "2dee:4d52" > /dev/null
-	if [ $? -eq 0 ]
-	then
-		echo "MEIGLink SRM821 found!" > /dev/kmsg
-		AT_PORT='/dev/ttyUSB1' # USB2-AT USB1-MODEM
-	fi
-	lsusb -d "2c7c:0900" > /dev/null
-	if [ $? -eq 0 ]
-	then
-		echo "Quectel RM500U-CN found!" > /dev/kmsg
-		AT_PORT='/dev/ttyUSB3' # USB2-AT USB3-MODEM
-	fi
-	lsusb -d "2cb7:0a05" > /dev/null
-	if [ $? -eq 0 ]
-	then
-		echo "Fibocom FM650-CN found!" > /dev/kmsg
-		AT_PORT='/dev/ttyUSB0' # USB1-AT USB0-MODEM
-		AT_PORT_INFO='/dev/ttyUSB1'
-	fi
-	lsudb -d "2c7c:600b" > /dev/null
-	if [ $? -eq 0 ]
-	then
-		echo "Fibocom RG255AA found!" > /dev/kmsg
-		AT_PORT='/dev/ttyUSB2' # USB1-AT USB2-MODEM
-		AT_PORT_INFO='/dev/ttyUSB1'
-	fi
-
-	uci set network.5g_wan='interface'
-	uci set network.5g_wan.proto='ncm'
-	uci set network.5g_wan.device=${AT_PORT}
-	uci set network.5g_wan.metric='10'
-	uci set network.5g_wan.apn='cmnet'
-	uci set network.5g_wan.pdptype='ipv4'
-	uci set network.5g_wan.delay='10'
-	uci commit network
-
-	uci set 3ginfo.@3ginfo[0].device=${AT_PORT_INFO}
-	uci commit 3ginfo
-
-	uci set system.led_modem.dev='usb0'
-	uci commit system
-}
-
-tlink_init_5g() {
-	# Fibcom NL668 using ppp
-	lsusb -d "1508:1001" > /dev/null
-	if [ $? -eq 0 ]
-	then
-		echo "Fibocom NL668 found!" > /dev/kmsg
-		tlink_add_4g_wan
-		return
-	fi
-
-	[ -e /dev/cdc-wdm0 ] && {
-		# QMI interface
-		echo "QMI module found!!!" > /dev/kmsg
-		tlink_add_qmi_interface
-	} || {
-		echo "Initial 5G configuration...." > /dev/kmsg
-		tlink_add_5g_wan
-	}
 }
 
 tlink_default() {
@@ -341,55 +188,20 @@ tlink_default() {
 	fi
 
 	case "$(board_name)" in
-		"kooiot,tlink-k2x"|\
-		"kooiot,tlink-k4a"|\
-		"kooiot,tlink-k4g"|\
-		"kooiot,tlink-k2")
-			#tlink_init_5g
-			;;
-		"kooiot,tlink-x3")
-			#tlink_add_qmi_interface
+		"kooiot,tlink-ex"|\
+		"kooiot,tlink-ex-spinand")
+			tlink_tty_alias "ttyS31" "2-1.4:0" "usb_bus"
 			;;
 		*)
-			#tlink_init_4g
 			;;
 	esac
 
 	# add wwan interface
 	tlink_add_wwan_interface
 
-	# ETH MAC for usb-eth mac been set in board.d/02_network
-	#case "$(board_name)" in
-	#	"kooiot,tlink-x1"|\
-	#	"kooiot,tlink-x1s"|\
-	#	"kooiot,tlink-x3"|\
-	#	"kooiot,tlink-k1")
-	#	tlink_set_wan_mac;;
-	#esac
-
 	# set ttylogin (for ttyS0, default will promote console with password)
 	# set system.@system[0].ttylogin='1'
 	# uci commit system
-}
-
-xxx() {
-
-# add mac address from U-Boot partition to lan and wan devices
-	MTD=`grep -e 'u-boot' /proc/mtd`
-	MTD=`echo ${MTD} | sed 's/[a-z]*\([0-9]*\):.*/\1/'`
-	[ -n "${MTD}" ] && {
-		MACADDR=`dd if=/dev/mtdblock${MTD} bs=1 skip=262048 count=6 2>/dev/null | hexdump -e '1/1 "%02x"'`
-		MACADDR2=$(( 0x${MACADDR} + 1))
-		MACADDR2=`printf "%012x" ${MACADDR2}`
-
-		MACADDR=`echo ${MACADDR} | sed 's/\(..\)/\1:/g' | sed 's/:$//'`
-		MACADDR2=`echo ${MACADDR2} | sed 's/\(..\)/\1:/g' | sed 's/:$//'`
-
-		uci set network.eth0.macaddr=${MACADDR}
-		uci set network.lan.macaddr=${MACADDR}
-		uci set network.wan.macaddr=${MACADDR2}
-		uci commit network
-	}
 }
 
 case "$(board_name)" in
