@@ -938,7 +938,7 @@ define Device/kooiot_tlink-ex
     kmod-phy-motorcomm \
 	kmod-regulator-userspace-consumer \
     uqmi freeioe wwan-watch \
-    luci-app-freeioe \
+    luci-app-freeioe luci-app-tty-alias\
 	luci-proto-qmi luci-proto-3g luci-proto-ncm luci-proto-wwan \
     tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     kmod-usb-storage \
@@ -963,7 +963,7 @@ define Device/kooiot_tlink-ex-spinand
     kmod-phy-motorcomm \
 	kmod-regulator-userspace-consumer \
     uqmi freeioe wwan-watch \
-    luci-app-freeioe \
+    luci-app-freeioe luci-app-tty-alias\
 	luci-proto-qmi luci-proto-3g luci-proto-ncm luci-proto-wwan \
     tinc-freeioe-tunnel luci-app-ser2net shellinabox iperf3 ethtool \
     kmod-usb-storage \
