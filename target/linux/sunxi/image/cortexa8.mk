@@ -8,7 +8,8 @@ KERNEL_LOADADDR:=0x40008000
 define Device/cubietech_a10-cubieboard
   DEVICE_VENDOR := Cubietech
   DEVICE_MODEL := Cubieboard
-  DEVICE_PACKAGES:=kmod-ata-sunxi kmod-sun4i-emac kmod-rtc-sunxi
+  DEVICE_PACKAGES:=kmod-ata-sunxi kmod-sun4i-emac \
+	kmod-mdio-sun4i kmod-rtc-sunxi
   SOC := sun4i
 endef
 TARGET_DEVICES += cubietech_a10-cubieboard
@@ -16,7 +17,8 @@ TARGET_DEVICES += cubietech_a10-cubieboard
 define Device/haoyu_a10-marsboard
   DEVICE_VENDOR := HAOYU Electronics
   DEVICE_MODEL := MarsBoard A10
-  DEVICE_PACKAGES:=kmod-ata-core kmod-ata-sunxi kmod-sun4i-emac \
+  DEVICE_PACKAGES:=kmod-ata-core kmod-ata-sunxi \
+	kmod-sun4i-emac kmod-mdio-sun4i \
 	kmod-rtc-sunxi kmod-sound-core kmod-sound-soc-sunxi
   SUPPORTED_DEVICES += marsboard,a10-marsboard
   SOC := sun4i
@@ -26,7 +28,8 @@ TARGET_DEVICES += haoyu_a10-marsboard
 define Device/linksprite_a10-pcduino
   DEVICE_VENDOR := LinkSprite
   DEVICE_MODEL := pcDuino
-  DEVICE_PACKAGES:=kmod-sun4i-emac kmod-rtc-sunxi kmod-rtl8192cu
+  DEVICE_PACKAGES:=kmod-sun4i-emac kmod-mdio-sun4i \
+	kmod-rtc-sunxi kmod-rtl8192cu
   SOC := sun4i
 endef
 TARGET_DEVICES += linksprite_a10-pcduino
@@ -34,7 +37,8 @@ TARGET_DEVICES += linksprite_a10-pcduino
 define Device/olimex_a10-olinuxino-lime
   DEVICE_VENDOR := Olimex
   DEVICE_MODEL := A10-OLinuXino-LIME
-  DEVICE_PACKAGES:=kmod-ata-sunxi kmod-sun4i-emac kmod-rtc-sunxi
+  DEVICE_PACKAGES:=kmod-ata-sunxi kmod-sun4i-emac \
+	kmod-mdio-sun4i kmod-rtc-sunxi
   SOC := sun4i
 endef
 TARGET_DEVICES += olimex_a10-olinuxino-lime

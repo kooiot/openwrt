@@ -8,7 +8,8 @@ KERNEL_LOADADDR:=0x40008000
 define Device/cubietech_cubieboard2
   DEVICE_VENDOR := Cubietech
   DEVICE_MODEL := Cubieboard2
-  DEVICE_PACKAGES:=kmod-ata-sunxi kmod-sun4i-emac kmod-rtc-sunxi
+  DEVICE_PACKAGES:=kmod-ata-sunxi kmod-sun4i-emac \
+	kmod-mdio-sun4i kmod-rtc-sunxi
   SOC := sun7i-a20
 endef
 TARGET_DEVICES += cubietech_cubieboard2
@@ -123,7 +124,8 @@ TARGET_DEVICES += licheepi_licheepi-zero-dock
 define Device/linksprite_pcduino3
   DEVICE_VENDOR := LinkSprite
   DEVICE_MODEL := pcDuino3
-  DEVICE_PACKAGES:=kmod-sun4i-emac kmod-rtc-sunxi kmod-ata-sunxi kmod-rtl8xxxu \
+  DEVICE_PACKAGES:=kmod-sun4i-emac kmod-mdio-sun4i \
+	kmod-rtc-sunxi kmod-ata-sunxi kmod-rtl8xxxu \
 	rtl8188eu-firmware
   SOC := sun7i-a20
 endef
@@ -140,7 +142,8 @@ TARGET_DEVICES += linksprite_pcduino3-nano
 define Device/mele_m9
   DEVICE_VENDOR := Mele
   DEVICE_MODEL := M9
-  DEVICE_PACKAGES:=kmod-sun4i-emac kmod-rtl8192cu
+  DEVICE_PACKAGES:=kmod-sun4i-emac kmod-mdio-sun4i \
+	kmod-rtl8192cu
   SOC := sun6i-a31
 endef
 TARGET_DEVICES += mele_m9
@@ -173,7 +176,8 @@ TARGET_DEVICES += olimex_a20-olinuxino-lime2-emmc
 define Device/olimex_a20-olinuxino-micro
   DEVICE_VENDOR := Olimex
   DEVICE_MODEL := A20-OLinuXino-MICRO
-  DEVICE_PACKAGES:=kmod-ata-sunxi kmod-sun4i-emac kmod-rtc-sunxi
+  DEVICE_PACKAGES:=kmod-ata-sunxi kmod-sun4i-emac \
+	kmod-mdio-sun4i kmod-rtc-sunxi
   SOC := sun7i
 endef
 TARGET_DEVICES += olimex_a20-olinuxino-micro
@@ -372,7 +376,7 @@ define Device/kooiot_tlink-ok-a40i
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink OK-A40i
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi kmod-brcmfmac \
-    kmod-sun4i-emac kmod-rtc-rx8010 \
+    kmod-sun4i-emac kmod-mdio-sun4i kmod-rtc-rx8010 \
     brcmfmac-firmware-43430a0-sdio wpad-basic-wolfssl \
     kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
@@ -487,7 +491,8 @@ define Device/kooiot_tlink-qh-x40
 	kmod-usb-net-rndis kmod-usb-otg-sunxi \
     kmod-eeprom-at24 kmod-rtc-pcf8563 \
     kmod-usb-storage kmod-drm-sunxi \
-	kmod-backlight kmod-drm-sun8i kmod-sun4i-emac \
+	kmod-backlight kmod-drm-sun8i \
+	kmod-sun4i-emac kmod-mdio-sun4i \
 	kmod-drm-sun8i-dsi kmod-drm-sun8i-hdmi \
 	kmod-rtl8723bs rtl8723bs-firmware \
 	kmod-input-core kmod-input-evdev \
@@ -509,7 +514,7 @@ define Device/kooiot_tlink-k1
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink K1
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
-    kmod-sun4i-emac kmod-rtc-rx8010 \
+    kmod-sun4i-emac kmod-mdio-sun4i kmod-rtc-rx8010 \
     kmod-xradio melsem-xr819-firmware wpad-basic-wolfssl \
     kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
@@ -532,7 +537,7 @@ define Device/kooiot_tlink-k2
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink K2
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
-    kmod-sun4i-emac kmod-rtc-sd3078 \
+    kmod-sun4i-emac kmod-mdio-sun4i kmod-rtc-sd3078 \
     kmod-xradio melsem-xr819-firmware wpad-basic-wolfssl \
     kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
@@ -556,7 +561,7 @@ define Device/kooiot_tlink-k2x
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink K2x
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
-    kmod-sun4i-emac kmod-rtc-sd3078 \
+    kmod-sun4i-emac kmod-mdio-sun4i kmod-rtc-sd3078 \
     kmod-xradio melsem-xr819-firmware wpad-basic-wolfssl \
     kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
@@ -583,7 +588,7 @@ define Device/kooiot_tlink-k4a
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink K4A
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
-    kmod-sun4i-emac kmod-rtc-sd3078 \
+    kmod-sun4i-emac kmod-mdio-sun4i kmod-rtc-sd3078 \
     kmod-xradio melsem-xr819-firmware wpad-basic-wolfssl \
     kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
@@ -610,7 +615,7 @@ define Device/kooiot_tlink-k4g
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink K4G
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
-    kmod-sun4i-emac kmod-rtc-sd3078 \
+    kmod-sun4i-emac kmod-mdio-sun4i kmod-rtc-sd3078 \
     kmod-xradio melsem-xr819-firmware wpad-basic-wolfssl \
     kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
@@ -637,7 +642,7 @@ define Device/kooiot_tlink-m408
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink M408
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
-    kmod-sun4i-emac kmod-rtc-rx8025t \
+    kmod-sun4i-emac kmod-mdio-sun4i kmod-rtc-rx8025t \
     wpad-basic-wolfssl \
     kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
@@ -659,7 +664,7 @@ define Device/kooiot_tlink-m416
   DEVICE_VENDOR := KooIoT
   DEVICE_MODEL := ThingsLink M416
   DEVICE_PACKAGES:=kmod-rtc-sunxi kmod-ata-sunxi \
-    kmod-sun4i-emac kmod-rtc-rx8025t \
+    kmod-sun4i-emac kmod-mdio-sun4i kmod-rtc-rx8025t \
     wpad-basic-wolfssl \
     kmod-usb2 kmod-usb-ohci kmod-gpio-button-hotplug \
     kmod-leds-gpio kmod-ledtrig-heartbeat \
