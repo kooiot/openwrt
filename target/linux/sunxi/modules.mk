@@ -98,6 +98,17 @@ endef
 
 $(eval $(call KernelPackage,sun4i-emac))
 
+define KernelPackage/mdio-sun4i
+  SUBMENU:=$(NETWORK_DEVICES_MENU)
+  TITLE:=AllWinner MDIO support
+  DEPENDS:=@TARGET_sunxi +kmod-of-mdio
+  KCONFIG:=CONFIG_MDIO_SUN4I
+  FILES:=$(LINUX_DIR)/drivers/net/mdio/mdio-sun4i.ko
+  AUTOLOAD:=$(call AutoLoad,51,mdio-sun4i,1)
+endef
+
+$(eval $(call KernelPackage,mdio-sun4i))
+
 define KernelPackage/sound-soc-sunxi
   TITLE:=AllWinner built-in SoC sound support
   KCONFIG:=CONFIG_SND_SUN4I_CODEC

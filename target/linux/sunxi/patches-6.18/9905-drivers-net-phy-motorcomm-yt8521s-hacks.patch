@@ -1,6 +1,6 @@
 --- a/drivers/net/phy/motorcomm.c
 +++ b/drivers/net/phy/motorcomm.c
-@@ -1139,6 +1139,7 @@ static int ytphy_rgmii_clk_delay_config(
+@@ -2281,6 +2281,7 @@ static int ytphy_rgmii_clk_delay_config(
  		return -EOPNOTSUPP;
  	}
  
@@ -8,7 +8,7 @@
  	ret = ytphy_modify_ext(phydev, YT8521_CHIP_CONFIG_REG,
  			       YT8521_CCR_RXC_DLY_EN, rxc_dly_en);
  	if (ret < 0)
-@@ -1146,6 +1147,7 @@ static int ytphy_rgmii_clk_delay_config(
+@@ -2288,6 +2289,7 @@ static int ytphy_rgmii_clk_delay_config(
  
  	/* Generally, it is not necessary to adjust YT8521_RC1R_FE_TX_DELAY */
  	mask = YT8521_RC1R_RX_DELAY_MASK | YT8521_RC1R_GE_TX_DELAY_MASK;
@@ -16,7 +16,7 @@
  	return ytphy_modify_ext(phydev, YT8521_RGMII_CONFIG1_REG, mask, val);
  }
  
-@@ -1925,6 +1927,24 @@ static int yt8521_config_init(struct phy
+@@ -3082,6 +3084,24 @@ static int yt8521_config_init(struct phy
  			goto err_restore_page;
  	}
  
@@ -41,7 +41,7 @@
  	ret = yt8521_led_init(phydev);
  	if (ret < 0)
  		goto err_restore_page;
-@@ -2134,6 +2154,7 @@ static void yt8531_link_change_notify(st
+@@ -3328,6 +3348,7 @@ static void yt8531_link_change_notify(st
  		return;
  	}
  

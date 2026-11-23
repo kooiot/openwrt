@@ -5,13 +5,13 @@
  #include <linux/uaccess.h>
  #include <linux/unistd.h>
 +#include <linux/of.h>
-
+ 
  #include "phylib-internal.h"
  #include "phy-caps.h"
-@@ -1134,6 +1135,13 @@ struct phy_device *get_phy_device(struct
+@@ -1160,6 +1161,13 @@ struct phy_device *get_phy_device(struct
  						 true, &c45_ids);
  	}
-
+ 
 +	if (phy_id == 0) {
 +		dev_info(&bus->dev, "%s: phy_id:%x %pOF\n", __func__, phy_id, bus->dev.of_node);
 +		if (!of_property_read_u32(bus->dev.of_node, "allwinner,emac-fix-phy-id", &phy_id)) {
