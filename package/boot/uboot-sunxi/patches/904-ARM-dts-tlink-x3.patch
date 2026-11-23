@@ -19,7 +19,7 @@
 +CONFIG_MACH_SUN8I_A33=y
 +CONFIG_MACH_SUN8I_X3=y
 +# CONFIG_SUNXI_DRAM_DDR3_1333=y
-+CONFIG_DRAM_CLK=360
++CONFIG_DRAM_CLK=400
 +CONFIG_DRAM_ZQ=15291
 +CONFIG_DRAM_ODT_EN=y
 +CONFIG_NR_DRAM_BANKS=1
@@ -33,7 +33,7 @@
 +CONFIG_WDT_SUNXI=y
 --- a/arch/arm/dts/sun8i-x3-tlink-x3.dts
 +++ b/arch/arm/dts/sun8i-x3-tlink-x3.dts
-@@ -0,0 +1,129 @@
+@@ -0,0 +1,127 @@
 +/*
 + * Copyright 2021 Dirk Chang <dirk@kooiot.com>
 + */
@@ -114,6 +114,7 @@
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&mmc2_8bit_pins>;
 +	vmmc-supply = <&reg_vcc3v0>;
++	vqmmc-supply = <&reg_vcc3v0>;
 +	bus-width = <8>;
 +	non-removable;
 +	cap-mmc-hw-reset;
@@ -122,9 +123,7 @@
 +
 +&mmc2_8bit_pins {
 +	/* Increase drive strength for DDR modes */
-+	drive-strength = <40>;
-+	/* eMMC is missing pull-ups */
-+	// bias-pull-up;
++	// drive-strength = <40>;
 +};
 +
 +&r_pio {
@@ -134,7 +133,6 @@
 +		// bias-pull-up;
 +	};
 +};
-+/**/
 +
 +&ohci0 {
 +	status = "okay";

@@ -10,7 +10,7 @@
  	sun8i-a83t-cubietruck-plus.dtb \
 --- a/arch/arm/boot/dts/sun8i-x3-tlink-x3.dts
 +++ b/arch/arm/boot/dts/sun8i-x3-tlink-x3.dts
-@@ -0,0 +1,280 @@
+@@ -0,0 +1,279 @@
 +/*
 + * Copyright 2021 Dirk Chang <dirk@kooiot.com>
 + */
@@ -169,6 +169,7 @@
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&mmc2_8bit_pins>;
 +	vmmc-supply = <&reg_vcc3v0>;
++	vqmmc-supply = <&reg_vcc3v0>;
 +	bus-width = <8>;
 +	non-removable;
 +	cap-mmc-hw-reset;
@@ -177,9 +178,7 @@
 +
 +&mmc2_8bit_pins {
 +	/* Increase drive strength for DDR modes */
-+	drive-strength = <40>;
-+	/* eMMC is missing pull-ups */
-+	// bias-pull-up;
++	// drive-strength = <40>;
 +};
 +
 +&pio {
