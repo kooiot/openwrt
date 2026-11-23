@@ -16,6 +16,7 @@
 
 /* YT8521 phy identifier values */
 #define YT8521_PHY_ID	0x0000011a
+#define YT8531S_PHY_ID	0x4f51e91a
 
 #define YT8521_SPEC_STS_REG		0x1E
 #define YT8521_EXT_ADDR_REG		0x1E
@@ -173,14 +174,24 @@ error_return:
 	return ret;
 }
 
-static struct phy_driver yt8521s_driver[] = { {
-	.phy_id = YT8521_PHY_ID,
-	.phy_id_mask = 0xfffffff0,
-	.name = "MOTORCOMM YT8521S",
-	/* PHY_GBIT_FEATURES */
-	.probe = yt8521_probe,
-	.config_init = yt8521_config_init,
-} };
+static struct phy_driver yt8521s_driver[] = {
+	{
+		.phy_id = YT8521_PHY_ID,
+		.phy_id_mask = 0xfffffff0,
+		.name = "MOTORCOMM YT8521S",
+		/* PHY_GBIT_FEATURES */
+		.probe = yt8521_probe,
+		.config_init = yt8521_config_init,
+	},
+	{
+		.phy_id = YT8531S_PHY_ID,
+		.phy_id_mask = 0xfffffff0,
+		.name = "MOTORCOMM YT8531S",
+		/* PHY_GBIT_FEATURES */
+		.probe = yt8521_probe,
+		.config_init = yt8521_config_init,
+	},
+};
 
 module_phy_driver(yt8521s_driver);
 
@@ -190,6 +201,7 @@ MODULE_LICENSE("GPL");
 
 static struct mdio_device_id __maybe_unused phy_tbl[] = {
 	{ YT8521_PHY_ID, 0xfffffff0 },
+	{ YT8531S_PHY_ID, 0xfffffff0 },
 	{ }
 };
 
