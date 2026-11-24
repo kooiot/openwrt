@@ -98,6 +98,7 @@ tlink_add_wwan_interface() {
 	uci set network.wwan='interface'
 	uci set network.wwan.proto='wwan'
 	uci set network.wwan.pdptype='IP'
+	uci set network.wwan.metric='10'
 	uci commit network
 }
 
