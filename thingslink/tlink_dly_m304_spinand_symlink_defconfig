@@ -1,0 +1,41 @@
+CONFIG_TARGET_rockchip=y
+CONFIG_TARGET_rockchip_armv7=y
+CONFIG_TARGET_rockchip_armv7_DEVICE_kooiot_tlink-dly-m304-spinand=y
+CONFIG_LUCI_LANG_zh_Hans=y
+# CONFIG_OPENSSL_ENGINE_BUILTIN is not set
+# CONFIG_OPENSSL_WITH_SM234 is not set
+# CONFIG_PACKAGE_freeioe is not set
+CONFIG_PACKAGE_ip6tables-nft=y
+CONFIG_PACKAGE_ipset=y
+CONFIG_PACKAGE_iptables-mod-conntrack-extra=y
+CONFIG_PACKAGE_iptables-mod-ipopt=y
+CONFIG_PACKAGE_iptables-nft=y
+CONFIG_PACKAGE_kmod-ip6tables=y
+CONFIG_PACKAGE_kmod-ipt-conntrack=y
+CONFIG_PACKAGE_kmod-ipt-conntrack-extra=y
+CONFIG_PACKAGE_kmod-ipt-core=y
+CONFIG_PACKAGE_kmod-ipt-ipopt=y
+CONFIG_PACKAGE_kmod-ipt-ipset=y
+CONFIG_PACKAGE_kmod-nf-conncount=y
+CONFIG_PACKAGE_kmod-nf-ipt=y
+CONFIG_PACKAGE_kmod-nf-ipt6=y
+CONFIG_PACKAGE_kmod-nft-compat=y
+CONFIG_PACKAGE_libipset=y
+CONFIG_PACKAGE_libiptext=y
+CONFIG_PACKAGE_libiptext-nft=y
+CONFIG_PACKAGE_libiptext6=y
+CONFIG_PACKAGE_libopenssl-v1=y
+CONFIG_PACKAGE_libxtables=y
+# CONFIG_PACKAGE_luci-app-freeioe is not set
+CONFIG_PACKAGE_luci-app-mwan3=y
+CONFIG_PACKAGE_luci-i18n-base-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-firewall-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-mwan3-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-package-manager-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-tty-alias-zh-cn=y
+CONFIG_PACKAGE_mwan3=y
+# CONFIG_PACKAGE_process-monitor is not set
+# CONFIG_PACKAGE_skynet is not set
+CONFIG_PACKAGE_symlink-psn=y
+CONFIG_PACKAGE_xtables-nft=y
+CONFIG_PACKAGE_yolink=y

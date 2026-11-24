@@ -3,6 +3,7 @@ do_kooiot_tlink_spinnand() {
 	. /lib/functions/tlink.sh
 
 	case "$(board_name)" in
+	"kooiot,tlink-dly-m304-spinand" |\
 	"vanxoak,vx-hd-rk3506g-iot-spinand" |\
 	"vanxoak,vx-hd-rk3506g-m-iot-spinand" )
 		do_export_product_sn_from_ubootenv

@@ -153,7 +153,8 @@ case $(board_name) in
 	kooiot,tlink-rk3506g-iot)
 		tlink_csq_leds_mixed
 		;;
-	kooiot,tlink-rk3506g-iot-slim)
+	kooiot,tlink-dly-m304|\
+	kooiot,tlink-dly-m304-spinand)
 		tlink_csq_leds_single
 		;;
 	*)

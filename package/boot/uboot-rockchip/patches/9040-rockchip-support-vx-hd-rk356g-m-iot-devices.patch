@@ -1,6 +1,6 @@
 --- /dev/null
-+++ b/arch/arm/dts/rk3506-vx-hd-rk3506g-m-iot-u-boot.dtsi
-@@ -0,0 +1,31 @@
++++ b/arch/arm/dts/rk3506-vx-hd-rk3506g-m-v1-u-boot.dtsi
+@@ -0,0 +1,32 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +
 +#include "rk3506-u-boot.dtsi"
@@ -34,18 +34,30 @@
 +	bootph-some-ram;
 +};
 --- /dev/null
-+++ b/arch/arm/dts/rk3506-vx-hd-rk3506g-m-iot.dts
-@@ -0,0 +1,241 @@
++++ b/arch/arm/dts/rk3506-vx-hd-rk3506g-m-iot-u-boot.dtsi
+@@ -0,0 +1,4 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +
-+/dts-v1/;
++#include "rk3506-vx-hd-rk3506g-m-v1-u-boot.dtsi"
++
+--- /dev/null
++++ b/arch/arm/dts/rk3506-vx-hd-rk3506g-m-iot-spinand-u-boot.dtsi
+@@ -0,0 +1,4 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++
++#include "rk3506-vx-hd-rk3506g-m-v1-u-boot.dtsi"
++
+--- /dev/null
++++ b/arch/arm/dts/rk3506-vx-hd-rk3506g-m-v1.dtsi
+@@ -0,0 +1,239 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +
 +#include <dt-bindings/leds/common.h>
 +#include "rk3506.dtsi"
 +
 +/ {
-+	model = "HD-RK3506G-M-IOT (SD)";
-+	compatible = "vanxoak,vx-hd-rk3506g-m-iot-spinand", "rockchip,rk3506";
++	model = "HD-RK3506G-M";
++	compatible = "vanxoak,vx-hd-rk3506g-m", "rockchip,rk3506";
 +
 +	aliases {
 +		ethernet0 = <&gmac0>;
@@ -278,6 +290,56 @@
 +};
 +
 --- /dev/null
++++ b/arch/arm/dts/rk3506-vx-hd-rk3506g-m-iot.dts
+@@ -0,0 +1,11 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++
++/dts-v1/;
++
++#include "rk3506-vx-hd-rk3506g-m-v1.dtsi"
++
++/ {
++	model = "HD-RK3506G-M-IOT (SD)";
++	compatible = "vanxoak,vx-hd-rk3506g-m-iot", "rockchip,rk3506";
++};
++
+--- /dev/null
++++ b/arch/arm/dts/rk3506-vx-hd-rk3506g-m-iot-spinand.dts
+@@ -0,0 +1,33 @@
++// SPDX-License-Identifier: (GPL-2.0+ or MIT)
++// Copyright (C) 2026 Dirk Chang <dirk@kooiot.com>
++
++/dts-v1/;
++
++#include "rk3506-vx-hd-rk3506g-m-v1.dtsi"
++
++/ {
++	model = "HD-RK3506G-M-IOT (SPI-NAND)";
++	compatible = "vanxoak,vx-hd-rk3506g-m-iot-spinand", "rockchip,rk3506";
++
++	chosen {
++		bootargs = "root=/dev/fit0 rootwait";
++	};
++};
++
++&flash {
++	partitions {
++		compatible = "fixed-partitions";
++		#address-cells = <1>;
++		#size-cells = <1>;
++		boot@0 {
++			label = "boot";
++			reg = <0x0000000 0x0200000>;
++			read-only;
++		};
++
++		ubi0@200000 {
++			label = "ubi";
++			reg = <0x0200000 0x0000000>;
++		};
++	};
++};
+--- /dev/null
 +++ b/configs/vx-hd-rk3506g-m-iot_defconfig
 @@ -0,0 +1,77 @@
 +CONFIG_ARM=y
@@ -357,77 +419,6 @@
 +CONFIG_SPL_DM_GPIO=y
 +CONFIG_SPL_GPIO=y
 +CONFIG_SPL_OF_REAL=y
---- /dev/null
-+++ b/arch/arm/dts/rk3506-vx-hd-rk3506g-m-iot-spinand-u-boot.dtsi
-@@ -0,0 +1,32 @@
-+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
-+
-+#include "rk3506-u-boot.dtsi"
-+
-+/ {
-+	chosen {
-+		u-boot,spl-boot-order = "same-as-spl", &sdmmc, &flash;
-+	};
-+
-+	watchdog: watchdog {
-+		compatible = "linux,wdt-gpio";
-+		gpios = <&gpio1 RK_PB3 GPIO_ACTIVE_LOW>;
-+		hw_algo = "toggle";
-+		always-running;
-+		hw_margin_ms = <300>;
-+		bootph-all; // 确保看门狗节点在任意时间可见
-+	};
-+};
-+
-+&gpio1 {
-+    bootph-pre-ram;  /* 确保该 GPIO 控制器在 SPL (pre-ram 阶段) 被初始化 */
-+};
-+
-+&flash {
-+	bootph-pre-ram;
-+	bootph-some-ram;
-+};
-+
-+&sdmmc_det_pin {
-+	bootph-pre-ram;
-+	bootph-some-ram;
-+};
---- /dev/null
-+++ b/arch/arm/dts/rk3506-vx-hd-rk3506g-m-iot-spinand.dts
-@@ -0,0 +1,33 @@
-+// SPDX-License-Identifier: (GPL-2.0+ or MIT)
-+// Copyright (C) 2026 Dirk Chang <dirk@kooiot.com>
-+
-+/dts-v1/;
-+
-+#include "rk3506-vx-hd-rk3506g-m-iot.dts"
-+
-+/ {
-+	model = "HD-RK3506G-M-IOT (SPI-NAND)";
-+	compatible = "vanxoak,vx-hd-rk3506g-m-iot-spinand", "rockchip,rk3506";
-+
-+	chosen {
-+		bootargs = "root=/dev/fit0 rootwait";
-+	};
-+};
-+
-+&flash {
-+	partitions {
-+		compatible = "fixed-partitions";
-+		#address-cells = <1>;
-+		#size-cells = <1>;
-+		boot@0 {
-+			label = "boot";
-+			reg = <0x0000000 0x0200000>;
-+			read-only;
-+		};
-+
-+		ubi0@200000 {
-+			label = "ubi";
-+			reg = <0x0200000 0x0000000>;
-+		};
-+	};
-+};
 --- /dev/null
 +++ b/configs/vx-hd-rk3506g-m-iot-spinand_defconfig
 @@ -0,0 +1,104 @@

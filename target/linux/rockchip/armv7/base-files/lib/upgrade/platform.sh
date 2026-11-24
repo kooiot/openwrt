@@ -220,8 +220,8 @@ platform_check_image() {
 		;;
 	vanxoak,vx-hd-rk3506g-iot-spinand |\
 	vanxoak,vx-hd-rk3506g-m-iot-spinand |\
-	kooiot,tlink-rk3506g-iot |\
-	kooiot,tlink-rk3506g-iot-spinand)
+	kooiot,tlink-dly-m304 |\
+	kooiot,tlink-dly-m304-spinand)
 		nand_do_platform_check "$board" "$1"
 		return $?
 		;;
@@ -254,7 +254,7 @@ platform_check_image() {
 	case "$board" in
 	vanxoak,vx-hd-rk3506g-iot |\
 	vanxoak,vx-hd-rk3506g-m-iot |\
-	kooiot,tlink-rk3506g-iot)
+	kooiot,tlink-dly-m304)
 		tlink_check_image "$1" && return 0
 		return 1
 		;;
@@ -288,6 +288,14 @@ platform_pre_upgrade() {
 		sleep 10
 	fi
 
+	case "$(board_name)" in
+		"vanxoak,vx-hd-rk3506g-iot-spinand"|\
+		"vanxoak,vx-hd-rk3506g-m-iot-spinand"|\
+		"kooiot,tlink-dly-m304-spinand")
+			return 0
+			;;
+	esac
+
 	case "$(rootfs_type)" in
 		"overlay")
 			echo "Erasing overlay....."
@@ -301,7 +309,6 @@ platform_do_upgrade() {
 	local board=$(board_name)
 	local diskdev partdev diff
 
-
 	case "$board" in
 		herospeed,rv1126-imx415)
 			herospeed_ab_do_upgrade "$1"
@@ -309,7 +316,7 @@ platform_do_upgrade() {
 			;;
 		vanxoak,vx-hd-rk3506g-iot-spinand|\
 		vanxoak,vx-hd-rk3506g-m-iot-spinand|\
-		kooiot,tlink-rk3506g-iot-spinand)
+		kooiot,tlink-dly-m304-spinand)
 			echo "Do SPI-NAND sysupgrade!!!"
 			CI_KERNPART="kernel"
 			CI_UBIPART="ubi"

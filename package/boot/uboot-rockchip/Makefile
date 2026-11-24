@@ -210,6 +210,21 @@ define U-Boot/vx-hd-rk3506g-m-iot-spinand
        vanxoak_vx-hd-rk3506g-m-iot-spinand
 endef
 
+define U-Boot/tlink-dly-m304
+  $(U-Boot/rk3506/Default)
+  NAME:=ThingsLink DLY-M304 (SD)
+  BUILD_DEVICES:= \
+       kooiot_tlink-dly-m304
+endef
+
+define U-Boot/tlink-dly-m304-spinand
+  $(U-Boot/rk3506/Default)
+  NAME:=ThingsLink DLY-M304 (SPINAND)
+  UENV:=nand
+  BUILD_DEVICES:= \
+       kooiot_tlink-dly-m304-spinand
+endef
+
 # RK3528 boards
 
 define U-Boot/rk3528/Default
@@ -527,6 +542,8 @@ UBOOT_TARGETS := \
   vx-hd-rk3506g-iot-spinand \
   vx-hd-rk3506g-m-iot \
   vx-hd-rk3506g-m-iot-spinand \
+  tlink-dly-m304 \
+  tlink-dly-m304-spinand \
   opc-h68k-rk3568 \
   station-p2-rk3568 \
   rock-pi-e-v3-rk3328 \
