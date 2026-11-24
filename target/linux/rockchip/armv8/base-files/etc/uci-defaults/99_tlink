@@ -200,6 +200,7 @@ tlink_default() {
 		echo "TF-Card mount point added!!!" > /dev/kmsg
 	fi
 
+	# add wwan interface
 	tlink_add_wwan_interface
 
 	# set ttylogin (for ttyS0, default will promote console with password)

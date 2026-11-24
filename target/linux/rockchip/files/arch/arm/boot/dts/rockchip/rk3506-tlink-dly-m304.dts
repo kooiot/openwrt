@@ -1,0 +1,19 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright (c) 2026 KooIoT.com
+ */
+
+/dts-v1/;
+
+#include "rk3506-vx-hd-rk3506g-m-v1.dtsi"
+
+/ {
+	model = "ThingsLink DLY-M304";
+	compatible = "kooiot,tlink-dly-m304", "rockchip,rk3506";
+
+	aliases {
+		serial4 = &uart4;
+		serial5 = &uart5;
+	};
+};
+

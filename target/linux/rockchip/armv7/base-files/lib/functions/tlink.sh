@@ -114,9 +114,9 @@ tlink_do_export_product_sn_from_ubootenv() {
 	# Check aobut fw_env.config
 	if [ ! -f /etc/fw_env.config ]; then
 		if [ -f /etc/config/ubootenv ]; then
-			echo "U-Boot env settings is not ready!!!!" > /dev/kmsg
+			echo "U-Boot env settings is not ready, add board to uboot-envtools!!!!" > /dev/kmsg
 		else
-			echo "U-Boot env settings missing (please correct uboot-envtools package)!!!!" > /dev/kmsg
+			echo "U-Boot env settings missing, uboot-envtools package required!!!!" > /dev/kmsg
 		fi
 		return 1
 	fi

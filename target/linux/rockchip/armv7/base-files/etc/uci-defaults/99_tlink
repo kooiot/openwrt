@@ -98,6 +98,7 @@ tlink_add_wwan_interface() {
 	uci set network.wwan='interface'
 	uci set network.wwan.proto='wwan'
 	uci set network.wwan.pdptype='IP'
+	uci set network.wwan.metric='10'
 	uci commit network
 }
 
@@ -164,6 +165,18 @@ tlink_sd_default () {
 	fi
 }
 
+tlink_tty_alias() {
+	local item=$(uci add tty-alias serial)
+	uci batch <<EOF
+set tty-alias.$item.name='$1'
+set tty-alias.$item.id='$2'
+set tty-alias.$item.type='$3'
+set tty-alias.$item.locked='1'
+set tty-alias.$item.overwrite='1'
+EOF
+uci commit tty-alias
+
+}
 
 tlink_default() {
 	# tlink_sd_default
@@ -190,6 +203,16 @@ tlink_default() {
 		echo "TF-Card mount point added!!!" > /dev/kmsg
 	fi
 
+	case "$(board_name)" in
+		"kooiot,tlink-dly-m304"|\
+		"kooiot,tlink-dly-m304-spinand")
+			tlink_tty_alias "ttyS4" "1-1.4:0" "usb_bus"
+			;;
+		*)
+			;;
+	esac
+
+	# add wwan interface
 	tlink_add_wwan_interface
 
 	# set ttylogin (for ttyS0, default will promote console with password)
@@ -198,11 +221,12 @@ tlink_default() {
 }
 
 case "$(board_name)" in
-"kooiot,tlink-rk3506g-iot"|\
+"kooiot,tlink-dly-m304"|\
 "vanxoak,vx-hd-rk3506g-iot"|\
 "vanxoak,vx-hd-rk3506g-m-iot")
 	tlink_default
 	;;
+"kooiot,tlink-dly-m304-spinand"|\
 "vanxoak,vx-hd-rk3506g-iot-spinand"|\
 "vanxoak,vx-hd-rk3506g-m-iot-spinand")
 	tlink_default

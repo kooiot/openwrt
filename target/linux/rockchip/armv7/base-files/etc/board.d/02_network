@@ -14,6 +14,8 @@ rockchip_setup_interfaces()
 	hzhy,rk3506sp-mini-evm-nand)
 		ucidef_set_interfaces_lan_wan "eth1" "eth0"
 		;;
+	kooiot,tlink-dly-m304|\
+	kooiot,tlink-dly-m304-spinand|\
 	vanxoak,vx-hd-rk3506g-iot|\
 	vanxoak,vx-hd-rk3506g-iot-spinand|\
 	vanxoak,vx-hd-rk3506g-m-iot|\
@@ -44,6 +46,8 @@ rockchip_setup_macs()
 	local label_mac=""
 
 	case "$board" in
+	kooiot,tlink-dly-m304|\
+	kooiot,tlink-dly-m304-spinand|\
 	vanxoak,vx-hd-rk3506g-iot|\
 	vanxoak,vx-hd-rk3506g-iot-spinand|\
 	vanxoak,vx-hd-rk3506g-m-iot|\

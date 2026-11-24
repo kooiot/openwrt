@@ -84,6 +84,7 @@ case "$(board_name)" in
 			NVMEM_PATH="/sys/bus/i2c/devices/3-0050/3-00501/nvmem"
 		fi
 		;;
+	"kooiot,tlink-dly-m304-spinand" |\
 	"vanxoak,vx-hd-rk3506g-iot-spinand" |\
 	"vanxoak,vx-hd-rk3506g-m-iot-spinand" )
 		fw_setenv sn ${PSN}

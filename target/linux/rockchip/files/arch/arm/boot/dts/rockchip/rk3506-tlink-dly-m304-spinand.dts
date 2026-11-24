@@ -1,0 +1,40 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright (c) 2026 KooIoT.com
+ */
+
+/dts-v1/;
+
+#include "rk3506-vx-hd-rk3506g-m-v1.dtsi"
+
+/ {
+	model = "ThingsLink DLY-M304 (SPI-NAND)";
+	compatible = "kooiot,tlink-dly-m304-spinand", "rockchip,rk3506";
+
+	aliases {
+		serial4 = &uart4;
+		serial5 = &uart5;
+	};
+
+	chosen {
+		bootargs = "root=/dev/fit0 rootwait";
+	};
+};
+
+&flash {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		boot@0 {
+			label = "boot";
+			reg = <0x0000000 0x0200000>;
+			read-only;
+		};
+
+		ubi0@200000 {
+			label = "ubi";
+			reg = <0x0200000 0x0000000>;
+		};
+	};
+};
