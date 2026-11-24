@@ -10,14 +10,35 @@
  	{ USB_DEVICE_AND_INTERFACE_INFO(0x2dee, 0x4d57, 0xff, 0, 0) },		/* MeiG Smart SLM770A *
 --- a/drivers/net/usb/cdc_ether.c
 +++ b/drivers/net/usb/cdc_ether.c
-@@ -543,6 +543,17 @@ static const struct driver_info	zte_cdc_
+@@ -473,6 +473,20 @@ static int usbnet_cdc_zte_bind(struct us
+ 	return status;
+ }
+ 
++static int usbnet_cdc_fibocom_bind(struct usbnet *dev, struct usb_interface *intf)
++{
++	u8 addr[ETH_ALEN];
++	int status = usbnet_cdc_bind(dev, intf);
++
++	if (!status && (dev->net->dev_addr[0] & 0x20)) {
++		ether_addr_copy(addr, dev->net->dev_addr);
++		addr[0] = 0x02; // Set to loacal addr
++		eth_hw_addr_set(dev->net, addr);
++	}
++
++	return status;
++}
++
+ /* Make sure packets have correct destination MAC address
+  *
+  * A firmware bug observed on some devices (ZTE MF823/831/910) is that the
+@@ -543,6 +557,17 @@ static const struct driver_info	zte_cdc_
  	.rx_fixup = usbnet_cdc_zte_rx_fixup,
  };
  
 +static const struct driver_info	fibocom_cdc_info = {
 +	.description =	"Fibocom CDC Ethernet Device",
 +	.flags =	FLAG_ETHER | FLAG_POINTTOPOINT,
-+	.bind =		usbnet_cdc_zte_bind,
++	.bind =		usbnet_cdc_fibocom_bind,
 +	.unbind =	usbnet_cdc_unbind,
 +	.status =	usbnet_cdc_status,
 +	.set_rx_mode =	usbnet_cdc_update_filter,
@@ -28,7 +49,7 @@
  static const struct driver_info wwan_info = {
  	.description =	"Mobile Broadband Network Device",
  	.flags =	FLAG_WWAN,
-@@ -568,6 +579,7 @@ static const struct driver_info wwan_inf
+@@ -568,6 +593,7 @@ static const struct driver_info wwan_inf
  #define MICROSOFT_VENDOR_ID	0x045e
  #define UBLOX_VENDOR_ID		0x1546
  #define TPLINK_VENDOR_ID	0x2357
@@ -36,16 +57,16 @@
  #define AQUANTIA_VENDOR_ID	0x2eca
  #define ASIX_VENDOR_ID		0x0b95
  
-@@ -954,6 +966,12 @@ static const struct usb_device_id	produc
- 	USB_VENDOR_AND_INTERFACE_INFO(HUAWEI_VENDOR_ID, USB_CLASS_COMM,
- 				      USB_CDC_SUBCLASS_ETHERNET, 255),
- 	.driver_info = (unsigned long)&wwan_info,
-+}, {
+@@ -893,6 +919,12 @@ static const struct usb_device_id	produc
+ 				      USB_CDC_PROTO_NONE),
+ 	.driver_info = (unsigned long)&zte_cdc_info,
+ }, {
 +	/* Fibocom LE370 modem */
 +	USB_DEVICE_AND_INTERFACE_INFO(FIBOCOM_VENDOR_ID, 0x0d01, USB_CLASS_COMM,
 +				      USB_CDC_SUBCLASS_ETHERNET,
 +				      USB_CDC_PROTO_NONE),
 +	.driver_info = (unsigned long)&fibocom_cdc_info,
- },
- 	{ },		/* END */
- };
++}, {
+ 	/* U-blox TOBY-L2 */
+ 	USB_DEVICE_AND_INTERFACE_INFO(UBLOX_VENDOR_ID, 0x1143, USB_CLASS_COMM,
+ 				      USB_CDC_SUBCLASS_ETHERNET,
