@@ -14,6 +14,26 @@
 	aliases {
 		serial4 = &uart4;
 		serial5 = &uart5;
+		ethernet2 = &usb_eth1;
 	};
 };
 
+&usb20_otg1 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	wch_hub: wch-hub@1 {
+		compatible = "usb1a86,8091";
+		reg = <1>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		usb_eth1: ch397@3 {
+			compatible = "usb1a86,5397";
+			reg = <3>;
+			wch,led0 = <0x1 0x2>;
+			wch,led1 = <0x1 0x7>;
+		};
+	};
+};
