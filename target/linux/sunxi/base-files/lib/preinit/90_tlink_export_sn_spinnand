@@ -27,4 +27,4 @@ do_kooiot_tlink_spinnand() {
 
 }
 
-boot_hook_add preinit_mount_root do_kooiot_tlink_spinnand
+boot_hook_add preinit_main do_kooiot_tlink_spinnand
