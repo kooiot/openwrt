@@ -33,6 +33,7 @@
 #undef VERBOSE
 
 #include <linux/module.h>
+#include <linux/property.h>
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
 #include <linux/ethtool.h>
@@ -182,6 +183,11 @@ struct ch397_ndev_cfg {
 	u8 link_duplex; /* current resolved link duplex */
 };
 
+struct ch397_led_cfg {
+	bool active_high;
+	int	 blink_mode;
+};
+
 struct ch397_common_private {
 	struct usbnet *dev;
 	struct delayed_work schedule_work;
@@ -201,6 +207,7 @@ struct ch397_common_private {
 	u32 presvd_mac_mask_clear;
 	u32 presvd_mac_cfg;
 	struct ch397_chip_info chip_info;
+	struct ch397_led_cfg led_cfg[2];
 };
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0))
@@ -466,15 +473,19 @@ static int ch397_cfg_led(struct usbnet *dev, int led_num, int led_mode,
 
 	ret = ch397_read_shared_word(dev, 1, CH397_PHY_LED_MODE_REG,
 				     &led_cfg);
-	if (ret < 0)
+	if (ret < 0) {
+		dev_info(&dev->udev->dev, "Read LED_MODE failed!\n");
 		return ret;
+	}
 
 	ret = ch397_read_shared_word(dev, 1, CH397_PHY_LED_SIGNAL_REG,
 				     &signal_cfg);
-	if (ret < 0)
+	if (ret < 0) {
+		dev_info(&dev->udev->dev, "Read LED_SIGNAL failed!\n");
 		return ret;
+	}
 
-	netdev_err(dev->net, "Current LED[%d] cfg: %08x signal: %08x\n",
+	dev_info(&dev->udev->dev, "Current LED[%d] cfg: %08x signal: %08x\n",
 			led_num, led_cfg, signal_cfg);
 
 	/* PAGE 7 / 0x11: LED0 = bit[3:0], LED1 = bit[7:4]. */
@@ -489,13 +500,15 @@ static int ch397_cfg_led(struct usbnet *dev, int led_num, int led_mode,
 	else
 		signal_cfg |= signal_mask;
 
-	netdev_err(dev->net, "Write LED[%d] cfg: %08x signal: %08x\n",
+	dev_info(&dev->udev->dev, "Write LED[%d] cfg: %08x signal: %08x\n",
 			led_num, led_cfg, signal_cfg);
 
 	ret = ch397_write_shared_word(dev, 1, CH397_PHY_LED_MODE_REG,
 				      led_cfg);
-	if (ret < 0)
+	if (ret < 0) {
+		dev_info(&dev->udev->dev, "Write LED_MODE failed!\n");
 		return ret;
+	}
 
 	return ch397_write_shared_word(dev, 1, CH397_PHY_LED_SIGNAL_REG,
 				       signal_cfg);
@@ -504,6 +517,7 @@ static int ch397_cfg_led(struct usbnet *dev, int led_num, int led_mode,
 /* Caller holds control_mutex, except during bind before device registration. */
 static int ch397_set_ledcfg(struct usbnet *dev)
 {
+	struct ch397_common_private *dp = dev->driver_priv;
 	int ret;
 
 	ret = ch397_write_shared_word(dev, 1, CH397_PHY_PAGE_REG,
@@ -532,12 +546,14 @@ static int ch397_set_ledcfg(struct usbnet *dev)
 	 * Both polarity bits are set to low level. Change false to true below
 	 * for a high-level signal on the corresponding LED.
 	 */
-	ret = ch397_cfg_led(dev, 0, CH397_LED_MODE_LINK_100M, false);
+	ret = ch397_cfg_led(dev, 0, dp->led_cfg[0].blink_mode,
+			dp->led_cfg[0].active_high);
 	if (ret < 0)
 		netdev_err(dev->net, "%s: LED0 configuration failed: %d\n",
 			   __func__, ret);
 
-	ret = ch397_cfg_led(dev, 1, CH397_LED_MODE_LINK_ACT_ALL, false);
+	ret = ch397_cfg_led(dev, 1, dp->led_cfg[1].blink_mode,
+			dp->led_cfg[1].active_high);
 	if (ret < 0)
 		netdev_err(dev->net, "%s: LED1 configuration failed: %d\n",
 			   __func__, ret);
@@ -1174,6 +1190,28 @@ static void work_func(struct work_struct *work)
 	mutex_unlock(&dp->control_mutex);
 }
 
+static int ch397_load_led_cfg(struct usbnet *udev)
+{
+	struct ch397_common_private *dp = udev->driver_priv;
+	struct device *dev = &udev->udev->dev;
+	u32 vals[2];
+
+	if (!device_property_read_u32_array(dev, "wch,led0", vals, 2)) {
+		dp->led_cfg[0].active_high = vals[0] != 0 ? true : false;
+		dp->led_cfg[0].blink_mode = vals[1];
+		dev_info(dev, "%s: wch,led0 active:%d mode:%d in %pOF\n", __func__,
+				vals[0], vals[1], dev->of_node);
+	}
+
+	if (!device_property_read_u32_array(dev, "wch,led1", vals, 2)) {
+		dp->led_cfg[1].active_high = vals[0] != 0 ? true : false;
+		dp->led_cfg[1].blink_mode = vals[1];
+		dev_info(dev, "%s: wch,led1 active:%d mode:%d in %pOF\n", __func__,
+				vals[0], vals[1], dev->of_node);
+	}
+	return 0;
+}
+
 static int ch397_bind(struct usbnet *dev, struct usb_interface *intf)
 {
 	int ret;
@@ -1186,13 +1224,6 @@ static int ch397_bind(struct usbnet *dev, struct usb_interface *intf)
 		goto out;
 
 	msleep(CH397_USB_DELAY);
-
-	/* Set device led config */
-	ret = ch397_set_ledcfg(dev);
-	if (ret < 0) {
-		printk(KERN_ERR "Error setting LED config: %d\n", ret);
-		goto out;
-	}
 
 	/* Get the MAC address */
 	if (ch397_get_mac_address(dev, mac) < 0) {
@@ -1258,6 +1289,21 @@ static int ch397_bind(struct usbnet *dev, struct usb_interface *intf)
 	dp->ndev_cfg.advertising = CH397_ADVERTISED_MODES;
 	dp->ndev_cfg.link_duplex = DUPLEX_UNKNOWN;
 	dp->presvd_mac_cfg = value;
+
+	// Set default led configruation
+	dp->led_cfg[0].active_high = false;
+	dp->led_cfg[0].blink_mode = CH397_LED_MODE_LINK_100M;
+	dp->led_cfg[1].active_high = false;
+	dp->led_cfg[1].blink_mode = CH397_LED_MODE_LINK_ACT_ALL;
+	// Load led configuration from dts
+	ch397_load_led_cfg(dev);
+
+	/* Set device led config */
+	ret = ch397_set_ledcfg(dev);
+	if (ret < 0) {
+		printk(KERN_ERR "Error setting LED config: %d\n", ret);
+		goto out;
+	}
 
 	dp->wq = create_workqueue("ch397_link_workqueue");
 	if (!dp->wq) {
