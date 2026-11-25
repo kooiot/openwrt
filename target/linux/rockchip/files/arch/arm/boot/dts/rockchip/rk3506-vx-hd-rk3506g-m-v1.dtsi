@@ -353,7 +353,7 @@
 
 &mmc {
 	bus-width = <4>;
-	cs-gpios = <&gpio1 RK_PC3 GPIO_ACTIVE_LOW>;
+	cd-gpios = <&gpio1 RK_PC3 GPIO_ACTIVE_LOW>;
 	cap-sd-highspeed;
 	disable-wp;
 	no-sdio;
