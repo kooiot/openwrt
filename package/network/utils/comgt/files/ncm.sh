@@ -135,7 +135,7 @@ proto_ncm_setup() {
 
 	json_load "$(cat /etc/gcom/ncm.json)"
 	ncm_select_modem "$manufacturer" "$model" || {
-		echo "Unsupported modem"
+		echo "Unsupported modem $manufacturer-$model"
 		proto_notify_error "$interface" UNSUPPORTED_MODEM
 		# proto_set_available "$interface" 0 // May retry to get manufacturer later
 		return 1
@@ -315,7 +315,7 @@ proto_ncm_teardown() {
 
 	json_load "$(cat /etc/gcom/ncm.json)"
 	ncm_select_modem "$manufacturer" "$model" || {
-		echo "Unsupported modem"
+		echo "Unsupported modem $manufacturer-$model"
 		proto_notify_error "$interface" UNSUPPORTED_MODEM
 		return 1
 	}
