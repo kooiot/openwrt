@@ -69,7 +69,7 @@ define Device/vanxoak_vx-hd-rk3506g-iot
     kmod-usb-net-cdc-eem kmod-usb-net-cdc-ether \
     kmod-usb-net-cdc-mbim kmod-usb-net-rndis \
     kmod-usb-xhci-pci kmod-i2c-fusb30x \
-    kmod-phy-motorcomm kmod-mmc \
+    kmod-phy-motorcomm kmod-mmc kmod-can \
     kmod-can-rockchip-rk3576 kmod-can-raw ip-full \
     kmod-ata-ahci kmod-ata-ahci-dwc \
     luci-app-freeioe luci-proto-qmi \
@@ -96,7 +96,7 @@ define Device/vanxoak_vx-hd-rk3506g-iot-spinand
     kmod-usb-net-cdc-eem kmod-usb-net-cdc-ether \
     kmod-usb-net-cdc-mbim kmod-usb-net-rndis \
     kmod-usb-xhci-pci kmod-i2c-fusb30x \
-    kmod-phy-motorcomm kmod-mmc \
+    kmod-phy-motorcomm kmod-mmc kmod-can \
     kmod-can-rockchip-rk3576 kmod-can-raw ip-full \
     kmod-ata-ahci kmod-ata-ahci-dwc \
     luci-app-freeioe luci-proto-qmi \
@@ -123,7 +123,7 @@ define Device/vanxoak_vx-hd-rk3506g-m-iot
     kmod-usb-net-cdc-eem kmod-usb-net-cdc-ether \
     kmod-usb-net-cdc-mbim kmod-usb-net-rndis \
     kmod-usb-xhci-pci kmod-i2c-fusb30x \
-    kmod-phy-motorcomm kmod-mmc \
+    kmod-phy-motorcomm kmod-mmc kmod-can \
     kmod-can-rockchip-rk3576 kmod-can-raw ip-full \
     kmod-ata-ahci kmod-ata-ahci-dwc \
 	kmod-regulator-userspace-consumer \
@@ -151,7 +151,7 @@ define Device/vanxoak_vx-hd-rk3506g-m-iot-spinand
     kmod-usb-net-cdc-eem kmod-usb-net-cdc-ether \
     kmod-usb-net-cdc-mbim kmod-usb-net-rndis \
     kmod-usb-xhci-pci kmod-i2c-fusb30x \
-    kmod-phy-motorcomm kmod-mmc \
+    kmod-phy-motorcomm kmod-mmc kmod-can \
     kmod-can-rockchip-rk3576 kmod-can-raw ip-full \
     kmod-ata-ahci kmod-ata-ahci-dwc \
 	kmod-regulator-userspace-consumer \
@@ -180,7 +180,7 @@ define Device/kooiot_tlink-dly-m304
     kmod-usb-net-cdc-eem kmod-usb-net-cdc-ether \
     kmod-usb-net-cdc-mbim kmod-usb-net-rndis \
     kmod-usb-xhci-pci kmod-i2c-fusb30x \
-    kmod-phy-motorcomm kmod-mmc \
+    kmod-phy-motorcomm kmod-mmc kmod-can \
     kmod-can-rockchip-rk3576 kmod-can-raw ip-full \
     kmod-ata-ahci kmod-ata-ahci-dwc \
 	kmod-regulator-userspace-consumer \
@@ -210,7 +210,7 @@ define Device/kooiot_tlink-dly-m304-spinand
     kmod-usb-net-cdc-eem kmod-usb-net-cdc-ether \
     kmod-usb-net-cdc-mbim kmod-usb-net-rndis \
     kmod-usb-xhci-pci kmod-i2c-fusb30x \
-    kmod-phy-motorcomm kmod-mmc \
+    kmod-phy-motorcomm kmod-mmc kmod-can \
     kmod-can-rockchip-rk3576 kmod-can-raw ip-full \
     kmod-ata-ahci kmod-ata-ahci-dwc \
 	kmod-regulator-userspace-consumer \
