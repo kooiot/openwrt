@@ -485,8 +485,8 @@ static int ch397_cfg_led(struct usbnet *dev, int led_num, int led_mode,
 		return ret;
 	}
 
-	dev_info(&dev->udev->dev, "Current LED[%d] cfg: %08x signal: %08x\n",
-			led_num, led_cfg, signal_cfg);
+	// dev_info(&dev->udev->dev, "Current LED[%d] cfg: %08x signal: %08x\n",
+	// 		led_num, led_cfg, signal_cfg);
 
 	/* PAGE 7 / 0x11: LED0 = bit[3:0], LED1 = bit[7:4]. */
 	shift = led_num * 4;
@@ -500,8 +500,8 @@ static int ch397_cfg_led(struct usbnet *dev, int led_num, int led_mode,
 	else
 		signal_cfg |= signal_mask;
 
-	dev_info(&dev->udev->dev, "Write LED[%d] cfg: %08x signal: %08x\n",
-			led_num, led_cfg, signal_cfg);
+	// dev_info(&dev->udev->dev, "Write LED[%d] cfg: %08x signal: %08x\n",
+	// 		led_num, led_cfg, signal_cfg);
 
 	ret = ch397_write_shared_word(dev, 1, CH397_PHY_LED_MODE_REG,
 				      led_cfg);
