@@ -44,7 +44,7 @@ Signed-off-by: Ulf Hansson <ulf.hansson@linaro.org>
 +#define DLL_TXCLK_TAPNUM_DEFAULT	0x10
 +#define DLL_TXCLK_TAPNUM_90_DEGREES	0xA
  #define DLL_TXCLK_TAPNUM_FROM_SW	BIT(24)
-+#define DLL_STRBIN_TAPNUM_DEFAULT	0x8
++#define DLL_STRBIN_TAPNUM_DEFAULT	0x4
 +#define DLL_STRBIN_TAPNUM_FROM_SW	BIT(24)
 +#define DLL_STRBIN_DELAY_NUM_SEL	BIT(26)
 +#define DLL_STRBIN_DELAY_NUM_OFFSET	16
@@ -126,14 +126,15 @@ Signed-off-by: Ulf Hansson <ulf.hansson@linaro.org>
  
  	/* Rockchip platform only support 375KHz for identify mode */
  	if (clock <= 400000)
-@@ -217,8 +237,20 @@ static void dwcmshc_rk3568_set_clock(str
+@@ -216,9 +236,21 @@ static void dwcmshc_rk3568_set_clock(str
+ 	/* Disable clock while config DLL */
  	sdhci_writew(host, 0, SDHCI_CLOCK_CONTROL);
  
- 	if (clock <= 400000) {
+-	if (clock <= 400000) {
 -		/* Disable DLL to reset sample clock */
--		sdhci_writel(host, 0, DWCMSHC_EMMC_DLL_CTRL);
++	if (clock <= 52000000) {
 +		/* Disable DLL and reset both of sample and drive clock */
-+ 		sdhci_writel(host, 0, DWCMSHC_EMMC_DLL_CTRL);
+ 		sdhci_writel(host, 0, DWCMSHC_EMMC_DLL_CTRL);
 +		sdhci_writel(host, 0, DWCMSHC_EMMC_DLL_RXCLK);
 +		sdhci_writel(host, 0, DWCMSHC_EMMC_DLL_TXCLK);
 +		sdhci_writel(host, 0, DECMSHC_EMMC_DLL_CMDOUT);

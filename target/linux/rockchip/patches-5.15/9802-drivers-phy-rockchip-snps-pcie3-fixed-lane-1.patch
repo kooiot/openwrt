@@ -1,7 +1,7 @@
 --- a/drivers/phy/rockchip/phy-rockchip-snps-pcie3.c
 +++ b/drivers/phy/rockchip/phy-rockchip-snps-pcie3.c
 @@ -20,6 +20,7 @@
-
+ 
  /* Register for RK3568 */
  #define GRF_PCIE30PHY_CON1			0x4
 +#define GRF_PCIE30PHY_CON4			0x10
@@ -11,7 +11,7 @@
 @@ -59,6 +60,10 @@ struct rockchip_p3phy_priv {
  	u32 lanes[4];
  };
-
+ 
 +static u16 phy_fw[] = {
 +	#include "p3phy.fw"
 +};
@@ -19,22 +19,27 @@
  struct rockchip_p3phy_ops {
  	int (*phy_init)(struct rockchip_p3phy_priv *priv);
  };
-@@ -112,6 +117,11 @@ static int rockchip_p3phy_rk3568_init(st
+@@ -112,15 +117,35 @@ static int rockchip_p3phy_rk3568_init(st
  			     GRF_PCIE30PHY_WR_EN & ~RK3568_BIFURCATION_LANE_0_1);
  	}
-
+ 
 +	regmap_write(priv->phy_grf, GRF_PCIE30PHY_CON4,
 +		     (0x0 << 14) | (0x1 << (14 + 16))); //sdram_ld_done
 +	regmap_write(priv->phy_grf, GRF_PCIE30PHY_CON4,
 +		     (0x0 << 13) | (0x1 << (13 + 16))); //sdram_bypass
 +
  	reset_control_deassert(priv->p30phy);
-
+ 
  	ret = regmap_read_poll_timeout(priv->phy_grf,
-@@ -121,6 +131,19 @@ static int rockchip_p3phy_rk3568_init(st
- 	if (ret)
+ 				       GRF_PCIE30PHY_STATUS0,
+ 				       reg, SRAM_INIT_DONE(reg),
+ 				       0, 500);
+-	if (ret)
++	if (ret) {
  		dev_err(&priv->phy->dev, "%s: lock failed 0x%x, check input refclk and power supply\n",
  		       __func__, reg);
++		return ret;
++	}
 +
 +	regmap_write(priv->phy_grf, GRF_PCIE30PHY_CON9,
 +		     (0x3 << 8) | (0x3 << (8 + 16))); //map to access sram
@@ -50,7 +55,7 @@
 +
  	return ret;
  }
-
+ 
 --- /dev/null
 +++ b/drivers/phy/rockchip/p3phy.fw
 @@ -0,0 +1,8192 @@

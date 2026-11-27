@@ -33,12 +33,12 @@ Signed-off-by: Ulf Hansson <ulf.hansson@linaro.org>
  #define DLL_CMDOUT_TAPNUM_FROM_SW	BIT(24)
  #define DLL_CMDOUT_SRC_CLK_NEG		BIT(28)
  #define DLL_CMDOUT_EN_SRC_CLK_NEG	BIT(29)
-@@ -237,9 +239,12 @@ static void dwcmshc_rk3568_set_clock(str
- 	sdhci_writew(host, 0, SDHCI_CLOCK_CONTROL);
+@@ -234,9 +236,12 @@ static void dwcmshc_rk3568_set_clock(str
+ 	sdhci_writel(host, extra, reg);
  
- 	if (clock <= 400000) {
+ 	if (clock <= 52000000) {
 -		/* Disable DLL and reset both of sample and drive clock */
-- 		sdhci_writel(host, 0, DWCMSHC_EMMC_DLL_CTRL);
+-		sdhci_writel(host, 0, DWCMSHC_EMMC_DLL_CTRL);
 -		sdhci_writel(host, 0, DWCMSHC_EMMC_DLL_RXCLK);
 +		/*
 +		 * Disable DLL and reset both of sample and drive clock.
@@ -49,7 +49,7 @@ Signed-off-by: Ulf Hansson <ulf.hansson@linaro.org>
  		sdhci_writel(host, 0, DWCMSHC_EMMC_DLL_TXCLK);
  		sdhci_writel(host, 0, DECMSHC_EMMC_DLL_CMDOUT);
  		/*
-@@ -282,7 +287,7 @@ static void dwcmshc_rk3568_set_clock(str
+@@ -279,7 +284,7 @@ static void dwcmshc_rk3568_set_clock(str
  	}
  
  	extra = 0x1 << 16 | /* tune clock stop en */
