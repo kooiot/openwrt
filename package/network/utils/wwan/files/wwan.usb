@@ -1,6 +1,6 @@
 #!/bin/sh
 
-[ "$ACTION" = add -a "$DEVTYPE" = usb_device ] || exit 0
+[ "$ACTION" = bind -a "$DEVTYPE" = usb_device ] || exit 0
 
 . /lib/functions.sh
 . /lib/netifd/netifd-proto.sh
